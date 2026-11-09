@@ -2,10 +2,10 @@ local _, ACB = ...
 
 -- A card you find for the first time has a 1 in `shinyOdds` chance to be a shiny copy.
 ACB.shinyOdds = 20
--- Bad-luck safety net: a card whose source has missed this many times its expected number of
--- attempts is guaranteed on the next one. A 0.5% card is guaranteed on the 500th attempt, 1% on the
--- 250th and 5% on the 50th. Set to 0 to switch the safety net off.
-ACB.pityFactor = 2.5
+-- Bad-luck safety net: once a card's chances add up to 100%, the next attempt is guaranteed. That is
+-- a multiple of 1 of the expected number of attempts: a 0.5% card is guaranteed on the 200th attempt,
+-- 1% on the 100th and 5% on the 20th. Set to 0 to switch the safety net off.
+ACB.pityFactor = 1
 ACB.rates = { normal = 50, elite = 100, rare = 500, rareelite = 500, gathering = 50 }
 ACB.pages = {
     { title = "Deadmines", zone = "deadmines", group = "Dungeon", code = "DM", reward = "Defias Delver", subtitle = "The Defias hideout", cards = {} },

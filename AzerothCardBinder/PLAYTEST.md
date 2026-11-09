@@ -44,7 +44,7 @@ Every card has a description of at most 80 characters so it fits the card face. 
 
 ## Bad-luck safety net
 
-Every card has a miss counter for its source. When a source has missed 2.5 times its expected number of attempts, the next attempt is guaranteed: the 500th for a 0.5% card, the 250th for 1% and the 50th for 5%. The counter resets on a drop. The tooltip hint and the log show progress. Change or switch off `ACB.pityFactor` in `Catalog.lua` (0 turns it off).
+Every card has a miss counter for its source. Once a card's chances add up to 100%, the attempt that reaches it is guaranteed: the 200th for a 0.5% card, the 100th for 1% and the 20th for 5%. The counter resets on a drop. The tooltip hint and the log show progress. Change or switch off `ACB.pityFactor` in `Catalog.lua` (0 turns it off).
 
 ## Hints
 

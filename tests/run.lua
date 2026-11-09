@@ -271,9 +271,9 @@ test("the bad-luck safety net guarantees a card after enough misses and then res
     end, ignore, ignore)
     local misses, limit = ACB.luck(saved, ACB.cards["npc:589"])
     equal(misses, 0)
-    equal(limit, 500) -- a 0.5% card
-    equal(select(2, ACB.luck(saved, ACB.cards["npc:639"])), 250) -- a 1% card
-    equal(select(2, ACB.luck(saved, ACB.cards["npc:573"])), 50) -- a 5% card
+    equal(limit, 200) -- a 0.5% card, guaranteed on the 200th kill
+    equal(select(2, ACB.luck(saved, ACB.cards["npc:639"])), 100) -- a 1% card
+    equal(select(2, ACB.luck(saved, ACB.cards["npc:573"])), 20) -- a 5% card
     for attempt = 1, limit - 1 do
         equal(collection:roll(guid(589, "miss" .. attempt), "loot"), false)
     end
@@ -286,9 +286,9 @@ test("the bad-luck safety net guarantees a card after enough misses and then res
     equal(ACB.luck(saved, ACB.cards["npc:589"]), 0)
     equal(collection:roll(guid(589, "after"), "loot"), false)
     ACB.pityFactor = 0 -- switched off
-    for attempt = 1, 600 do collection:roll(guid(589, "off" .. attempt), "loot") end
+    for attempt = 1, 300 do collection:roll(guid(589, "off" .. attempt), "loot") end
     equal(saved.counts["npc:589"], 1)
-    ACB.pityFactor = 2.5
+    ACB.pityFactor = 1
 end)
 
 test("finishing a set earns its title once and announces it", function()
@@ -626,7 +626,7 @@ test("tooltip hints say whether a card is owned and where to find it", function(
     saved.counts["npc:589"], saved.misses["npc:589"] = nil, 120
     local lines = ACB.hintLines(saved, card)
     equal(lines[1][1], "Card: not in your binder yet (0.5% chance)")
-    equal(lines[2][1], "Bad-luck safety net: 120 / 500")
+    equal(lines[2][1], "Bad-luck safety net: 120 / 200")
     saved.counts["npc:589"] = 2
     equal(ACB.hintLines(saved, card)[1][1], "Card: in your binder (x2)")
     saved.counts["npc:589"], saved.misses["npc:589"] = nil, nil
