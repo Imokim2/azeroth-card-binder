@@ -9,6 +9,7 @@
 Catalog.lua
 CatalogForever.lua
 CatalogNodes.lua
+Lore.lua
 Collection.lua
 Trade.lua
 Cards.lua
