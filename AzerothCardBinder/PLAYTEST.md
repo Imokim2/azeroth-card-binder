@@ -1,6 +1,6 @@
 # Azeroth Card Binder · First playtest
 
-Version 0.2.1 targets World of Warcraft: Forever, interface 16001. The add-on is standalone and stores one binder per WoW account installation using SavedVariables.
+Version 0.2.2 targets World of Warcraft: Forever, interface 16001. The add-on is standalone and stores one binder per WoW account installation using SavedVariables.
 
 ## Install
 
