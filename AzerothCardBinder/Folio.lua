@@ -158,7 +158,8 @@ local function createIndex(parent, saved, selectSet)
         activeSet = current
         local query = search:GetText():lower():match("^%s*(.-)%s*$")
         local results = {}
-        for setIndex, entry in ipairs(ACB.pages) do
+        for _, setIndex in ipairs(ACB.setOrder()) do
+            local entry = ACB.pages[setIndex]
             local searchable = (entry.title .. " " .. (entry.group or "")):lower()
             if #entry.cards > 0 and searchable:find(query, 1, true) then results[#results + 1] = setIndex end
         end
@@ -185,7 +186,7 @@ local function createIndex(parent, saved, selectSet)
                 row.frame:SetBackdropColor(unpack(active and SELECTED or POCKET))
                 row.frame:SetBackdropBorderColor(unpack(active and INK or EDGE))
                 row.title:SetText(entry.title)
-                row.group:SetText(entry.group or "")
+                row.group:SetText((entry.group or "") .. (entry.levels and ("  /  Levels " .. entry.levels) or ""))
                 row.progress:SetText(collected >= cards and "Complete" or ("%d / %d"):format(collected, cards))
                 row.bar:set(collected, cards)
             end

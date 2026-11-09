@@ -10,7 +10,7 @@ ACB.rates = { normal = 50, elite = 100, rare = 500, rareelite = 500, gathering =
 ACB.pages = {
     { title = "Deadmines", zone = "deadmines", group = "Dungeon", code = "DM", reward = "Defias Delver", subtitle = "The Defias hideout", cards = {} },
     { title = "Westfall", zone = "westfall", group = "Zone", code = "WF", reward = "Westfall Warden", subtitle = "The fields beyond Sentinel Hill", cards = {} },
-    { title = "Gathering", zone = "elwynn", group = "Profession", code = "GA", reward = "Fieldhand", subtitle = "Finds from the field", cards = {} },
+    { title = "Gathering", zone = "elwynn", group = "Profession", code = "GA", reward = "Fieldhand", levelMin = 1, levelMax = 60, levelMid = 1, subtitle = "Finds from the field", cards = {} },
 }
 ACB.cards, ACB.sources = {}, { Creature = {}, GameObject = {} }
 
@@ -66,6 +66,8 @@ local function card(page, zone, id, name, rank, icon, lore, boss, profession, mo
     local entry = {
         key = key, id = id, name = name, rank = rank, icon = "Interface\\Icons\\" .. icon,
         boss = boss, profession = profession, page = page, zone = zone, lore = lore, model = model,
+        -- A stable serial number: the game's own id, with an N for nodes so it never clashes with a creature.
+        serial = profession and ("N%05d"):format(id) or ("%06d"):format(id),
     }
     entry.rarity = rarityOf(entry)
     ACB.cards[key] = entry
@@ -179,6 +181,24 @@ function ACB.addPlace(slug, name, kind, levels, rows)
         index = #ACB.pages
         pageForPlace[slug] = index
     end
+    -- The levels a set is played at: the middle 80% of its ordinary creatures (or all of them when there are few).
+    local page = ACB.pages[index]
+    local normal, every = {}, {}
+    local floor = (kind == "Dungeon" or kind == "Raid" or kind == "Battleground") and 8 or 1 -- no level 1 helpers in instances
+    for _, row in ipairs(rows) do
+        if row[4] and row[4] >= floor then
+            every[#every + 1] = row[4]
+            if row[3] == "n" then normal[#normal + 1] = row[4] end
+        end
+    end
+    local pool = #normal >= 5 and normal or every
+    table.sort(pool)
+    if #pool > 0 and not page.levelMid then
+        local low = pool[math.max(1, math.floor(#pool * 0.1) + 1)]
+        local high = pool[math.min(#pool, math.ceil(#pool * 0.9))]
+        page.levelMin, page.levelMax, page.levelMid = low, high, pool[math.ceil(#pool / 2)]
+        page.levels = low == high and tostring(low) or (low .. "–" .. high)
+    end
     if not ACB.zones[slug] then
         local top, bottom = placeColors(slug, kind)
         ACB.zones[slug] = { name = name, kind = kind, place = name, backdrop = backdrops[slug], top = top, bottom = bottom }
@@ -213,6 +233,27 @@ function ACB.addNodes(rows)
             ACB.sources.GameObject[ids[index]] = ACB.sources.GameObject[ids[index]] or primary
         end
     end
+end
+
+-- The sets in the order they are listed: by the typical level of their creatures, then by where they start
+-- and end, then by name.
+-- Sets with no level information go last. Set numbers themselves never change.
+function ACB.setOrder()
+    local order = {}
+    for index in ipairs(ACB.pages) do order[#order + 1] = index end
+    table.sort(order, function(a, b)
+        local first, second = ACB.pages[a], ACB.pages[b]
+        local midA, midB = first.levelMid or 1000, second.levelMid or 1000
+        if midA ~= midB then return midA < midB end
+        local lowA, lowB = first.levelMin or 1000, second.levelMin or 1000
+        if lowA ~= lowB then return lowA < lowB end
+        local highA, highB = first.levelMax or 1000, second.levelMax or 1000
+        if highA ~= highB then return highA < highB end
+        local nameA, nameB = first.title:lower(), second.title:lower()
+        if nameA ~= nameB then return nameA < nameB end
+        return a < b
+    end)
+    return order
 end
 
 ACB.achievements = {
