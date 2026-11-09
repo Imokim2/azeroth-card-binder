@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## AllowLoadGameType: camelot
 ## Title: Azeroth Card Binder
-## Notes: Discover collectible cards in World of Warcraft: Forever. Open with /acb.
-## Version: 0.1.0
+## Notes: Discover collectible cards in World of Warcraft: Forever. Open from the minimap or with /acb.
+## Version: 0.2.3
 ## SavedVariables: AzerothCardBinderDB
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
 
@@ -10,5 +10,7 @@ Catalog.lua
 Collection.lua
 Trade.lua
 Cards.lua
+Folio.lua
 Binder.lua
+Minimap.lua
 Forever.lua

@@ -1,12 +1,14 @@
 # Azeroth Card Binder · First playtest
 
-Version 0.1.0 targets World of Warcraft: Forever, interface 16001. The installed build used for the interface check was 1.60.1.70862. The add-on is standalone and stores one binder per WoW account installation using SavedVariables.
+Version 0.2.3 targets World of Warcraft: Forever, interface 16001. The add-on is standalone and stores one binder per WoW account installation using SavedVariables.
 
 ## Install
 
 1. Extract the ZIP into `World of Warcraft/_forever_/Interface/AddOns/`. The final path should end in `AddOns/AzerothCardBinder/AzerothCardBinder.toc`.
-2. Restart WoW, enable **Azeroth Card Binder** on the character screen, then type `/acb` in game.
-3. Open **Deadmines**, **Westfall**, or **Gathering** to see every slot, including missing cards. Each owned slot shows the total and spare copies. The Deadmines page tracks the eight boss cards and the full twelve-card set separately.
+2. Restart WoW, enable **Azeroth Card Binder** on the character screen, then click the book icon on the minimap or type `/acb`. Drag the minimap icon to move it around the rim.
+3. Open **Index** or type `/acb index`. Search for a set by name or category, then click it to open its **Collection**. The index shows how many cards you own in each set.
+4. Click a pocket to see the larger card, rarity, drop chance, and copy counts on the right. Deadmines has three pages of four cards and tracks the eight boss cards and full twelve-card set separately.
+5. For the portrait playtest, select **Edwin VanCleef** on Deadmines page 2 and **Foe Reaper 4000** in Westfall. The enlarged card previews the scene even when the pocket is still marked Missing. Check the framing, whether the pose holds still, and how the character reads against the backdrop. Try a Gathering card to check that its resource model and backdrop display together. These checks require the live client.
 
 ## Collection
 

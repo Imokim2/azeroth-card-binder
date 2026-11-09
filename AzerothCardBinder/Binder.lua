@@ -2,6 +2,7 @@ local _, ACB = ...
 local brass = { 0.88, 0.69, 0.40 }
 local parchment = { 0.94, 0.88, 0.75 }
 local muted = { 0.65, 0.61, 0.54 }
+local BINDER_WIDTH, BINDER_HEIGHT = 940, 644
 
 local function label(parent, font, x, y, color, value)
     local line = parent:CreateFontString(nil, "OVERLAY", font)
@@ -25,7 +26,7 @@ local function backdrop(frame, edge, size)
     frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = edge, edgeSize = size })
 end
 
-local function window(name, width, height, title)
+local function window(name, width, height, title, folio)
     local frame = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
     frame:SetSize(width, height)
     frame:SetPoint("CENTER")
@@ -33,26 +34,57 @@ local function window(name, width, height, title)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:EnableMouse(true)
-    backdrop(frame, "Interface\\DialogFrame\\UI-DialogBox-Border", 24)
-    frame:SetBackdropColor(0.072, 0.057, 0.049, 0.99)
-    frame:SetBackdropBorderColor(0.78, 0.63, 0.42)
+    if folio then
+        frame:SetBackdrop({ bgFile = ACB.folioArt .. "Leather.tga" })
+        frame:SetBackdropColor(1, 1, 1, 1)
+    else
+        backdrop(frame, "Interface\\DialogFrame\\UI-DialogBox-Border", 24)
+        frame:SetBackdropColor(0.072, 0.057, 0.049, 0.99)
+        frame:SetBackdropBorderColor(0.78, 0.63, 0.42)
+    end
     local header = CreateFrame("Frame", nil, frame)
     header:SetPoint("TOPLEFT", 18, -14)
     header:SetPoint("TOPRIGHT", -42, -14)
-    header:SetHeight(32)
+    header:SetHeight(folio and 52 or 32)
     header:EnableMouse(true)
     header:RegisterForDrag("LeftButton")
     header:SetScript("OnDragStart", function() frame:StartMoving() end)
     header:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
-    label(header, "GameFontNormalLarge", 2, 3, brass, title)
+    if folio then
+        local seal = header:CreateTexture(nil, "ARTWORK")
+        seal:SetTexture(ACB.folioArt .. "Launcher.tga")
+        seal:SetSize(36, 36)
+        seal:SetPoint("TOPLEFT", 8, -6)
+        local heading = label(header, "GameFontNormalLarge", 55, 9, parchment, title)
+        heading:SetFont("Fonts\\MORPHEUS.ttf", 33, "")
+        local edition = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        edition:SetPoint("TOPRIGHT", -14, -20)
+        edition:SetTextColor(unpack(brass))
+        edition:SetText("F I R S T   E D I T I O N")
+    else
+        label(header, "GameFontNormalLarge", 2, 3, brass, title)
+    end
     local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", -6, -6)
+    close:SetPoint("TOPRIGHT", folio and -16 or -6, folio and -14 or -6)
     table.insert(UISpecialFrames, name)
     frame:Hide()
     return frame
 end
 
-local CARD_PITCH_X, CARD_PITCH_Y = 146, 200
+local function tab(parent, caption, index, open)
+    local frame = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    frame:SetPoint("TOPLEFT", 30 + (index - 1) * 127, -76)
+    frame:SetSize(116, 31)
+    backdrop(frame, "Interface\\Buttons\\WHITE8X8", 1)
+    frame:SetBackdropBorderColor(0.63, 0.46, 0.29, 1)
+    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    title:SetPoint("CENTER")
+    frame:SetFontString(title)
+    frame:SetText(caption)
+    frame:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    frame:SetScript("OnClick", open)
+    return { frame = frame, title = title }
+end
 
 local gold, goldDark, green = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }, { 0.2, 1, 0.3 }
 
@@ -83,42 +115,37 @@ local function offerPanel(parent, x, y)
 end
 
 function ACB.initUI(saved, trade)
-    local frame = window("AzerothCardBinderWindow", 928, 590, "Azeroth Card Binder")
+    local frame = window("AzerothCardBinderWindow", BINDER_WIDTH, BINDER_HEIGHT, "Azeroth Card Binder", true)
+    local function fitWindow()
+        local scale = math.min(1, (UIParent:GetWidth() - 24) / BINDER_WIDTH,
+            (UIParent:GetHeight() - 24) / BINDER_HEIGHT)
+        if scale > 0 then frame:SetScale(scale) end
+    end
+    frame:RegisterEvent("DISPLAY_SIZE_CHANGED")
+    frame:RegisterEvent("UI_SCALE_CHANGED")
+    frame:SetScript("OnEvent", fitWindow)
     local page = 1
-    local collectionView = CreateFrame("Frame", nil, frame)
-    collectionView:SetAllPoints(frame)
-    local tradeView = CreateFrame("Frame", nil, frame)
-    tradeView:SetAllPoints(frame)
+    local mode = "collection"
+    local collectionView = ACB.createFolio(frame, saved, function(setIndex) ACB.open(setIndex) end)
+    local tradeView = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    tradeView:SetPoint("TOPLEFT", 20, -109)
+    tradeView:SetSize(900, 500)
+    backdrop(tradeView, "Interface\\Buttons\\WHITE8X8", 1)
+    tradeView:SetBackdropColor(0.13, 0.09, 0.07, 1)
+    tradeView:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
     local tabs = {}
-    for index, entry in ipairs(ACB.pages) do
-        tabs[index] = button(frame, entry.title, 24 + (index - 1) * 126, 48, 118, function()
-            page = index
-            ACB.refresh()
-        end)
+    for index, destination in ipairs({ "index", "collection", "trade" }) do
+        local caption = destination:sub(1, 1):upper() .. destination:sub(2)
+        tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
-    tabs[4] = button(frame, "Trade", 402, 48, 118, function()
-        page = 4
-        ACB.refresh()
-    end)
-    local subtitle = label(collectionView, "GameFontNormal", 26, 84, brass)
-    local completion = label(collectionView, "GameFontHighlight", 740, 84, parchment)
-    local slots = {}
-    for index = 1, #ACB.pages[1].cards do
-        local slot = ACB.createCard(collectionView)
-        slot.frame:SetPoint("TOPLEFT", 26 + ((index - 1) % 6) * CARD_PITCH_X, -111 - math.floor((index - 1) / 6) * CARD_PITCH_Y)
-        slots[index] = slot
-    end
-    local milestones = {}
-    for index, achievement in ipairs(ACB.achievements) do
-        milestones[index] = label(collectionView, "GameFontNormal", 26 + (index - 1) * 345, 530, brass, achievement.name)
-    end
-    label(frame, "GameFontHighlightSmall", 26, 558, muted,
-        "FIRST EDITION  /  FOREVER                                     /acb diag  -  toggle diagnostics      /acb log  -  copy trace")
+    local regionMark = label(frame, "GameFontHighlightSmall", 713, 86, brass, "")
+    regionMark:SetWidth(196)
+    regionMark:SetJustifyH("RIGHT")
 
     -- The trade window: your offer on the left, your partner's on the right, buttons along the bottom.
     local box = CreateFrame("Frame", nil, tradeView)
     box:SetSize(640, 468)
-    box:SetPoint("TOPLEFT", 144, -80)
+    box:SetPoint("TOP", tradeView, "TOP", 0, -16)
     label(box, "GameFontHighlightSmall", 22, 17, muted, "TRADE WITH")
     local partner = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
     partner:SetSize(235, 28)
@@ -188,30 +215,26 @@ function ACB.initUI(saved, trade)
 
     function ACB.refresh()
         if not frame:IsShown() then return end
-        for index, tab in ipairs(tabs) do tab:SetEnabled(index ~= page) end
-        local binderPage = ACB.pages[page]
-        collectionView:SetShown(binderPage ~= nil)
-        tradeView:SetShown(binderPage == nil)
-        if binderPage then
-            local owned, total = ACB.progress(saved.counts, page)
-            subtitle:SetText(binderPage.subtitle)
-            completion:SetText(("%d / %d cards collected"):format(owned, total))
-            for index, slot in ipairs(slots) do
-                local card = binderPage.cards[index]
-                slot.frame:SetShown(card ~= nil)
-                if card then slot:set(card, saved.counts[card.key] or 0) end
+        for destination, control in pairs(tabs) do
+            local active = destination == mode
+            control.frame:SetEnabled(not active)
+            if active then
+                control.frame:SetBackdropColor(0.82, 0.67, 0.43, 1)
+                control.title:SetTextColor(0.22, 0.13, 0.07, 1)
+            else
+                control.frame:SetBackdropColor(0.20, 0.13, 0.09, 1)
+                control.title:SetTextColor(unpack(parchment))
             end
-            for index, milestone in ipairs(milestones) do
-                milestone:SetShown(page == 1)
-                if page == 1 then
-                    local achievement = ACB.achievements[index]
-                    local have, needed = ACB.progress(saved.counts, 1, achievement.bossesOnly)
-                    local progress = saved.achievements[achievement.key] and "Earned" or ("%d / %d"):format(have, needed)
-                    milestone:SetText(achievement.name .. "   " .. progress)
-                end
-            end
+        end
+        local inTrade = mode == "trade"
+        collectionView:SetShown(not inTrade)
+        tradeView:SetShown(inTrade)
+        if not inTrade then
+            regionMark:SetText(mode == "index" and "BINDER  /  INDEX" or ("BINDER  /  %02d"):format(page))
+            collectionView:showRegion(page, mode == "index")
             return
         end
+        regionMark:SetText("BINDER  /  TRADE")
 
         local session = trade:active()
         local live = session ~= nil and not session.applied -- a finished trade stays on screen but is over
@@ -250,10 +273,19 @@ function ACB.initUI(saved, trade)
         status:SetText(trade.status)
     end
 
-    function ACB.open(index)
-        if index then page = index end
+    function ACB.open(destination)
+        if tabs[destination] then
+            mode = destination
+        elseif type(destination) == "number" and ACB.pages[destination] and #ACB.pages[destination].cards > 0 then
+            page, mode = destination, "collection"
+        end
+        fitWindow()
         frame:Show()
         ACB.refresh()
+    end
+
+    function ACB.toggle()
+        if frame:IsShown() then frame:Hide() else ACB.open() end
     end
 
     local logWindow = window("AzerothCardBinderLog", 674, 373, "Binder diagnostics")
