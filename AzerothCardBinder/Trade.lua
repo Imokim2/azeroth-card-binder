@@ -5,7 +5,8 @@ ACB.tradePrefix = "AzerothBinder1"
 -- A swap runs over addon whispers: the sender offers a spare card (O), the partner replies with one
 -- of their own (R), and each side confirms the exact pair (C). When a side has sent its confirmation
 -- and received the partner's, it applies the swap once through `apply`.
-function ACB.newTrade(counts, now, makeID, send, apply)
+-- `wanted` returns the cards the player is looking for, as a list of catalog keys.
+function ACB.newTrade(counts, now, makeID, send, apply, wanted)
     local trade = { seen = {}, status = "Choose a partner and a duplicate to offer." }
     apply = apply or function() return true end
 
@@ -86,11 +87,37 @@ function ACB.newTrade(counts, now, makeID, send, apply)
         session.applied = true
         session.expires = now() + 120
         local give, take = ACB.cards[session.give], ACB.cards[session.take]
-        if apply(session.give, session.take) then
+        if apply(session.give, session.take, session.peer) then
             self.status = ("Trade complete. You gave %s and received %s."):format(give.name, take.name)
         else
             self.status = "The trade could not finish because your duplicate is no longer available."
         end
+    end
+
+    -- Tell the partner which spare cards you have (S) and which cards you are looking for (W).
+    function trade:shareLists()
+        local session = self:active()
+        if not session then
+            self.status = "Start a trade first."
+            return
+        end
+        local spares = {}
+        for key, count in pairs(counts) do
+            if ACB.cards[key] and count >= 2 then spares[#spares + 1] = key end
+        end
+        table.sort(spares)
+        local function pack(command, list)
+            local out, length = {}, #command + 1
+            for _, key in ipairs(list) do
+                if length + #key + 1 > 98 then break end
+                out[#out + 1] = key
+                length = length + #key + 1
+            end
+            return command .. "|" .. table.concat(out, ",")
+        end
+        local first, reason = send(session.peer, pack("S", spares))
+        local second = first and send(session.peer, pack("W", wanted and wanted() or {}))
+        self.status = second and "Your spare and wanted cards were shared." or (reason or "Your lists could not be sent.")
     end
 
     function trade:confirm()
@@ -113,6 +140,16 @@ function ACB.newTrade(counts, now, makeID, send, apply)
     function trade:receive(peer, message)
         local session = self:active()
         if not session or session.peer ~= peer or type(message) ~= "string" or #message > 100 then return end
+        local listCommand, list = message:match("^([SW])|([%w:,]*)$")
+        if listCommand then
+            local items = {}
+            for key in list:gmatch("[^,]+") do
+                if ACB.cards[key] and #items < 12 then items[#items + 1] = key end
+            end
+            if listCommand == "S" then session.theirSpares = items else session.theirWants = items end
+            self.status = "Your partner shared their " .. (listCommand == "S" and "spare" or "wanted") .. " cards."
+            return
+        end
         local command, id, give, take = message:match("^([ORC])|([%w%-]+)|([%w:]+)(.*)$")
         if not id or #id > 36 or not ACB.cards[give] then return end
 

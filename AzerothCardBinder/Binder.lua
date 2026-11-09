@@ -100,7 +100,7 @@ end
 -- One side of the trade window: a header with the player's name, the offered card and an accepted line.
 local function offerPanel(parent, x, y)
     local panel = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    panel:SetSize(290, 300)
+    panel:SetSize(290, 330)
     panel:SetPoint("TOPLEFT", x, -y)
     backdrop(panel, "Interface\\Tooltips\\UI-Tooltip-Border", 16)
     panel:SetBackdropColor(0.055, 0.05, 0.045, 0.96)
@@ -111,6 +111,7 @@ local function offerPanel(parent, x, y)
     side.card.frame:SetPoint("TOP", panel, "TOP", 0, -40)
     side.hint = centered(panel, "GameFontHighlightSmall", 122, muted, 220)
     side.accepted = centered(panel, "GameFontNormal", 274, muted, 260)
+    side.note = centered(panel, "GameFontHighlightSmall", 296, muted, 266)
     return side
 end
 
@@ -138,14 +139,17 @@ function ACB.initUI(saved, trade)
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
+    local titleMark = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    titleMark:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -56, -54)
+    titleMark:SetTextColor(unpack(brass))
     local regionMark = label(frame, "GameFontHighlightSmall", 713, 86, brass, "")
     regionMark:SetWidth(196)
     regionMark:SetJustifyH("RIGHT")
 
     -- The trade window: your offer on the left, your partner's on the right, buttons along the bottom.
     local box = CreateFrame("Frame", nil, tradeView)
-    box:SetSize(640, 468)
-    box:SetPoint("TOP", tradeView, "TOP", 0, -16)
+    box:SetSize(640, 480)
+    box:SetPoint("TOP", tradeView, "TOP", 0, -8)
     label(box, "GameFontHighlightSmall", 22, 17, muted, "TRADE WITH")
     local partner = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
     partner:SetSize(235, 28)
@@ -197,20 +201,44 @@ function ACB.initUI(saved, trade)
     local nextCard = button(mine.frame, ">", 236, 236, 34, function() choose(1) end)
     local chooseText = centered(mine.frame, "GameFontHighlightSmall", 243, muted, 170)
 
-    local status = centered(box, "GameFontHighlight", 366, gold, 600)
-    local confirm = button(box, "Accept trade", 20, 398, 150, function()
+    local status = centered(box, "GameFontHighlight", 384, gold, 600)
+    local confirm = button(box, "Accept trade", 20, 414, 140, function()
         trade:confirm()
         ACB.refresh()
     end)
-    local retry = button(box, "Resend last step", 180, 398, 150, function()
+    local retry = button(box, "Resend last step", 166, 414, 140, function()
         trade:retry()
         ACB.refresh()
     end)
-    local clear = button(box, "Cancel", 470, 398, 150, function()
+    local share = button(box, "Share lists", 312, 414, 120, function()
+        trade:shareLists()
+        ACB.refresh()
+    end)
+    local showHistory = false
+    local historyButton = button(box, "History", 438, 414, 90, function()
+        showHistory = not showHistory
+        ACB.refresh()
+    end)
+    local clear = button(box, "Cancel", 534, 414, 86, function()
         trade:reset()
         ACB.refresh()
     end)
-    centered(box, "GameFontHighlightSmall", 440, muted, 600):SetText(
+    local historyPanel = CreateFrame("Frame", nil, box, "BackdropTemplate")
+    historyPanel:SetSize(600, 330)
+    historyPanel:SetPoint("TOPLEFT", 20, -52)
+    historyPanel:SetFrameLevel(box:GetFrameLevel() + 60)
+    backdrop(historyPanel, "Interface\\Tooltips\\UI-Tooltip-Border", 16)
+    historyPanel:SetBackdropColor(0.055, 0.05, 0.045, 0.99)
+    historyPanel:SetBackdropBorderColor(unpack(goldDark))
+    centered(historyPanel, "GameFontNormal", 14, gold, 560):SetText("Trade history")
+    local historyText = historyPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    historyText:SetPoint("TOPLEFT", 24, -44)
+    historyText:SetWidth(552)
+    historyText:SetJustifyH("LEFT")
+    historyText:SetSpacing(6)
+    historyText:SetTextColor(unpack(parchment))
+    historyPanel:Hide()
+    centered(box, "GameFontHighlightSmall", 452, muted, 600):SetText(
         "Outdoors and out of combat. Both players accept the same two cards and the swap then happens on both sides. It runs on trust.")
 
     function ACB.refresh()
@@ -226,6 +254,7 @@ function ACB.initUI(saved, trade)
                 control.title:SetTextColor(unpack(parchment))
             end
         end
+        titleMark:SetText(saved.title and ("Title: " .. saved.title) or "")
         local inTrade = mode == "trade"
         collectionView:SetShown(not inTrade)
         tradeView:SetShown(inTrade)
@@ -249,6 +278,13 @@ function ACB.initUI(saved, trade)
         offer:SetEnabled(not live and selected ~= nil)
         reply:SetEnabled(live and take ~= nil and not give and selected ~= nil)
         clear:SetEnabled(session ~= nil)
+        share:SetEnabled(live)
+        historyButton:SetText(showHistory and "Back" or "History")
+        historyPanel:SetShown(showHistory)
+        if showHistory then
+            local lines = ACB.tradeHistory(saved)
+            historyText:SetText(#lines > 0 and table.concat(lines, "\n") or "No trades yet. Finished swaps are listed here.")
+        end
         confirm:SetEnabled(live and give ~= nil and take ~= nil and not session.sentConfirm)
         retry:SetEnabled(give ~= nil)
 
@@ -262,6 +298,34 @@ function ACB.initUI(saved, trade)
         fill(mine, offering, offering and saved.counts[offering.key] or 0,
             offering and saved.shiny and saved.shiny[offering.key])
         fill(theirs, take, 1)
+        -- What the partner shared, with the cards that matter to you picked out.
+        local function names(keys, mark)
+            local out = {}
+            for _, key in ipairs(keys or {}) do
+                if not mark or mark(key) then out[#out + 1] = ACB.cards[key].name end
+            end
+            return table.concat(out, ", ")
+        end
+        local sharedSpares, sharedWants = session and session.theirSpares, session and session.theirWants
+        local needed = names(sharedSpares, function(key) return (saved.counts[key] or 0) == 0 end)
+        if needed ~= "" then
+            theirs.note:SetText("They have spares you need: " .. needed)
+            theirs.note:SetTextColor(unpack(green))
+        elseif sharedSpares then
+            theirs.note:SetText(#sharedSpares > 0 and ("Their spares: " .. names(sharedSpares)) or "They have no spare cards.")
+            theirs.note:SetTextColor(unpack(muted))
+        else
+            theirs.note:SetText(live and "Press Share lists to see their spares." or "")
+            theirs.note:SetTextColor(unpack(muted))
+        end
+        local wantsFromMe = names(sharedWants, function(key) return (saved.counts[key] or 0) >= 2 end)
+        if wantsFromMe ~= "" then
+            mine.note:SetText("They want from you: " .. wantsFromMe)
+            mine.note:SetTextColor(unpack(green))
+        else
+            mine.note:SetText(sharedWants and "They are not looking for your spares." or "")
+            mine.note:SetTextColor(unpack(muted))
+        end
         mine.hint:SetText(offering and "" or "Use < and > to pick one of your spare cards.")
         theirs.hint:SetText(take and "" or (session and "Waiting for their card." or "Their offer will appear here."))
         local function accepted(side, yes)
@@ -272,6 +336,15 @@ function ACB.initUI(saved, trade)
         accepted(mine, session and session.sentConfirm)
         accepted(theirs, session and session.peerConfirmed)
         status:SetText(trade.status)
+    end
+
+    -- Open the trade window with a partner's name already entered.
+    function ACB.prepareTrade(name)
+        if type(name) == "string" and name ~= "" then
+            partner:SetText(name)
+            trade.status = "Trading with " .. name .. ". Pick a spare card and Send offer, or Listen for theirs."
+        end
+        ACB.open("trade")
     end
 
     function ACB.open(destination)

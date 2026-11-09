@@ -11,6 +11,8 @@ Collection.lua
 Trade.lua
 Cards.lua
 Toast.lua
+Hints.lua
+Social.lua
 Folio.lua
 Binder.lua
 Minimap.lua

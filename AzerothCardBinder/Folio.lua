@@ -72,11 +72,32 @@ local function mountCard(parent, x, y, scale, isDetail)
     return card
 end
 
-local function setCard(card, entry, count, shiny)
-    shiny = shiny == true
-    if card.entry ~= entry or card.owned ~= count or card.shiny ~= (count > 0 and shiny) then
-        card:set(entry, count, shiny)
+local function setCard(card, entry, count, shiny, wanted)
+    shiny, wanted = shiny == true, wanted == true
+    if card.entry ~= entry or card.owned ~= count or card.shiny ~= (count > 0 and shiny)
+        or card.wantedFlag ~= wanted then
+        card.wantedFlag = wanted
+        card:set(entry, count, shiny, wanted)
     end
+end
+
+-- A thin progress bar. `bar:set(have, total)` fills it and turns it gold once the set is complete.
+local function progressBar(parent, x, y, width)
+    local bar = { width = width }
+    local back = place(parent:CreateTexture(nil, "ARTWORK"), x, y, width, 5)
+    back:SetColorTexture(0.40, 0.28, 0.17, 0.55)
+    bar.fill = place(parent:CreateTexture(nil, "OVERLAY"), x, y, 1, 5)
+    function bar:set(have, total)
+        local fraction = total > 0 and math.min(1, have / total) or 0
+        self.fill:SetWidth(math.max(1, self.width * fraction))
+        self.fill:SetShown(have > 0)
+        if total > 0 and have >= total then
+            self.fill:SetColorTexture(0.85, 0.65, 0.12, 1)
+        else
+            self.fill:SetColorTexture(0.50, 0.33, 0.16, 1)
+        end
+    end
+    return bar
 end
 
 local function turnButton(parent, x, caption, action)
@@ -114,6 +135,7 @@ local function createIndex(parent, saved, selectSet)
             title = text(row, 9, 3, "", 15, INK, 278, "LEFT", true),
             group = text(row, 10, 20, "", 9, SEPIA, 278),
             progress = text(row, 282, 11, "", 11, INK, 109, "RIGHT"),
+            bar = progressBar(row, 9, 26, 380),
         }
         row:SetScript("OnClick", function(self)
             selectSet(self.setIndex)
@@ -164,7 +186,8 @@ local function createIndex(parent, saved, selectSet)
                 row.frame:SetBackdropBorderColor(unpack(active and INK or EDGE))
                 row.title:SetText(entry.title)
                 row.group:SetText(entry.group or "")
-                row.progress:SetText(("%d / %d"):format(collected, cards))
+                row.progress:SetText(collected >= cards and "Complete" or ("%d / %d"):format(collected, cards))
+                row.bar:set(collected, cards)
             end
         end
     end
@@ -189,6 +212,7 @@ function ACB.createFolio(parent, saved, selectSet)
     local title = text(left, 22, 33, "", 35, INK, 280, "LEFT", true)
     local subtitle = text(left, 24, 77, "", 13, SEPIA, 390)
     local progress = text(left, 253, 42, "", 12, SEPIA, 171, "RIGHT")
+    local setBar = progressBar(left, 23, 90, 402)
     rule(left, 23, 96, 402)
 
     local pockets = {}
@@ -244,6 +268,19 @@ function ACB.createFolio(parent, saved, selectSet)
     text(stats, 87, 190, "Owned", 13, SEPIA, 75)
     local spare = text(stats, 16, 223, "", 30, INK, 60, "CENTER", true)
     text(stats, 87, 232, "Spare", 13, SEPIA, 75)
+    local wantButton = panel(stats, "Button", 16, 255, 142, 22, POCKET, EDGE)
+    local wantText = text(wantButton, 0, 4, "", 11, INK, 142, "CENTER")
+    wantButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    wantButton:SetScript("OnClick", function()
+        local entry = ACB.pages[region].cards[state.slot]
+        if (saved.counts[entry.key] or 0) > 0 then
+            ACB.linkCard(saved, entry)
+            return
+        end
+        saved.wanted = saved.wanted or {}
+        saved.wanted[entry.key] = not saved.wanted[entry.key] or nil
+        view:showRegion(region)
+    end)
 
     rule(right, 23, 412, 402)
     local detailNote = text(right, 26, 424, "", 12, SEPIA, 396, "CENTER")
@@ -268,6 +305,7 @@ function ACB.createFolio(parent, saved, selectSet)
         title:SetText(page.title)
         subtitle:SetText(page.subtitle)
         progress:SetText(("%d / %d collected"):format(have, total))
+        setBar:set(have, total)
         leafLabel:SetText(("Page %d of %d"):format(state.leaf, leaves))
         prevLeaf:SetEnabled(state.leaf > 1)
         nextLeaf:SetEnabled(state.leaf < leaves)
@@ -287,7 +325,8 @@ function ACB.createFolio(parent, saved, selectSet)
                 pocket.number:SetText(("%02d"):format(slot))
                 pocket.name:SetText(entry.name)
                 local shiny = saved.shiny and saved.shiny[entry.key] == true
-                pocket.status:SetText(count > 0 and ("%d owned / %d spare%s"):format(count, count - 1, shiny and " / Shiny" or "") or "Missing")
+                pocket.status:SetText(count > 0 and ("%d owned / %d spare%s"):format(count, count - 1, shiny and " / Shiny" or "")
+                    or (saved.wanted and saved.wanted[entry.key] and "Missing / Wanted" or "Missing"))
                 pocket.empty:SetShown(count == 0)
                 pocket.miniature.frame:SetShown(count > 0)
                 if count > 0 then setCard(pocket.miniature, entry, count, shiny) end
@@ -305,8 +344,10 @@ function ACB.createFolio(parent, saved, selectSet)
         chance:SetText(("%g%%"):format(ACB.rates[entry.rank] / 100))
         owned:SetText(tostring(count))
         spare:SetText(tostring(math.max(0, count - 1)))
-        detailNote:SetText(count > 0 and entry.lore or "Missing from your binder.")
-        setCard(detail, entry, count, saved.shiny and saved.shiny[entry.key])
+        detailNote:SetText(count > 0 and entry.lore or ("Missing from your binder. " .. ACB.whereToFind(entry)))
+        local wanted = saved.wanted and saved.wanted[entry.key] == true
+        wantText:SetText(count > 0 and "Link in chat" or (wanted and "On your wanted list" or "Add to wanted list"))
+        setCard(detail, entry, count, saved.shiny and saved.shiny[entry.key], wanted)
 
         for slot, label in ipairs(milestones) do
             label:SetShown(index == 1)

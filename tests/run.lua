@@ -165,6 +165,103 @@ test("a lost confirmation is healed by re-sending, and nobody applies twice", fu
     equal(bCards["npc:639"], 1)
 end)
 
+test("the bad-luck safety net guarantees a card after enough misses and then resets", function()
+    local saved = { counts = {}, achievements = {} }
+    local draws = 0
+    local collection = ACB.newCollection(saved, function(min, max)
+        if max == ACB.shinyOdds then return 2 end
+        draws = draws + 1
+        return 10000 -- always a miss unless the safety net steps in
+    end, ignore, ignore)
+    local misses, limit = ACB.luck(saved, ACB.cards["npc:589"])
+    equal(misses, 0)
+    equal(limit, 500) -- a 0.5% card
+    equal(select(2, ACB.luck(saved, ACB.cards["npc:639"])), 250) -- a 1% card
+    equal(select(2, ACB.luck(saved, ACB.cards["npc:573"])), 50) -- a 5% card
+    for attempt = 1, limit - 1 do
+        equal(collection:roll(guid(589, "miss" .. attempt), "loot"), false)
+    end
+    equal(saved.counts["npc:589"], nil)
+    equal(ACB.luck(saved, ACB.cards["npc:589"]), limit - 1)
+    local before = draws
+    equal(collection:roll(guid(589, "lucky"), "loot"), true)
+    equal(draws, before) -- the guaranteed drop needs no roll
+    equal(saved.counts["npc:589"], 1)
+    equal(ACB.luck(saved, ACB.cards["npc:589"]), 0)
+    equal(collection:roll(guid(589, "after"), "loot"), false)
+    ACB.pityFactor = 0 -- switched off
+    for attempt = 1, 600 do collection:roll(guid(589, "off" .. attempt), "loot") end
+    equal(saved.counts["npc:589"], 1)
+    ACB.pityFactor = 2.5
+end)
+
+test("finishing a set earns its title once and announces it", function()
+    local saved = { counts = {}, achievements = {} }
+    local done = {}
+    local collection = ACB.newCollection(saved, function() return 1 end, ignore, ignore, nil, function(page, reward)
+        done[#done + 1] = { page = page.code, reward = reward }
+    end)
+    -- Westfall has four cards. Finish three, then the last.
+    for _, key in ipairs({ "npc:589", "npc:590", "npc:114" }) do saved.counts[key] = 1 end
+    collection:roll(guid(573, "last"), "loot")
+    equal(#done, 1)
+    equal(done[1].page, "WF")
+    equal(done[1].reward, "Westfall Warden")
+    equal(saved.sets.WF, true)
+    equal(saved.titles["Westfall Warden"], true)
+    equal(saved.title, "Westfall Warden")
+    collection:roll(guid(573, "again"), "loot")
+    equal(#done, 1) -- a set is only completed once
+end)
+
+test("partners can share spares and wants, and trades are logged", function()
+    local aCards, bCards = { ["npc:589"] = 2, ["npc:590"] = 3, ["npc:114"] = 1 }, { ["npc:639"] = 2 }
+    local a, b
+    local applied = {}
+    a = ACB.newTrade(aCards, function() return 1 end, function() return "id-1" end, function(peer, msg)
+        b:receive("alice-realm", msg)
+        return true
+    end, function(give, take, peer) applied[#applied + 1] = { give, take, peer } return true end,
+        function() return { "npc:573", "npc:639" } end)
+    b = ACB.newTrade(bCards, function() return 1 end, function() return "id-2" end, function(peer, msg)
+        a:receive("bob-realm", msg)
+        return true
+    end, function() return true end, function() return {} end)
+    a:shareLists() -- nothing started yet
+    equal(a.status, "Start a trade first.")
+    a:listen("bob-realm")
+    b:listen("alice-realm")
+    a:shareLists()
+    equal(table.concat(b.session.theirSpares, ","), "npc:589,npc:590")
+    equal(table.concat(b.session.theirWants, ","), "npc:573,npc:639")
+    -- Unknown keys, bad characters and messages from other people are ignored.
+    b:receive("alice-realm", "S|npc:589,npc:99999,node:1731")
+    equal(table.concat(b.session.theirSpares, ","), "npc:589,node:1731")
+    b:receive("alice-realm", "S|npc:589;drop")
+    equal(table.concat(b.session.theirSpares, ","), "npc:589,node:1731")
+    b:receive("mallory-realm", "S|npc:573")
+    equal(table.concat(b.session.theirSpares, ","), "npc:589,node:1731")
+    -- A long list is cut to fit one addon message and twelve cards.
+    local saved = { counts = {}, achievements = {}, history = {} }
+    ACB.logTrade(saved, "npc:589", "npc:639", "bob-realm", 100)
+    ACB.logTrade(saved, "npc:590", "npc:573", "carol-realm", 200)
+    equal(saved.history[1].peer, "carol-realm") -- newest first
+    for index = 1, 30 do ACB.logTrade(saved, "npc:589", "npc:639", "x" .. index, index) end
+    equal(#saved.history, 20)
+    local lines = ACB.tradeHistory(saved)
+    equal(#lines, 20)
+    assert(lines[1]:find("Defias Pillager for Edwin VanCleef", 1, true))
+    assert(lines[1]:find("with x30", 1, true))
+    -- With no marked wants, every missing card is wanted; marked ones win.
+    local mine = { counts = { ["npc:639"] = 1 }, wanted = {} }
+    local everything = ACB.wantedCards(mine)
+    equal(#everything, 17)
+    mine.wanted["npc:573"] = true
+    equal(table.concat(ACB.wantedCards(mine), ","), "npc:573")
+    mine.wanted["npc:639"] = true -- already owned, so not wanted
+    equal(table.concat(ACB.wantedCards(mine), ","), "npc:573")
+end)
+
 test("a first copy can be shiny once per card and the pop-up hook hears about it", function()
     local saved = { counts = {}, achievements = {} }
     local shinyRolls, found = 0, {}
@@ -280,7 +377,7 @@ local methods = {
     ClearFocus = ignore, SetClipsChildren = ignore,
     SetColorTexture = function(self) self.colorTexture = true end, SetFont = ignore,
     SetVertexColor = ignore, SetFrameLevel = ignore, GetFrameLevel = function() return 1 end,
-    SetWordWrap = ignore, SetRotation = ignore, SetShadowOffset = ignore, SetShadowColor = ignore, GetStringWidth = function() return 6 end, SetJustifyV = ignore, ClearAllPoints = ignore,
+    SetWordWrap = ignore, SetRotation = ignore, SetShadowOffset = ignore, SetSpacing = ignore, SetShadowColor = ignore, GetStringWidth = function() return 6 end, SetJustifyV = ignore, ClearAllPoints = ignore,
     SetKeepModelOnHide = function(self, keep) self.keepModel = keep end,
     ClearModel = function(self) self.creature, self.fileID, self.frozen = nil, nil, nil end,
     SetCreature = function(self, creature) self.creature = creature end,
@@ -367,8 +464,13 @@ math.random = function(min, max)
     return realRandom(min, max)
 end
 AzerothCardBinderDB = { counts = { invalid = -1 }, diagnostics = true }
+hintCallbacks = {}
+TooltipDataProcessor = { AddTooltipPostCall = function(_, callback) hintCallbacks[#hintCallbacks + 1] = callback end }
+Enum = { TooltipDataType = { Unit = 1, Object = 2 } }
 loadAddon("Cards.lua")
 loadAddon("Toast.lua")
+loadAddon("Hints.lua")
+loadAddon("Social.lua")
 loadAddon("Folio.lua")
 loadAddon("Binder.lua")
 loadAddon("Minimap.lua")
@@ -410,6 +512,142 @@ test("cards draw for missing, owned and gathering entries", function()
     ACB.open(2)
     ACB.open(3)
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
+end)
+
+test("tooltip hints say whether a card is owned and where to find it", function()
+    local saved = AzerothCardBinderDB
+    local card = ACB.cards["npc:589"]
+    saved.counts["npc:589"], saved.misses["npc:589"] = nil, 120
+    local lines = ACB.hintLines(saved, card)
+    equal(lines[1][1], "Card: not in your binder yet (0.5% chance)")
+    equal(lines[2][1], "Bad-luck safety net: 120 / 500")
+    saved.counts["npc:589"] = 2
+    equal(ACB.hintLines(saved, card)[1][1], "Card: in your binder (x2)")
+    saved.counts["npc:589"], saved.misses["npc:589"] = nil, nil
+    equal(ACB.whereToFind(card), "Defeat it in Westfall.")
+    equal(ACB.whereToFind(ACB.cards["npc:639"]), "Defeat this boss in the Deadmines in Westfall.")
+    equal(ACB.whereToFind(ACB.cards["node:1731"]), "Gather it in Elwynn Forest and other starting zones.")
+
+    local added = {}
+    local tip = { AddLine = function(_, text) added[#added + 1] = text end, Show = ignore }
+    hintCallbacks[1](tip, { guid = guid(589, "tip") })
+    equal(added[1], "Card: not in your binder yet (0.5% chance)")
+    added = {}
+    hintCallbacks[1](tip, { guid = guid(99999, "unknown") })
+    hintCallbacks[1](tip, { guid = secret })
+    equal(#added, 0) -- unknown and unreadable sources add nothing
+    saved.hints = false
+    hintCallbacks[1](tip, { guid = guid(589, "tip") })
+    equal(#added, 0)
+    saved.hints = nil
+end)
+
+test("card links round-trip and unknown links are ignored", function()
+    local saved = { counts = { ["npc:639"] = 1 }, shiny = { ["npc:639"] = true } }
+    local link = ACB.cardLink(ACB.cards["npc:639"], true)
+    assert(link:find("|Haddon:AzerothCardBinder:card:npc:639:1|h[Edwin VanCleef (Shiny)]|h", 1, true))
+    local entry, shiny = ACB.parseCardLink("addon:AzerothCardBinder:card:npc:639:1")
+    equal(entry.key, "npc:639")
+    equal(shiny, true)
+    equal(select(2, ACB.parseCardLink("addon:AzerothCardBinder:card:node:1731:0")), false)
+    equal(ACB.parseCardLink("addon:AzerothCardBinder:card:npc:99999:0"), nil)
+    equal(ACB.parseCardLink("addon:Other:card:npc:639:0"), nil)
+    equal(ACB.parseCardLink("addon:AzerothCardBinder:card:npc:639:2"), nil)
+    equal(ACB.parseCardLink(secret), nil)
+    equal(ACB.findCard(saved, "edwin").key, "npc:639")
+    equal(ACB.findCard(saved, "pillager"), nil) -- not owned
+    equal(ACB.findCard(saved, ""), nil)
+end)
+
+test("a binder can be viewed read-only, only when asked for, and can be made private", function()
+    local clock = 100
+    local aSaved = { counts = {}, shiny = { ["npc:639"] = true } }
+    for _, card in ipairs(ACB.pages[1].cards) do aSaved.counts[card.key] = 1 end
+    aSaved.counts["npc:589"] = 3
+    local messages = ACB.encodeBinder(aSaved)
+    assert(#messages >= 2, "a full set needs more than one message")
+    for _, message in ipairs(messages) do assert(#message <= 160, "message too long") end
+
+    local timers, shown = {}, {}
+    local function after(delay, action) timers[#timers + 1] = action end
+    local sentToB, sentToA = {}, {}
+    -- Bob asks Alice. Alice's add-on answers; Bob's add-on shows what arrives.
+    local bobSend = function(peer, message) sentToA[#sentToA + 1] = message return true end
+    local aliceSend = function(peer, message) sentToB[#sentToB + 1] = message return true end
+
+    ACB.initSocial(aSaved, aliceSend, function() return clock end, after)
+    ACB.receiveView("bob-realm", "Q")
+    for _, run in ipairs(timers) do run() end
+    equal(#sentToB, #messages)
+    ACB.receiveView("bob-realm", "Q") -- asked again straight away
+    equal(#timers, #messages)
+    clock = clock + 11
+    aSaved.inspectable = false
+    ACB.receiveView("carol-realm", "Q")
+    equal(#timers, #messages) -- private binders answer nobody
+    aSaved.inspectable = nil
+
+    -- Bob's side.
+    local bSaved = { counts = {} }
+    ACB.initSocial(bSaved, bobSend, function() return clock end, after)
+    ACB.showInspect = function(peer, counts, shiny) shown[#shown + 1] = { peer = peer, counts = counts, shiny = shiny } end
+    ACB.receiveView("alice-realm", sentToB[1]) -- nobody asked, so it is ignored
+    equal(#shown, 0)
+    equal(ACB.requestBinder("alice-realm"), true)
+    equal(sentToA[#sentToA], "Q")
+    ACB.receiveView("mallory-realm", sentToB[1])
+    equal(#shown, 0) -- only the player asked answers
+    equal(#sentToB, 2)
+    ACB.receiveView("alice-realm", sentToB[1])
+    ACB.receiveView("alice-realm", sentToB[1]) -- a repeated part changes nothing
+    equal(#shown, 0)
+    ACB.receiveView("alice-realm", "B|2/2|npc:99999=4,npc:589=3") -- unknown cards are dropped
+    equal(#shown, 1)
+    equal(shown[1].peer, "alice-realm")
+    equal(shown[1].counts["npc:589"], 3)
+    equal(shown[1].shiny["npc:639"], true)
+    equal(shown[1].counts["npc:99999"], nil)
+    local lines = ACB.inspectLines(shown[1].counts, shown[1].shiny)
+    equal(lines[1], "Deadmines   12 / 12")
+    assert(lines[2]:find("[x] Rhahk'Zor", 1, true))
+    -- Garbage is dropped.
+    ACB.receiveView("alice-realm", "B|9/2|npc:589=2")
+    ACB.receiveView("alice-realm", "B|1/2|<script>")
+    ACB.receiveView("alice-realm", string.rep("x", 300))
+    equal(#shown, 1)
+end)
+
+test("right-clicking a player offers a trade and a binder view", function()
+    local callbacks = {}
+    Menu = { ModifyMenu = function(_, callback) callbacks[#callbacks + 1] = callback end }
+    ACB.initSocial({ counts = {} }, function() return true end, function() return 1 end, function(_, action) action() end)
+    Menu = nil
+    equal(#callbacks, 5)
+    local buttons = {}
+    local root = { CreateDivider = ignore, CreateButton = function(_, text, action) buttons[text] = action end }
+    callbacks[1](nil, root, { name = "Bob", server = "RealmName" })
+    assert(buttons["Offer a card trade"] and buttons["View their binder"])
+    AzerothCardBinderWindow:Hide()
+    buttons["Offer a card trade"]()
+    equal(AzerothCardBinderWindow:IsShown(), true)
+    buttons = {}
+    callbacks[1](nil, root, { name = secret })
+    callbacks[1](nil, root, nil)
+    equal(next(buttons), nil) -- unreadable or missing players get no entries
+end)
+
+test("a finished set shows its own pop-up with the title", function()
+    local toast = ACB.toast
+    if toast:IsShown() then toast.OnUpdate(toast, 100) end
+    equal(toast:IsShown(), false)
+    ACB.showSetToast(ACB.pages[2], "Westfall Warden")
+    equal(toast:IsShown(), true)
+    toast.OnUpdate(toast, 100)
+    equal(toast:IsShown(), false)
+    AzerothCardBinderDB.popups = false
+    ACB.showSetToast(ACB.pages[2], "Westfall Warden")
+    equal(toast:IsShown(), false)
+    AzerothCardBinderDB.popups = nil
 end)
 
 test("shiny cards show the foil and plain or missing cards do not", function()

@@ -2,30 +2,34 @@ local _, ACB = ...
 
 -- A card you find for the first time has a 1 in `shinyOdds` chance to be a shiny copy.
 ACB.shinyOdds = 20
+-- Bad-luck safety net: a card whose source has missed this many times its expected number of
+-- attempts is guaranteed on the next one. A 0.5% card is guaranteed on the 500th attempt, 1% on the
+-- 250th and 5% on the 50th. Set to 0 to switch the safety net off.
+ACB.pityFactor = 2.5
 ACB.rates = { normal = 50, elite = 100, rare = 500, rareelite = 500, gathering = 50 }
 ACB.pages = {
-    { title = "Deadmines", group = "Dungeon", code = "DM", subtitle = "The Defias hideout", cards = {} },
-    { title = "Westfall", group = "Zone", code = "WF", subtitle = "The fields beyond Sentinel Hill", cards = {} },
-    { title = "Gathering", group = "Profession", code = "GA", subtitle = "Finds from the field", cards = {} },
+    { title = "Deadmines", group = "Dungeon", code = "DM", reward = "Defias Delver", subtitle = "The Defias hideout", cards = {} },
+    { title = "Westfall", group = "Zone", code = "WF", reward = "Westfall Warden", subtitle = "The fields beyond Sentinel Hill", cards = {} },
+    { title = "Gathering", group = "Profession", code = "GA", reward = "Fieldhand", subtitle = "Finds from the field", cards = {} },
 }
 ACB.cards, ACB.sources = {}, { Creature = {}, GameObject = {} }
 
 -- Packaged portrait backdrops take priority, followed by client artwork and a fallback gradient.
 ACB.zones = {
     deadmines = {
-        backdrop = "Deadmines.tga",
+        backdrop = "Deadmines.tga", place = "the Deadmines in Westfall",
         journal = 63, map = 55,
         paths = { "Interface\\Glues\\LoadingScreens\\LoadScreenDeadmines" },
         top = { 0.36, 0.22, 0.11 }, bottom = { 0.07, 0.04, 0.03 },
     },
     westfall = {
-        backdrop = "Westfall.tga",
+        backdrop = "Westfall.tga", place = "Westfall",
         map = 52,
         paths = { "Interface\\Glues\\LoadingScreens\\LoadScreenWestfall" },
         top = { 0.80, 0.64, 0.30 }, bottom = { 0.22, 0.30, 0.12 },
     },
     elwynn = {
-        backdrop = "Elwynn.tga",
+        backdrop = "Elwynn.tga", place = "Elwynn Forest and other starting zones",
         map = 37,
         paths = { "Interface\\Glues\\LoadingScreens\\LoadScreenElwynnForest" },
         top = { 0.45, 0.66, 0.78 }, bottom = { 0.12, 0.27, 0.12 },

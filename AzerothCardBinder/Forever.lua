@@ -221,11 +221,11 @@ local function normalizePeer(name)
     return (character .. "-" .. realm):lower()
 end
 
-local function sendTrade(peer, message)
+local function sendAddon(prefix, peer, message)
     if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then
-        return false, "Trading is available outdoors and out of combat."
+        return false, "Trading and sharing are available outdoors and out of combat."
     end
-    if not C_ChatInfo or apiValue("boolean", C_ChatInfo.IsAddonMessagePrefixRegistered, ACB.tradePrefix) ~= true then
+    if not C_ChatInfo or apiValue("boolean", C_ChatInfo.IsAddonMessagePrefixRegistered, prefix) ~= true then
         return false, "Addon whisper registration is unavailable."
     end
     if (C_ChatInfo.AreOutgoingAddonChatMessagesRestricted
@@ -234,11 +234,14 @@ local function sendTrade(peer, message)
         and apiValue("boolean", C_ChatInfo.InChatMessagingLockdown) ~= false) then
         return false, "The client is restricting outgoing addon messages."
     end
-    local result = apiValue("number", C_ChatInfo.SendAddonMessage, ACB.tradePrefix, message, "WHISPER", peer)
+    local result = apiValue("number", C_ChatInfo.SendAddonMessage, prefix, message, "WHISPER", peer)
     local success = Enum and Enum.SendAddonMessageResult and Enum.SendAddonMessageResult.Success
     if result ~= nil and result == success then return true end
     return false, "Addon whisper could not be sent. Check the partner name and retry."
 end
+
+local function sendTrade(peer, message) return sendAddon(ACB.tradePrefix, peer, message) end
+local function sendView(peer, message) return sendAddon(ACB.viewPrefix, peer, message) end
 
 function ACB.tradePeer(text)
     local peer = normalizePeer(text)
@@ -262,24 +265,53 @@ local function initialize()
             saved.counts[key] = nil
         end
     end
+    saved.misses = tableOrEmpty(saved.misses)
+    for key, value in pairs(saved.misses) do
+        if type(value) ~= "number" or value < 1 or value ~= math.floor(value) or not ACB.cards[key] then
+            saved.misses[key] = nil
+        end
+    end
     saved.shiny = tableOrEmpty(saved.shiny)
     for key, value in pairs(saved.shiny) do
         if value ~= true or not ACB.cards[key] then saved.shiny[key] = nil end
     end
+    saved.wanted, saved.history = tableOrEmpty(saved.wanted), tableOrEmpty(saved.history)
+    for key, value in pairs(saved.wanted) do
+        if value ~= true or not ACB.cards[key] then saved.wanted[key] = nil end
+    end
+    for index = #saved.history, 1, -1 do
+        local entry = saved.history[index]
+        if type(entry) ~= "table" or not ACB.cards[entry.give] or not ACB.cards[entry.take] then
+            table.remove(saved.history, index)
+        end
+    end
+    saved.sets, saved.titles = tableOrEmpty(saved.sets), tableOrEmpty(saved.titles)
+    for key, value in pairs(saved.sets) do
+        if value ~= true then saved.sets[key] = nil end
+    end
+    for key, value in pairs(saved.titles) do
+        if value ~= true or type(key) ~= "string" then saved.titles[key] = nil end
+    end
+    if type(saved.title) ~= "string" or not saved.titles[saved.title] then saved.title = nil end
     collection = ACB.newCollection(saved, math.random, report, log, function(card, info)
         if ACB.showToast then ACB.showToast(card, info) end
+    end, function(page, reward)
+        if ACB.showSetToast then ACB.showSetToast(page, reward) end
+        if ACB.refresh then ACB.refresh() end
     end)
     local sequence = 0
     trade = ACB.newTrade(saved.counts, GetTime, function()
         sequence = sequence + 1
         return ("%d-%d-%d"):format(time(), math.random(1, 999999), sequence)
-    end, sendTrade, function(give, take)
+    end, sendTrade, function(give, take, peer)
         local done = collection:swap(give, take)
+        if done then ACB.logTrade(saved, give, take, peer, time()) end
         ACB.refresh()
         return done
-    end)
+    end, function() return ACB.wantedCards(saved) end)
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.tradePrefix)
+        pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.viewPrefix)
     end
     for id, skill in pairs(gatherSpells) do
         local name = C_Spell and apiValue("string", C_Spell.GetSpellName, id)
@@ -288,6 +320,10 @@ local function initialize()
     ACB.initUI(saved, trade)
     ACB.initLauncher(saved)
     ACB.initToast(saved)
+    ACB.initHints(saved)
+    ACB.initSocial(saved, sendView, GetTime, function(delay, action)
+        if delay <= 0 or not C_Timer then action() else C_Timer.After(delay, action) end
+    end)
     SLASH_AZEROTHCARDBINDER1, SLASH_AZEROTHCARDBINDER2 = "/acb", "/cardbinder"
     SlashCmdList.AZEROTHCARDBINDER = function(message)
         local cmd = message:lower():match("^%s*(.-)%s*$")
@@ -300,6 +336,40 @@ local function initialize()
         elseif cmd == "boss" then
             saved.bossTrial = not saved.bossTrial
             report("VanCleef completion trial " .. (saved.bossTrial and "on." or "off."))
+        elseif cmd == "title" or cmd:match("^title ") then
+            local choice = cmd:match("^title%s+(.+)$")
+            local earned = {}
+            for _, page in ipairs(ACB.pages) do
+                if page.reward and saved.titles[page.reward] then earned[#earned + 1] = page.reward end
+            end
+            if choice == "off" then
+                saved.title = nil
+                report("Title cleared.")
+            elseif choice and earned[tonumber(choice) or 0] then
+                saved.title = earned[tonumber(choice)]
+                report("Title set to " .. saved.title .. ".")
+            elseif #earned == 0 then
+                report("Finish a set to earn a title.")
+            else
+                for number, title in ipairs(earned) do
+                    report(("%d. %s%s"):format(number, title, title == saved.title and " (shown)" or ""))
+                end
+                report("Use /acb title <number> to show one, or /acb title off.")
+            end
+            if ACB.refresh then ACB.refresh() end
+        elseif cmd:match("^link%s+%S") then
+            local card = ACB.findCard(saved, message:match("^%s*%S+%s+(.-)%s*$"))
+            if card then ACB.linkCard(saved, card) else report("You do not own a card with that name.") end
+        elseif cmd:match("^view%s+%S") then
+            local peer = ACB.tradePeer(message:match("^%s*%S+%s+(%S+)"))
+            local ok, reason = ACB.requestBinder(peer)
+            report(ok and "Asked for their binder. It opens when they answer." or (reason or "Enter another player's name."))
+        elseif cmd == "privacy" then
+            saved.inspectable = saved.inspectable == false
+            report("Other players " .. (saved.inspectable == false and "can no longer" or "can now") .. " view your binder.")
+        elseif cmd == "hints" then
+            saved.hints = saved.hints == false
+            report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
         elseif cmd == "popup" then
             saved.popups = saved.popups == false
             report("Card pop-ups " .. (saved.popups == false and "off." or "on."))
@@ -311,11 +381,21 @@ local function initialize()
                 ACB.showToast(demo, { count = 1, first = true, shiny = true })
             end
         elseif cmd == "trade" or cmd == "index" then
-            ACB.open(cmd)
+            local unit = cmd == "trade" and apiValue("boolean", UnitIsPlayer, "target") == true
+            local name, realm
+            if unit then name, realm = UnitFullName("target") end
+            name, realm = read(name, "string"), read(realm, "string")
+            if name and ACB.prepareTrade then
+                ACB.prepareTrade(realm and realm ~= "" and (name .. "-" .. realm) or name)
+            else
+                ACB.open(cmd)
+            end
+        elseif cmd:match("^trade%s+%S") then
+            ACB.prepareTrade(message:match("^%s*%S+%s+(%S+)"))
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, popup, popup test, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, link, view, privacy, title, popup, popup test, hints, diag, log, boss.")
         end
     end
 end
@@ -350,11 +430,16 @@ local handlers = {
     PLAYER_FOCUS_CHANGED = watchBoss,
     PLAYER_ENTERING_WORLD = function() readyLoot, gather, pickpocketAt, encounter = nil, nil, nil, nil end,
     CHAT_MSG_ADDON = function(prefix, message, channel, sender)
-        if read(prefix, "string") ~= ACB.tradePrefix or read(channel, "string") ~= "WHISPER" then return end
+        local kind = read(prefix, "string")
+        if (kind ~= ACB.tradePrefix and kind ~= ACB.viewPrefix) or read(channel, "string") ~= "WHISPER" then return end
         if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then return end
         if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown
             and apiValue("boolean", C_ChatInfo.InChatMessagingLockdown) ~= false then return end
-        trade:receive(normalizePeer(sender), read(message, "string"))
+        if kind == ACB.tradePrefix then
+            trade:receive(normalizePeer(sender), read(message, "string"))
+        else
+            ACB.receiveView(normalizePeer(sender), read(message, "string"))
+        end
         ACB.refresh()
     end,
 }
