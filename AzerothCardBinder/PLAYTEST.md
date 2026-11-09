@@ -38,6 +38,10 @@ There is now a card for every creature in Forever's dungeons, raids, battlegroun
 
 Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each recognised by every object id the game uses for it. 31 have a 3D model; Earthroot, Mageroyal, Briarthorn, Kingsblood, Ghost Mushroom, Silver Vein, Indurium and Dark Iron show an icon until a matching mesh is found. Mine and pick a few node types, including a high-level one, and check the card appears in the Gathering set with the right skill in its text.
 
+## Lore
+
+Every card has a description of at most 80 characters so it fits the card face. The original hand-made cards keep their lines. All raid and dungeon bosses and about a hundred well-known rares and elites have a line written for them. Most other creatures get a line built from their name: a named group ("the Scarlet Crusade"), a kind of creature (boar, murloc, ghoul), a title or job (guard, captain, miner) or, failing that, their rank. About a third of the creatures fall back to a rank line. The 39 nodes have their own lines. Read a few cards from a big set such as The Barrens for anything that sounds wrong.
+
 ## Bad-luck safety net
 
 Every card has a miss counter for its source. When a source has missed 2.5 times its expected number of attempts, the next attempt is guaranteed: the 500th for a 0.5% card, the 250th for 1% and the 50th for 5%. The counter resets on a drop. The tooltip hint and the log show progress. Change or switch off `ACB.pityFactor` in `Catalog.lua` (0 turns it off).

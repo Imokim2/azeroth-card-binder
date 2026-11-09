@@ -25,6 +25,7 @@ local function ignore() end
 loadAddon("Catalog.lua")
 loadAddon("CatalogForever.lua")
 loadAddon("CatalogNodes.lua")
+loadAddon("Lore.lua")
 loadAddon("Collection.lua")
 loadAddon("Trade.lua")
 
@@ -92,6 +93,33 @@ test("duplicates do not fill slots; both Deadmines achievements unlock once", fu
     equal(earned, 2)
 end)
 
+test("every card has lore that fits, is stable and says something about the card", function()
+    local seen, count = {}, 0
+    for _, page in ipairs(ACB.pages) do
+        for _, card in ipairs(page.cards) do
+            count = count + 1
+            assert(type(card.lore) == "string" and #card.lore >= 12, "lore for " .. card.name)
+            assert(#card.lore <= 80, ("lore too long for %s (%d): %s"):format(card.name, #card.lore, card.lore))
+            assert(not card.lore:find("%%s") and not card.lore:find("nil"), "unfilled lore for " .. card.name .. ": " .. card.lore)
+            seen[card.lore] = true
+            if card.generated and not card.profession then equal(ACB.loreFor(card), card.lore) end
+        end
+    end
+    local distinct = 0
+    for _ in pairs(seen) do distinct = distinct + 1 end
+    assert(distinct > 1200, "lore should not be one line repeated, only " .. distinct .. " of " .. count .. " lines are different")
+    -- Bosses, named groups, kinds of creature and nodes each get fitting lines.
+    assert(ACB.cards["npc:15990"].lore:find("lich", 1, true)) -- Kel'Thuzad
+    assert(ACB.cards["npc:639"].lore:find("Founder of the Defias", 1, true)) -- hand-made lore is kept
+    local scarlet
+    for _, card in ipairs(ACB.pages[ACB.pageForPlace["scarlet-monastery"] or 2].cards) do
+        if card.name:find("Scarlet", 1, true) then scarlet = card break end
+    end
+    assert(scarlet and scarlet.lore:find("Scarlet Crusade", 1, true), "Scarlet creatures mention the Crusade")
+    assert(ACB.cards["node:1617"].lore:find("silvery", 1, true)) -- Silverleaf
+    assert(ACB.cards["node:1731"].lore:find("Reddish ore", 1, true)) -- the hand-made node keeps its line
+end)
+
 test("every gathering node is a card and all of its object ids find it", function()
     local nodes = 0
     for _, card in ipairs(ACB.pages[3].cards) do
@@ -111,7 +139,7 @@ test("every gathering node is a card and all of its object ids find it", functio
     -- The original hand-made nodes keep their lore and model.
     equal(ACB.cards["node:1731"].model, 219514)
     assert(ACB.cards["node:1731"].lore:find("Reddish ore", 1, true))
-    assert(ACB.cards["node:175404"].lore:find("Mining skill 275", 1, true))
+    assert(ACB.cards["node:175404"].lore:find("thorium", 1, true))
     equal(ACB.cards["node:175404"].rarity, "rare")
 end)
 

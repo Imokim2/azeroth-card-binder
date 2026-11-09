@@ -32,12 +32,9 @@ ACB.addPlace("ahnqiraj-temple", "Ahn'Qiraj Temple", "Raid", "60–63", {
     { 15311, "Anubisath Warder", "e", 63 },
     { 15252, "Qiraji Champion", "e", 63 },
     { 15475, "Beetle", "n", 1 },
-    { 15426, "Ahn'Qiraj Trigger", "n", 60 },
-    { 15800, "Exit Trigger", "n", 60 },
     { 15957, "Ouro Spawner", "n", 60 },
     { 15316, "Qiraji Scarab", "n", 60 },
     { 15317, "Qiraji Scorpion", "n", 60 },
-    { 15695, "Vek Twins Trigger", "n", 60 },
     { 15300, "Vekniss Drone", "n", 60 },
     { 15896, "C'Thun Portal", "n", 63 },
 })
@@ -65,11 +62,8 @@ ACB.addPlace("blackwing-lair", "Blackwing Lair", "Raid", "60–63", {
     { 12464, "Death Talon Seether", "e", 62 },
     { 12557, "Grethok the Controller", "e", 62 },
     { 12460, "Death Talon Wyrmguard", "e", 63 },
-    { 14449, "Blackwing Orb Trigger", "n", 1 },
     { 16604, "Blackwing Spell Marker", "n", 1 },
-    { 12434, "Monster Generator (Blackwing)", "n", 1 },
     { 14459, "Nefarian's Troops", "n", 1 },
-    { 12999, "Blackwing Trigger", "n", 60 },
     { 14024, "Corrupted Blue Whelp", "n", 60 },
     { 14025, "Corrupted Bronze Whelp", "n", 60 },
     { 14023, "Corrupted Green Whelp", "n", 60 },
@@ -176,25 +170,18 @@ ACB.addPlace("naxxramas", "Naxxramas", "Raid", "60–63", {
     { 16025, "Stitched Spewer", "e", 63 },
     { 16068, "Larva", "n", 1 },
     { 16030, "Maggot", "n", 1 },
-    { 16211, "Naxxramas Combat Dummy", "n", 1 },
     { 4075, "Rat", "n", 1 },
     { 14881, "Spider", "n", 1 },
     { 16998, "Mr. Bigglesworth", "n", 5 },
-    { 17231, "Garden Gas", "n", 60 },
-    { 17286, "Invisible Man", "n", 60 },
-    { 16137, "Naxxramas Military Sub-Boss Trigger", "n", 60 },
-    { 16082, "Naxxramas Trigger", "n", 60 },
     { 17293, "Plague Wave", "n", 60 },
     { 16218, "Tesla Coil", "n", 60 },
     { 16980, "The Lich King", "n", 60 },
     { 16400, "Toxic Tunnel", "n", 60 },
-    { 15384, "World Trigger", "n", 60 },
 })
 
 ACB.addPlace("onyxias-lair", "Onyxia's Lair", "Raid", "60–63", {
     { 10184, "Onyxia", "b", 63 },
     { 12129, "Onyxian Warder", "e", 60 },
-    { 12758, "Onyxia Trigger", "n", 1 },
 })
 
 ACB.addPlace("ruins-of-ahnqiraj", "Ruins of Ahn'Qiraj", "Raid", "55–63", {
@@ -230,7 +217,6 @@ ACB.addPlace("ruins-of-ahnqiraj", "Ruins of Ahn'Qiraj", "Raid", "55–63", {
     { 15514, "Buru Egg", "n", 55 },
     { 15333, "Silicate Feeder", "n", 55 },
     { 15168, "Vile Scarab", "n", 55 },
-    { 15590, "Ossirian Crystal Trigger", "n", 60 },
 })
 
 ACB.addPlace("zulgurub", "Zul'Gurub", "Raid", "60–63", {
@@ -275,8 +261,6 @@ ACB.addPlace("zulgurub", "Zul'Gurub", "Raid", "60–63", {
     { 2914, "Snake", "n", 1 },
     { 11368, "Bloodseeker Bat", "n", 60 },
     { 14826, "Sacrificed Troll", "n", 60 },
-    { 15091, "Zul'Gurub Panther Trigger", "n", 60 },
-    { 14758, "Zul'Gurub Trigger", "n", 60 },
     { 11360, "Zulian Cub", "n", 60 },
     { 11389, "Bloodscalp Speaker", "n", 61 },
     { 11387, "Sandfury Speaker", "n", 61 },
@@ -380,7 +364,6 @@ ACB.addPlace("blackrock-depths", "Blackrock Depths", "Dungeon", "48–57", {
     { 8915, "Twilight's Hammer Ambassador", "n", 54 },
     { 8920, "Weapon Technician", "n", 54 },
     { 8904, "Shadowforge Senator", "n", 55 },
-    { 16079, "Theldren Trigger", "n", 60 },
 })
 
 ACB.addPlace("blackrock-spire", "Blackrock Spire", "Dungeon", "54–61", {
@@ -454,8 +437,6 @@ ACB.addPlace("blackrock-spire", "Blackrock Spire", "Dungeon", "54–61", {
     { 10177, "Spire Scarab", "n", 58 },
     { 9701, "Spire Scorpid", "n", 58 },
     { 10316, "Blackhand Incarcerator", "n", 59 },
-    { 16048, "Lord Valthalak Trigger", "n", 60 },
-    { 16044, "Mor Grayhoof Trigger", "n", 60 },
 })
 
 ACB.addPlace("deadmines", "Deadmines", "Dungeon", "17–20", {
@@ -546,7 +527,6 @@ ACB.addPlace("dire-maul", "Dire Maul", "Dungeon", "55–60", {
     { 11476, "Skeletal Highborne", "n", 57 },
     { 11477, "Rotting Highborne", "n", 58 },
     { 14400, "Arcane Feedback", "n", 59 },
-    { 16045, "Isalien Trigger", "n", 60 },
     { 14386, "Wandering Eye of Kilrogg", "n", 60 },
 })
 
@@ -565,7 +545,6 @@ ACB.addPlace("gnomeregan", "Gnomeregan", "Dungeon", "25–34", {
     { 6212, "Dark Iron Agent", "e", 32 },
     { 6235, "Electrocutioner 6000", "e", 32 },
     { 7800, "Mekgineer Thermaplugg", "e", 34 },
-    { 13876, "Mekgineer Trigger", "n", 1 },
     { 7897, "Alarm-a-bomb 2600", "n", 20 },
     { 6207, "Caverndeep Ambusher", "n", 25 },
     { 7849, "Mobile Alert System", "n", 25 },
@@ -763,7 +742,6 @@ ACB.addPlace("scholomance", "Scholomance", "Dungeon", "57–61", {
     { 10485, "Risen Aberration", "n", 57 },
     { 10481, "Reanimated Corpse", "n", 58 },
     { 10480, "Unstable Corpse", "n", 58 },
-    { 16047, "Kormok Trigger", "n", 60 },
 })
 
 ACB.addPlace("shadowfang-keep", "Shadowfang Keep", "Dungeon", "18–26", {
@@ -852,9 +830,6 @@ ACB.addPlace("stratholme", "Stratholme", "Dungeon", "55–61", {
     { 10391, "Skeletal Berserker", "n", 56 },
     { 10387, "Vengeful Phantom", "n", 56 },
     { 10399, "Thuzadin Acolyte", "n", 59 },
-    { 16046, "Jarien and Sothos Trigger", "n", 60 },
-    { 14646, "Stratholme Trigger", "n", 60 },
-    { 16100, "Ysida's Trigger", "n", 60 },
 })
 
 ACB.addPlace("sunken-temple", "Sunken Temple", "Dungeon", "40–55", {
@@ -1232,7 +1207,6 @@ ACB.addPlace("elwynn-forest", "Elwynn Forest", "Zone", "1–25", {
     { 11994, "Rob Bridenbecker", "n", 25 },
     { 15303, "Maxima Blastenheimer", "n", 35 },
     { 1642, "Northshire Guard", "n", 55 },
-    { 15218, "Faire Cannon Trigger", "n", 60 },
 })
 
 ACB.addPlace("tirisfal-glades", "Tirisfal Glades", "Zone", "1–55", {
@@ -1252,7 +1226,6 @@ ACB.addPlace("tirisfal-glades", "Tirisfal Glades", "Zone", "1–55", {
     { 12342, "Brown Skeletal Horse", "n", 1 },
     { 1512, "Duskbat", "n", 1 },
     { 11156, "Green Skeletal Warhorse", "n", 1 },
-    { 15214, "Invisible Stalker", "n", 1 },
     { 1501, "Mindless Zombie", "n", 1 },
     { 5406, "Palomino", "n", 1 },
     { 14558, "Purple Skeletal Warhorse", "n", 1 },
@@ -1629,7 +1602,6 @@ ACB.addPlace("wetlands", "Wetlands", "Zone", "2–60", {
     { 12899, "Axtroz", "e", 62 },
     { 5404, "Black Stallion", "n", 1 },
     { 12375, "Chestnut Mare", "n", 1 },
-    { 8881, "Riding Ram", "n", 1 },
     { 1447, "Gimlok Rumdnul", "n", 2 },
     { 1445, "Jesse Halloran", "n", 2 },
     { 1446, "Regina Halloran", "n", 2 },
@@ -2557,7 +2529,7 @@ ACB.addPlace("western-plaguelands", "Western Plaguelands", "Zone", "1–61", {
     { 11873, "Spectral Attendant", "n", 60 },
 })
 
-ACB.addPlace("eastern-plaguelands", "Eastern Plaguelands", "Zone", "1–60", {
+ACB.addPlace("eastern-plaguelands", "Eastern Plaguelands", "Zone", "25–60", {
     { 10828, "High General Abbendis", "R", 59 },
     { 10817, "Duggan Wildhammer", "r", 55 },
     { 10827, "Deathspeaker Selendre", "r", 56 },
@@ -2586,14 +2558,6 @@ ACB.addPlace("eastern-plaguelands", "Eastern Plaguelands", "Zone", "1–60", {
     { 15162, "Scarlet Inquisitor", "e", 61 },
     { 17795, "Horde Tower Buffer", "n", 1 },
     { 12202, "Human Skull", "n", 1 },
-    { 12251, "Mark of Detonation (CLS)", "n", 1 },
-    { 12252, "Mark of Detonation (CRS)", "n", 1 },
-    { 12253, "Mark of Detonation (CSH)", "n", 1 },
-    { 12255, "Mark of Detonation (NE)", "n", 1 },
-    { 12254, "Mark of Detonation (NESH)", "n", 1 },
-    { 12244, "Mark of Detonation (NW)", "n", 1 },
-    { 12256, "Mark of Detonation (SE)", "n", 1 },
-    { 12249, "Mark of Detonation (SW)", "n", 1 },
     { 16225, "Pack Mule", "n", 1 },
     { 12247, "Scourge Structure", "n", 1 },
     { 6547, "Suffering Victim", "n", 25 },
@@ -2951,7 +2915,6 @@ ACB.addPlace("the-barrens", "The Barrens", "Zone", "1–55", {
     { 14908, "Mogg", "n", 1 },
     { 2620, "Prairie Dog", "n", 1 },
     { 5890, "Redrock Earth Spirit", "n", 1 },
-    { 5774, "Riding Wolf", "n", 1 },
     { 14894, "Swarm of bees", "n", 1 },
     { 14545, "Swift Blue Raptor", "n", 1 },
     { 14543, "Swift Olive Raptor", "n", 1 },
@@ -3641,7 +3604,6 @@ ACB.addPlace("dustwallow-marsh", "Dustwallow Marsh", "Zone", "1–55", {
     { 12376, "Brown Horse", "n", 1 },
     { 3444, "Dig Rat", "n", 1 },
     { 14560, "Swift White Steed", "n", 1 },
-    { 4952, "Theramore Combat Dummy", "n", 1 },
     { 1420, "Toad", "n", 1 },
     { 4901, "Sara Pierce", "n", 2 },
     { 13277, "Dahne Pierce", "n", 5 },
@@ -3798,7 +3760,7 @@ ACB.addPlace("feralas", "Feralas", "Zone", "40–61", {
     { 14395, "Griniblix the Spectator", "n", 57 },
 })
 
-ACB.addPlace("tanaris", "Tanaris", "Zone", "1–54", {
+ACB.addPlace("tanaris", "Tanaris", "Zone", "40–54", {
     { 8199, "Warleader Krazzilak", "R", 45 },
     { 8200, "Jin'Zallah the Sandbringer", "R", 46 },
     { 8208, "Murderous Blisterpaw", "r", 43 },
@@ -3822,9 +3784,6 @@ ACB.addPlace("tanaris", "Tanaris", "Zone", "1–54", {
     { 15756, "Greater Silithid Flayer", "e", 54 },
     { 15754, "Greater Anubisath Warbringer", "e", 58 },
     { 8197, "Chronalis", "e", 61 },
-    { 8883, "Riding Horse", "n", 1 },
-    { 8885, "Riding Raptor", "n", 1 },
-    { 8882, "Riding Tiger", "n", 1 },
     { 16356, "Scourge Invasion Minion, finder", "n", 1 },
     { 8884, "Skeletal Mount", "n", 1 },
     { 15520, "O'Reily", "n", 5 },
@@ -4068,7 +4027,7 @@ ACB.addPlace("felwood", "Felwood", "Zone", "16–56", {
     { 14523, "Ulathek", "n", 57 },
 })
 
-ACB.addPlace("winterspring", "Winterspring", "Zone", "1–59", {
+ACB.addPlace("winterspring", "Winterspring", "Zone", "47–59", {
     { 10196, "General Colbatann", "R", 56 },
     { 10202, "Azurous", "R", 59 },
     { 10198, "Kashoch the Reaver", "R", 60 },
@@ -4099,8 +4058,6 @@ ACB.addPlace("winterspring", "Winterspring", "Zone", "1–59", {
     { 16421, "Necropolis health", "n", 1 },
     { 16398, "Necropolis Proxy", "n", 1 },
     { 16386, "Necropolis Relay", "n", 1 },
-    { 12150, "Riding Kodo (Purple)", "n", 1 },
-    { 4779, "Riding Ram (Brown)", "n", 1 },
     { 6184, "Timbermaw Pathfinder", "n", 46 },
     { 6185, "Timbermaw Warrior", "n", 47 },
     { 8762, "Timberweb Recluse", "n", 47 },
@@ -4248,11 +4205,8 @@ ACB.addPlace("silithus", "Silithus", "Zone", "1–63", {
     { 15744, "Imperial Qiraji Destroyer", "e", 62 },
     { 15758, "Supreme Anubisath Warbringer", "e", 62 },
     { 15771, "Major Resonating Crystal", "e", 63 },
-    { 15454, "Anachronos Quest Trigger Invisible", "n", 1 },
     { 17074, "Cenarion Scout", "n", 1 },
-    { 15221, "Frankal Invisible Trigger", "n", 1 },
     { 15801, "GONG BOY DND DNR", "n", 1 },
-    { 15222, "Rutgar Invisible Trigger", "n", 1 },
     { 17090, "Silithus Dust Turnin Quest Doodad", "n", 1 },
     { 18199, "Silithus Dust Turnin Quest Doodad Horde", "n", 1 },
     { 15878, "Warcaller Finster", "n", 1 },

@@ -188,6 +188,7 @@ function ACB.addPlace(slug, name, kind, levels, rows)
         if not ACB.cards["npc:" .. id] then
             card(index, slug, id, creature, rankNames[rank] or "normal", "INV_Misc_QuestionMark",
                 ACB.autoLore(rank, level, name), rank == "b")
+            ACB.cards["npc:" .. id].generated = true -- Lore.lua writes a better line for these
         end
     end
 end
@@ -205,6 +206,7 @@ function ACB.addNodes(rows)
                 profession == "mining" and "INV_Ore_Copper_01" or "INV_Misc_Flower_02", text, false, profession,
                 model ~= 0 and model or nil)
             primary = ACB.cards["node:" .. ids[1]]
+            primary.generated = true
         end
         primary.skill, primary.ids = skill, ids
         for index = 2, #ids do

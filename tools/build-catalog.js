@@ -39,6 +39,8 @@ const order = [];
     }
 }
 
+// Entries that exist for the game's scripts and not as monsters a player could meet.
+const NOT_MONSTERS = /\btrigger\b|combat dummy|monster generator|invisible|mark of detonation|garden gas|^riding |\bbunny\b|\bvisual\b|\(dnd\)|\bunused\b/i;
 const RANKS = { Elite: "e", Boss: "b", Rare: "r", "Rare elite": "R" };
 const places = [];
 for (const slug of order) {
@@ -60,7 +62,8 @@ for (const slug of order) {
             const cell = strip(row[3]);
             const rank = (cell.match(/·\s*(.+)$/) || [])[1];
             const level = Number((cell.match(/^(\d+)/) || [])[1]) || 0;
-            creatures.push({ id, name: strip(row[2]), rank: RANKS[rank] || "n", level });
+            const creature = strip(row[2]);
+            if (!NOT_MONSTERS.test(creature)) creatures.push({ id, name: creature, rank: RANKS[rank] || "n", level });
         }
     }
     const kind = kindOf[slug] || "Zone";
