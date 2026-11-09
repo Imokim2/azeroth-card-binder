@@ -71,6 +71,13 @@ Both players need this version and at least one duplicate each. Meet outdoors an
 
 This release exchanges offers and confirmations over addon whispers and applies the swap on each client. The two-player transport needs a live pass. Trading runs on trust: collection data is local and editable, so each client only checks its own spare copy, and a client that is modified can keep both cards.
 
+## Binder Dust, settings and artwork
+
+- **Kills since last drop.** Open any card in the Collection tab. Under the drop chance it shows how many kills (or gathers) you have made since the card last dropped, against the guaranteed attempt, for example "Kills since last drop: 120 / 200". Check it climbs after a kill whose card did not drop and resets on a drop.
+- **Binder Dust.** On a card you own twice or more, **Recycle a spare** gives dust (common 1, rare 2, epic 5, legendary 10) and removes one copy; the last copy can never be recycled. On a card you do not own, **Craft** costs ten times the recycle value (10, 20, 50, 100) and adds a plain, non-shiny copy with a pop-up reading CRAFTED WITH DUST. The balance shows at the top of the card page and with `/acb dust`. Change the values in `ACB.dust` in `Catalog.lua`.
+- **Settings tab.** Tick boxes for pop-ups, tooltip hints, letting others view your binder, diagnostics and the VanCleef trial, plus Previous title and Next title for the set title shown beside your name. `/acb settings` opens it, and the slash commands (`/acb hints`, `popup`, `privacy`) update the open tab.
+- **Zone artwork.** Cards use a packaged painting when there is one (Deadmines, Westfall, Elwynn Forest). Otherwise they try the Dungeon Journal picture, then a loading screen named after the place, then the map of the zone a dungeon sits in, then a colour gradient. In game, open a few dungeons, raids and zones and note which ones end up on the plain gradient. `Art/Portrait-Backdrops-Needed.txt` has a painting prompt for each of the 65 other places.
+
 ## References
 
 - Forever's exported [loot events](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/LootDocumentation.lua), [unit and cast events](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/UnitDocumentation.lua), [encounter events](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/EncounterInfoDocumentation.lua), and [addon messaging APIs](https://raw.githubusercontent.com/Gethe/wow-ui-source/forever/Interface/AddOns/Blizzard_APIDocumentationGenerated/ChatInfoDocumentation.lua).

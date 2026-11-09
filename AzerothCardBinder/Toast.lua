@@ -30,6 +30,7 @@ function ACB.playToastSound(rarity, shiny)
 end
 
 local function headline(info)
+    if info.crafted then return "CRAFTED WITH DUST", gold end
     if info.trade then return "RECEIVED IN TRADE", gold end
     if info.shiny then return "SHINY CARD!", SHINY end
     if info.first then return "NEW CARD", gold end

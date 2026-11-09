@@ -52,6 +52,11 @@ function ACB.luck(saved, card)
     return (saved.misses and saved.misses[card.key]) or 0, limit
 end
 
+-- What a spare copy of the card recycles into, and what the card costs to craft, in Binder Dust.
+function ACB.dustFor(card)
+    return ACB.dust.recycle[card.rarity] or 0, ACB.dust.craft[card.rarity] or 0
+end
+
 function ACB.progress(counts, page, bossesOnly)
     local owned, total = 0, 0
     for _, card in ipairs(ACB.pages[page].cards) do
@@ -146,6 +151,33 @@ function ACB.newCollection(saved, random, report, log, found, completed)
         report(("Traded %s for %s (x%d)"):format(out.name, into.name, counts[take]))
         checkAchievements(into)
         found(into, { count = counts[take], first = counts[take] == 1, trade = true })
+        return true
+    end
+
+    -- Turn one spare copy into Binder Dust. The last copy of a card can never be recycled.
+    function collection:recycle(key)
+        local card = ACB.cards[key]
+        local count = saved.counts[key] or 0
+        if not card or count < 2 then return false end
+        local yield = ACB.dustFor(card)
+        saved.counts[key] = count - 1
+        saved.dust = (saved.dust or 0) + yield
+        report(("Recycled a spare %s: +%d Binder Dust (%d in all)"):format(card.name, yield, saved.dust))
+        return true
+    end
+
+    -- Spend dust on a card that is not in the binder yet. It is a plain copy, never shiny.
+    function collection:craft(key)
+        local card = ACB.cards[key]
+        if not card or (saved.counts[key] or 0) > 0 then return false end
+        local _, cost = ACB.dustFor(card)
+        if (saved.dust or 0) < cost then return false end
+        saved.dust = saved.dust - cost
+        saved.counts[key] = 1
+        if saved.misses then saved.misses[key] = nil end
+        report(("Crafted %s for %d Binder Dust (%d left)"):format(card.name, cost, saved.dust))
+        checkAchievements(card)
+        found(card, { count = 1, first = true, crafted = true })
         return true
     end
 

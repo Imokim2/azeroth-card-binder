@@ -89,6 +89,7 @@ end
 local mapNames, journalNames
 local function mapByName(name)
     if not mapNames then
+        if not (C_Map and C_Map.GetMapChildrenInfo) then return end -- not ready yet: try again next time
         mapNames = {}
         safe(function()
             for _, info in ipairs(C_Map.GetMapChildrenInfo(946, nil, true) or {}) do
@@ -99,8 +100,24 @@ local function mapByName(name)
     end
     return mapNames[name:lower()]
 end
+-- Loading screens are named after the place, so every zone and instance gets its likely names tried too.
+-- A name that does not exist simply does not resolve, and the next idea is used.
+local function loadingPaths(zone)
+    local list = {}
+    for _, path in ipairs(zone.paths or {}) do list[#list + 1] = path end
+    if zone.name then
+        local plain = (zone.name:gsub("[^%w]", ""))
+        local bare = (plain:gsub("^The", ""))
+        for _, name in ipairs({ plain, bare }) do
+            list[#list + 1] = "Interface\\Glues\\LoadingScreens\\LoadScreen" .. name
+        end
+    end
+    return list
+end
+
 local function journalByName(name)
     if not journalNames then
+        if not EJ_GetInstanceByIndex then return end -- not ready yet: try again next time
         journalNames = {}
         safe(function()
             for _, raid in ipairs({ false, true }) do
@@ -123,7 +140,9 @@ local function resolveArt(zoneKey)
     local found = { gradient = zone }
 
     local journal = zone.journal
-    if not journal and zone.name and (zone.kind == "Dungeon" or zone.kind == "Raid") then journal = journalByName(zone.name) end
+    if not journal and zone.name and (zone.kind == "Dungeon" or zone.kind == "Raid") then
+        journal = journalByName(zone.name) or journalByName("the " .. zone.name)
+    end
     if journal and EJ_GetInstanceInfo then
         local _, _, background = safe(EJ_GetInstanceInfo, journal)
         if type(background) == "number" and background > 0 then
@@ -131,7 +150,7 @@ local function resolveArt(zoneKey)
         end
     end
     if not found.file and GetFileIDFromPath then
-        for _, path in ipairs(zone.paths or {}) do
+        for _, path in ipairs(loadingPaths(zone)) do
             local id = safe(GetFileIDFromPath, path)
             if type(id) == "number" and id > 0 then
                 found = { file = id, gradient = zone }
@@ -139,7 +158,11 @@ local function resolveArt(zoneKey)
             end
         end
     end
-    local mapID = zone.map or (zone.name and C_Map and C_Map.GetMapChildrenInfo and mapByName(zone.name))
+    local mapID = zone.map
+    if not mapID and C_Map and C_Map.GetMapChildrenInfo then
+        -- An instance with no picture of its own borrows the map of the zone it sits in.
+        mapID = (zone.name and mapByName(zone.name)) or (zone.parent and mapByName(zone.parent))
+    end
     if not found.file and mapID and C_Map and C_Map.GetMapArtLayers and C_Map.GetMapArtLayerTextures then
         local layers = safe(C_Map.GetMapArtLayers, mapID)
         local layer = type(layers) == "table" and layers[1]
