@@ -44,7 +44,7 @@ Every card has a description of at most 80 characters so it fits the card face. 
 
 ## Bad-luck safety net
 
-Every card has a miss counter for its source. When a source has missed 2.5 times its expected number of attempts, the next attempt is guaranteed: the 500th for a 0.5% card, the 250th for 1% and the 50th for 5%. The counter resets on a drop. The tooltip hint and the log show progress. Change or switch off `ACB.pityFactor` in `Catalog.lua` (0 turns it off).
+Every card has a miss counter for its source. Once a card's chances add up to 100%, the attempt that reaches it is guaranteed: the 200th for a 0.5% card, the 100th for 1% and the 20th for 5%. The counter resets on a drop. The tooltip hint and the log show progress. Change or switch off `ACB.pityFactor` in `Catalog.lua` (0 turns it off).
 
 ## Hints
 
@@ -70,6 +70,13 @@ Both players need this version and at least one duplicate each. Meet outdoors an
 3. Review the two displayed cards and click **Accept trade** on both clients. Each side's panel turns green when it accepts. When both have accepted, each client gives away its spare copy and adds the card it received. If a message was missed, use **Resend last step**; a client that already finished answers it. If both players started as the sender or the trade expired, click **Cancel** on both clients and begin again.
 
 This release exchanges offers and confirmations over addon whispers and applies the swap on each client. The two-player transport needs a live pass. Trading runs on trust: collection data is local and editable, so each client only checks its own spare copy, and a client that is modified can keep both cards.
+
+## Binder Dust, settings and artwork
+
+- **Kills since last drop.** Open any card in the Collection tab. Under the drop chance it shows how many kills (or gathers) you have made since the card last dropped, against the guaranteed attempt, for example "Kills since last drop: 120 / 200". Check it climbs after a kill whose card did not drop and resets on a drop.
+- **Binder Dust.** On a card you own twice or more, **Recycle a spare** gives dust (common 1, rare 2, epic 5, legendary 10) and removes one copy; the last copy can never be recycled. On a card you do not own, **Craft** costs ten times the recycle value (10, 20, 50, 100) and adds a plain, non-shiny copy with a pop-up reading CRAFTED WITH DUST. The balance shows at the top of the card page and with `/acb dust`. Change the values in `ACB.dust` in `Catalog.lua`.
+- **Settings tab.** Tick boxes for pop-ups, tooltip hints, letting others view your binder, diagnostics and the VanCleef trial, plus Previous title and Next title for the set title shown beside your name. `/acb settings` opens it, and the slash commands (`/acb hints`, `popup`, `privacy`) update the open tab.
+- **Zone artwork.** Cards use a packaged painting when there is one (Deadmines, Westfall, Elwynn Forest). Otherwise they try the Dungeon Journal picture, then a loading screen named after the place, then the map of the zone a dungeon sits in, then a colour gradient. In game, open a few dungeons, raids and zones and note which ones end up on the plain gradient. `Art/Portrait-Backdrops-Needed.txt` has a painting prompt for each of the 65 other places.
 
 ## References
 

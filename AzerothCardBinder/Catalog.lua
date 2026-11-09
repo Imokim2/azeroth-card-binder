@@ -2,11 +2,17 @@ local _, ACB = ...
 
 -- A card you find for the first time has a 1 in `shinyOdds` chance to be a shiny copy.
 ACB.shinyOdds = 20
--- Bad-luck safety net: a card whose source has missed this many times its expected number of
--- attempts is guaranteed on the next one. A 0.5% card is guaranteed on the 500th attempt, 1% on the
--- 250th and 5% on the 50th. Set to 0 to switch the safety net off.
-ACB.pityFactor = 2.5
+-- Bad-luck safety net: once a card's chances add up to 100%, the next attempt is guaranteed. That is
+-- a multiple of 1 of the expected number of attempts: a 0.5% card is guaranteed on the 200th attempt,
+-- 1% on the 100th and 5% on the 20th. Set to 0 to switch the safety net off.
+ACB.pityFactor = 1
 ACB.rates = { normal = 50, elite = 100, rare = 500, rareelite = 500, gathering = 50 }
+-- Binder Dust: recycling a spare copy gives dust, and dust crafts a card you do not own yet.
+-- Ten spares of one rarity pay for a card of that rarity. Crafted cards are never shiny.
+ACB.dust = {
+    recycle = { common = 1, rare = 2, epic = 5, legendary = 10 },
+    craft = { common = 10, rare = 20, epic = 50, legendary = 100 },
+}
 ACB.pages = {
     { title = "Deadmines", zone = "deadmines", group = "Dungeon", code = "DM", reward = "Defias Delver", subtitle = "The Defias hideout", cards = {} },
     { title = "Westfall", zone = "westfall", group = "Zone", code = "WF", reward = "Westfall Warden", subtitle = "The fields beyond Sentinel Hill", cards = {} },
@@ -120,7 +126,22 @@ card(3, "elwynn", 1618, "Peacebloom", "gathering", "INV_Misc_Flower_02",
 local rankNames = { n = "normal", e = "elite", r = "rare", R = "rareelite", b = "elite" }
 local pageForPlace = { deadmines = 1, westfall = 2 }
 local usedCodes = { DM = true, WF = true, GA = true }
+-- Packaged backdrops by place. Add a file name here once its painting is in the Art folder; the prompts for
+-- the missing ones are in Art/Portrait-Backdrops-Needed.txt.
 local backdrops = { ["elwynn-forest"] = "Elwynn.tga" }
+-- The zone each instance sits in. A dungeon or raid with no artwork of its own borrows that zone's map.
+ACB.instanceZones = {
+    ["ahnqiraj-temple"] = "Silithus", ["blackwing-lair"] = "Burning Steppes", ["molten-core"] = "Burning Steppes",
+    ["naxxramas"] = "Eastern Plaguelands", ["onyxias-lair"] = "Dustwallow Marsh", ["ruins-of-ahnqiraj"] = "Silithus",
+    ["zulgurub"] = "Stranglethorn Vale", ["blackfathom-deeps"] = "Ashenvale", ["blackrock-depths"] = "Searing Gorge",
+    ["blackrock-spire"] = "Burning Steppes", ["deadmines"] = "Westfall", ["dire-maul"] = "Feralas",
+    ["gnomeregan"] = "Dun Morogh", ["maraudon"] = "Desolace", ["ragefire-chasm"] = "Durotar",
+    ["razorfen-downs"] = "The Barrens", ["razorfen-kraul"] = "The Barrens", ["scarlet-monastery"] = "Tirisfal Glades",
+    ["scholomance"] = "Western Plaguelands", ["shadowfang-keep"] = "Silverpine Forest",
+    ["stormwind-stockade"] = "Elwynn Forest", ["stratholme"] = "Eastern Plaguelands", ["sunken-temple"] = "Swamp of Sorrows",
+    ["uldaman"] = "Badlands", ["wailing-caverns"] = "The Barrens", ["zulfarrak"] = "Tanaris",
+    ["arathi-basin"] = "Arathi Highlands", ["alterac-valley"] = "Alterac Mountains",
+}
 ACB.pageForPlace = pageForPlace
 
 local function hash(text)
@@ -201,7 +222,8 @@ function ACB.addPlace(slug, name, kind, levels, rows)
     end
     if not ACB.zones[slug] then
         local top, bottom = placeColors(slug, kind)
-        ACB.zones[slug] = { name = name, kind = kind, place = name, backdrop = backdrops[slug], top = top, bottom = bottom }
+        ACB.zones[slug] = { name = name, kind = kind, place = name, backdrop = backdrops[slug], top = top, bottom = bottom,
+            parent = ACB.instanceZones[slug] }
     end
     for _, row in ipairs(rows) do
         local id, creature, rank, level = row[1], row[2], row[3], row[4]

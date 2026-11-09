@@ -262,7 +262,8 @@ function ACB.createFolio(parent, saved, selectSet)
         view:showRegion(region)
     end)
 
-    local selected = text(right, 23, 17, "", 10, SEPIA, 370)
+    local selected = text(right, 23, 17, "", 10, SEPIA, 250)
+    local dustMark = text(right, 273, 17, "", 10, SEPIA, 150, "RIGHT")
     local name = text(right, 22, 37, "", 34, INK, 405, "LEFT", true)
     name:SetWordWrap(false)
     rule(right, 23, 96, 402)
@@ -272,14 +273,26 @@ function ACB.createFolio(parent, saved, selectSet)
     emblem:SetTexture(ACB.folioArt .. "Seal.tga")
     local rarity = text(stats, 0, 63, "", 13, INK, 174, "CENTER")
     local chance = text(stats, 0, 88, "", 45, INK, 174, "CENTER", true)
-    text(stats, 0, 141, "DROP CHANCE", 10, SEPIA, 174, "CENTER")
-    rule(stats, 15, 165, 144)
-    local owned = text(stats, 16, 181, "", 30, INK, 60, "CENTER", true)
-    text(stats, 87, 190, "Owned", 13, SEPIA, 75)
-    local spare = text(stats, 16, 223, "", 30, INK, 60, "CENTER", true)
-    text(stats, 87, 232, "Spare", 13, SEPIA, 75)
-    local wantButton = panel(stats, "Button", 16, 255, 142, 22, POCKET, EDGE)
-    local wantText = text(wantButton, 0, 4, "", 11, INK, 142, "CENTER")
+    text(stats, 0, 138, "DROP CHANCE", 10, SEPIA, 174, "CENTER")
+    local luckText = text(stats, 0, 151, "", 9, SEPIA, 174, "CENTER")
+    rule(stats, 15, 168, 144)
+    local owned = text(stats, 16, 175, "", 26, INK, 60, "CENTER", true)
+    text(stats, 87, 182, "Owned", 13, SEPIA, 75)
+    local spare = text(stats, 16, 205, "", 26, INK, 60, "CENTER", true)
+    text(stats, 87, 212, "Spare", 13, SEPIA, 75)
+    local wantButton = panel(stats, "Button", 16, 236, 142, 20, POCKET, EDGE)
+    local wantText = text(wantButton, 0, 4, "", 10, INK, 142, "CENTER")
+    local dustButton = panel(stats, "Button", 16, 259, 142, 20, POCKET, EDGE)
+    local dustText = text(dustButton, 0, 4, "", 10, INK, 142, "CENTER")
+    dustButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    dustButton:SetScript("OnClick", function()
+        local entry = ACB.pages[region].cards[state.slot]
+        local collection = ACB.collection
+        if not collection then return end
+        local count = saved.counts[entry.key] or 0
+        if count >= 2 then collection:recycle(entry.key) elseif count == 0 then collection:craft(entry.key) end
+        view:showRegion(region)
+    end)
     wantButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     wantButton:SetScript("OnClick", function()
         local entry = ACB.pages[region].cards[state.slot]
@@ -297,6 +310,16 @@ function ACB.createFolio(parent, saved, selectSet)
     local milestones = {}
     for index, achievement in ipairs(ACB.achievements) do
         milestones[index] = text(right, 24, 455 + (index - 1) * 20, achievement.name, 11, INK, 400)
+    end
+
+    -- Turn to the page that holds a card and select it.
+    function view:selectCard(index, key)
+        for slot, card in ipairs(ACB.pages[index].cards) do
+            if card.key == key then
+                byRegion[index] = { leaf = math.ceil(slot / CARDS_PER_LEAF), slot = slot }
+                return true
+            end
+        end
     end
 
     function view:showRegion(index, showIndex)
@@ -353,6 +376,24 @@ function ACB.createFolio(parent, saved, selectSet)
         rarity:SetText(tier.name:upper())
         rarity:SetTextColor(unpack(RARITY_INK[entry.rarity] or INK))
         chance:SetText(("%g%%"):format(ACB.rates[entry.rank] / 100))
+        local misses, limit = ACB.luck(saved, entry)
+        local what = entry.profession and "Gathers" or "Kills"
+        luckText:SetText(limit and ("%s since last drop: %d / %d"):format(what, misses, limit)
+            or ("%s since last drop: %d"):format(what, misses))
+        local dust = saved.dust or 0
+        local yield, cost = ACB.dustFor(entry)
+        dustMark:SetText(("Binder Dust: %d"):format(dust))
+        if count >= 2 then
+            dustText:SetText(("Recycle a spare: +%d dust"):format(yield))
+        elseif count == 0 then
+            dustText:SetText(dust >= cost and ("Craft this card: %d dust"):format(cost)
+                or ("Craft: %d dust (have %d)"):format(cost, dust))
+        else
+            dustText:SetText("No spare to recycle")
+        end
+        local usable = count >= 2 or (count == 0 and dust >= cost)
+        dustButton:SetEnabled(usable)
+        dustButton:SetAlpha(usable and 1 or 0.55)
         owned:SetText(tostring(count))
         spare:SetText(tostring(math.max(0, count - 1)))
         detailNote:SetText(count > 0 and entry.lore or ("Missing from your binder. " .. ACB.whereToFind(entry)))

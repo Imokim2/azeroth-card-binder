@@ -285,6 +285,7 @@ local function initialize()
             table.remove(saved.history, index)
         end
     end
+    if type(saved.dust) ~= "number" or saved.dust < 0 or saved.dust ~= math.floor(saved.dust) then saved.dust = 0 end
     saved.sets, saved.titles = tableOrEmpty(saved.sets), tableOrEmpty(saved.titles)
     for key, value in pairs(saved.sets) do
         if value ~= true then saved.sets[key] = nil end
@@ -299,6 +300,7 @@ local function initialize()
         if ACB.showSetToast then ACB.showSetToast(page, reward) end
         if ACB.refresh then ACB.refresh() end
     end)
+    ACB.collection = collection
     local sequence = 0
     trade = ACB.newTrade(saved.counts, GetTime, function()
         sequence = sequence + 1
@@ -338,10 +340,7 @@ local function initialize()
             report("VanCleef completion trial " .. (saved.bossTrial and "on." or "off."))
         elseif cmd == "title" or cmd:match("^title ") then
             local choice = cmd:match("^title%s+(.+)$")
-            local earned = {}
-            for _, page in ipairs(ACB.pages) do
-                if page.reward and saved.titles[page.reward] then earned[#earned + 1] = page.reward end
-            end
+            local earned = ACB.earnedTitles(saved)
             if choice == "off" then
                 saved.title = nil
                 report("Title cleared.")
@@ -370,6 +369,10 @@ local function initialize()
         elseif cmd == "hints" then
             saved.hints = saved.hints == false
             report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
+        elseif cmd == "dust" then
+            report(("Binder Dust: %d. Open a card in the binder to recycle a spare or craft a missing card."):format(saved.dust or 0))
+        elseif cmd == "settings" or cmd == "options" then
+            ACB.open("settings")
         elseif cmd == "popup" then
             saved.popups = saved.popups == false
             report("Card pop-ups " .. (saved.popups == false and "off." or "on."))
@@ -395,8 +398,9 @@ local function initialize()
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, link, view, privacy, title, popup, popup test, hints, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, link, view, settings, dust, privacy, title, popup, popup test, hints, diag, log, boss.")
         end
+        if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end
 end
 
