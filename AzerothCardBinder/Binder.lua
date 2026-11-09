@@ -116,7 +116,7 @@ local function offerPanel(parent, x, y)
 end
 
 function ACB.initUI(saved, trade)
-    local frame = window("AzerothCardBinderWindow", BINDER_WIDTH, BINDER_HEIGHT, "Azeroth Card Binder", true)
+    local frame = window("AzerothCardBinderWindow", BINDER_WIDTH, BINDER_HEIGHT, "World of Warcards", true)
     local function fitWindow()
         local scale = math.min(1, (UIParent:GetWidth() - 24) / BINDER_WIDTH,
             (UIParent:GetHeight() - 24) / BINDER_HEIGHT)
