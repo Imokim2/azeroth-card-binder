@@ -8,25 +8,31 @@ ACB.shinyOdds = 20
 ACB.pityFactor = 2.5
 ACB.rates = { normal = 50, elite = 100, rare = 500, rareelite = 500, gathering = 50 }
 ACB.pages = {
-    { title = "Deadmines", group = "Dungeon", code = "DM", reward = "Defias Delver", subtitle = "The Defias hideout", cards = {} },
-    { title = "Westfall", group = "Zone", code = "WF", reward = "Westfall Warden", subtitle = "The fields beyond Sentinel Hill", cards = {} },
-    { title = "Gathering", group = "Profession", code = "GA", reward = "Fieldhand", subtitle = "Finds from the field", cards = {} },
+    { title = "Deadmines", zone = "deadmines", group = "Dungeon", code = "DM", reward = "Defias Delver", subtitle = "The Defias hideout", cards = {} },
+    { title = "Westfall", zone = "westfall", group = "Zone", code = "WF", reward = "Westfall Warden", subtitle = "The fields beyond Sentinel Hill", cards = {} },
+    { title = "Gathering", zone = "elwynn", group = "Profession", code = "GA", reward = "Fieldhand", subtitle = "Finds from the field", cards = {} },
 }
 ACB.cards, ACB.sources = {}, { Creature = {}, GameObject = {} }
 
 -- Packaged portrait backdrops take priority, followed by client artwork and a fallback gradient.
 ACB.zones = {
     deadmines = {
+        name = "Deadmines", kind = "Dungeon",
         backdrop = "Deadmines.tga", place = "the Deadmines in Westfall",
         journal = 63, map = 55,
         paths = { "Interface\\Glues\\LoadingScreens\\LoadScreenDeadmines" },
         top = { 0.36, 0.22, 0.11 }, bottom = { 0.07, 0.04, 0.03 },
     },
     westfall = {
+        name = "Westfall", kind = "Zone",
         backdrop = "Westfall.tga", place = "Westfall",
         map = 52,
         paths = { "Interface\\Glues\\LoadingScreens\\LoadScreenWestfall" },
         top = { 0.80, 0.64, 0.30 }, bottom = { 0.22, 0.30, 0.12 },
+    },
+    gathering = {
+        name = "Gathering", kind = "Profession", place = "zones across the world",
+        top = { 0.42, 0.52, 0.34 }, bottom = { 0.10, 0.15, 0.09 },
     },
     elwynn = {
         backdrop = "Elwynn.tga", place = "Elwynn Forest and other starting zones",
@@ -105,6 +111,107 @@ card(3, "elwynn", 1731, "Copper Vein", "gathering", "INV_Ore_Copper_01",
     "Reddish ore that every young miner swings a pick at first.", false, "mining", 219514) -- copper_miningnode_01.m2
 card(3, "elwynn", 1618, "Peacebloom", "gathering", "INV_Misc_Flower_02",
     "A gentle bloom that grows wild across the green fields.", false, "herbalism", 219481) -- bush_peacebloom01.m2
+
+-- ---- Places generated from data (CatalogForever.lua) ----
+-- Every Forever creature the site knows is filed under the dungeon, raid or zone it lives in. The hand-made
+-- Deadmines and Westfall pages keep their cards and lore and simply gain the rest.
+local rankNames = { n = "normal", e = "elite", r = "rare", R = "rareelite", b = "elite" }
+local pageForPlace = { deadmines = 1, westfall = 2 }
+local usedCodes = { DM = true, WF = true, GA = true }
+local backdrops = { ["elwynn-forest"] = "Elwynn.tga" }
+ACB.pageForPlace = pageForPlace
+
+local function hash(text)
+    local value = 5381
+    for index = 1, #text do value = (value * 33 + text:byte(index)) % 4294967296 end
+    return value
+end
+
+local function hsl(hue, saturation, lightness)
+    local function channel(n)
+        local k = (n + hue * 12) % 12
+        local a = saturation * math.min(lightness, 1 - lightness)
+        return lightness - a * math.max(-1, math.min(k - 3, 9 - k, 1))
+    end
+    return { channel(0), channel(8), channel(4) }
+end
+
+-- A fallback colour pair for a place, steadier and darker for instances.
+local function placeColors(slug, kind)
+    local hue = (hash(slug) % 360) / 360
+    local dark = kind == "Dungeon" or kind == "Raid"
+    return hsl(hue, dark and 0.35 or 0.40, dark and 0.30 or 0.50), hsl(hue, 0.35, dark and 0.06 or 0.13)
+end
+
+local function uniqueCode(name)
+    local initials = ""
+    for word in name:gmatch("%a+") do
+        if word:lower() ~= "the" and word:lower() ~= "of" then initials = initials .. word:sub(1, 1):upper() end
+    end
+    initials = (initials .. "XX"):sub(1, 3)
+    local code, number = initials, 1
+    while usedCodes[code] do
+        number = number + 1
+        code = initials .. number
+    end
+    usedCodes[code] = true
+    return code
+end
+
+-- A short, plain description for creatures that have no hand-written lore.
+function ACB.autoLore(rank, level, place)
+    local at = level and level > 0 and (" at level " .. level) or ""
+    if rank == "b" then return ("A boss of %s%s."):format(place, at) end
+    if rank == "R" then return ("A rare elite prowling %s%s."):format(place, at) end
+    if rank == "r" then return ("A rare find in %s%s."):format(place, at) end
+    if rank == "e" then return ("An elite foe of %s%s."):format(place, at) end
+    return ("Roams %s%s."):format(place, at)
+end
+
+-- Add one place (a zone, dungeon or raid) and its creatures. Each row is { npc id, name, rank, level }.
+function ACB.addPlace(slug, name, kind, levels, rows)
+    local index = pageForPlace[slug]
+    if not index then
+        ACB.pages[#ACB.pages + 1] = {
+            title = name, zone = slug, group = kind, code = uniqueCode(name), reward = name .. " Collector",
+            subtitle = levels ~= "" and ("Levels " .. levels) or kind, cards = {},
+        }
+        index = #ACB.pages
+        pageForPlace[slug] = index
+    end
+    if not ACB.zones[slug] then
+        local top, bottom = placeColors(slug, kind)
+        ACB.zones[slug] = { name = name, kind = kind, place = name, backdrop = backdrops[slug], top = top, bottom = bottom }
+    end
+    for _, row in ipairs(rows) do
+        local id, creature, rank, level = row[1], row[2], row[3], row[4]
+        if not ACB.cards["npc:" .. id] then
+            card(index, slug, id, creature, rankNames[rank] or "normal", "INV_Misc_QuestionMark",
+                ACB.autoLore(rank, level, name), rank == "b")
+        end
+    end
+end
+
+-- Add the gathering nodes (CatalogNodes.lua). A node has several object ids in the game, so every id finds the
+-- same card. Each row is { profession, skill needed, name, model file id or 0, { object ids } }.
+function ACB.addNodes(rows)
+    for _, row in ipairs(rows) do
+        local profession, skill, name, model, ids = row[1], row[2], row[3], row[4], row[5]
+        local primary = ACB.cards["node:" .. ids[1]]
+        if not primary then
+            local text = profession == "mining" and ("An ore deposit that needs Mining skill %d."):format(skill)
+                or ("A herb that needs Herbalism skill %d."):format(skill)
+            card(3, skill <= 50 and "elwynn" or "gathering", ids[1], name, "gathering",
+                profession == "mining" and "INV_Ore_Copper_01" or "INV_Misc_Flower_02", text, false, profession,
+                model ~= 0 and model or nil)
+            primary = ACB.cards["node:" .. ids[1]]
+        end
+        primary.skill, primary.ids = skill, ids
+        for index = 2, #ids do
+            ACB.sources.GameObject[ids[index]] = ACB.sources.GameObject[ids[index]] or primary
+        end
+    end
+end
 
 ACB.achievements = {
     { key = "crew", name = "The Defias Crew", bossesOnly = true },

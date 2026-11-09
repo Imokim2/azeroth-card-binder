@@ -32,6 +32,12 @@ When a card is added to the binder, a pop-up shows the card with a sound: **New 
 
 The first copy of each card you find has a 1 in 20 chance of being a shiny copy, shown with a foil sheen, a sweep of light and a cyan trim. You can own one shiny per card. Trades never move a shiny copy, so a shiny stays with the player who found it. The sound kit names are looked up when the pop-up plays and skipped if this client does not have them, so listen for a sound on the first test.
 
+## The full catalog
+
+There is now a card for every creature in Forever's dungeons, raids, battlegrounds and zones that wowforever.ninja has data for: about 4,000 cards in 68 sets, plus the original hand-made Deadmines, Westfall and gathering sets. Rarity follows rank (bosses legendary, other rares and elites epic, normal creatures common). New cards get a short generated description; the hand-written ones keep theirs. Zone art is found by name from the game's map and dungeon journal, falling back to a colour wash. Big sets run to many pages: use the mouse wheel on the left page to turn one page, or hold Shift for ten. Check that a large set such as The Barrens scrolls smoothly and that the index search finds sets by name.
+
+Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each recognised by every object id the game uses for it. 31 have a 3D model; Earthroot, Mageroyal, Briarthorn, Kingsblood, Ghost Mushroom, Silver Vein, Indurium and Dark Iron show an icon until a matching mesh is found. Mine and pick a few node types, including a high-level one, and check the card appears in the Gathering set with the right skill in its text.
+
 ## Bad-luck safety net
 
 Every card has a miss counter for its source. When a source has missed 2.5 times its expected number of attempts, the next attempt is guaranteed: the 500th for a 0.5% card, the 250th for 1% and the 50th for 5%. The counter resets on a drop. The tooltip hint and the log show progress. Change or switch off `ACB.pityFactor` in `Catalog.lua` (0 turns it off).

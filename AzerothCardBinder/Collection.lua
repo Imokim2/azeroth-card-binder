@@ -35,18 +35,14 @@ function ACB.tradeHistory(saved)
     return lines
 end
 
--- The cards a player is looking for: the ones they marked, or every card they are missing.
+-- The cards a player is looking for: the missing cards they marked as wanted.
 function ACB.wantedCards(saved)
-    local marked, missing = {}, {}
-    for _, page in ipairs(ACB.pages) do
-        for _, card in ipairs(page.cards) do
-            if (saved.counts[card.key] or 0) == 0 then
-                missing[#missing + 1] = card.key
-                if saved.wanted and saved.wanted[card.key] then marked[#marked + 1] = card.key end
-            end
-        end
+    local marked = {}
+    for key in pairs(saved.wanted or {}) do
+        if ACB.cards[key] and (saved.counts[key] or 0) == 0 then marked[#marked + 1] = key end
     end
-    return #marked > 0 and marked or missing
+    table.sort(marked)
+    return marked
 end
 
 -- Attempts without a drop so far, and the attempt that is guaranteed, for a catalog card.

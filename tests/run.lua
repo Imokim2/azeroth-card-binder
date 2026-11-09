@@ -23,6 +23,8 @@ end
 
 local function ignore() end
 loadAddon("Catalog.lua")
+loadAddon("CatalogForever.lua")
+loadAddon("CatalogNodes.lua")
 loadAddon("Collection.lua")
 loadAddon("Trade.lua")
 
@@ -71,9 +73,14 @@ test("duplicates do not fill slots; both Deadmines achievements unlock once", fu
         if card.boss then collection:roll(guid(tonumber(card.key:sub(5)), "A"), "loot") end
     end
     collection:roll(guid(639, "B"), "loot")
+    local bosses = 0
+    for _, card in ipairs(ACB.pages[1].cards) do
+        if card.boss then bosses = bosses + 1 end
+    end
+    assert(bosses >= 8, "the eight hand-made Deadmines bosses are all bosses")
     local owned, total = ACB.progress(saved.counts, 1)
-    equal(owned, 8)
-    equal(total, 12)
+    equal(owned, bosses)
+    equal(total, #ACB.pages[1].cards)
     equal(saved.counts["npc:639"], 2)
     equal(saved.achievements.crew, true)
     equal(saved.achievements.deadmines, nil)
@@ -85,12 +92,69 @@ test("duplicates do not fill slots; both Deadmines achievements unlock once", fu
     equal(earned, 2)
 end)
 
+test("every gathering node is a card and all of its object ids find it", function()
+    local nodes = 0
+    for _, card in ipairs(ACB.pages[3].cards) do
+        nodes = nodes + 1
+        assert(card.profession == "mining" or card.profession == "herbalism", card.name)
+        assert(card.skill and card.skill >= 1, card.name)
+        for _, id in ipairs(card.ids) do equal(ACB.sources.GameObject[id], card) end
+    end
+    assert(nodes >= 39, "all 39 Forever node types, has " .. nodes)
+    -- Several object ids, one card.
+    equal(ACB.source(guid(3763, "a", "GameObject")).key, "node:1731")
+    equal(ACB.source(guid(3724, "a", "GameObject")).key, "node:1618")
+    equal(ACB.source(guid(175404, "a", "GameObject")).name, "Rich Thorium Vein")
+    -- Creatures and objects have separate id spaces, so a creature never turns into a node card.
+    local creature = ACB.source(guid(1731, "a", "Creature"))
+    assert(creature == nil or not creature.profession)
+    -- The original hand-made nodes keep their lore and model.
+    equal(ACB.cards["node:1731"].model, 219514)
+    assert(ACB.cards["node:1731"].lore:find("Reddish ore", 1, true))
+    assert(ACB.cards["node:175404"].lore:find("Mining skill 275", 1, true))
+    equal(ACB.cards["node:175404"].rarity, "rare")
+end)
+
+test("the generated catalog is large, consistent and fits the card", function()
+    local count, codes, ids = 0, {}, {}
+    for _, page in ipairs(ACB.pages) do
+        assert(page.title and page.code and page.group, "every set has a title, code and group")
+        assert(not codes[page.code], "duplicate set code " .. page.code)
+        codes[page.code] = true
+        assert(ACB.zones[page.zone], "every set has zone art settings: " .. page.title)
+        for _, card in ipairs(page.cards) do
+            count = count + 1
+            assert(card.name ~= "" and #card.name <= 44, "card name fits: " .. card.name)
+            assert(card.id and not ids[card.key], "unique card " .. card.key)
+            ids[card.key] = true
+            assert(ACB.sources[card.profession and "GameObject" or "Creature"][card.id] == card, "source index for " .. card.key)
+        end
+    end
+    assert(count > 3500, "the catalog should hold thousands of cards, has " .. count)
+    assert(#ACB.pages > 60, "sets for every dungeon, raid and zone with data")
+    -- Hand-made cards keep their lore; new cards get a short generated line.
+    assert(ACB.cards["npc:639"].lore:find("Founder of the Defias", 1, true))
+    assert(ACB.cards["npc:157"].lore:find("The Barrens") == nil and #ACB.cards["npc:157"].lore > 0)
+    equal(ACB.pageForPlace.deadmines, 1)
+    equal(ACB.pageForPlace.westfall, 2)
+end)
+
 test("gathering nodes carry a model file", function()
     equal(ACB.cards["node:1731"].model, 219514)
     equal(ACB.cards["node:1618"].model, 219481)
+    -- Most nodes have a mesh; the rest fall back to their icon, which every node card has.
+    local withModel, total = 0, 0
     for _, card in pairs(ACB.cards) do
-        if card.profession then equal(type(card.model), "number") end
+        if card.profession then
+            total = total + 1
+            assert(type(card.icon) == "string" and card.icon ~= "", card.name .. " needs an icon")
+            if card.model then
+                equal(type(card.model), "number")
+                withModel = withModel + 1
+            end
+        end
     end
+    assert(withModel >= 30 and withModel < total or withModel == total, "models for most of the " .. total .. " nodes")
 end)
 
 test("rarity follows boss, elite, normal and profession rules", function()
@@ -196,22 +260,31 @@ test("the bad-luck safety net guarantees a card after enough misses and then res
 end)
 
 test("finishing a set earns its title once and announces it", function()
+    -- A small set of its own, so the test does not depend on how big the real sets are.
+    ACB.addPlace("test-place", "Test Place", "Zone", "", { { 900001, "Test One", "n", 5 }, { 900002, "Test Two", "n", 5 } })
+    local index = ACB.pageForPlace["test-place"]
+    local page = ACB.pages[index]
+    equal(index, #ACB.pages)
     local saved = { counts = {}, achievements = {} }
     local done = {}
-    local collection = ACB.newCollection(saved, function() return 1 end, ignore, ignore, nil, function(page, reward)
-        done[#done + 1] = { page = page.code, reward = reward }
+    local collection = ACB.newCollection(saved, function() return 1 end, ignore, ignore, nil, function(set, reward)
+        done[#done + 1] = { page = set.code, reward = reward }
     end)
-    -- Westfall has four cards. Finish three, then the last.
-    for _, key in ipairs({ "npc:589", "npc:590", "npc:114" }) do saved.counts[key] = 1 end
-    collection:roll(guid(573, "last"), "loot")
+    saved.counts["npc:900001"] = 1
+    collection:roll(guid(900002, "last"), "loot")
     equal(#done, 1)
-    equal(done[1].page, "WF")
-    equal(done[1].reward, "Westfall Warden")
-    equal(saved.sets.WF, true)
-    equal(saved.titles["Westfall Warden"], true)
-    equal(saved.title, "Westfall Warden")
-    collection:roll(guid(573, "again"), "loot")
+    equal(done[1].page, page.code)
+    equal(done[1].reward, "Test Place Collector")
+    equal(saved.sets[page.code], true)
+    equal(saved.titles["Test Place Collector"], true)
+    equal(saved.title, "Test Place Collector")
+    collection:roll(guid(900002, "again"), "loot")
     equal(#done, 1) -- a set is only completed once
+    table.remove(ACB.pages, index)
+    ACB.pageForPlace["test-place"], ACB.zones["test-place"] = nil, nil
+    for _, id in ipairs({ 900001, 900002 }) do
+        ACB.cards["npc:" .. id], ACB.sources.Creature[id] = nil, nil
+    end
 end)
 
 test("partners can share spares and wants, and trades are logged", function()
@@ -252,10 +325,9 @@ test("partners can share spares and wants, and trades are logged", function()
     equal(#lines, 20)
     assert(lines[1]:find("Defias Pillager for Edwin VanCleef", 1, true))
     assert(lines[1]:find("with x30", 1, true))
-    -- With no marked wants, every missing card is wanted; marked ones win.
+    -- Only missing cards that were marked count as wanted.
     local mine = { counts = { ["npc:639"] = 1 }, wanted = {} }
-    local everything = ACB.wantedCards(mine)
-    equal(#everything, 17)
+    equal(#ACB.wantedCards(mine), 0)
     mine.wanted["npc:573"] = true
     equal(table.concat(ACB.wantedCards(mine), ","), "npc:573")
     mine.wanted["npc:639"] = true -- already owned, so not wanted
@@ -601,15 +673,17 @@ test("a binder can be viewed read-only, only when asked for, and can be made pri
     ACB.receiveView("alice-realm", sentToB[1])
     ACB.receiveView("alice-realm", sentToB[1]) -- a repeated part changes nothing
     equal(#shown, 0)
-    ACB.receiveView("alice-realm", "B|2/2|npc:99999=4,npc:589=3") -- unknown cards are dropped
+    ACB.receiveView("alice-realm", "B|2/2|c99999=4,c589=3") -- unknown cards are dropped
     equal(#shown, 1)
     equal(shown[1].peer, "alice-realm")
     equal(shown[1].counts["npc:589"], 3)
     equal(shown[1].shiny["npc:639"], true)
     equal(shown[1].counts["npc:99999"], nil)
     local lines = ACB.inspectLines(shown[1].counts, shown[1].shiny)
-    equal(lines[1], "Deadmines   12 / 12")
-    assert(lines[2]:find("[x] Rhahk'Zor", 1, true))
+    assert(lines[1]:find("^21 of %d+ cards collected, 1 shiny$"))
+    local text = table.concat(lines, " ")
+    assert(text:find("Deadmines   20 / %d+"))
+    assert(text:find("Westfall   1 / %d+"))
     -- Garbage is dropped.
     ACB.receiveView("alice-realm", "B|9/2|npc:589=2")
     ACB.receiveView("alice-realm", "B|1/2|<script>")
@@ -730,23 +804,26 @@ test("folio pages through all Deadmines cards and remembers selection per region
         end
         error("missing widget: " .. value)
     end
+    local leaves = math.ceil(#ACB.pages[1].cards / 4)
+    local westfallLeaves = math.ceil(#ACB.pages[2].cards / 4)
+    assert(leaves >= 3, "Deadmines has at least the eight bosses and four mobs")
     AzerothCardBinderDB.counts["npc:639"] = 2
     ACB.open(1)
     local back = widgetWithText("< Back")
     local nextPage = widgetWithText("Next >")
     equal(back.enabled, false)
-    widgetWithText("Page 1 of 3")
+    widgetWithText("Page 1 of " .. leaves)
     nextPage:OnClick()
-    widgetWithText("Page 2 of 3")
+    widgetWithText("Page 2 of " .. leaves)
     widgetWithText("2 owned / 1 spare").parent:OnClick()
     widgetWithText("SELECTED CARD  /  DM 08")
     ACB.open(2)
-    equal(nextPage.enabled, false)
-    widgetWithText("Page 1 of 1")
+    equal(nextPage.enabled, westfallLeaves > 1)
+    widgetWithText("Page 1 of " .. westfallLeaves)
     ACB.open(1)
     widgetWithText("SELECTED CARD  /  DM 08")
-    nextPage:OnClick()
-    widgetWithText("Page 3 of 3")
+    for _ = 1, leaves - 2 do nextPage:OnClick() end
+    widgetWithText("Page " .. leaves .. " of " .. leaves)
     equal(nextPage.enabled, false)
     AzerothCardBinderDB.counts["npc:639"] = nil
 end)
@@ -767,12 +844,17 @@ test("index searches categories and opens sets beyond the original tabs", functi
         end)
         return label.parent
     end
-    for index = 4, 12 do
-        ACB.pages[index] = { title = ("Test Set %02d"):format(index), group = "Dungeon",
+    local base = #ACB.pages
+    for index = 1, 9 do
+        ACB.pages[base + index] = { title = ("Test Set %02d"):format(index + 3), group = "Dungeon",
             subtitle = "", cards = ACB.pages[2].cards }
     end
 
     button("Index"):OnClick()
+    equal(button("More").enabled, true)
+    local search = findWidget(function(widget) return widget.OnTextChanged ~= nil end)
+    search:SetText("Test Set")
+    search:OnTextChanged()
     equal(button("More").enabled, true)
     button("More"):OnClick()
     equal(indexRow("Test Set 12"):IsShown(), true)
@@ -781,14 +863,13 @@ test("index searches categories and opens sets beyond the original tabs", functi
     button("Trade"):OnClick()
     equal(button("Trade").enabled, false)
     button("Collection"):OnClick()
-    findWidget(function(widget) return widget.text == "SELECTED CARD  /  SET 12 01" end)
+    findWidget(function(widget) return widget.text == ("SELECTED CARD  /  SET %02d 01"):format(base + 9) end)
 
     SlashCmdList.AZEROTHCARDBINDER("index")
-    local search = findWidget(function(widget) return widget.OnTextChanged ~= nil end)
+    search = findWidget(function(widget) return widget.OnTextChanged ~= nil end)
     search:SetText(" ZoNe ")
     search:OnTextChanged()
     equal(indexRow("Westfall"):IsShown(), true)
-    equal(button("More").enabled, false)
     search:SetText("%")
     search:OnTextChanged()
     findWidget(function(widget) return widget.text == "No matching sets" end)
@@ -796,10 +877,10 @@ test("index searches categories and opens sets beyond the original tabs", functi
     search:OnTextChanged()
     indexRow("Test Set 04"):OnClick()
     equal(button("Trade").enabled, true)
-    findWidget(function(widget) return widget.text == "SELECTED CARD  /  SET 04 01" end)
+    findWidget(function(widget) return widget.text == ("SELECTED CARD  /  SET %02d 01"):format(base + 1) end)
     search:SetText("")
     search:OnTextChanged()
-    for index = 12, 4, -1 do ACB.pages[index] = nil end
+    for index = #ACB.pages, base + 1, -1 do ACB.pages[index] = nil end
     ACB.open(1)
 end)
 

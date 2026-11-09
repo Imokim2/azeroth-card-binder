@@ -251,6 +251,15 @@ function ACB.createFolio(parent, saved, selectSet)
         view:showRegion(region)
     end)
     local leafLabel = text(left, 105, 461, "", 12, SEPIA, 240, "CENTER")
+    -- Big sets run to many pages: the wheel turns one page, Shift turns ten.
+    left:EnableMouseWheel(true)
+    left:SetScript("OnMouseWheel", function(_, delta)
+        local pages = math.max(1, math.ceil(#ACB.pages[region].cards / CARDS_PER_LEAF))
+        local step = (IsShiftKeyDown and IsShiftKeyDown()) and 10 or 1
+        state.leaf = math.max(1, math.min(pages, state.leaf + (delta > 0 and -step or step)))
+        state.slot = (state.leaf - 1) * CARDS_PER_LEAF + 1
+        view:showRegion(region)
+    end)
 
     local selected = text(right, 23, 17, "", 10, SEPIA, 370)
     local name = text(right, 22, 37, "", 34, INK, 405, "LEFT", true)
@@ -302,6 +311,7 @@ function ACB.createFolio(parent, saved, selectSet)
         indexPage:SetShown(showIndex == true)
         if showIndex then indexPage:showSets(index) end
         local leaves = math.ceil(total / CARDS_PER_LEAF)
+        title:SetFont(DISPLAY_FONT, math.max(18, math.min(35, 280 / (0.52 * #page.title))), "")
         title:SetText(page.title)
         subtitle:SetText(page.subtitle)
         progress:SetText(("%d / %d collected"):format(have, total))
