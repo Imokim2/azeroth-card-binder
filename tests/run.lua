@@ -158,7 +158,11 @@ test("the generated catalog is large, consistent and fits the card", function()
             assert(ACB.sources[card.profession and "GameObject" or "Creature"][card.id] == card, "source index for " .. card.key)
         end
     end
-    assert(count > 3500, "the catalog should hold thousands of cards, has " .. count)
+    assert(count > 3000, "the catalog should hold thousands of cards, has " .. count)
+    -- Only neutral and hostile creatures: nothing that is friendly to one faction, so no guards or faction leaders.
+    equal(ACB.cards["npc:1423"], nil) -- Stormwind Guard
+    equal(ACB.cards["npc:10162"], nil) -- Lord Victor Nefarius, friendly to both
+    assert(ACB.cards["npc:639"], "hostile creatures stay")
     assert(#ACB.pages > 60, "sets for every dungeon, raid and zone with data")
     -- Hand-made cards keep their lore; new cards get a short generated line.
     assert(ACB.cards["npc:639"].lore:find("Founder of the Defias", 1, true))

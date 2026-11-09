@@ -244,7 +244,7 @@ function ACB.initSocial(saved, send, now, after)
                 root:CreateButton("Offer a card trade", function() ACB.prepareTrade(peer) end)
                 root:CreateButton("View their binder", function()
                     local ok, reason = ACB.requestBinder(peer)
-                    if not ok then print("Azeroth Card Binder  " .. (reason or "Could not ask for their binder.")) end
+                    if not ok then print("World of Warcards  " .. (reason or "Could not ask for their binder.")) end
                 end)
             end)
         end

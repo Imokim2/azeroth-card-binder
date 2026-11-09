@@ -14,7 +14,7 @@ function ACB.initLauncher(saved)
     button:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-        GameTooltip:AddLine("Azeroth Card Binder", 1, 0.82, 0)
+        GameTooltip:AddLine("World of Warcards", 1, 0.82, 0)
         GameTooltip:AddLine("Click to open or close. Drag to move.", 0.91, 0.85, 0.72)
         GameTooltip:Show()
     end)

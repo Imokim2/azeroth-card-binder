@@ -1,7 +1,11 @@
 // Builds AzerothCardBinder/CatalogForever.lua from the zone, dungeon and raid pages of
 // wowforever.ninja, an unofficial fan database for World of Warcraft: Forever.
 //
-//   node tools/build-catalog.js <folder with the saved zone pages> <saved zones index page>
+//   node tools/build-catalog.js <folder with the saved zone pages> <saved zones index page> <reactions file>
+//
+// The reactions file comes from tools/fetch-reactions.js. Only creatures that are neutral or hostile to both
+// factions are kept: anything friendly to one side (guards, townsfolk, allies) is left out, and so is anything
+// the site has no reaction for.
 //
 // Only creatures that Forever's world has are used. Each page lists a place's creatures with a level and,
 // for rares, elites and bosses, a rank. Friendly groups (quest givers, vendors and trainers) are skipped.
@@ -12,8 +16,12 @@
 const fs = require("fs");
 const path = require("path");
 
-const [pagesDir, indexFile] = process.argv.slice(2);
-if (!pagesDir || !indexFile) throw new Error("Usage: node tools/build-catalog.js <pages folder> <zones index page>");
+const [pagesDir, indexFile, reactionsFile] = process.argv.slice(2);
+if (!pagesDir || !indexFile || !reactionsFile) throw new Error("Usage: node tools/build-catalog.js <pages folder> <zones index page> <reactions file>");
+const reactions = JSON.parse(fs.readFileSync(reactionsFile, "utf8"));
+// Neutral or hostile to both factions. A guard that is friendly to the Alliance and hostile to the Horde is not.
+const fair = (id) => /^[NH][NH]$/.test(reactions[id] || "");
+let leftOut = 0;
 
 const decode = (text) => text
     .replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"')
@@ -63,7 +71,9 @@ for (const slug of order) {
             const rank = (cell.match(/·\s*(.+)$/) || [])[1];
             const level = Number((cell.match(/^(\d+)/) || [])[1]) || 0;
             const creature = strip(row[2]);
-            if (!NOT_MONSTERS.test(creature)) creatures.push({ id, name: creature, rank: RANKS[rank] || "n", level });
+            if (NOT_MONSTERS.test(creature)) continue;
+            if (!fair(id)) { leftOut++; continue; }
+            creatures.push({ id, name: creature, rank: RANKS[rank] || "n", level });
         }
     }
     const kind = kindOf[slug] || "Zone";
@@ -103,7 +113,7 @@ for (const place of kept) {
     total += place.creatures.length;
 }
 fs.writeFileSync(path.join(__dirname, "..", "AzerothCardBinder", "CatalogForever.lua"), lua.join("\n"));
-console.log(`${kept.length} places, ${total} creatures`);
+console.log(`${kept.length} places, ${total} creatures, ${leftOut} left out as friendly or unknown`);
 const byKind = {};
 for (const p of kept) byKind[p.kind] = (byKind[p.kind] || 0) + p.creatures.length;
 console.log(JSON.stringify(byKind));

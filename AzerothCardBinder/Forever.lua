@@ -15,7 +15,7 @@ local function log(message)
 end
 
 local function report(message)
-    print("|cffe8bc6bAzeroth Card Binder|r  " .. message)
+    print("|cffe8bc6bWorld of Warcards|r  " .. message)
 end
 
 local function apiValue(expectedType, func, ...)

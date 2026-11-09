@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## AllowLoadGameType: camelot
-## Title: Azeroth Card Binder
+## Title: World of Warcards
 ## Notes: Discover collectible cards in World of Warcraft: Forever. Open from the minimap or with /acb.
 ## Version: 0.2.3
 ## SavedVariables: AzerothCardBinderDB

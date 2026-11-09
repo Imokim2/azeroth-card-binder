@@ -14,7 +14,7 @@ local STONE = "Interface\\FrameGeneral\\UI-Background-Rock"
 local PAD = 7
 local PORTRAIT = { width = WIDTH - PAD * 2, height = 92 }
 local PLATE = { top = 104, height = 20 }
-local NAME_WIDTH = PORTRAIT.width - 30 -- the rarity gem takes the left end of the plate
+local NAME_WIDTH = PORTRAIT.width - 44 -- the same room is kept at both ends, so the name sits dead centre
 local SUBLINE_TOP = 125
 local LORE = { top = 147, height = 29 } -- three short lines, with the serial number beneath
 local SHINY = { 0.55, 0.92, 1 }
@@ -367,8 +367,9 @@ function ACB.createCard(parent, previewUnowned)
     card.name = nameplate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     card.name:SetShadowOffset(1, -1)
     card.name:SetShadowColor(0, 0, 0, 1)
-    card.name:SetPoint("CENTER", nameplate, "CENTER", 7, 0)
+    card.name:SetPoint("CENTER", nameplate, "CENTER", 0, 0)
     card.name:SetWidth(NAME_WIDTH)
+    card.name:SetJustifyH("CENTER")
     card.name:SetWordWrap(false)
     card.gemBezel = diamond(badges, 13, goldDark)
     card.gemBezel:SetPoint("CENTER", frame, "TOPLEFT", PAD + 11, -(PLATE.top + PLATE.height / 2))
