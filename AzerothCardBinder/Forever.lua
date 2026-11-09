@@ -284,6 +284,7 @@ local function initialize()
         if name then gatherNames[name] = skill end
     end
     ACB.initUI(saved, trade)
+    ACB.initLauncher(saved)
     SLASH_AZEROTHCARDBINDER1, SLASH_AZEROTHCARDBINDER2 = "/acb", "/cardbinder"
     SlashCmdList.AZEROTHCARDBINDER = function(message)
         local cmd = message:lower():match("^%s*(.-)%s*$")
@@ -296,12 +297,12 @@ local function initialize()
         elseif cmd == "boss" then
             saved.bossTrial = not saved.bossTrial
             report("VanCleef completion trial " .. (saved.bossTrial and "on." or "off."))
-        elseif cmd == "trade" then
-            ACB.open(4)
+        elseif cmd == "trade" or cmd == "index" then
+            ACB.open(cmd)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: trade, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, diag, log, boss.")
         end
     end
 end

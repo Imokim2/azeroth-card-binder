@@ -179,9 +179,18 @@ end)
 
 -- Load the actual UI and event handlers against small game API stand-ins.
 local methods = {
-    SetSize = ignore, SetPoint = ignore, SetFrameStrata = ignore, SetClampedToScreen = ignore,
-    SetMovable = ignore, EnableMouse = ignore, SetBackdrop = ignore, SetBackdropColor = ignore,
+    SetSize = function(self, width, height) self.width, self.height = width, height end,
+    GetWidth = function(self) return self.width end,
+    GetHeight = function(self) return self.height end,
+    SetPoint = function(self, ...) self.point = { ... } end,
+    SetFrameStrata = ignore, SetClampedToScreen = ignore,
+    SetMovable = ignore, EnableMouse = ignore,
+    SetBackdrop = function(self) equal(self.template, "BackdropTemplate") end,
+    SetBackdropColor = ignore,
     SetBackdropBorderColor = ignore, SetHeight = ignore, RegisterForDrag = ignore,
+    SetHighlightTexture = ignore, SetNormalTexture = ignore, RegisterForClicks = ignore,
+    SetFontString = ignore, SetScale = function(self, scale) self.scale = scale end,
+    SetTextInsets = ignore, EnableMouseWheel = ignore,
     SetJustifyH = ignore, SetTextColor = ignore, SetAllPoints = ignore, SetTexCoord = ignore,
     SetWidth = ignore, SetAutoFocus = ignore, SetMaxLetters = ignore, SetFocus = ignore,
     SetTexture = ignore, SetDesaturated = ignore, SetAlpha = ignore, SetMultiLine = ignore,
@@ -195,7 +204,7 @@ local methods = {
     IsShown = function(self) return self.shown end,
     SetText = function(self, text) self.text = text end,
     GetText = function(self) return self.text or "" end,
-    SetEnabled = function(self, enabled) equal(type(enabled), "boolean") end,
+    SetEnabled = function(self, enabled) equal(type(enabled), "boolean"); self.enabled = enabled end,
     SetScript = function(self, name, handler) self[name] = handler end,
     RegisterEvent = function(self, event)
         assert(not event:match("^COMBAT_LOG"))
@@ -204,16 +213,24 @@ local methods = {
     UnregisterEvent = function(self, event) self[event] = nil end,
 }
 local eventFrame, widgets = nil, {}
-function CreateFrame(kind, name, parent)
-    local frame = setmetatable({}, { __index = methods })
+function CreateFrame(kind, name, parent, template)
+    local frame = setmetatable({ parent = parent, template = template }, { __index = methods })
     if not eventFrame then eventFrame = frame end
     if name then _G[name] = frame end
     widgets[#widgets + 1] = frame
     return frame
 end
-methods.CreateFontString, methods.CreateTexture = CreateFrame, CreateFrame
+methods.CreateFontString = function(self) return CreateFrame("FontString", nil, self) end
+methods.CreateTexture = function(self) return CreateFrame("Texture", nil, self) end
 methods.RegisterUnitEvent = methods.RegisterEvent
 UISpecialFrames, SlashCmdList = {}, {}
+UIParent = setmetatable({ width = 1200, height = 900 }, { __index = methods })
+Minimap = setmetatable({
+    width = 140, height = 140,
+    GetCenter = function() return 100, 100 end,
+    GetEffectiveScale = function() return 0.8 end,
+}, { __index = methods })
+function GetCursorPosition() return 80, 140 end
 
 local secret = setmetatable({}, { __tostring = function() error("secret value used") end })
 function issecretvalue(value) return value == secret end
@@ -258,7 +275,9 @@ math.random = function(min, max)
 end
 AzerothCardBinderDB = { counts = { invalid = -1 }, diagnostics = true }
 loadAddon("Cards.lua")
+loadAddon("Folio.lua")
 loadAddon("Binder.lua")
+loadAddon("Minimap.lua")
 loadAddon("Forever.lua")
 
 local function emit(event, ...)
@@ -298,6 +317,106 @@ test("cards draw for missing, owned and gathering entries", function()
     ACB.open(2)
     ACB.open(3)
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
+end)
+
+test("folio pages through all Deadmines cards and remembers selection per region", function()
+    local function widgetWithText(value)
+        for _, widget in ipairs(widgets) do
+            if widget.text == value then return widget end
+        end
+        error("missing widget: " .. value)
+    end
+    AzerothCardBinderDB.counts["npc:639"] = 2
+    ACB.open(1)
+    local back = widgetWithText("< Back")
+    local nextPage = widgetWithText("Next >")
+    equal(back.enabled, false)
+    widgetWithText("Page 1 of 3")
+    nextPage:OnClick()
+    widgetWithText("Page 2 of 3")
+    widgetWithText("2 owned / 1 spare").parent:OnClick()
+    widgetWithText("SELECTED CARD  /  DM 08")
+    ACB.open(2)
+    equal(nextPage.enabled, false)
+    widgetWithText("Page 1 of 1")
+    ACB.open(1)
+    widgetWithText("SELECTED CARD  /  DM 08")
+    nextPage:OnClick()
+    widgetWithText("Page 3 of 3")
+    equal(nextPage.enabled, false)
+    AzerothCardBinderDB.counts["npc:639"] = nil
+end)
+
+test("index searches categories and opens sets beyond the original tabs", function()
+    local function findWidget(matches)
+        for _, widget in ipairs(widgets) do
+            if matches(widget) then return widget end
+        end
+        error("matching widget was not drawn")
+    end
+    local function button(label)
+        return findWidget(function(widget) return widget.text == label and widget.OnClick end)
+    end
+    local function indexRow(title)
+        local label = findWidget(function(widget)
+            return widget.text == title and widget.parent and widget.parent.setIndex
+        end)
+        return label.parent
+    end
+    for index = 4, 12 do
+        ACB.pages[index] = { title = ("Test Set %02d"):format(index), group = "Dungeon",
+            subtitle = "", cards = ACB.pages[2].cards }
+    end
+
+    button("Index"):OnClick()
+    equal(button("More").enabled, true)
+    button("More"):OnClick()
+    equal(indexRow("Test Set 12"):IsShown(), true)
+    indexRow("Test Set 12"):OnClick()
+    equal(button("Collection").enabled, false)
+    button("Trade"):OnClick()
+    equal(button("Trade").enabled, false)
+    button("Collection"):OnClick()
+    findWidget(function(widget) return widget.text == "SELECTED CARD  /  SET 12 01" end)
+
+    SlashCmdList.AZEROTHCARDBINDER("index")
+    local search = findWidget(function(widget) return widget.OnTextChanged ~= nil end)
+    search:SetText(" ZoNe ")
+    search:OnTextChanged()
+    equal(indexRow("Westfall"):IsShown(), true)
+    equal(button("More").enabled, false)
+    search:SetText("%")
+    search:OnTextChanged()
+    findWidget(function(widget) return widget.text == "No matching sets" end)
+    search:SetText("Test Set 04")
+    search:OnTextChanged()
+    indexRow("Test Set 04"):OnClick()
+    equal(button("Trade").enabled, true)
+    findWidget(function(widget) return widget.text == "SELECTED CARD  /  SET 04 01" end)
+    search:SetText("")
+    search:OnTextChanged()
+    for index = 12, 4, -1 do ACB.pages[index] = nil end
+    ACB.open(1)
+end)
+
+test("minimap launcher toggles the fitted window and saves its drag position", function()
+    local window = AzerothCardBinderWindow
+    local launcher = AzerothCardBinderMinimapButton
+    equal(launcher.parent, Minimap)
+    window:Hide()
+    UIParent.width = 776
+    launcher:OnClick()
+    equal(window:IsShown(), true)
+    assert(window.scale < 1)
+    launcher:OnClick()
+    equal(window:IsShown(), false)
+    launcher:OnDragStart()
+    launcher:OnUpdate()
+    launcher:OnDragStop()
+    equal(launcher.OnUpdate, nil)
+    equal(AzerothCardBinderDB.minimapAngle, 90)
+    equal(launcher.point[5], 73)
+    UIParent.width = 1200
 end)
 
 test("loot slots dedup by source, including mixed sources and auto-loot close", function()
@@ -427,7 +546,7 @@ test("Trade panel sends only supported outdoor whispers and filters incoming mes
     end
     SlashCmdList.AZEROTHCARDBINDER("trade")
     for _, widget in ipairs(widgets) do
-        if widget.OnEnterPressed then widget:SetText("Bob") break end
+        if widget.OnEnterPressed and not widget.OnTextChanged then widget:SetText("Bob") break end
     end
     click(">")
     instance = 36

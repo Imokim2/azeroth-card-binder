@@ -2,9 +2,9 @@ local _, ACB = ...
 
 ACB.rates = { normal = 50, elite = 100, rare = 500, rareelite = 500, gathering = 50 }
 ACB.pages = {
-    { title = "Deadmines", subtitle = "The Defias hideout", cards = {} },
-    { title = "Westfall", subtitle = "The fields beyond Sentinel Hill", cards = {} },
-    { title = "Gathering", subtitle = "Finds from the field", cards = {} },
+    { title = "Deadmines", group = "Dungeon", code = "DM", subtitle = "The Defias hideout", cards = {} },
+    { title = "Westfall", group = "Zone", code = "WF", subtitle = "The fields beyond Sentinel Hill", cards = {} },
+    { title = "Gathering", group = "Profession", code = "GA", subtitle = "Finds from the field", cards = {} },
 }
 ACB.cards, ACB.sources = {}, { Creature = {}, GameObject = {} }
 

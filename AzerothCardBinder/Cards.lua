@@ -342,7 +342,9 @@ function ACB.createCard(parent)
         self.countBadge:SetShown(count > 1)
         self.count:SetText("x" .. count)
 
-        self.lore:SetText(found and entry.lore or "Defeat this foe to add it to your binder.")
+        local missing = entry.profession and "Gather this node to add it to your binder."
+            or "Defeat this foe to add it to your binder."
+        self.lore:SetText(found and entry.lore or missing)
         local lore = found and gold or { 0.55, 0.52, 0.46 }
         self.lore:SetTextColor(lore[1], lore[2], lore[3])
     end
