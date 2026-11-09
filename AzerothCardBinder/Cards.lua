@@ -12,11 +12,11 @@ ACB.cardWidth, ACB.cardHeight = WIDTH, HEIGHT
 local FONT = "Fonts\\FRIZQT__.TTF"
 local STONE = "Interface\\FrameGeneral\\UI-Background-Rock"
 local PAD = 7
-local PORTRAIT = { width = WIDTH - PAD * 2, height = 96 }
-local PLATE = { top = 108, height = 20 }
+local PORTRAIT = { width = WIDTH - PAD * 2, height = 92 }
+local PLATE = { top = 104, height = 20 }
 local NAME_WIDTH = PORTRAIT.width - 30 -- the rarity gem takes the left end of the plate
-local SUBLINE_TOP = 129
-local LORE = { top = 151, height = 34 }
+local SUBLINE_TOP = 125
+local LORE = { top = 147, height = 29 } -- three short lines, with the serial number beneath
 local SHINY = { 0.55, 0.92, 1 }
 local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
 local panel, plate = { 0.055, 0.05, 0.045 }, { 0.06, 0.05, 0.04 }
@@ -257,9 +257,19 @@ function ACB.createCard(parent, previewUnowned)
     trim:SetBackdropBorderColor(goldDark[1], goldDark[2], goldDark[3], 0.9)
     trim:SetFrameLevel(level + 1)
     card.trim = trim
-    for _, corner in ipairs({ { "TOPLEFT", 1, -1 }, { "TOPRIGHT", -1, -1 }, { "BOTTOMLEFT", 1, 1 }, { "BOTTOMRIGHT", -1, 1 } }) do
-        local stud = diamond(trim, 5, gold)
-        stud:SetPoint("CENTER", trim, corner[1], corner[2] * 2, corner[3] * 2)
+
+    -- Four corner studs in the rarity colour. They live on their own frame above every other layer, so the
+    -- two at the bottom are not hidden by the text box.
+    card.studFrame = CreateFrame("Frame", nil, frame)
+    card.studFrame:SetAllPoints(frame)
+    card.studFrame:SetFrameLevel(level + 8)
+    card.studs = {}
+    for _, corner in ipairs({ { "TOPLEFT", 6, -6 }, { "TOPRIGHT", -6, -6 }, { "BOTTOMLEFT", 6, 6 }, { "BOTTOMRIGHT", -6, 6 } }) do
+        local bezel = diamond(card.studFrame, 10, { 0.03, 0.025, 0.02 })
+        bezel:SetPoint("CENTER", card.studFrame, corner[1], corner[2], corner[3])
+        local stud = diamond(card.studFrame, 7, gold)
+        stud:SetPoint("CENTER", card.studFrame, corner[1], corner[2], corner[3])
+        card.studs[#card.studs + 1] = stud
     end
 
     -- Portrait window: zone art, then the 3D model on top.
@@ -345,6 +355,7 @@ function ACB.createCard(parent, previewUnowned)
     local badges = CreateFrame("Frame", nil, frame)
     badges:SetAllPoints(frame)
     badges:SetFrameLevel(level + 5)
+    card.badges = badges
     card.countBadge = strip(badges, WIDTH - PAD - 3 - 24, PAD + 3, 24, 16, { 0.04, 0.035, 0.03 })
     card.count = card.countBadge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     card.count:SetPoint("CENTER")
@@ -365,8 +376,16 @@ function ACB.createCard(parent, previewUnowned)
     card.gem:SetPoint("CENTER", frame, "TOPLEFT", PAD + 11, -(PLATE.top + PLATE.height / 2))
 
     -- A dark text box so the rarity line and the description stay readable over the stone.
-    local textBox = strip(frame, PAD, SUBLINE_TOP - 3, PORTRAIT.width, HEIGHT - 6 - (SUBLINE_TOP - 3), { 0.04, 0.035, 0.03 })
+    local textBox
+    textBox = strip(frame, PAD, SUBLINE_TOP - 3, PORTRAIT.width, HEIGHT - 6 - (SUBLINE_TOP - 3), { 0.04, 0.035, 0.03 })
     textBox:SetFrameLevel(level + 4)
+    card.textBox = textBox
+
+    -- The card's serial number, at the bottom in the middle.
+    card.serial = badges:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    card.serial:SetPoint("BOTTOM", frame, "BOTTOM", 0, 8)
+    card.serial:SetFont(FONT, 7, "")
+    card.serial:SetTextColor(0.62, 0.6, 0.56)
 
     card.subline = badges:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     card.subline:SetPoint("TOP", frame, "TOPLEFT", WIDTH / 2, -SUBLINE_TOP)
@@ -387,6 +406,7 @@ function ACB.createCard(parent, previewUnowned)
     card.lore:SetWidth(PORTRAIT.width - 8)
     card.lore:SetHeight(LORE.height)
     card.lore:SetFont(FONT, 9, "")
+    safe(card.lore.SetMaxLines, card.lore, 3)
     card.lore:SetJustifyH("CENTER")
     card.lore:SetJustifyV("TOP")
     card.lore:SetWordWrap(true)
@@ -431,6 +451,9 @@ function ACB.createCard(parent, previewUnowned)
         if self.shine then
             if shiny then safe(self.shine.Play, self.shine) else safe(self.shine.Stop, self.shine) end
         end
+        for _, stud in ipairs(self.studs) do stud:SetVertexColor(color[1] * dim, color[2] * dim, color[3] * dim, 1) end
+        self.serial:SetText("No. " .. entry.serial)
+        self.serial:SetAlpha(found and 1 or 0.6)
         self.glow:SetBackdropBorderColor(color[1], color[2], color[3], found and 0.55 or 0.25)
         self.art:show(entry.zone, showModel)
 
@@ -472,7 +495,9 @@ function ACB.createCard(parent, previewUnowned)
 
         local missing = entry.profession and "Gather this node to add it to your binder."
             or "Defeat this foe to add it to your binder."
-        self.lore:SetText(found and entry.lore or missing)
+        local text = found and entry.lore or missing
+        self.lore:SetFont(FONT, #text > 64 and 8 or 9, "") -- longer lines get a touch smaller so three lines hold them
+        self.lore:SetText(text)
         local lore = found and gold or { 0.55, 0.52, 0.46 }
         self.lore:SetTextColor(lore[1], lore[2], lore[3])
     end

@@ -476,7 +476,9 @@ local methods = {
     SetFontObject = ignore, SetScrollChild = ignore, SetVerticalScroll = ignore, HighlightText = ignore,
     ClearFocus = ignore, SetClipsChildren = ignore,
     SetColorTexture = function(self) self.colorTexture = true end, SetFont = ignore,
-    SetVertexColor = ignore, SetFrameLevel = ignore, GetFrameLevel = function() return 1 end,
+    SetVertexColor = function(self, r, g, b) self.vertex = { r, g, b } end,
+    SetFrameLevel = function(self, level) self.level = level end,
+    GetFrameLevel = function(self) return self.level or 1 end, SetMaxLines = ignore,
     SetWordWrap = ignore, SetRotation = ignore, SetShadowOffset = ignore, SetSpacing = ignore, SetShadowColor = ignore, GetStringWidth = function() return 6 end, SetJustifyV = ignore, ClearAllPoints = ignore,
     SetKeepModelOnHide = function(self, keep) self.keepModel = keep end,
     ClearModel = function(self) self.creature, self.fileID, self.frozen = nil, nil, nil end,
@@ -752,6 +754,48 @@ test("a finished set shows its own pop-up with the title", function()
     AzerothCardBinderDB.popups = nil
 end)
 
+test("card studs follow the rarity colour, sit above the text, and the serial number shows", function()
+    local card = ACB.createCard(UIParent)
+    card:set(ACB.cards["npc:639"], 1) -- legendary
+    local legendary, epic = ACB.rarities.legendary.color, ACB.rarities.epic.color
+    equal(#card.studs, 4)
+    for _, stud in ipairs(card.studs) do
+        equal(stud.vertex[1], legendary[1])
+        equal(stud.vertex[2], legendary[2])
+        equal(stud.vertex[3], legendary[3])
+    end
+    assert(card.studFrame.level > card.textBox.level, "studs sit above the text box")
+    assert(card.studFrame.level > card.badges.level, "studs sit above the name and text")
+    equal(card.serial.text, "No. 000639")
+    card:set(ACB.cards["npc:573"], 1) -- epic
+    equal(card.studs[3].vertex[1], epic[1])
+    equal(card.serial.text, "No. 000573")
+    card:set(ACB.cards["node:1731"], 1)
+    equal(card.serial.text, "No. N01731")
+    card:set(ACB.cards["npc:639"], 0) -- missing cards keep the rarity colour, dimmer
+    equal(card.studs[1].vertex[1], legendary[1] * 0.5)
+end)
+
+test("sets are listed by level, then by name", function()
+    local order = ACB.setOrder()
+    equal(#order, #ACB.pages)
+    local last, position = 0, {}
+    for place, index in ipairs(order) do
+        local page = ACB.pages[index]
+        local low = page.levelMid or 1000
+        assert(low >= last, page.title .. " is out of level order")
+        last = low
+        position[page.zone] = place
+    end
+    assert(position["elwynn-forest"] < position["deadmines"], "level 1 zones come before dungeons")
+    assert(position["deadmines"] < position["blackrock-depths"])
+    assert(position["westfall"] < position["blackrock-depths"])
+    assert(position["blackrock-depths"] < position["molten-core"], "raids come last")
+    -- Set numbers are untouched by the listing order.
+    equal(ACB.pages[1].title, "Deadmines")
+    equal(ACB.pages[2].title, "Westfall")
+end)
+
 test("shiny cards show the foil and plain or missing cards do not", function()
     local card = ACB.createCard(UIParent)
     card:set(ACB.cards["npc:639"], 1, true)
@@ -896,6 +940,9 @@ test("index searches categories and opens sets beyond the original tabs", functi
     SlashCmdList.AZEROTHCARDBINDER("index")
     search = findWidget(function(widget) return widget.OnTextChanged ~= nil end)
     search:SetText(" ZoNe ")
+    search:OnTextChanged()
+    equal(button("More").enabled, true) -- many zones, listed over several pages
+    search:SetText("Westfall")
     search:OnTextChanged()
     equal(indexRow("Westfall"):IsShown(), true)
     search:SetText("%")
