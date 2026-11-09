@@ -1,5 +1,7 @@
 local _, ACB = ...
 
+-- A card you find for the first time has a 1 in `shinyOdds` chance to be a shiny copy.
+ACB.shinyOdds = 20
 ACB.rates = { normal = 50, elite = 100, rare = 500, rareelite = 500, gathering = 50 }
 ACB.pages = {
     { title = "Deadmines", group = "Dungeon", code = "DM", subtitle = "The Defias hideout", cards = {} },

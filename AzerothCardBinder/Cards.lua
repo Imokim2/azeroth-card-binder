@@ -17,6 +17,7 @@ local PLATE = { top = 108, height = 20 }
 local NAME_WIDTH = PORTRAIT.width - 30 -- the rarity gem takes the left end of the plate
 local SUBLINE_TOP = 129
 local LORE = { top = 151, height = 34 }
+local SHINY = { 0.55, 0.92, 1 }
 local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
 local panel, plate = { 0.055, 0.05, 0.045 }, { 0.06, 0.05, 0.04 }
 
@@ -222,6 +223,7 @@ function ACB.createCard(parent, previewUnowned)
     trim:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     trim:SetBackdropBorderColor(goldDark[1], goldDark[2], goldDark[3], 0.9)
     trim:SetFrameLevel(level + 1)
+    card.trim = trim
     for _, corner in ipairs({ { "TOPLEFT", 1, -1 }, { "TOPRIGHT", -1, -1 }, { "BOTTOMLEFT", 1, 1 }, { "BOTTOMRIGHT", -1, 1 } }) do
         local stud = diamond(trim, 5, gold)
         stud:SetPoint("CENTER", trim, corner[1], corner[2] * 2, corner[3] * 2)
@@ -259,6 +261,46 @@ function ACB.createCard(parent, previewUnowned)
     card.glow:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -1, 1)
     card.glow:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 2 })
     card.glow:SetFrameLevel(level + 4)
+
+    -- Shiny cards get a foil sheen over the portrait and a band of light that sweeps across it.
+    card.foil = CreateFrame("Frame", nil, window)
+    card.foil:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
+    card.foil:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -1, 1)
+    card.foil:SetFrameLevel(level + 4)
+    safe(card.foil.SetClipsChildren, card.foil, true)
+    local sheen = card.foil:CreateTexture(nil, "OVERLAY")
+    sheen:SetAllPoints(card.foil)
+    sheen:SetColorTexture(0.6, 0.85, 1, 0.12)
+    safe(sheen.SetBlendMode, sheen, "ADD")
+    if CreateColor and sheen.SetGradient then
+        safe(sheen.SetGradient, sheen, "VERTICAL", CreateColor(0.2, 0.9, 1, 0.20), CreateColor(1, 0.5, 0.9, 0.12))
+    end
+    local bandWidth = inner.width * 0.32
+    local band = CreateFrame("Frame", nil, card.foil)
+    band:SetSize(bandWidth, inner.height)
+    band:SetPoint("LEFT", card.foil, "LEFT", -bandWidth, 0)
+    for _, side in ipairs({ { "LEFT", 0, 0.45 }, { "RIGHT", 0.45, 0 } }) do
+        local half = band:CreateTexture(nil, "OVERLAY")
+        half:SetSize(bandWidth / 2, inner.height)
+        half:SetPoint(side[1], band, side[1], 0, 0)
+        half:SetColorTexture(1, 1, 1, 0.2)
+        safe(half.SetBlendMode, half, "ADD")
+        if CreateColor and half.SetGradient then
+            safe(half.SetGradient, half, "HORIZONTAL", CreateColor(1, 1, 1, side[2]), CreateColor(1, 1, 1, side[3]))
+        end
+    end
+    safe(function()
+        card.shine = band:CreateAnimationGroup()
+        card.shine:SetLooping("REPEAT")
+        local move = card.shine:CreateAnimation("Translation")
+        move:SetOffset(inner.width + bandWidth * 2, 0)
+        move:SetDuration(1.1)
+        move:SetOrder(1)
+        local rest = card.shine:CreateAnimation("Animation")
+        rest:SetDuration(2.8)
+        rest:SetOrder(2)
+    end)
+    card.foil:Hide()
 
     -- Only used when the client cannot load a gathering node's model.
     card.node = card.model:CreateTexture(nil, "ARTWORK")
@@ -324,6 +366,7 @@ function ACB.createCard(parent, previewUnowned)
         local rarity = ACB.rarities[entry.rarity]
         GameTooltip:AddLine(entry.name, unpack(rarity.color))
         GameTooltip:AddLine(rarity.name .. " " .. typeName(entry), 0.8, 0.8, 0.8)
+        if card.shiny then GameTooltip:AddLine("Shiny", SHINY[1], SHINY[2], SHINY[3]) end
         GameTooltip:AddLine(("%g%% chance per source"):format(ACB.rates[entry.rank] / 100), 0.65, 0.61, 0.54)
         if card.owned > 0 then
             GameTooltip:AddLine(("Owned %d, spare %d"):format(card.owned, card.owned - 1), 0.54, 0.80, 0.61)
@@ -337,15 +380,22 @@ function ACB.createCard(parent, previewUnowned)
     end)
 
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
-    function card:set(entry, count)
+    function card:set(entry, count, shiny)
         local found = count > 0
         local showModel = found or previewUnowned
-        self.entry, self.owned = entry, count
+        shiny = found and shiny == true
+        self.entry, self.owned, self.shiny = entry, count, shiny
         local rarity = ACB.rarities[entry.rarity]
         local color = rarity.color
         local dim = found and 1 or 0.5
 
         frame:SetBackdropBorderColor(color[1] * dim, color[2] * dim, color[3] * dim, 1)
+        local trimColor = shiny and { SHINY[1], SHINY[2], SHINY[3], 1 } or { goldDark[1], goldDark[2], goldDark[3], 0.9 }
+        self.trim:SetBackdropBorderColor(unpack(trimColor))
+        self.foil:SetShown(shiny)
+        if self.shine then
+            if shiny then safe(self.shine.Play, self.shine) else safe(self.shine.Stop, self.shine) end
+        end
         self.glow:SetBackdropBorderColor(color[1], color[2], color[3], found and 0.55 or 0.25)
         self.art:show(entry.zone, showModel)
 
@@ -378,8 +428,8 @@ function ACB.createCard(parent, previewUnowned)
         self.name:SetTextColor(color[1] * dim, color[2] * dim, color[3] * dim)
         self.gem:SetVertexColor(color[1], color[2], color[3], 1)
         self.gem:SetAlpha(dim)
-        self.subline:SetText(("%s%s|r  %s%s|r"):format(hex({ color[1] * dim, color[2] * dim, color[3] * dim }),
-            rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry)))
+        self.subline:SetText(("%s%s|r  %s%s|r%s"):format(hex({ color[1] * dim, color[2] * dim, color[3] * dim }),
+            rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry), shiny and ("  " .. hex(SHINY) .. "Shiny|r") or ""))
 
         self.countBadge:SetShown(count > 1)
         self.count:SetText("x" .. count)

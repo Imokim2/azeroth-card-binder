@@ -255,11 +255,12 @@ function ACB.initUI(saved, trade)
         mine.header:SetText(name)
         theirs.header:SetText(partnerName ~= "" and partnerName or "Partner")
         chooseText:SetText(offering and offering.name or "Choose a duplicate")
-        local function fill(side, card, owned)
+        local function fill(side, card, owned, shiny)
             side.card.frame:SetShown(card ~= nil)
-            if card then side.card:set(card, owned) end
+            if card then side.card:set(card, owned, shiny) end
         end
-        fill(mine, offering, offering and saved.counts[offering.key] or 0)
+        fill(mine, offering, offering and saved.counts[offering.key] or 0,
+            offering and saved.shiny and saved.shiny[offering.key])
         fill(theirs, take, 1)
         mine.hint:SetText(offering and "" or "Use < and > to pick one of your spare cards.")
         theirs.hint:SetText(take and "" or (session and "Waiting for their card." or "Their offer will appear here."))

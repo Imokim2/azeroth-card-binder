@@ -72,9 +72,10 @@ local function mountCard(parent, x, y, scale, isDetail)
     return card
 end
 
-local function setCard(card, entry, count)
-    if card.entry ~= entry or card.owned ~= count then
-        card:set(entry, count)
+local function setCard(card, entry, count, shiny)
+    shiny = shiny == true
+    if card.entry ~= entry or card.owned ~= count or card.shiny ~= (count > 0 and shiny) then
+        card:set(entry, count, shiny)
     end
 end
 
@@ -285,10 +286,11 @@ function ACB.createFolio(parent, saved, selectSet)
                 pocket.frame:SetBackdropBorderColor(unpack(active and INK or EDGE))
                 pocket.number:SetText(("%02d"):format(slot))
                 pocket.name:SetText(entry.name)
-                pocket.status:SetText(count > 0 and ("%d owned / %d spare"):format(count, count - 1) or "Missing")
+                local shiny = saved.shiny and saved.shiny[entry.key] == true
+                pocket.status:SetText(count > 0 and ("%d owned / %d spare%s"):format(count, count - 1, shiny and " / Shiny" or "") or "Missing")
                 pocket.empty:SetShown(count == 0)
                 pocket.miniature.frame:SetShown(count > 0)
-                if count > 0 then setCard(pocket.miniature, entry, count) end
+                if count > 0 then setCard(pocket.miniature, entry, count, shiny) end
             end
         end
 
@@ -304,7 +306,7 @@ function ACB.createFolio(parent, saved, selectSet)
         owned:SetText(tostring(count))
         spare:SetText(tostring(math.max(0, count - 1)))
         detailNote:SetText(count > 0 and entry.lore or "Missing from your binder.")
-        setCard(detail, entry, count)
+        setCard(detail, entry, count, saved.shiny and saved.shiny[entry.key])
 
         for slot, label in ipairs(milestones) do
             label:SetShown(index == 1)

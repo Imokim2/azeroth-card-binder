@@ -262,7 +262,13 @@ local function initialize()
             saved.counts[key] = nil
         end
     end
-    collection = ACB.newCollection(saved, math.random, report, log)
+    saved.shiny = tableOrEmpty(saved.shiny)
+    for key, value in pairs(saved.shiny) do
+        if value ~= true or not ACB.cards[key] then saved.shiny[key] = nil end
+    end
+    collection = ACB.newCollection(saved, math.random, report, log, function(card, info)
+        if ACB.showToast then ACB.showToast(card, info) end
+    end)
     local sequence = 0
     trade = ACB.newTrade(saved.counts, GetTime, function()
         sequence = sequence + 1
@@ -281,6 +287,7 @@ local function initialize()
     end
     ACB.initUI(saved, trade)
     ACB.initLauncher(saved)
+    ACB.initToast(saved)
     SLASH_AZEROTHCARDBINDER1, SLASH_AZEROTHCARDBINDER2 = "/acb", "/cardbinder"
     SlashCmdList.AZEROTHCARDBINDER = function(message)
         local cmd = message:lower():match("^%s*(.-)%s*$")
@@ -293,12 +300,22 @@ local function initialize()
         elseif cmd == "boss" then
             saved.bossTrial = not saved.bossTrial
             report("VanCleef completion trial " .. (saved.bossTrial and "on." or "off."))
+        elseif cmd == "popup" then
+            saved.popups = saved.popups == false
+            report("Card pop-ups " .. (saved.popups == false and "off." or "on."))
+        elseif cmd == "popup test" then
+            local demo = ACB.cards["npc:639"]
+            if saved.popups == false then
+                report("Card pop-ups are off. Use /acb popup to turn them on.")
+            else
+                ACB.showToast(demo, { count = 1, first = true, shiny = true })
+            end
         elseif cmd == "trade" or cmd == "index" then
             ACB.open(cmd)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, popup, popup test, diag, log, boss.")
         end
     end
 end

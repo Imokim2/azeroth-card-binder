@@ -37,6 +37,7 @@ for _, rate in ipairs({
         local rolls, draws = 0, { rate.limit, rate.limit + 1 }
         local collection = ACB.newCollection(saved, function(min, max)
             equal(min, 1)
+            if max == ACB.shinyOdds then return 2 end -- not shiny
             equal(max, 10000)
             rolls = rolls + 1
             return draws[rolls]
@@ -162,6 +163,29 @@ test("a lost confirmation is healed by re-sending, and nobody applies twice", fu
     equal(aCards["npc:639"], 1)
     equal(bCards["npc:589"], 1)
     equal(bCards["npc:639"], 1)
+end)
+
+test("a first copy can be shiny once per card and the pop-up hook hears about it", function()
+    local saved = { counts = {}, achievements = {} }
+    local shinyRolls, found = 0, {}
+    local collection = ACB.newCollection(saved, function(min, max)
+        if max == ACB.shinyOdds then shinyRolls = shinyRolls + 1 end
+        return 1
+    end, ignore, ignore, function(card, info) found[#found + 1] = { card = card, info = info } end)
+    collection:roll(guid(589, "A"), "loot")
+    equal(saved.shiny["npc:589"], true)
+    equal(found[1].info.shiny, true)
+    equal(found[1].info.first, true)
+    collection:roll(guid(589, "B"), "loot")
+    equal(shinyRolls, 1) -- an owned shiny is never rolled for again
+    equal(found[2].info.shiny, false)
+    equal(found[2].info.first, false)
+    equal(found[2].info.count, 2)
+    saved.counts["npc:590"] = 2
+    collection:swap("npc:590", "npc:114")
+    equal(found[3].card.key, "npc:114")
+    equal(found[3].info.trade, true)
+    equal(saved.shiny["npc:114"], nil) -- trades never hand out shiny copies
 end)
 
 test("two peers confirm the exact pair and each applies the swap once", function()
@@ -303,6 +327,7 @@ function GetCursorPosition() return 80, 140 end
 local secret = setmetatable({}, { __tostring = function() error("secret value used") end })
 function issecretvalue(value) return value == secret end
 local clock, slots, rolls, draw, instance = 10, {}, 0, 1, 0
+local shinyDraw = 2 -- 1 would make the next find shiny
 local target, dead, rank, playerDead, combat, locked
 local timers = {}
 C_Timer = { After = function(_, callback) timers[#timers + 1] = callback end }
@@ -337,11 +362,13 @@ print = function(message)
     if not message:find("|cffe8bc6b", 1, true) then realPrint(message) end
 end
 math.random = function(min, max)
+    if max == ACB.shinyOdds then return shinyDraw end
     if max == 10000 then rolls = rolls + 1 return draw end
     return realRandom(min, max)
 end
 AzerothCardBinderDB = { counts = { invalid = -1 }, diagnostics = true }
 loadAddon("Cards.lua")
+loadAddon("Toast.lua")
 loadAddon("Folio.lua")
 loadAddon("Binder.lua")
 loadAddon("Minimap.lua")
@@ -383,6 +410,44 @@ test("cards draw for missing, owned and gathering entries", function()
     ACB.open(2)
     ACB.open(3)
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
+end)
+
+test("shiny cards show the foil and plain or missing cards do not", function()
+    local card = ACB.createCard(UIParent)
+    card:set(ACB.cards["npc:639"], 1, true)
+    equal(card.foil:IsShown(), true)
+    card:set(ACB.cards["npc:639"], 1, false)
+    equal(card.foil:IsShown(), false)
+    card:set(ACB.cards["npc:639"], 0, true)
+    equal(card.foil:IsShown(), false)
+end)
+
+test("pop-ups queue, fade away, play a sound and can be turned off", function()
+    local saved = AzerothCardBinderDB
+    local played = {}
+    PlaySound = function(id) played[#played + 1] = id end
+    SOUNDKIT = { UI_EPICLOOT_TOAST = 11, UI_LEGENDARY_LOOT_TOAST = 22, IG_QUEST_LIST_COMPLETE = 33 }
+    local toast = ACB.toast
+    equal(toast:IsShown(), false)
+    ACB.showToast(ACB.cards["npc:589"], { count = 1, first = true, shiny = true })
+    equal(toast:IsShown(), true)
+    equal(played[1], 22) -- a shiny always gets the top sound
+    ACB.showToast(ACB.cards["npc:589"], { count = 2 })
+    equal(#played, 1) -- the second waits its turn
+    toast.OnUpdate(toast, 10)
+    equal(toast:IsShown(), true)
+    equal(played[2], 33) -- common cards use the plainest sound
+    toast.OnUpdate(toast, 10)
+    equal(toast:IsShown(), false)
+    saved.popups = false
+    ACB.showToast(ACB.cards["npc:639"], { first = true })
+    equal(toast:IsShown(), false)
+    saved.popups = nil
+    SlashCmdList.AZEROTHCARDBINDER("popup test")
+    equal(toast:IsShown(), true)
+    toast.OnUpdate(toast, 10)
+    PlaySound, SOUNDKIT = nil, nil
+    equal(ACB.playToastSound("epic", false), nil) -- no sound system, nothing breaks
 end)
 
 test("cinematic detail applies the pose after loading and falls back for unsupported animations", function()

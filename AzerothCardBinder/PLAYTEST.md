@@ -26,6 +26,12 @@ Cards are keyed by NPC or object ID. A session remembers each rolled spawn token
 
 The encounter trial is deliberately narrow. If the required events, boss token or corpse are absent at completion, the regular loot route still applies. Loot attribution, gathering spell payloads, boss eligibility, and SavedVariables restoration need a live pass on the launch client.
 
+## Pop-ups and shiny cards
+
+When a card is added to the binder, a pop-up shows the card with a sound: **New card**, **Duplicate**, **Shiny card!** or **Received in trade**. Pop-ups queue, pause under the mouse, open the binder when left-clicked and close on right-click. `/acb popup` turns them on or off, and `/acb popup test` shows a sample so you can check the look and sound.
+
+The first copy of each card you find has a 1 in 20 chance of being a shiny copy, shown with a foil sheen, a sweep of light and a cyan trim. You can own one shiny per card. Trades never move a shiny copy, so a shiny stays with the player who found it. The sound kit names are looked up when the pop-up plays and skipped if this client does not have them, so listen for a sound on the first test.
+
 ## Trading
 
 Both players need this version and at least one duplicate each. Meet outdoors and out of combat, open `/acb trade`, then enter each other's character name. Use `Name-Realm` if needed.

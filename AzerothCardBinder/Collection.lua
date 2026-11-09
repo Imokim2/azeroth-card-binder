@@ -26,7 +26,9 @@ function ACB.progress(counts, page, bossesOnly)
     return owned, total
 end
 
-function ACB.newCollection(saved, random, report, log)
+-- `found` is called with the card and what happened whenever a card is added to the binder.
+function ACB.newCollection(saved, random, report, log, found)
+    found = found or function() end
     local collection = { saved = saved, rolled = {} }
 
     local function checkAchievements(card)
@@ -57,8 +59,13 @@ function ACB.newCollection(saved, random, report, log)
 
         local counts = saved.counts
         counts[card.key] = (counts[card.key] or 0) + 1
-        report("Card found: " .. card.name .. " (x" .. counts[card.key] .. ")")
+        -- The shiny copy is a one-time bonus per card: once you own it, later finds are plain duplicates.
+        saved.shiny = saved.shiny or {}
+        local shiny = not saved.shiny[card.key] and random(1, ACB.shinyOdds) == 1
+        if shiny then saved.shiny[card.key] = true end
+        report(("%s: %s (x%d)"):format(shiny and "Shiny card found" or "Card found", card.name, counts[card.key]))
         checkAchievements(card)
+        found(card, { count = counts[card.key], first = counts[card.key] == 1, shiny = shiny })
         return true
     end
 
@@ -72,6 +79,7 @@ function ACB.newCollection(saved, random, report, log)
         counts[take] = (counts[take] or 0) + 1
         report(("Traded %s for %s (x%d)"):format(out.name, into.name, counts[take]))
         checkAchievements(into)
+        found(into, { count = counts[take], first = counts[take] == 1, trade = true })
         return true
     end
 
