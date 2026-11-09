@@ -61,6 +61,18 @@ function ACB.initToast(saved)
     card.frame:SetPoint("TOP", frame, "TOP", 0, -34)
     card.frame:EnableMouse(false) -- let the pop-up itself take the clicks
 
+    -- A finished set has no card, so it gets its own text.
+    local setName = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    setName:SetPoint("TOP", frame, "TOP", 0, -78)
+    setName:SetWidth(WIDTH - 24)
+    setName:SetFont(FONT, 20, "OUTLINE")
+    setName:SetTextColor(gold[1], gold[2], gold[3])
+    local setReward = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    setReward:SetPoint("TOP", frame, "TOP", 0, -140)
+    setReward:SetWidth(WIDTH - 24)
+    setReward:SetFont(FONT, 13, "")
+    setReward:SetTextColor(0.55, 0.92, 1)
+
     local footer = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     footer:SetPoint("BOTTOM", frame, "BOTTOM", 0, 14)
     footer:SetFont(FONT, 10, "")
@@ -74,6 +86,24 @@ function ACB.initToast(saved)
     end
 
     function ACB.beginToast(item)
+        if item.set then
+            header:SetText("SET COMPLETE")
+            header:SetTextColor(gold[1], gold[2], gold[3])
+            frame:SetBackdropBorderColor(gold[1], gold[2], gold[3], 1)
+            card.frame:Hide()
+            setName:SetText(item.set.title)
+            setReward:SetText(item.reward and ("Title earned:\n" .. item.reward) or "")
+            footer:SetText(("%d cards collected"):format(item.total or 0))
+            current = { elapsed = 0, item = item, paused = false }
+            frame:SetAlpha(0)
+            frame:SetScale(0.85)
+            frame:Show()
+            ACB.playToastSound("legendary", false)
+            return
+        end
+        card.frame:Show()
+        setName:SetText("")
+        setReward:SetText("")
         local entry, info = item.card, item.info
         local text, color = headline(info)
         local rarity = ACB.rarities[entry.rarity]
@@ -128,6 +158,17 @@ function ACB.initToast(saved)
     function ACB.showToast(entry, info)
         if saved.popups == false or not entry then return end
         queue[#queue + 1] = { card = entry, info = info or {} }
+        if current then
+            if #queue > MAX_QUEUE then table.remove(queue, 1) end
+        else
+            ACB.beginToast(table.remove(queue, 1))
+        end
+    end
+
+    -- Show that a whole set has been finished and which title it earned.
+    function ACB.showSetToast(page, reward)
+        if saved.popups == false or not page then return end
+        queue[#queue + 1] = { set = page, reward = reward, total = #page.cards }
         if current then
             if #queue > MAX_QUEUE then table.remove(queue, 1) end
         else

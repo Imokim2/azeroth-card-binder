@@ -372,6 +372,7 @@ function ACB.createCard(parent, previewUnowned)
             GameTooltip:AddLine(("Owned %d, spare %d"):format(card.owned, card.owned - 1), 0.54, 0.80, 0.61)
         else
             GameTooltip:AddLine("Not in your binder yet", 0.65, 0.61, 0.54)
+            GameTooltip:AddLine(ACB.whereToFind(entry), 0.65, 0.61, 0.54, true)
         end
         GameTooltip:Show()
     end)
@@ -380,10 +381,11 @@ function ACB.createCard(parent, previewUnowned)
     end)
 
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
-    function card:set(entry, count, shiny)
+    function card:set(entry, count, shiny, wanted)
         local found = count > 0
         local showModel = found or previewUnowned
         shiny = found and shiny == true
+        wanted = not found and wanted == true
         self.entry, self.owned, self.shiny = entry, count, shiny
         local rarity = ACB.rarities[entry.rarity]
         local color = rarity.color
@@ -429,7 +431,8 @@ function ACB.createCard(parent, previewUnowned)
         self.gem:SetVertexColor(color[1], color[2], color[3], 1)
         self.gem:SetAlpha(dim)
         self.subline:SetText(("%s%s|r  %s%s|r%s"):format(hex({ color[1] * dim, color[2] * dim, color[3] * dim }),
-            rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry), shiny and ("  " .. hex(SHINY) .. "Shiny|r") or ""))
+            rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry),
+            (shiny and ("  " .. hex(SHINY) .. "Shiny|r") or "") .. (wanted and ("  " .. hex(SHINY) .. "Wanted|r") or "")))
 
         self.countBadge:SetShown(count > 1)
         self.count:SetText("x" .. count)

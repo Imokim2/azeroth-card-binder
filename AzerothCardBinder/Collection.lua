@@ -15,6 +15,47 @@ function ACB.source(guid)
     if entries then return entries[tonumber(id)], kind end
 end
 
+-- Remember finished trades, newest first.
+function ACB.logTrade(saved, give, take, peer, when)
+    saved.history = saved.history or {}
+    table.insert(saved.history, 1, { give = give, take = take, peer = peer, time = when })
+    while #saved.history > 20 do table.remove(saved.history) end
+end
+
+-- The trade history as printable lines.
+function ACB.tradeHistory(saved)
+    local lines = {}
+    for _, entry in ipairs(saved.history or {}) do
+        local out, into = ACB.cards[entry.give], ACB.cards[entry.take]
+        if out and into then
+            local stamp = entry.time and (date and date("%d %b %H:%M", entry.time) or tostring(entry.time)) or ""
+            lines[#lines + 1] = ("%s   %s for %s   with %s"):format(stamp, out.name, into.name, entry.peer or "?")
+        end
+    end
+    return lines
+end
+
+-- The cards a player is looking for: the ones they marked, or every card they are missing.
+function ACB.wantedCards(saved)
+    local marked, missing = {}, {}
+    for _, page in ipairs(ACB.pages) do
+        for _, card in ipairs(page.cards) do
+            if (saved.counts[card.key] or 0) == 0 then
+                missing[#missing + 1] = card.key
+                if saved.wanted and saved.wanted[card.key] then marked[#marked + 1] = card.key end
+            end
+        end
+    end
+    return #marked > 0 and marked or missing
+end
+
+-- Attempts without a drop so far, and the attempt that is guaranteed, for a catalog card.
+function ACB.luck(saved, card)
+    local rate = ACB.rates[card.rank]
+    local limit = (ACB.pityFactor or 0) > 0 and math.ceil(ACB.pityFactor * 10000 / rate) or nil
+    return (saved.misses and saved.misses[card.key]) or 0, limit
+end
+
 function ACB.progress(counts, page, bossesOnly)
     local owned, total = 0, 0
     for _, card in ipairs(ACB.pages[page].cards) do
@@ -26,12 +67,32 @@ function ACB.progress(counts, page, bossesOnly)
     return owned, total
 end
 
--- `found` is called with the card and what happened whenever a card is added to the binder.
-function ACB.newCollection(saved, random, report, log, found)
+-- `found` is called with the card and what happened whenever a card is added to the binder, and
+-- `completed` with the set and its reward title the first time a set is finished.
+function ACB.newCollection(saved, random, report, log, found, completed)
     found = found or function() end
+    completed = completed or function() end
     local collection = { saved = saved, rolled = {} }
 
+    -- The first time every card of a set is owned, record it and hand out the set's title.
+    local function checkSet(card)
+        local page = ACB.pages[card.page]
+        local owned, total = ACB.progress(saved.counts, card.page)
+        if not page or not page.code or total == 0 or owned < total then return end
+        saved.sets = saved.sets or {}
+        if saved.sets[page.code] then return end
+        saved.sets[page.code] = true
+        if page.reward then
+            saved.titles = saved.titles or {}
+            saved.titles[page.reward] = true
+            saved.title = saved.title or page.reward
+        end
+        report(("Set complete: %s%s"):format(page.title, page.reward and (". Title earned: " .. page.reward) or ""))
+        completed(page, page.reward)
+    end
+
     local function checkAchievements(card)
+        checkSet(card)
         if card.page ~= 1 then return end
         for _, achievement in ipairs(ACB.achievements) do
             local owned, total = ACB.progress(saved.counts, 1, achievement.bossesOnly)
@@ -53,9 +114,18 @@ function ACB.newCollection(saved, random, report, log, found)
 
         self.rolled[guid] = true
         local threshold = ACB.rates[observedRank] or ACB.rates[card.rank]
-        local dropped = random(1, 10000) <= threshold
-        log(("%s: %s at %g%% (%s)"):format(origin, card.name, threshold / 100, dropped and "card" or "miss"))
-        if not dropped then return false end
+        saved.misses = saved.misses or {}
+        local misses = saved.misses[card.key] or 0
+        local limit = (ACB.pityFactor or 0) > 0 and math.ceil(ACB.pityFactor * 10000 / threshold) or nil
+        local guaranteed = limit ~= nil and misses + 1 >= limit
+        local dropped = guaranteed or random(1, 10000) <= threshold
+        log(("%s: %s at %g%% (%s)"):format(origin, card.name, threshold / 100,
+            guaranteed and "card, bad-luck safety net" or dropped and "card" or "miss"))
+        if not dropped then
+            saved.misses[card.key] = misses + 1
+            return false
+        end
+        saved.misses[card.key] = nil
 
         local counts = saved.counts
         counts[card.key] = (counts[card.key] or 0) + 1

@@ -32,6 +32,25 @@ When a card is added to the binder, a pop-up shows the card with a sound: **New 
 
 The first copy of each card you find has a 1 in 20 chance of being a shiny copy, shown with a foil sheen, a sweep of light and a cyan trim. You can own one shiny per card. Trades never move a shiny copy, so a shiny stays with the player who found it. The sound kit names are looked up when the pop-up plays and skipped if this client does not have them, so listen for a sound on the first test.
 
+## Bad-luck safety net
+
+Every card has a miss counter for its source. When a source has missed 2.5 times its expected number of attempts, the next attempt is guaranteed: the 500th for a 0.5% card, the 250th for 1% and the 50th for 5%. The counter resets on a drop. The tooltip hint and the log show progress. Change or switch off `ACB.pityFactor` in `Catalog.lua` (0 turns it off).
+
+## Hints
+
+Mob and node tooltips add a line saying whether the card is in your binder, its chance, and the safety-net progress. In the binder, a missing card's page says where to find it. `/acb hints` turns the tooltip lines off. Check that the line appears on a Westfall Defias Pillager, a Foe Reaper 4000 and a Copper Vein.
+
+## Sets, titles and the wanted list
+
+Each set has a progress bar in the folio and the index. Finishing a set shows a **Set complete** pop-up and earns a title (Defias Delver, Westfall Warden, Fieldhand). The chosen title shows in the binder header; `/acb title` lists them and `/acb title <number>` picks one. Missing cards have an **Add to wanted list** button on their page.
+
+## Sharing
+
+- Right-click a player: **Offer a card trade** opens the Trade tab with their name filled in, and **View their binder** asks for a read-only copy of their collection. `/acb view <name>` does the same. `/acb privacy` stops others viewing yours.
+- **Share lists** in the trade window sends your spare cards and your wanted cards to your partner. The window then shows which of their spares you need and which of yours they want. **History** lists your last trades.
+- **Link in chat** on a card you own (or `/acb link <name>`) puts a clickable card link in chat. Clicking a link opens the card at a readable size.
+- If a right-click entry or a link click does nothing, report which; both use client menu and hyperlink hooks that need a live check.
+
 ## Trading
 
 Both players need this version and at least one duplicate each. Meet outdoors and out of combat, open `/acb trade`, then enter each other's character name. Use `Name-Realm` if needed.
