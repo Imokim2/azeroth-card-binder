@@ -9,5 +9,6 @@
 Catalog.lua
 Collection.lua
 Trade.lua
+Cards.lua
 Binder.lua
 Forever.lua

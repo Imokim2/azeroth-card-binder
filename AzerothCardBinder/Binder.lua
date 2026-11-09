@@ -2,11 +2,6 @@ local _, ACB = ...
 local brass = { 0.88, 0.69, 0.40 }
 local parchment = { 0.94, 0.88, 0.75 }
 local muted = { 0.65, 0.61, 0.54 }
-local rankColors = {
-    normal = parchment, elite = { 0.54, 0.80, 0.61 },
-    rare = { 0.52, 0.72, 0.99 }, rareelite = { 0.52, 0.72, 0.99 }, gathering = brass,
-}
-local rankNames = { normal = "Normal", elite = "Elite", rare = "Rare", rareelite = "Rare elite", gathering = "Gathering" }
 
 local function label(parent, font, x, y, color, value)
     local line = parent:CreateFontString(nil, "OVERLAY", font)
@@ -57,27 +52,10 @@ local function window(name, width, height, title)
     return frame
 end
 
-local function cardSlot(parent, index)
-    local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    frame:SetSize(160, 91)
-    frame:SetPoint("TOPLEFT", 26 + ((index - 1) % 4) * 170, -111 - math.floor((index - 1) / 4) * 101)
-    backdrop(frame, "Interface\\Buttons\\WHITE8X8", 1)
-    local icon = frame:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(32, 32)
-    icon:SetPoint("TOPLEFT", 9, -10)
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    local title = label(frame, "GameFontNormal", 49, 11, parchment)
-    title:SetWidth(103)
-    return {
-        frame = frame, icon = icon, title = title,
-        index = label(frame, "GameFontHighlightSmall", 10, 48, muted),
-        rank = label(frame, "GameFontHighlightSmall", 49, 49, brass),
-        count = label(frame, "GameFontHighlightSmall", 10, 70, muted),
-    }
-end
+local CARD_PITCH_X, CARD_PITCH_Y = 146, 200
 
 function ACB.initUI(saved, trade)
-    local frame = window("AzerothCardBinderWindow", 724, 472, "Azeroth Card Binder")
+    local frame = window("AzerothCardBinderWindow", 928, 590, "Azeroth Card Binder")
     local page = 1
     local collectionView = CreateFrame("Frame", nil, frame)
     collectionView:SetAllPoints(frame)
@@ -95,14 +73,18 @@ function ACB.initUI(saved, trade)
         ACB.refresh()
     end)
     local subtitle = label(collectionView, "GameFontNormal", 26, 84, brass)
-    local completion = label(collectionView, "GameFontHighlight", 513, 84, parchment)
+    local completion = label(collectionView, "GameFontHighlight", 740, 84, parchment)
     local slots = {}
-    for index = 1, #ACB.pages[1].cards do slots[index] = cardSlot(collectionView, index) end
+    for index = 1, #ACB.pages[1].cards do
+        local slot = ACB.createCard(collectionView)
+        slot.frame:SetPoint("TOPLEFT", 26 + ((index - 1) % 6) * CARD_PITCH_X, -111 - math.floor((index - 1) / 6) * CARD_PITCH_Y)
+        slots[index] = slot
+    end
     local milestones = {}
     for index, achievement in ipairs(ACB.achievements) do
-        milestones[index] = label(collectionView, "GameFontNormal", 26 + (index - 1) * 345, 419, brass, achievement.name)
+        milestones[index] = label(collectionView, "GameFontNormal", 26 + (index - 1) * 345, 530, brass, achievement.name)
     end
-    label(frame, "GameFontHighlightSmall", 26, 447, muted,
+    label(frame, "GameFontHighlightSmall", 26, 558, muted,
         "FIRST EDITION  /  FOREVER                                     /acb diag  -  toggle diagnostics      /acb log  -  copy trace")
 
     label(tradeView, "GameFontNormal", 26, 86, brass, "SWAP PREVIEW  /  ONE DUPLICATE EACH")
@@ -190,21 +172,7 @@ function ACB.initUI(saved, trade)
             for index, slot in ipairs(slots) do
                 local card = binderPage.cards[index]
                 slot.frame:SetShown(card ~= nil)
-                if card then
-                    local count = saved.counts[card.key] or 0
-                    local color = rankColors[card.rank]
-                    slot.frame:SetBackdropColor(count > 0 and 0.17 or 0.105, 0.12, 0.09, 1)
-                    slot.frame:SetBackdropBorderColor(unpack(count > 0 and color or { 0.28, 0.24, 0.20 }))
-                    slot.title:SetText(card.name)
-                    slot.title:SetTextColor(unpack(count > 0 and parchment or muted))
-                    slot.index:SetText(("%02d"):format(index))
-                    slot.rank:SetText(("%g%% %s"):format(ACB.rates[card.rank] / 100, rankNames[card.rank]))
-                    slot.rank:SetTextColor(unpack(color))
-                    slot.count:SetText(count > 0 and ("x%d owned  /  %d spare"):format(count, count - 1) or "Missing")
-                    slot.icon:SetTexture(card.icon)
-                    slot.icon:SetDesaturated(count == 0)
-                    slot.icon:SetAlpha(count > 0 and 1 or 0.32)
-                end
+                if card then slot:set(card, saved.counts[card.key] or 0, saved.levels and saved.levels[card.key]) end
             end
             for index, milestone in ipairs(milestones) do
                 milestone:SetShown(page == 1)
