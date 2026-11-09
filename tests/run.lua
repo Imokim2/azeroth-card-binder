@@ -84,6 +84,42 @@ test("duplicates do not fill slots; both Deadmines achievements unlock once", fu
     equal(earned, 2)
 end)
 
+test("gathering nodes carry a model file", function()
+    equal(ACB.cards["node:1731"].model, 219514)
+    equal(ACB.cards["node:1618"].model, 219481)
+    for _, card in pairs(ACB.cards) do
+        if card.profession then equal(type(card.model), "number") end
+    end
+end)
+
+test("rarity follows boss, elite, normal and profession rules", function()
+    local expected = {
+        ["npc:644"] = "legendary", ["npc:3586"] = "legendary", ["npc:639"] = "legendary",
+        ["npc:657"] = "epic", ["npc:573"] = "epic", ["npc:589"] = "common",
+        ["npc:114"] = "common", ["node:1731"] = "rare", ["node:1618"] = "rare",
+    }
+    for key, rarity in pairs(expected) do equal(ACB.cards[key].rarity, rarity) end
+    for key, card in pairs(ACB.cards) do
+        assert(ACB.rarities[card.rarity], key .. " has no rarity")
+        assert(ACB.zones[card.zone], key .. " has no zone")
+        assert(#card.lore > 0 and #card.lore <= 80, key .. " lore length " .. #card.lore)
+    end
+end)
+
+test("capture stores only a readable monster level", function()
+    local saved = { counts = {}, achievements = {} }
+    local collection = ACB.newCollection(saved, function() return 1 end, ignore, ignore)
+    collection:roll(guid(589, "A"), "loot", nil, 17)
+    equal(saved.levels["npc:589"], 17)
+    collection:roll(guid(589, "B"), "loot", nil, -1)
+    equal(saved.levels["npc:589"], -1)
+    collection:roll(guid(589, "C"), "loot", nil, 0)
+    collection:roll(guid(589, "D"), "loot", nil, 2.5)
+    collection:roll(guid(589, "E"), "loot", nil, "9")
+    equal(saved.levels["npc:589"], -1)
+    equal(saved.counts["npc:589"], 5)
+end)
+
 test("two peers confirm the exact immutable pair without mutating collection", function()
     local aCards, bCards = { ["npc:589"] = 2 }, { ["npc:639"] = 2 }
     local a, b
@@ -150,7 +186,9 @@ local methods = {
     SetWidth = ignore, SetAutoFocus = ignore, SetMaxLetters = ignore, SetFocus = ignore,
     SetTexture = ignore, SetDesaturated = ignore, SetAlpha = ignore, SetMultiLine = ignore,
     SetFontObject = ignore, SetScrollChild = ignore, SetVerticalScroll = ignore, HighlightText = ignore,
-    ClearFocus = ignore,
+    ClearFocus = ignore, SetClipsChildren = ignore, SetColorTexture = ignore, SetFont = ignore,
+    SetVertexColor = ignore, SetFrameLevel = ignore, GetFrameLevel = function() return 1 end,
+    SetWordWrap = ignore, SetRotation = ignore, SetShadowOffset = ignore, SetShadowColor = ignore, GetStringWidth = function() return 6 end, SetJustifyV = ignore, ClearAllPoints = ignore,
     Show = function(self) self.shown = true end,
     Hide = function(self) self.shown = false end,
     SetShown = function(self, shown) self.shown = shown end,
@@ -180,7 +218,7 @@ UISpecialFrames, SlashCmdList = {}, {}
 local secret = setmetatable({}, { __tostring = function() error("secret value used") end })
 function issecretvalue(value) return value == secret end
 local clock, slots, rolls, draw, instance = 10, {}, 0, 1, 0
-local target, dead, rank, playerDead, combat, locked
+local target, dead, rank, playerDead, combat, locked, level
 local timers = {}
 C_Timer = { After = function(_, callback) timers[#timers + 1] = callback end }
 C_Spell = { GetSpellName = function(id) return (id == 2575 or id == 2576) and "Mining" or nil end }
@@ -203,6 +241,7 @@ function UnitIsDeadOrGhost(unit)
     return dead
 end
 function UnitClassification() return rank end
+function UnitLevel() return level end
 function UnitFullName() return "Alice", "Realm Name" end
 function GetNormalizedRealmName() return "RealmName" end
 function IsInInstance() return instance ~= 0 end
@@ -218,6 +257,7 @@ math.random = function(min, max)
     return realRandom(min, max)
 end
 AzerothCardBinderDB = { counts = { invalid = -1 }, diagnostics = true }
+loadAddon("Cards.lua")
 loadAddon("Binder.lua")
 loadAddon("Forever.lua")
 
@@ -250,6 +290,16 @@ test("UI and SavedVariables initialize through ADDON_LOADED", function()
     equal(ACB.tradePeer("Bob|malformed"), nil)
 end)
 
+test("cards draw for missing, owned and gathering entries", function()
+    AzerothCardBinderDB.counts["npc:639"] = 2
+    AzerothCardBinderDB.counts["node:1731"] = 1
+    AzerothCardBinderDB.levels["npc:639"] = 21
+    ACB.open(1)
+    ACB.open(2)
+    ACB.open(3)
+    AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
+end)
+
 test("loot slots dedup by source, including mixed sources and auto-loot close", function()
     local a, b = guid(589, "one"), guid(589, "two")
     slots = { { a, 2, b, 1 }, { a, 3 } }
@@ -275,12 +325,13 @@ test("secret, unknown, live, pickpocket and item-container sources are skipped",
     openLoot({ guid(590, "pickpocket"), 1 })
     equal(rolls, before)
     clock = clock + 3
-    target, dead, rank = guid(590, "rank"), true, "elite"
+    target, dead, rank, level = guid(590, "rank"), true, "elite", 18
     draw = 100
     openLoot({ target, 1 })
     equal(rolls, before + 1)
     equal(AzerothCardBinderDB.counts["npc:590"], 1)
-    target, dead, rank, draw = nil, nil, nil, 1
+    equal(AzerothCardBinderDB.levels["npc:590"], 18)
+    target, dead, rank, level, draw = nil, nil, nil, nil, 1
 end)
 
 test("gathering requires player success and an exact node source in either event order", function()
