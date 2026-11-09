@@ -1,6 +1,6 @@
 local _, ACB = ...
 
--- A World of Warcraft style card, built only from the game's own textures and fonts:
+-- A World of Warcraft style card with an in-game model in a scenic portrait:
 --   * stone panel with the tooltip border tinted by rarity, an inner gold trim and corner studs
 --   * portrait window holding the zone art with the creature model on top, ringed by a rarity glow
 --   * name plate with the name in Warcraft lettering and the rarity colour, and a rarity gem
@@ -22,6 +22,20 @@ local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
 local panel, plate = { 0.055, 0.05, 0.045 }, { 0.13, 0.105, 0.075 }
 
 local typeNames = { mining = "Mining", herbalism = "Herbalism" }
+-- AnimationData IDs. Use the neutral frame when a model lacks its assigned combat animation.
+local STAND, ATTACK_UNARMED, ATTACK_ONE_HAND, READY_UNARMED, READY_TWO_HAND, SPELL_CAST = 0, 16, 17, 25, 27, 32
+local humanoid = { zoom = 0.57, facing = -0.40, animation = READY_UNARMED, frame = 12 }
+local wide = { zoom = 0.28, facing = -0.34, animation = ATTACK_UNARMED, frame = 20 }
+local portraitPresets = {
+    [639] = { zoom = 0.60, facing = -0.47, animation = ATTACK_ONE_HAND, frame = 24 }, -- Edwin VanCleef
+    [589] = { zoom = 0.54, facing = 0.36, animation = SPELL_CAST, frame = 20 }, -- Defias Pillager
+    [646] = { zoom = 0.36, facing = -0.42, animation = READY_TWO_HAND, frame = 12 }, -- Mr. Smite
+    [644] = wide, -- Rhahk'Zor
+    [645] = wide, -- Cookie
+    [642] = wide, -- Sneed's Shredder
+    [114] = wide, -- Harvest Watcher
+    [573] = wide, -- Foe Reaper 4000
+}
 local function typeName(entry)
     if entry.profession then return typeNames[entry.profession] or "Gathering" end
     if entry.boss then return "Boss" end
@@ -37,6 +51,19 @@ end
 local function safe(fn, ...)
     local ok, a, b, c, d, e = pcall(fn, ...)
     if ok then return a, b, c, d, e end
+end
+
+local function poseCreature(model, entry)
+    local preset = portraitPresets[entry.id] or humanoid
+    if not pcall(model.SetPortraitZoom, model, preset.zoom) then
+        safe(model.SetCamDistanceScale, model, 0.8)
+    end
+    safe(model.SetFacing, model, preset.facing)
+    safe(model.SetPosition, model, 0, 0, -0.05)
+
+    local supported = ACB.read(safe(model.HasAnimation, model, preset.animation), "boolean")
+    if supported and pcall(model.FreezeAnimation, model, preset.animation, 0, preset.frame) then return end
+    if not pcall(model.FreezeAnimation, model, STAND, 0, 0) then safe(model.SetPaused, model, true) end
 end
 
 local function edged(frame, background, edge, edgeSize, inset)
@@ -109,10 +136,19 @@ local function newArt(parent, width, height)
     art.shade:SetColorTexture(0, 0, 0, 1)
 
     function art:show(zoneKey, found)
-        local source = resolveArt(zoneKey)
         local desaturate = not found
         for _, tile in ipairs(self.tiles) do tile:Hide() end
         self.base:Hide()
+        local backdrop = ACB.zones[zoneKey].backdrop
+        if backdrop and ACB.read(safe(self.base.SetTexture, self.base, ACB.folioArt .. backdrop), "boolean") then
+            self.base:SetTexCoord(0, 1, 0, 1)
+            self.base:SetDesaturated(desaturate)
+            self.base:SetVertexColor(1, 1, 1)
+            self.base:Show()
+            self.shade:SetAlpha(found and 0.10 or 0.62)
+            return
+        end
+        local source = resolveArt(zoneKey)
         if source.file then
             -- Loading screens and journal art are wide; keep the middle of the picture.
             local visible = (width / height) / (16 / 9)
@@ -167,7 +203,7 @@ local function diamond(parent, size, color)
     return texture
 end
 
-function ACB.createCard(parent)
+function ACB.createCard(parent, previewUnowned)
     local card = { entry = nil, owned = 0, levelValue = "" }
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetSize(WIDTH, HEIGHT)
@@ -204,6 +240,20 @@ function ACB.createCard(parent)
     card.model:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
     card.model:SetSize(inner.width, inner.height)
     card.model:SetFrameLevel(level + 3)
+    safe(card.model.SetKeepModelOnHide, card.model, true)
+
+    local function updateModel(model)
+        local entry = card.entry
+        if not entry or entry.key ~= card.modelFor then return end
+        local loaded = ACB.read(safe(model.GetModelFileID, model), "number")
+        if not loaded or loaded <= 0 then return end
+        if entry.profession then
+            card.node:SetShown(loaded ~= entry.model)
+        else
+            poseCreature(model, entry)
+        end
+    end
+    safe(card.model.SetScript, card.model, "OnModelLoaded", updateModel)
 
     card.glow = CreateFrame("Frame", nil, window, "BackdropTemplate")
     card.glow:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
@@ -294,6 +344,7 @@ function ACB.createCard(parent)
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
     function card:set(entry, count, level)
         local found = count > 0
+        local showModel = found or previewUnowned
         self.entry, self.owned = entry, count
         -- Gathering nodes show the skill they need; creatures show the level they had when captured.
         level = entry.profession and entry.level or level
@@ -304,29 +355,30 @@ function ACB.createCard(parent)
 
         frame:SetBackdropBorderColor(color[1] * dim, color[2] * dim, color[3] * dim, 1)
         self.glow:SetBackdropBorderColor(color[1], color[2], color[3], found and 0.55 or 0.25)
-        self.art:show(entry.zone, found)
+        self.art:show(entry.zone, showModel)
 
         -- Creatures use their in-game model by NPC ID, gathering nodes by the model file of the node.
-        self.model:SetShown(found)
-        if found and self.modelFor ~= entry.key then
-            self.modelFor = entry.key
+        self.model:SetShown(showModel == true)
+        if showModel and self.modelFor ~= entry.key then
+            self.modelFor = nil
             safe(self.model.ClearModel, self.model)
+            self.modelFor = entry.key
+            self.node:SetShown(entry.profession ~= nil)
+            if entry.profession then self.node:SetTexture(entry.icon) end
             if entry.profession then
-                safe(self.model.SetModel, self.model, entry.model)
+                safe(self.model.SetPaused, self.model, false)
+                safe(self.model.SetPortraitZoom, self.model, 0)
                 safe(self.model.SetFacing, self.model, 0.6)
                 safe(self.model.SetCamDistanceScale, self.model, 1)
+                safe(self.model.SetPosition, self.model, 0, 0, -0.05)
+                if entry.model then safe(self.model.SetModel, self.model, entry.model) end
             else
-                safe(self.model.SetCreature, self.model, entry.id)
                 safe(self.model.SetCamDistanceScale, self.model, 1.05)
+                safe(self.model.SetCreature, self.model, entry.id)
             end
-            safe(self.model.SetPosition, self.model, 0, 0, -0.05)
-            -- If the client reports a different model than requested, fall back to the node's icon.
-            local loaded = entry.profession and safe(self.model.GetModelFileID, self.model)
-            self.useIcon = entry.profession and (not entry.model or (type(loaded) == "number" and loaded ~= entry.model))
+            -- Cached models may already be ready. Newly loaded models also run the hook above.
+            updateModel(self.model)
         end
-        if not found then self.useIcon = false end
-        self.node:SetShown(found and self.useIcon == true)
-        if self.useIcon then self.node:SetTexture(entry.icon) end
 
         local name = entry.name
         self.name:SetFont(TITLE_FONT, math.max(9, math.min(14, NAME_WIDTH / (0.46 * #name))), "")

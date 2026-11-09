@@ -1,6 +1,6 @@
 # Azeroth Card Binder · First playtest
 
-Version 0.2.2 targets World of Warcraft: Forever, interface 16001. The add-on is standalone and stores one binder per WoW account installation using SavedVariables.
+Version 0.2.3 targets World of Warcraft: Forever, interface 16001. The add-on is standalone and stores one binder per WoW account installation using SavedVariables.
 
 ## Install
 
@@ -8,7 +8,7 @@ Version 0.2.2 targets World of Warcraft: Forever, interface 16001. The add-on is
 2. Restart WoW, enable **Azeroth Card Binder** on the character screen, then click the book icon on the minimap or type `/acb`. Drag the minimap icon to move it around the rim.
 3. Open **Index** or type `/acb index`. Search for a set by name or category, then click it to open its **Collection**. The index shows how many cards you own in each set.
 4. Click a pocket to see the larger card, rarity, drop chance, and copy counts on the right. Deadmines has three pages of four cards and tracks the eight boss cards and full twelve-card set separately.
-5. For the binder UI check, search for Westfall or its category, Zone, then try an owned card, a missing card, and a gathering node. Turn through all three Deadmines pages, switch to Trade and back to Collection, and check that the minimap button still opens and closes the binder. The native models, parchment textures, and minimap placement need a live visual pass.
+5. For the portrait playtest, select **Edwin VanCleef** on Deadmines page 2 and **Foe Reaper 4000** in Westfall. The enlarged card previews the scene even when the pocket is still marked Missing. Check the framing, whether the pose holds still, and how the character reads against the backdrop. Try a Gathering card to check that its resource model and backdrop display together. These checks require the live client.
 
 ## Collection
 

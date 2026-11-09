@@ -8,21 +8,22 @@ ACB.pages = {
 }
 ACB.cards, ACB.sources = {}, { Creature = {}, GameObject = {} }
 
--- Zone art. `journal` is a Dungeon Journal instance, `map` a UiMapID, and `paths` are loading
--- screen files that are only used when the client can resolve them. `top` and `bottom` colour the
--- fallback gradient that is shown when none of the real art can be loaded.
+-- Packaged portrait backdrops take priority, followed by client artwork and a fallback gradient.
 ACB.zones = {
     deadmines = {
+        backdrop = "Deadmines.tga",
         journal = 63, map = 55,
         paths = { "Interface\\Glues\\LoadingScreens\\LoadScreenDeadmines" },
         top = { 0.36, 0.22, 0.11 }, bottom = { 0.07, 0.04, 0.03 },
     },
     westfall = {
+        backdrop = "Westfall.tga",
         map = 52,
         paths = { "Interface\\Glues\\LoadingScreens\\LoadScreenWestfall" },
         top = { 0.80, 0.64, 0.30 }, bottom = { 0.22, 0.30, 0.12 },
     },
     elwynn = {
+        backdrop = "Elwynn.tga",
         map = 37,
         paths = { "Interface\\Glues\\LoadingScreens\\LoadScreenElwynnForest" },
         top = { 0.45, 0.66, 0.78 }, bottom = { 0.12, 0.27, 0.12 },

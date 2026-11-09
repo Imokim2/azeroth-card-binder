@@ -193,11 +193,26 @@ local methods = {
     SetTextInsets = ignore, EnableMouseWheel = ignore,
     SetJustifyH = ignore, SetTextColor = ignore, SetAllPoints = ignore, SetTexCoord = ignore,
     SetWidth = ignore, SetAutoFocus = ignore, SetMaxLetters = ignore, SetFocus = ignore,
-    SetTexture = ignore, SetDesaturated = ignore, SetAlpha = ignore, SetMultiLine = ignore,
+    SetTexture = function(self, texture)
+        if self.rejectTexture then return false end
+        self.texture = texture
+        return true
+    end,
+    SetDesaturated = ignore, SetAlpha = ignore, SetMultiLine = ignore,
     SetFontObject = ignore, SetScrollChild = ignore, SetVerticalScroll = ignore, HighlightText = ignore,
-    ClearFocus = ignore, SetClipsChildren = ignore, SetColorTexture = ignore, SetFont = ignore,
+    ClearFocus = ignore, SetClipsChildren = ignore,
+    SetColorTexture = function(self) self.colorTexture = true end, SetFont = ignore,
     SetVertexColor = ignore, SetFrameLevel = ignore, GetFrameLevel = function() return 1 end,
     SetWordWrap = ignore, SetRotation = ignore, SetShadowOffset = ignore, SetShadowColor = ignore, GetStringWidth = function() return 6 end, SetJustifyV = ignore, ClearAllPoints = ignore,
+    SetKeepModelOnHide = function(self, keep) self.keepModel = keep end,
+    ClearModel = function(self) self.creature, self.fileID, self.frozen = nil, nil, nil end,
+    SetCreature = function(self, creature) self.creature = creature end,
+    SetModel = function(self, file) self.fileID = file end,
+    GetModelFileID = function(self) return self.fileID end,
+    SetPortraitZoom = function(self, zoom) self.portraitZoom = zoom end,
+    SetCamDistanceScale = ignore, SetFacing = ignore, SetPosition = ignore, SetPaused = ignore,
+    HasAnimation = function(self, animation) return self.supportedAnimation == animation end,
+    FreezeAnimation = function(self, animation, variation, frame) self.frozen = { animation, variation, frame } end,
     Show = function(self) self.shown = true end,
     Hide = function(self) self.shown = false end,
     SetShown = function(self, shown) self.shown = shown end,
@@ -317,6 +332,42 @@ test("cards draw for missing, owned and gathering entries", function()
     ACB.open(2)
     ACB.open(3)
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
+end)
+
+test("cinematic detail applies the pose after loading and falls back for unsupported animations", function()
+    local card = ACB.createCard(UIParent, true)
+    card:set(ACB.cards["npc:639"], 0)
+    equal(card.model.creature, 639)
+    equal(card.model:IsShown(), true)
+    equal(card.owned, 0)
+    equal(card.levelBadge:IsShown(), false)
+    equal(card.model.frozen, nil)
+    equal(card.art.base.texture, ACB.folioArt .. "Deadmines.tga")
+    card.model.fileID, card.model.supportedAnimation = 1000, 17
+    card.model:OnModelLoaded()
+    equal(card.model.frozen[1], 17)
+    equal(card.model.frozen[3], 24)
+    local humanoidZoom = card.model.portraitZoom
+
+    card:set(ACB.cards["npc:573"], 0)
+    card.model.fileID, card.model.supportedAnimation = 1001, nil
+    card.model:OnModelLoaded()
+    equal(card.model.frozen[1], 0)
+    assert(card.model.portraitZoom < humanoidZoom)
+    equal(card.art.base.texture, ACB.folioArt .. "Westfall.tga")
+
+    card:set(ACB.cards["node:1618"], 0)
+    equal(card.model.fileID, ACB.cards["node:1618"].model)
+    equal(card.model.frozen, nil)
+    equal(card.node:IsShown(), false)
+    equal(card.art.base.texture, ACB.folioArt .. "Elwynn.tga")
+
+    local pocket = ACB.createCard(UIParent, false)
+    pocket.art.base.rejectTexture = true
+    pocket:set(ACB.cards["npc:639"], 0)
+    equal(pocket.model:IsShown(), false)
+    equal(pocket.model.creature, nil)
+    equal(pocket.art.base.colorTexture, true)
 end)
 
 test("folio pages through all Deadmines cards and remembers selection per region", function()

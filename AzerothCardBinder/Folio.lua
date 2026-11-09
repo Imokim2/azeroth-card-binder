@@ -63,12 +63,12 @@ local function paper(parent, x, mirror)
 end
 
 -- A holder keeps both scaled card sizes aligned to the page's coordinates.
-local function mountCard(parent, x, y, scale, interactive)
+local function mountCard(parent, x, y, scale, isDetail)
     local holder = place(CreateFrame("Frame", nil, parent), x, y, ACB.cardWidth * scale, ACB.cardHeight * scale)
-    local card = ACB.createCard(holder)
+    local card = ACB.createCard(holder, isDetail)
     card.frame:SetScale(scale)
     card.frame:SetPoint("CENTER", holder, "CENTER")
-    card.frame:EnableMouse(interactive)
+    card.frame:EnableMouse(isDetail)
     return card
 end
 
