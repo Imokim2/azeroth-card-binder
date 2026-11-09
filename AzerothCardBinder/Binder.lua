@@ -86,6 +86,34 @@ local function tab(parent, caption, index, open)
     return { frame = frame, title = title }
 end
 
+local gold, goldDark, green = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }, { 0.2, 1, 0.3 }
+
+local function centered(parent, font, y, color, width)
+    local line = parent:CreateFontString(nil, "OVERLAY", font)
+    line:SetPoint("TOP", parent, "TOP", 0, -y)
+    line:SetWidth(width)
+    line:SetJustifyH("CENTER")
+    line:SetTextColor(unpack(color))
+    return line
+end
+
+-- One side of the trade window: a header with the player's name, the offered card and an accepted line.
+local function offerPanel(parent, x, y)
+    local panel = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+    panel:SetSize(290, 300)
+    panel:SetPoint("TOPLEFT", x, -y)
+    backdrop(panel, "Interface\\Tooltips\\UI-Tooltip-Border", 16)
+    panel:SetBackdropColor(0.055, 0.05, 0.045, 0.96)
+    panel:SetBackdropBorderColor(unpack(goldDark))
+    local side = { frame = panel }
+    side.header = centered(panel, "GameFontNormal", 14, gold, 260)
+    side.card = ACB.createCard(panel)
+    side.card.frame:SetPoint("TOP", panel, "TOP", 0, -40)
+    side.hint = centered(panel, "GameFontHighlightSmall", 122, muted, 220)
+    side.accepted = centered(panel, "GameFontNormal", 274, muted, 260)
+    return side
+end
+
 function ACB.initUI(saved, trade)
     local frame = window("AzerothCardBinderWindow", BINDER_WIDTH, BINDER_HEIGHT, "Azeroth Card Binder", true)
     local function fitWindow()
@@ -114,13 +142,14 @@ function ACB.initUI(saved, trade)
     regionMark:SetWidth(196)
     regionMark:SetJustifyH("RIGHT")
 
-    label(tradeView, "GameFontNormal", 26, 24, brass, "SWAP PREVIEW  /  ONE DUPLICATE EACH")
-    label(tradeView, "GameFontHighlight", 26, 54, parchment,
-        "Both players open Trade and enter each other's name. One listens, the other sends an offer.")
-    label(tradeView, "GameFontHighlightSmall", 26, 145, muted, "PARTNER  /  Name or Name-Realm")
-    local partner = CreateFrame("EditBox", nil, tradeView, "InputBoxTemplate")
+    -- The trade window: your offer on the left, your partner's on the right, buttons along the bottom.
+    local box = CreateFrame("Frame", nil, tradeView)
+    box:SetSize(640, 468)
+    box:SetPoint("TOP", tradeView, "TOP", 0, -16)
+    label(box, "GameFontHighlightSmall", 22, 17, muted, "TRADE WITH")
+    local partner = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
     partner:SetSize(235, 28)
-    partner:SetPoint("TOPLEFT", 30, -162)
+    partner:SetPoint("TOPLEFT", 100, -8)
     partner:SetAutoFocus(false)
     partner:SetMaxLetters(100)
     partner:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -145,46 +174,44 @@ function ACB.initUI(saved, trade)
         ACB.refresh()
     end
 
-    label(tradeView, "GameFontHighlightSmall", 321, 145, muted, "CHOOSE A DUPLICATE")
-    local selectedText = label(tradeView, "GameFontNormal", 321, 170, parchment)
-    local previous = button(tradeView, "<", 618, 161, 35, function() choose(-1) end)
-    local nextCard = button(tradeView, ">", 658, 161, 35, function() choose(1) end)
     local function withPeer(action)
         local peer = ACB.tradePeer(partner:GetText())
         partner:ClearFocus()
         if peer then action(peer) else trade.status = "Enter your partner's character name." end
         ACB.refresh()
     end
-    local listen = button(tradeView, "Listen", 26, 204, 105, function()
+    local listen = button(box, "Listen", 346, 8, 84, function()
         withPeer(function(peer) trade:listen(peer) end)
     end)
-    local offer = button(tradeView, "Send offer", 142, 204, 109, function()
+    local offer = button(box, "Send offer", 436, 8, 90, function()
         withPeer(function(peer) trade:offer(peer, selected) end)
     end)
-    local reply = button(tradeView, "Send reply", 262, 204, 109, function()
+    local reply = button(box, "Send reply", 532, 8, 90, function()
         trade:reply(selected)
         ACB.refresh()
     end)
-    local clear = button(tradeView, "Clear", 589, 204, 105, function()
-        trade:reset()
-        ACB.refresh()
-    end)
-    local you = label(tradeView, "GameFontNormalLarge", 26, 261, parchment)
-    local them = label(tradeView, "GameFontNormalLarge", 361, 261, parchment)
-    local yourConfirmation = label(tradeView, "GameFontHighlightSmall", 26, 287, muted)
-    local theirConfirmation = label(tradeView, "GameFontHighlightSmall", 361, 287, muted)
-    local status = label(tradeView, "GameFontHighlight", 26, 323, brass)
-    status:SetWidth(666)
-    local confirm = button(tradeView, "Confirm preview", 26, 365, 154, function()
+
+    local mine = offerPanel(box, 20, 52)
+    local theirs = offerPanel(box, 330, 52)
+    local previous = button(mine.frame, "<", 20, 236, 34, function() choose(-1) end)
+    local nextCard = button(mine.frame, ">", 236, 236, 34, function() choose(1) end)
+    local chooseText = centered(mine.frame, "GameFontHighlightSmall", 243, muted, 170)
+
+    local status = centered(box, "GameFontHighlight", 366, gold, 600)
+    local confirm = button(box, "Accept trade", 20, 398, 150, function()
         trade:confirm()
         ACB.refresh()
     end)
-    local retry = button(tradeView, "Resend last step", 190, 365, 154, function()
+    local retry = button(box, "Resend last step", 180, 398, 150, function()
         trade:retry()
         ACB.refresh()
     end)
-    label(tradeView, "GameFontHighlightSmall", 26, 413, muted,
-        "Outdoors and out of combat. The preview exchanges offers and confirmations. Your cards stay in the binder.")
+    local clear = button(box, "Cancel", 470, 398, 150, function()
+        trade:reset()
+        ACB.refresh()
+    end)
+    centered(box, "GameFontHighlightSmall", 440, muted, 600):SetText(
+        "Outdoors and out of combat. Both players accept the same two cards and the swap then happens on both sides. It runs on trust.")
 
     function ACB.refresh()
         if not frame:IsShown() then return end
@@ -210,23 +237,41 @@ function ACB.initUI(saved, trade)
         regionMark:SetText("BINDER  /  TRADE")
 
         local session = trade:active()
+        local live = session ~= nil and not session.applied -- a finished trade stays on screen but is over
         local give, take = session and ACB.cards[session.give], session and ACB.cards[session.take]
-        selectedText:SetText(selected and ACB.cards[selected].name or "Use < or > to choose")
-        partner:SetEnabled(not session)
-        previous:SetEnabled(not give)
-        nextCard:SetEnabled(not give)
-        listen:SetEnabled(not session)
-        offer:SetEnabled(not session and selected ~= nil)
-        reply:SetEnabled(take ~= nil and not give and selected ~= nil)
+        local offering = give or (selected and ACB.cards[selected])
+        local name = ACB.read(UnitName and UnitName("player"), "string") or "You"
+        local partnerName = (partner:GetText() or ""):match("^%s*(.-)%s*$")
+        partner:SetEnabled(not live)
+        previous:SetEnabled(not (live and give))
+        nextCard:SetEnabled(not (live and give))
+        listen:SetEnabled(not live)
+        offer:SetEnabled(not live and selected ~= nil)
+        reply:SetEnabled(live and take ~= nil and not give and selected ~= nil)
         clear:SetEnabled(session ~= nil)
-        you:SetText("You offer   " .. (give and give.name or "-"))
-        them:SetText("They offer   " .. (take and take.name or "-"))
-        yourConfirmation:SetText(session and session.sentConfirm and "Confirmed" or "Awaiting your confirmation")
-        theirConfirmation:SetText(session and session.peerConfirmed and "Confirmed" or "Awaiting partner")
-        confirm:SetEnabled(give ~= nil and take ~= nil and not session.sentConfirm)
+        confirm:SetEnabled(live and give ~= nil and take ~= nil and not session.sentConfirm)
         retry:SetEnabled(give ~= nil)
-        status:SetText(session and session.sentConfirm and session.peerConfirmed
-            and "Preview complete. Both players confirmed these cards." or trade.status)
+
+        mine.header:SetText(name)
+        theirs.header:SetText(partnerName ~= "" and partnerName or "Partner")
+        chooseText:SetText(offering and offering.name or "Choose a duplicate")
+        local function fill(side, card, owned, shiny)
+            side.card.frame:SetShown(card ~= nil)
+            if card then side.card:set(card, owned, shiny) end
+        end
+        fill(mine, offering, offering and saved.counts[offering.key] or 0,
+            offering and saved.shiny and saved.shiny[offering.key])
+        fill(theirs, take, 1)
+        mine.hint:SetText(offering and "" or "Use < and > to pick one of your spare cards.")
+        theirs.hint:SetText(take and "" or (session and "Waiting for their card." or "Their offer will appear here."))
+        local function accepted(side, yes)
+            side.accepted:SetText(yes and "Accepted" or "Not accepted")
+            side.accepted:SetTextColor(unpack(yes and green or muted))
+            side.frame:SetBackdropBorderColor(unpack(yes and green or goldDark))
+        end
+        accepted(mine, session and session.sentConfirm)
+        accepted(theirs, session and session.peerConfirmed)
+        status:SetText(trade.status)
     end
 
     function ACB.open(destination)

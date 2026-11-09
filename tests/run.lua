@@ -37,6 +37,7 @@ for _, rate in ipairs({
         local rolls, draws = 0, { rate.limit, rate.limit + 1 }
         local collection = ACB.newCollection(saved, function(min, max)
             equal(min, 1)
+            if max == ACB.shinyOdds then return 2 end -- not shiny
             equal(max, 10000)
             rolls = rolls + 1
             return draws[rolls]
@@ -106,35 +107,110 @@ test("rarity follows boss, elite, normal and profession rules", function()
     end
 end)
 
-test("capture stores only a readable monster level", function()
+test("a swap moves one spare copy and can finish a set", function()
     local saved = { counts = {}, achievements = {} }
+    for _, card in ipairs(ACB.pages[1].cards) do saved.counts[card.key] = 1 end
+    saved.counts["npc:639"] = nil
+    saved.counts["npc:598"] = 2
     local collection = ACB.newCollection(saved, function() return 1 end, ignore, ignore)
-    collection:roll(guid(589, "A"), "loot", nil, 17)
-    equal(saved.levels["npc:589"], 17)
-    collection:roll(guid(589, "B"), "loot", nil, -1)
-    equal(saved.levels["npc:589"], -1)
-    collection:roll(guid(589, "C"), "loot", nil, 0)
-    collection:roll(guid(589, "D"), "loot", nil, 2.5)
-    collection:roll(guid(589, "E"), "loot", nil, "9")
-    equal(saved.levels["npc:589"], -1)
-    equal(saved.counts["npc:589"], 5)
+    equal(collection:swap("npc:639", "npc:598"), false)
+    equal(collection:swap("npc:589", "npc:639"), false)
+    equal(collection:swap("npc:598", "npc:639"), true)
+    equal(saved.counts["npc:598"], 1)
+    equal(saved.counts["npc:639"], 1)
+    equal(saved.achievements.crew, true)
+    equal(saved.achievements.deadmines, true)
+    equal(collection:swap("npc:598", "npc:639"), false)
 end)
 
-test("two peers confirm the exact immutable pair without mutating collection", function()
+test("a lost confirmation is healed by re-sending, and nobody applies twice", function()
+    local aCards, bCards = { ["npc:589"] = 2 }, { ["npc:639"] = 2 }
+    local a, b
+    local dropFromA = true
+    local function swapper(counts)
+        return function(give, take)
+            counts[give] = counts[give] - 1
+            counts[take] = (counts[take] or 0) + 1
+            return true
+        end
+    end
+    a = ACB.newTrade(aCards, function() return 1 end, function() return "id-1" end, function(peer, msg)
+        if dropFromA and msg:sub(1, 1) == "C" then return true end -- sent, but never arrives
+        b:receive("alice-realm", msg)
+        return true
+    end, swapper(aCards))
+    b = ACB.newTrade(bCards, function() return 1 end, function() return "id-2" end, function(peer, msg)
+        a:receive("bob-realm", msg)
+        return true
+    end, swapper(bCards))
+    a:offer("bob-realm", "npc:589")
+    b:listen("alice-realm")
+    a:retry()
+    b:reply("npc:639")
+    a:confirm()
+    b:confirm()
+    -- Alice has both confirmations and has swapped; Bob never received hers.
+    equal(aCards["npc:639"], 1)
+    equal(bCards["npc:589"], nil)
+    dropFromA = false
+    b:retry()
+    equal(bCards["npc:589"], 1)
+    equal(bCards["npc:639"], 1)
+    b:retry()
+    b:retry()
+    b:retry()
+    equal(aCards["npc:589"], 1)
+    equal(aCards["npc:639"], 1)
+    equal(bCards["npc:589"], 1)
+    equal(bCards["npc:639"], 1)
+end)
+
+test("a first copy can be shiny once per card and the pop-up hook hears about it", function()
+    local saved = { counts = {}, achievements = {} }
+    local shinyRolls, found = 0, {}
+    local collection = ACB.newCollection(saved, function(min, max)
+        if max == ACB.shinyOdds then shinyRolls = shinyRolls + 1 end
+        return 1
+    end, ignore, ignore, function(card, info) found[#found + 1] = { card = card, info = info } end)
+    collection:roll(guid(589, "A"), "loot")
+    equal(saved.shiny["npc:589"], true)
+    equal(found[1].info.shiny, true)
+    equal(found[1].info.first, true)
+    collection:roll(guid(589, "B"), "loot")
+    equal(shinyRolls, 1) -- an owned shiny is never rolled for again
+    equal(found[2].info.shiny, false)
+    equal(found[2].info.first, false)
+    equal(found[2].info.count, 2)
+    saved.counts["npc:590"] = 2
+    collection:swap("npc:590", "npc:114")
+    equal(found[3].card.key, "npc:114")
+    equal(found[3].info.trade, true)
+    equal(saved.shiny["npc:114"], nil) -- trades never hand out shiny copies
+end)
+
+test("two peers confirm the exact pair and each applies the swap once", function()
     local aCards, bCards = { ["npc:589"] = 2 }, { ["npc:639"] = 2 }
     local a, b
     local now, allow = 1, true
+    local function swapper(counts)
+        return function(give, take)
+            if (counts[give] or 0) < 2 then return false end
+            counts[give] = counts[give] - 1
+            counts[take] = (counts[take] or 0) + 1
+            return true
+        end
+    end
     a = ACB.newTrade(aCards, function() return now end, function() return "first-1" end, function(peer, msg)
         if not allow then return false, "Blocked" end
         equal(peer, "bob-realm")
         b:receive("alice-realm", msg)
         return true
-    end)
+    end, swapper(aCards))
     b = ACB.newTrade(bCards, function() return now end, function() return "second-1" end, function(peer, msg)
         equal(peer, "alice-realm")
         a:receive("bob-realm", msg)
         return true
-    end)
+    end, swapper(bCards))
     a:offer("bob-realm", "npc:639")
     equal(a.session, nil)
     b:listen("alice-realm")
@@ -165,10 +241,11 @@ test("two peers confirm the exact immutable pair without mutating collection", f
     a:confirm()
     a:retry()
     equal(a.session.sentConfirm and b.session.sentConfirm and b.session.peerConfirmed, true)
-    equal(aCards["npc:589"], 2)
-    equal(bCards["npc:639"], 2)
-    equal(aCards["npc:639"], nil)
-    equal(bCards["npc:589"], nil)
+    -- Each side applied the swap exactly once, even though a confirmation was sent again.
+    equal(aCards["npc:589"], 1)
+    equal(aCards["npc:639"], 1)
+    equal(bCards["npc:639"], 1)
+    equal(bCards["npc:589"], 1)
     now = 122
     equal(a:active(), nil)
     equal(b:active(), nil)
@@ -250,7 +327,8 @@ function GetCursorPosition() return 80, 140 end
 local secret = setmetatable({}, { __tostring = function() error("secret value used") end })
 function issecretvalue(value) return value == secret end
 local clock, slots, rolls, draw, instance = 10, {}, 0, 1, 0
-local target, dead, rank, playerDead, combat, locked, level
+local shinyDraw = 2 -- 1 would make the next find shiny
+local target, dead, rank, playerDead, combat, locked
 local timers = {}
 C_Timer = { After = function(_, callback) timers[#timers + 1] = callback end }
 C_Spell = { GetSpellName = function(id) return (id == 2575 or id == 2576) and "Mining" or nil end }
@@ -273,7 +351,6 @@ function UnitIsDeadOrGhost(unit)
     return dead
 end
 function UnitClassification() return rank end
-function UnitLevel() return level end
 function UnitFullName() return "Alice", "Realm Name" end
 function GetNormalizedRealmName() return "RealmName" end
 function IsInInstance() return instance ~= 0 end
@@ -285,11 +362,13 @@ print = function(message)
     if not message:find("|cffe8bc6b", 1, true) then realPrint(message) end
 end
 math.random = function(min, max)
+    if max == ACB.shinyOdds then return shinyDraw end
     if max == 10000 then rolls = rolls + 1 return draw end
     return realRandom(min, max)
 end
 AzerothCardBinderDB = { counts = { invalid = -1 }, diagnostics = true }
 loadAddon("Cards.lua")
+loadAddon("Toast.lua")
 loadAddon("Folio.lua")
 loadAddon("Binder.lua")
 loadAddon("Minimap.lua")
@@ -327,11 +406,48 @@ end)
 test("cards draw for missing, owned and gathering entries", function()
     AzerothCardBinderDB.counts["npc:639"] = 2
     AzerothCardBinderDB.counts["node:1731"] = 1
-    AzerothCardBinderDB.levels["npc:639"] = 21
     ACB.open(1)
     ACB.open(2)
     ACB.open(3)
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
+end)
+
+test("shiny cards show the foil and plain or missing cards do not", function()
+    local card = ACB.createCard(UIParent)
+    card:set(ACB.cards["npc:639"], 1, true)
+    equal(card.foil:IsShown(), true)
+    card:set(ACB.cards["npc:639"], 1, false)
+    equal(card.foil:IsShown(), false)
+    card:set(ACB.cards["npc:639"], 0, true)
+    equal(card.foil:IsShown(), false)
+end)
+
+test("pop-ups queue, fade away, play a sound and can be turned off", function()
+    local saved = AzerothCardBinderDB
+    local played = {}
+    PlaySound = function(id) played[#played + 1] = id end
+    SOUNDKIT = { UI_EPICLOOT_TOAST = 11, UI_LEGENDARY_LOOT_TOAST = 22, IG_QUEST_LIST_COMPLETE = 33 }
+    local toast = ACB.toast
+    equal(toast:IsShown(), false)
+    ACB.showToast(ACB.cards["npc:589"], { count = 1, first = true, shiny = true })
+    equal(toast:IsShown(), true)
+    equal(played[1], 22) -- a shiny always gets the top sound
+    ACB.showToast(ACB.cards["npc:589"], { count = 2 })
+    equal(#played, 1) -- the second waits its turn
+    toast.OnUpdate(toast, 10)
+    equal(toast:IsShown(), true)
+    equal(played[2], 33) -- common cards use the plainest sound
+    toast.OnUpdate(toast, 10)
+    equal(toast:IsShown(), false)
+    saved.popups = false
+    ACB.showToast(ACB.cards["npc:639"], { first = true })
+    equal(toast:IsShown(), false)
+    saved.popups = nil
+    SlashCmdList.AZEROTHCARDBINDER("popup test")
+    equal(toast:IsShown(), true)
+    toast.OnUpdate(toast, 10)
+    PlaySound, SOUNDKIT = nil, nil
+    equal(ACB.playToastSound("epic", false), nil) -- no sound system, nothing breaks
 end)
 
 test("cinematic detail applies the pose after loading and falls back for unsupported animations", function()
@@ -340,7 +456,6 @@ test("cinematic detail applies the pose after loading and falls back for unsuppo
     equal(card.model.creature, 639)
     equal(card.model:IsShown(), true)
     equal(card.owned, 0)
-    equal(card.levelBadge:IsShown(), false)
     equal(card.model.frozen, nil)
     equal(card.art.base.texture, ACB.folioArt .. "Deadmines.tga")
     card.model.fileID, card.model.supportedAnimation = 1000, 17
@@ -495,13 +610,12 @@ test("secret, unknown, live, pickpocket and item-container sources are skipped",
     openLoot({ guid(590, "pickpocket"), 1 })
     equal(rolls, before)
     clock = clock + 3
-    target, dead, rank, level = guid(590, "rank"), true, "elite", 18
+    target, dead, rank = guid(590, "rank"), true, "elite"
     draw = 100
     openLoot({ target, 1 })
     equal(rolls, before + 1)
     equal(AzerothCardBinderDB.counts["npc:590"], 1)
-    equal(AzerothCardBinderDB.levels["npc:590"], 18)
-    target, dead, rank, level, draw = nil, nil, nil, nil, 1
+    target, dead, rank, draw = nil, nil, nil, 1
 end)
 
 test("gathering requires player success and an exact node source in either event order", function()
@@ -616,19 +730,25 @@ test("Trade panel sends only supported outdoor whispers and filters incoming mes
     assert(id and give)
     emit("CHAT_MSG_ADDON", secret, secret, secret, secret)
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "R|" .. id .. "|npc:573", "PARTY", "Bob")
-    click("Confirm preview")
+    click("Accept trade")
     equal(#sent, 1)
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "R|" .. id .. "|npc:573", "WHISPER", "Bob")
-    click("Confirm preview")
+    click("Accept trade")
     equal(sent[2], "C|" .. id .. "|" .. give .. "|npc:573")
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "C|" .. id .. "|npc:573|" .. give, "WHISPER", "Bob-RealmName")
     local complete
     for _, widget in ipairs(widgets) do
-        if widget.text == "Preview complete. Both players confirmed these cards." then complete = true end
+        if widget.text == ("Trade complete. You gave %s and received Foe Reaper 4000."):format(ACB.cards[give].name) then
+            complete = true
+        end
     end
     equal(complete, true)
-    equal(AzerothCardBinderDB.counts[give], 2)
-    equal(AzerothCardBinderDB.counts["npc:573"], nil)
+    -- Neither side of the trade window shows a placeholder such as "?" for a received card.
+    for _, widget in ipairs(widgets) do
+        assert(widget.text ~= "?" and widget.text ~= "??", "placeholder text on screen")
+    end
+    equal(AzerothCardBinderDB.counts[give], 1)
+    equal(AzerothCardBinderDB.counts["npc:573"], 1)
 end)
 
 print(("%d checks passed under %s"):format(passed, _VERSION))

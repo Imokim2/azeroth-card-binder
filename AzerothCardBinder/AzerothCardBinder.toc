@@ -10,6 +10,7 @@ Catalog.lua
 Collection.lua
 Trade.lua
 Cards.lua
+Toast.lua
 Folio.lua
 Binder.lua
 Minimap.lua

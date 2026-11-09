@@ -26,15 +26,21 @@ Cards are keyed by NPC or object ID. A session remembers each rolled spawn token
 
 The encounter trial is deliberately narrow. If the required events, boss token or corpse are absent at completion, the regular loot route still applies. Loot attribution, gathering spell payloads, boss eligibility, and SavedVariables restoration need a live pass on the launch client.
 
-## Trade preview
+## Pop-ups and shiny cards
+
+When a card is added to the binder, a pop-up shows the card with a sound: **New card**, **Duplicate**, **Shiny card!** or **Received in trade**. Pop-ups queue, pause under the mouse, open the binder when left-clicked and close on right-click. `/acb popup` turns them on or off, and `/acb popup test` shows a sample so you can check the look and sound.
+
+The first copy of each card you find has a 1 in 20 chance of being a shiny copy, shown with a foil sheen, a sweep of light and a cyan trim. You can own one shiny per card. Trades never move a shiny copy, so a shiny stays with the player who found it. The sound kit names are looked up when the pop-up plays and skipped if this client does not have them, so listen for a sound on the first test.
+
+## Trading
 
 Both players need this version and at least one duplicate each. Meet outdoors and out of combat, open `/acb trade`, then enter each other's character name. Use `Name-Realm` if needed.
 
 1. One player clicks **Listen**. The other chooses a duplicate with **<** or **>** and clicks **Send offer**.
 2. The listener chooses a different duplicate and clicks **Send reply**.
-3. Review the two displayed cards and click **Confirm preview** on both clients. If a message was missed, use **Resend last step**. If both players started as the sender or the preview expired, clear it on both clients and begin again.
+3. Review the two displayed cards and click **Accept trade** on both clients. Each side's panel turns green when it accepts. When both have accepted, each client gives away its spare copy and adds the card it received. If a message was missed, use **Resend last step**; a client that already finished answers it. If both players started as the sender or the trade expired, click **Cancel** on both clients and begin again.
 
-This release exchanges offers and confirmations over addon whispers. A completed preview leaves the binder balances intact. The two-player transport needs a live pass. Collection data is local and editable, so the preview only checks the sending client's own spare copy.
+This release exchanges offers and confirmations over addon whispers and applies the swap on each client. The two-player transport needs a live pass. Trading runs on trust: collection data is local and editable, so each client only checks its own spare copy, and a client that is modified can keep both cards.
 
 ## References
 

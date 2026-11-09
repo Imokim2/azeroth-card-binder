@@ -3,14 +3,13 @@ local _, ACB = ...
 -- A World of Warcraft style card with an in-game model in a scenic portrait:
 --   * stone panel with the tooltip border tinted by rarity, an inner gold trim and corner studs
 --   * portrait window holding the zone art with the creature model on top, ringed by a rarity glow
---   * name plate with the name in Warcraft lettering and the rarity colour, and a rarity gem
+--   * name plate with the name in the rarity colour, and a rarity gem
 --   * rarity and type line, an ornate divider, then the description in quest-text gold
 -- Everything is laid out in pixels on a WIDTH x HEIGHT card.
 local WIDTH, HEIGHT = 136, 190
 ACB.cardWidth, ACB.cardHeight = WIDTH, HEIGHT
 
 local FONT = "Fonts\\FRIZQT__.TTF"
-local TITLE_FONT = "Fonts\\MORPHEUS.ttf"
 local STONE = "Interface\\FrameGeneral\\UI-Background-Rock"
 local PAD = 7
 local PORTRAIT = { width = WIDTH - PAD * 2, height = 96 }
@@ -18,8 +17,9 @@ local PLATE = { top = 108, height = 20 }
 local NAME_WIDTH = PORTRAIT.width - 30 -- the rarity gem takes the left end of the plate
 local SUBLINE_TOP = 129
 local LORE = { top = 151, height = 34 }
+local SHINY = { 0.55, 0.92, 1 }
 local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
-local panel, plate = { 0.055, 0.05, 0.045 }, { 0.13, 0.105, 0.075 }
+local panel, plate = { 0.055, 0.05, 0.045 }, { 0.06, 0.05, 0.04 }
 
 local typeNames = { mining = "Mining", herbalism = "Herbalism" }
 -- AnimationData IDs. Use the neutral frame when a model lacks its assigned combat animation.
@@ -204,7 +204,7 @@ local function diamond(parent, size, color)
 end
 
 function ACB.createCard(parent, previewUnowned)
-    local card = { entry = nil, owned = 0, levelValue = "" }
+    local card = { entry = nil, owned = 0 }
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetSize(WIDTH, HEIGHT)
     frame:EnableMouse(true)
@@ -223,6 +223,7 @@ function ACB.createCard(parent, previewUnowned)
     trim:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     trim:SetBackdropBorderColor(goldDark[1], goldDark[2], goldDark[3], 0.9)
     trim:SetFrameLevel(level + 1)
+    card.trim = trim
     for _, corner in ipairs({ { "TOPLEFT", 1, -1 }, { "TOPRIGHT", -1, -1 }, { "BOTTOMLEFT", 1, 1 }, { "BOTTOMRIGHT", -1, 1 } }) do
         local stud = diamond(trim, 5, gold)
         stud:SetPoint("CENTER", trim, corner[1], corner[2] * 2, corner[3] * 2)
@@ -261,21 +262,56 @@ function ACB.createCard(parent, previewUnowned)
     card.glow:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 2 })
     card.glow:SetFrameLevel(level + 4)
 
+    -- Shiny cards get a foil sheen over the portrait and a band of light that sweeps across it.
+    card.foil = CreateFrame("Frame", nil, window)
+    card.foil:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
+    card.foil:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -1, 1)
+    card.foil:SetFrameLevel(level + 4)
+    safe(card.foil.SetClipsChildren, card.foil, true)
+    local sheen = card.foil:CreateTexture(nil, "OVERLAY")
+    sheen:SetAllPoints(card.foil)
+    sheen:SetColorTexture(0.6, 0.85, 1, 0.12)
+    safe(sheen.SetBlendMode, sheen, "ADD")
+    if CreateColor and sheen.SetGradient then
+        safe(sheen.SetGradient, sheen, "VERTICAL", CreateColor(0.2, 0.9, 1, 0.20), CreateColor(1, 0.5, 0.9, 0.12))
+    end
+    local bandWidth = inner.width * 0.32
+    local band = CreateFrame("Frame", nil, card.foil)
+    band:SetSize(bandWidth, inner.height)
+    band:SetPoint("LEFT", card.foil, "LEFT", -bandWidth, 0)
+    for _, side in ipairs({ { "LEFT", 0, 0.45 }, { "RIGHT", 0.45, 0 } }) do
+        local half = band:CreateTexture(nil, "OVERLAY")
+        half:SetSize(bandWidth / 2, inner.height)
+        half:SetPoint(side[1], band, side[1], 0, 0)
+        half:SetColorTexture(1, 1, 1, 0.2)
+        safe(half.SetBlendMode, half, "ADD")
+        if CreateColor and half.SetGradient then
+            safe(half.SetGradient, half, "HORIZONTAL", CreateColor(1, 1, 1, side[2]), CreateColor(1, 1, 1, side[3]))
+        end
+    end
+    safe(function()
+        card.shine = band:CreateAnimationGroup()
+        card.shine:SetLooping("REPEAT")
+        local move = card.shine:CreateAnimation("Translation")
+        move:SetOffset(inner.width + bandWidth * 2, 0)
+        move:SetDuration(1.1)
+        move:SetOrder(1)
+        local rest = card.shine:CreateAnimation("Animation")
+        rest:SetDuration(2.8)
+        rest:SetOrder(2)
+    end)
+    card.foil:Hide()
+
     -- Only used when the client cannot load a gathering node's model.
     card.node = card.model:CreateTexture(nil, "ARTWORK")
     card.node:SetSize(inner.width * 0.42, inner.width * 0.42)
     card.node:SetPoint("CENTER")
     card.node:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    -- Level (or the skill a node needs) and duplicate count sit on the window's corners.
+    -- The duplicate count sits on the window's top right corner.
     local badges = CreateFrame("Frame", nil, frame)
     badges:SetAllPoints(frame)
     badges:SetFrameLevel(level + 5)
-    card.levelBadge = strip(badges, PAD + 3, PAD + 3, 24, 16, { 0.04, 0.035, 0.03 })
-    card.level = card.levelBadge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    card.level:SetPoint("CENTER")
-    card.level:SetFont(FONT, 10, "")
-    card.level:SetTextColor(gold[1], gold[2], gold[3])
     card.countBadge = strip(badges, WIDTH - PAD - 3 - 24, PAD + 3, 24, 16, { 0.04, 0.035, 0.03 })
     card.count = card.countBadge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     card.count:SetPoint("CENTER")
@@ -294,6 +330,10 @@ function ACB.createCard(parent, previewUnowned)
     card.gemBezel:SetPoint("CENTER", frame, "TOPLEFT", PAD + 11, -(PLATE.top + PLATE.height / 2))
     card.gem = diamond(badges, 9, { 1, 1, 1 })
     card.gem:SetPoint("CENTER", frame, "TOPLEFT", PAD + 11, -(PLATE.top + PLATE.height / 2))
+
+    -- A dark text box so the rarity line and the description stay readable over the stone.
+    local textBox = strip(frame, PAD, SUBLINE_TOP - 3, PORTRAIT.width, HEIGHT - 6 - (SUBLINE_TOP - 3), { 0.04, 0.035, 0.03 })
+    textBox:SetFrameLevel(level + 4)
 
     card.subline = badges:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     card.subline:SetPoint("TOP", frame, "TOPLEFT", WIDTH / 2, -SUBLINE_TOP)
@@ -326,9 +366,7 @@ function ACB.createCard(parent, previewUnowned)
         local rarity = ACB.rarities[entry.rarity]
         GameTooltip:AddLine(entry.name, unpack(rarity.color))
         GameTooltip:AddLine(rarity.name .. " " .. typeName(entry), 0.8, 0.8, 0.8)
-        if card.levelValue ~= "" then
-            GameTooltip:AddLine((entry.profession and "Skill " or "Level ") .. card.levelValue, 0.8, 0.8, 0.8)
-        end
+        if card.shiny then GameTooltip:AddLine("Shiny", SHINY[1], SHINY[2], SHINY[3]) end
         GameTooltip:AddLine(("%g%% chance per source"):format(ACB.rates[entry.rank] / 100), 0.65, 0.61, 0.54)
         if card.owned > 0 then
             GameTooltip:AddLine(("Owned %d, spare %d"):format(card.owned, card.owned - 1), 0.54, 0.80, 0.61)
@@ -342,18 +380,22 @@ function ACB.createCard(parent, previewUnowned)
     end)
 
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
-    function card:set(entry, count, level)
+    function card:set(entry, count, shiny)
         local found = count > 0
         local showModel = found or previewUnowned
-        self.entry, self.owned = entry, count
-        -- Gathering nodes show the skill they need; creatures show the level they had when captured.
-        level = entry.profession and entry.level or level
-        self.levelValue = found and (level == -1 and "??" or level and tostring(level) or "?") or ""
+        shiny = found and shiny == true
+        self.entry, self.owned, self.shiny = entry, count, shiny
         local rarity = ACB.rarities[entry.rarity]
         local color = rarity.color
         local dim = found and 1 or 0.5
 
         frame:SetBackdropBorderColor(color[1] * dim, color[2] * dim, color[3] * dim, 1)
+        local trimColor = shiny and { SHINY[1], SHINY[2], SHINY[3], 1 } or { goldDark[1], goldDark[2], goldDark[3], 0.9 }
+        self.trim:SetBackdropBorderColor(unpack(trimColor))
+        self.foil:SetShown(shiny)
+        if self.shine then
+            if shiny then safe(self.shine.Play, self.shine) else safe(self.shine.Stop, self.shine) end
+        end
         self.glow:SetBackdropBorderColor(color[1], color[2], color[3], found and 0.55 or 0.25)
         self.art:show(entry.zone, showModel)
 
@@ -381,16 +423,14 @@ function ACB.createCard(parent, previewUnowned)
         end
 
         local name = entry.name
-        self.name:SetFont(TITLE_FONT, math.max(9, math.min(14, NAME_WIDTH / (0.46 * #name))), "")
+        self.name:SetFont(FONT, math.max(8, math.min(11, NAME_WIDTH / (0.56 * #name))), "OUTLINE")
         self.name:SetText(name)
         self.name:SetTextColor(color[1] * dim, color[2] * dim, color[3] * dim)
         self.gem:SetVertexColor(color[1], color[2], color[3], 1)
         self.gem:SetAlpha(dim)
-        self.subline:SetText(("%s%s|r  %s%s|r"):format(hex({ color[1] * dim, color[2] * dim, color[3] * dim }),
-            rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry)))
+        self.subline:SetText(("%s%s|r  %s%s|r%s"):format(hex({ color[1] * dim, color[2] * dim, color[3] * dim }),
+            rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry), shiny and ("  " .. hex(SHINY) .. "Shiny|r") or ""))
 
-        self.levelBadge:SetShown(found)
-        self.level:SetText(self.levelValue)
         self.countBadge:SetShown(count > 1)
         self.count:SetText("x" .. count)
 
