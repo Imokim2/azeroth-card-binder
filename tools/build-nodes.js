@@ -1,0 +1,99 @@
+// Builds AzerothCardBinder/CatalogNodes.lua: one card for every gathering node Forever has, with the object ids
+// the game uses for it and a 3D model.
+//
+//   node tools/build-nodes.js <folder with the saved zone pages> <gameobject_template.sql> <ModelPathsClassicEra.lua>
+//
+// - Node names, skills and professions come from the "Gathering nodes" tables on wowforever.ninja's zone pages.
+// - Object ids come from the gameobject_template table of the open-source AzerothCore project (type 3 objects
+//   with the same name). The ids are used only to recognise a node in a loot window.
+// - Models are the node meshes in the game's tradeskillnodes folder, read from the WeakAuras model path list.
+const fs = require("fs");
+const path = require("path");
+
+const [pagesDir, sqlFile, modelFile] = process.argv.slice(2);
+if (!pagesDir || !sqlFile || !modelFile) throw new Error("Usage: node tools/build-nodes.js <pages> <gameobject_template.sql> <ModelPaths lua>");
+
+const decode = (text) => text.replace(/&#39;|&apos;/g, "'").replace(/&amp;/g, "&").replace(/&quot;/g, '"');
+
+// 1. Node names from the zone pages.
+const nodes = new Map();
+for (const file of fs.readdirSync(pagesDir)) {
+    const html = fs.readFileSync(path.join(pagesDir, file), "utf8");
+    const pattern = /data-node-name="([^"]+)" data-node-layer="([a-z]+)"[\s\S]*?data-sort="(\d+)">/g;
+    for (const match of html.matchAll(pattern)) {
+        const name = decode(match[1]);
+        if (!nodes.has(name)) nodes.set(name, { name, layer: match[2], skill: Number(match[3]) });
+    }
+}
+
+// 2. Object ids by name.
+const sql = fs.readFileSync(sqlFile, "utf8");
+const rowPattern = /\((\d+),(\d+),(\d+),'((?:[^'\\]|\\.|'')*)',/g;
+const idsByName = new Map();
+for (const match of sql.matchAll(rowPattern)) {
+    if (Number(match[2]) !== 3) continue; // chest-type objects, which is what gathering nodes are
+    const name = match[4].replace(/\\'|''/g, "'").toLowerCase();
+    if (!idsByName.has(name)) idsByName.set(name, []);
+    idsByName.get(name).push(Number(match[1]));
+}
+
+// 3. Model files in the tradeskillnodes folder: { file name -> file id }.
+const models = {};
+{
+    const lines = fs.readFileSync(modelFile, "utf8").split("\n");
+    let inside = false, depthAt = 0, depth = 0;
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const open = (line.match(/\{/g) || []).length, close = (line.match(/\}/g) || []).length;
+        if (/text = "tradeskillnodes"/.test(line)) { inside = true; depthAt = depth; }
+        depth += open - close;
+        const fileName = (line.match(/value = "([^"]+\.m2)"/) || [])[1];
+        const fileId = (lines[i + 1] || "").match(/fileId = "(\d+)"/);
+        if (inside && fileName && fileId) models[fileName.toLowerCase()] = Number(fileId[1]);
+        if (inside && depth < depthAt) inside = false;
+    }
+}
+// Which mesh draws which node. Only meshes whose names clearly match are used; the rest fall back to an icon.
+const MODEL_FILES = {
+    "Silverleaf": "bush_silverleaf01.m2", "Peacebloom": "bush_peacebloom01.m2", "Stranglekelp": "bush_stranglekelp01.m2",
+    "Bruiseweed": "bush_bruiseweed01.m2", "Wild Steelbloom": "bush_steelbloom01.m2", "Grave Moss": "bush_gravemoss01.m2",
+    "Liferoot": "bush_liferoot01.m2", "Fadeleaf": "bush_fadeleaf01.m2", "Goldthorn": "bush_goldthorn01.m2",
+    "Khadgar's Whisker": "bush_khadgarswhisker01.m2", "Wintersbite": "bush_wintersbite01.m2",
+    "Firebloom": "bush_firebloom.m2", "Purple Lotus": "bush_purplelotus.m2", "Arthas' Tears": "bush_arthastears.m2",
+    "Sungrass": "bush_sungrass.m2", "Blindweed": "bush_blindweed.m2", "Gromsblood": "bush_gromsblood.m2",
+    "Golden Sansam": "bush_sansam.m2", "Dreamfoil": "bush_dreamfoil.m2", "Mountain Silversage": "bush_mountainsilversage.m2",
+    "Plaguebloom": "bush_plaguebloom.m2", "Icecap": "bush_icecap.m2", "Black Lotus": "bush_blacklotus.m2",
+    "Copper Vein": "copper_miningnode_01.m2", "Tin Vein": "tin_miningnode_01.m2", "Iron Deposit": "iron_miningnode_01.m2",
+    "Gold Vein": "gold_miningnode_01.m2", "Mithril Deposit": "mithril_miningnode_01.m2",
+    "Truesilver Deposit": "truesilver_miningnode_01.m2", "Small Thorium Vein": "thorium_miningnode_01.m2",
+    "Rich Thorium Vein": "richthorium_miningnode_01.m2",
+};
+const modelFor = (name) => {
+    const fileName = MODEL_FILES[name];
+    return fileName && models[fileName] ? { file: fileName, id: models[fileName] } : null;
+};
+
+const kept = [], missing = [];
+for (const node of [...nodes.values()].sort((a, b) => a.layer.localeCompare(b.layer) || a.skill - b.skill)) {
+    const ids = idsByName.get(node.name.toLowerCase());
+    if (!ids || ids.length === 0) { missing.push(node.name); continue; }
+    kept.push({ ...node, ids: ids.sort((a, b) => a - b), model: modelFor(node.name) });
+}
+
+const quote = (text) => '"' + text.replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+const out = [];
+out.push("-- GENERATED by tools/build-nodes.js. Do not edit by hand.");
+out.push("-- Gathering nodes in World of Warcraft: Forever, with every object id the game uses for each one.");
+out.push("-- Rows are { profession, skill needed, name, model file id or 0, { object ids } }.");
+out.push("local _, ACB = ...");
+out.push("");
+out.push("ACB.addNodes({");
+for (const node of kept) {
+    const profession = node.layer === "herb" || node.layer === "herbalism" ? "herbalism" : "mining";
+    out.push(`    { "${profession}", ${node.skill}, ${quote(node.name)}, ${node.model ? node.model.id : 0}, { ${node.ids.join(", ")} } },`);
+}
+out.push("})");
+fs.writeFileSync(path.join(__dirname, "..", "AzerothCardBinder", "CatalogNodes.lua"), out.join("\n") + "\n");
+console.log(`${kept.length} node types written; ${missing.length} without an object id: ${missing.join("; ")}`);
+console.log(`models found for ${kept.filter((n) => n.model).length} of ${kept.length}`);
+for (const node of kept) console.log(node.layer.padEnd(8), String(node.skill).padStart(3), node.name.padEnd(24), node.ids.join(","), "|", node.model ? node.model.file : "(no model)");

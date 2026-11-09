@@ -85,6 +85,36 @@ end
 
 -- Find the best real artwork the running client can give us for a zone. Every lookup is optional
 -- and guarded; the card falls back to a colour gradient when nothing resolves.
+-- Names of the world map's zones and the Dungeon Journal's instances, looked up lazily.
+local mapNames, journalNames
+local function mapByName(name)
+    if not mapNames then
+        mapNames = {}
+        safe(function()
+            for _, info in ipairs(C_Map.GetMapChildrenInfo(946, nil, true) or {}) do
+                local key = type(info.name) == "string" and info.name:lower()
+                if key and not mapNames[key] then mapNames[key] = info.mapID end
+            end
+        end)
+    end
+    return mapNames[name:lower()]
+end
+local function journalByName(name)
+    if not journalNames then
+        journalNames = {}
+        safe(function()
+            for _, raid in ipairs({ false, true }) do
+                for position = 1, 200 do
+                    local id, title = EJ_GetInstanceByIndex(position, raid)
+                    if not id then break end
+                    if type(title) == "string" then journalNames[title:lower()] = journalNames[title:lower()] or id end
+                end
+            end
+        end)
+    end
+    return journalNames[name:lower()]
+end
+
 local artCache = {}
 local function resolveArt(zoneKey)
     local cached = artCache[zoneKey]
@@ -92,8 +122,10 @@ local function resolveArt(zoneKey)
     local zone = ACB.zones[zoneKey]
     local found = { gradient = zone }
 
-    if zone.journal and EJ_GetInstanceInfo then
-        local _, _, background = safe(EJ_GetInstanceInfo, zone.journal)
+    local journal = zone.journal
+    if not journal and zone.name and (zone.kind == "Dungeon" or zone.kind == "Raid") then journal = journalByName(zone.name) end
+    if journal and EJ_GetInstanceInfo then
+        local _, _, background = safe(EJ_GetInstanceInfo, journal)
         if type(background) == "number" and background > 0 then
             found = { file = background, gradient = zone }
         end
@@ -107,10 +139,11 @@ local function resolveArt(zoneKey)
             end
         end
     end
-    if not found.file and zone.map and C_Map and C_Map.GetMapArtLayers and C_Map.GetMapArtLayerTextures then
-        local layers = safe(C_Map.GetMapArtLayers, zone.map)
+    local mapID = zone.map or (zone.name and C_Map and C_Map.GetMapChildrenInfo and mapByName(zone.name))
+    if not found.file and mapID and C_Map and C_Map.GetMapArtLayers and C_Map.GetMapArtLayerTextures then
+        local layers = safe(C_Map.GetMapArtLayers, mapID)
         local layer = type(layers) == "table" and layers[1]
-        local tiles = layer and safe(C_Map.GetMapArtLayerTextures, zone.map, 1)
+        local tiles = layer and safe(C_Map.GetMapArtLayerTextures, mapID, 1)
         if type(tiles) == "table" and layer.tileWidth and layer.tileWidth > 0 then
             local cols = math.ceil(layer.layerWidth / layer.tileWidth)
             local rows = math.ceil(layer.layerHeight / layer.tileHeight)

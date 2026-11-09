@@ -7,7 +7,8 @@ local _, ACB = ...
 --                /acb privacy stops your binder from being viewable.
 ACB.viewPrefix = "AzerothBinderV1"
 
-local ENTRIES_PER_MESSAGE = 12
+local ENTRIES_PER_MESSAGE = 20
+local MAX_PARTS = 150
 local REQUEST_WINDOW, SERVE_GAP = 30, 10
 local MENUS = { "MENU_UNIT_PLAYER", "MENU_UNIT_PARTY", "MENU_UNIT_RAID_PLAYER", "MENU_UNIT_FRIEND", "MENU_UNIT_TARGET" }
 local gold, goldDark, muted = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }, { 0.65, 0.61, 0.54 }
@@ -48,6 +49,13 @@ end
 
 -- ---- Viewing a binder ----
 
+-- Cards go over the wire as "c589" (a creature) or "o1731" (a node), then =count and * for a shiny.
+local function shortKey(card) return (card.profession and "o" or "c") .. card.id end
+local function longKey(short)
+    local kind, id = short:match("^([co])(%d+)$")
+    return kind and ((kind == "o" and "node:" or "npc:") .. id)
+end
+
 -- The messages that describe a binder: "B|part/parts|key=count[*],..." where * marks a shiny.
 function ACB.encodeBinder(saved)
     local parts, current = {}, {}
@@ -55,7 +63,7 @@ function ACB.encodeBinder(saved)
         for _, card in ipairs(page.cards) do
             local count = saved.counts[card.key] or 0
             if count > 0 then
-                current[#current + 1] = ("%s=%d%s"):format(card.key, math.min(count, 99),
+                current[#current + 1] = ("%s=%d%s"):format(shortKey(card), math.min(count, 99),
                     saved.shiny and saved.shiny[card.key] and "*" or "")
                 if #current == ENTRIES_PER_MESSAGE then
                     parts[#parts + 1], current = current, {}
@@ -71,24 +79,25 @@ function ACB.encodeBinder(saved)
     return messages
 end
 
--- Printable lines for someone's binder, set by set.
+-- Printable lines for someone's binder: totals, then one line for every set they have started.
 function ACB.inspectLines(counts, shiny)
-    local lines = {}
+    local lines, owned, total, shinies = {}, 0, 0, 0
+    local sets = {}
     for _, page in ipairs(ACB.pages) do
-        if #page.cards > 0 then
-            local owned = 0
-            for _, card in ipairs(page.cards) do
-                if (counts[card.key] or 0) > 0 then owned = owned + 1 end
-            end
-            lines[#lines + 1] = ("%s   %d / %d"):format(page.title, owned, #page.cards)
-            for _, card in ipairs(page.cards) do
-                local count = counts[card.key] or 0
-                lines[#lines + 1] = count > 0
-                    and ("   [x] %s  x%d%s"):format(card.name, count, shiny[card.key] and "  (shiny)" or "")
-                    or ("   [  ] %s"):format(card.name)
+        local have = 0
+        for _, card in ipairs(page.cards) do
+            total = total + 1
+            if (counts[card.key] or 0) > 0 then
+                have, owned = have + 1, owned + 1
+                if shiny[card.key] then shinies = shinies + 1 end
             end
         end
+        if have > 0 then sets[#sets + 1] = ("%s   %d / %d"):format(page.title, have, #page.cards) end
     end
+    lines[1] = ("%d of %d cards collected, %d shiny"):format(owned, total, shinies)
+    lines[2] = ""
+    for _, line in ipairs(sets) do lines[#lines + 1] = line end
+    if #sets == 0 then lines[#lines + 1] = "No cards yet." end
     return lines
 end
 
@@ -144,16 +153,24 @@ function ACB.initSocial(saved, send, now, after)
 
     -- Another player's binder, read-only.
     local inspector = window("AzerothCardBinderInspect", 380, 560, "Binder")
-    local inspectText = inspector:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    inspectText:SetPoint("TOPLEFT", 30, -56)
-    inspectText:SetWidth(320)
+    local scroll = CreateFrame("ScrollFrame", nil, inspector, "UIPanelScrollFrameTemplate")
+    scroll:SetPoint("TOPLEFT", 28, -54)
+    scroll:SetPoint("BOTTOMRIGHT", -44, 24)
+    local inspectBody = CreateFrame("Frame", nil, scroll)
+    inspectBody:SetSize(300, 100)
+    scroll:SetScrollChild(inspectBody)
+    local inspectText = inspectBody:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    inspectText:SetPoint("TOPLEFT", 0, 0)
+    inspectText:SetWidth(300)
     inspectText:SetJustifyH("LEFT")
     inspectText:SetJustifyV("TOP")
     inspectText:SetSpacing(3)
 
     function ACB.showInspect(peer, counts, shiny)
         inspector.title:SetText(peer .. "'s binder")
-        inspectText:SetText(table.concat(ACB.inspectLines(counts, shiny), "\n"))
+        local lines = ACB.inspectLines(counts, shiny)
+        inspectText:SetText(table.concat(lines, "\n"))
+        inspectBody:SetHeight(math.max(100, #lines * 15))
         inspector:Show()
     end
 
@@ -182,7 +199,7 @@ function ACB.initSocial(saved, send, now, after)
         end
         local index, total, list = message:match("^B|(%d+)/(%d+)|([%w:=,%*]*)$")
         index, total = tonumber(index), tonumber(total)
-        if not index or not total or total < 1 or total > 6 or index < 1 or index > total then return end
+        if not index or not total or total < 1 or total > MAX_PARTS or index < 1 or index > total then return end
         if not pending[peer] or now() > pending[peer] then return end -- only answers to our own request
         local book = inbox[peer]
         if not book or book.total ~= total then
@@ -191,8 +208,9 @@ function ACB.initSocial(saved, send, now, after)
         end
         if book.got[index] then return end
         book.got[index] = true
-        for key, count, star in list:gmatch("([%a]+:%d+)=(%d+)(%*?)") do
-            if ACB.cards[key] then
+        for short, count, star in list:gmatch("([co]%d+)=(%d+)(%*?)") do
+            local key = longKey(short)
+            if key and ACB.cards[key] then
                 book.counts[key] = math.min(tonumber(count) or 0, 99)
                 if star == "*" then book.shiny[key] = true end
             end
