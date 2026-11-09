@@ -47,12 +47,12 @@ local function rarityOf(entry)
 end
 
 -- `model` is the file ID of a gathering node's 3D model (world/generic/passivedoodads/tradeskillnodes).
-local function card(page, zone, id, name, rank, icon, lore, boss, profession, level, model)
+local function card(page, zone, id, name, rank, icon, lore, boss, profession, model)
     local kind = profession and "GameObject" or "Creature"
     local key = (profession and "node:" or "npc:") .. id
     local entry = {
         key = key, id = id, name = name, rank = rank, icon = "Interface\\Icons\\" .. icon,
-        boss = boss, profession = profession, page = page, zone = zone, lore = lore, level = level, model = model,
+        boss = boss, profession = profession, page = page, zone = zone, lore = lore, model = model,
     }
     entry.rarity = rarityOf(entry)
     ACB.cards[key] = entry
@@ -95,9 +95,9 @@ card(2, "westfall", 573, "Foe Reaper 4000", "rare", "Ability_Repair",
     "A harvester that learned to reap more than wheat.")
 
 card(3, "elwynn", 1731, "Copper Vein", "gathering", "INV_Ore_Copper_01",
-    "Reddish ore that every young miner swings a pick at first.", false, "mining", 1, 219514) -- copper_miningnode_01.m2
+    "Reddish ore that every young miner swings a pick at first.", false, "mining", 219514) -- copper_miningnode_01.m2
 card(3, "elwynn", 1618, "Peacebloom", "gathering", "INV_Misc_Flower_02",
-    "A gentle bloom that grows wild across the green fields.", false, "herbalism", 1, 219481) -- bush_peacebloom01.m2
+    "A gentle bloom that grows wild across the green fields.", false, "herbalism", 219481) -- bush_peacebloom01.m2
 
 ACB.achievements = {
     { key = "crew", name = "The Defias Crew", bossesOnly = true },

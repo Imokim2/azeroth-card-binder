@@ -1,16 +1,15 @@
 local _, ACB = ...
 
--- A World of Warcraft style card, built only from the game's own textures and fonts:
+-- A World of Warcraft style card, built only from the game's own textures and its Friz Quadrata font:
 --   * stone panel with the tooltip border tinted by rarity, an inner gold trim and corner studs
 --   * portrait window holding the zone art with the creature model on top, ringed by a rarity glow
---   * name plate with the name in Warcraft lettering and the rarity colour, and a rarity gem
+--   * name plate with the name in the rarity colour, and a rarity gem
 --   * rarity and type line, an ornate divider, then the description in quest-text gold
 -- Everything is laid out in pixels on a WIDTH x HEIGHT card.
 local WIDTH, HEIGHT = 136, 190
 ACB.cardWidth, ACB.cardHeight = WIDTH, HEIGHT
 
 local FONT = "Fonts\\FRIZQT__.TTF"
-local TITLE_FONT = "Fonts\\MORPHEUS.ttf"
 local STONE = "Interface\\FrameGeneral\\UI-Background-Rock"
 local PAD = 7
 local PORTRAIT = { width = WIDTH - PAD * 2, height = 96 }
@@ -19,7 +18,7 @@ local NAME_WIDTH = PORTRAIT.width - 30 -- the rarity gem takes the left end of t
 local SUBLINE_TOP = 129
 local LORE = { top = 151, height = 34 }
 local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
-local panel, plate = { 0.055, 0.05, 0.045 }, { 0.13, 0.105, 0.075 }
+local panel, plate = { 0.055, 0.05, 0.045 }, { 0.06, 0.05, 0.04 }
 
 local typeNames = { mining = "Mining", herbalism = "Herbalism" }
 local function typeName(entry)
@@ -168,7 +167,7 @@ local function diamond(parent, size, color)
 end
 
 function ACB.createCard(parent)
-    local card = { entry = nil, owned = 0, levelValue = "" }
+    local card = { entry = nil, owned = 0 }
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetSize(WIDTH, HEIGHT)
     frame:EnableMouse(true)
@@ -217,15 +216,10 @@ function ACB.createCard(parent)
     card.node:SetPoint("CENTER")
     card.node:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    -- Level (or the skill a node needs) and duplicate count sit on the window's corners.
+    -- The duplicate count sits on the window's top right corner.
     local badges = CreateFrame("Frame", nil, frame)
     badges:SetAllPoints(frame)
     badges:SetFrameLevel(level + 5)
-    card.levelBadge = strip(badges, PAD + 3, PAD + 3, 24, 16, { 0.04, 0.035, 0.03 })
-    card.level = card.levelBadge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    card.level:SetPoint("CENTER")
-    card.level:SetFont(FONT, 10, "")
-    card.level:SetTextColor(gold[1], gold[2], gold[3])
     card.countBadge = strip(badges, WIDTH - PAD - 3 - 24, PAD + 3, 24, 16, { 0.04, 0.035, 0.03 })
     card.count = card.countBadge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     card.count:SetPoint("CENTER")
@@ -244,6 +238,10 @@ function ACB.createCard(parent)
     card.gemBezel:SetPoint("CENTER", frame, "TOPLEFT", PAD + 11, -(PLATE.top + PLATE.height / 2))
     card.gem = diamond(badges, 9, { 1, 1, 1 })
     card.gem:SetPoint("CENTER", frame, "TOPLEFT", PAD + 11, -(PLATE.top + PLATE.height / 2))
+
+    -- A dark text box so the rarity line and the description stay readable over the stone.
+    local textBox = strip(frame, PAD, SUBLINE_TOP - 3, PORTRAIT.width, HEIGHT - 6 - (SUBLINE_TOP - 3), { 0.04, 0.035, 0.03 })
+    textBox:SetFrameLevel(level + 4)
 
     card.subline = badges:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     card.subline:SetPoint("TOP", frame, "TOPLEFT", WIDTH / 2, -SUBLINE_TOP)
@@ -276,9 +274,6 @@ function ACB.createCard(parent)
         local rarity = ACB.rarities[entry.rarity]
         GameTooltip:AddLine(entry.name, unpack(rarity.color))
         GameTooltip:AddLine(rarity.name .. " " .. typeName(entry), 0.8, 0.8, 0.8)
-        if card.levelValue ~= "" then
-            GameTooltip:AddLine((entry.profession and "Skill " or "Level ") .. card.levelValue, 0.8, 0.8, 0.8)
-        end
         GameTooltip:AddLine(("%g%% chance per source"):format(ACB.rates[entry.rank] / 100), 0.65, 0.61, 0.54)
         if card.owned > 0 then
             GameTooltip:AddLine(("Owned %d, spare %d"):format(card.owned, card.owned - 1), 0.54, 0.80, 0.61)
@@ -292,12 +287,9 @@ function ACB.createCard(parent)
     end)
 
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
-    function card:set(entry, count, level)
+    function card:set(entry, count)
         local found = count > 0
         self.entry, self.owned = entry, count
-        -- Gathering nodes show the skill they need; creatures show the level they had when captured.
-        level = entry.profession and entry.level or level
-        self.levelValue = found and (level == -1 and "??" or level and tostring(level) or "?") or ""
         local rarity = ACB.rarities[entry.rarity]
         local color = rarity.color
         local dim = found and 1 or 0.5
@@ -329,7 +321,7 @@ function ACB.createCard(parent)
         if self.useIcon then self.node:SetTexture(entry.icon) end
 
         local name = entry.name
-        self.name:SetFont(TITLE_FONT, math.max(9, math.min(14, NAME_WIDTH / (0.46 * #name))), "")
+        self.name:SetFont(FONT, math.max(8, math.min(11, NAME_WIDTH / (0.56 * #name))), "OUTLINE")
         self.name:SetText(name)
         self.name:SetTextColor(color[1] * dim, color[2] * dim, color[3] * dim)
         self.gem:SetVertexColor(color[1], color[2], color[3], 1)
@@ -337,8 +329,6 @@ function ACB.createCard(parent)
         self.subline:SetText(("%s%s|r  %s%s|r"):format(hex({ color[1] * dim, color[2] * dim, color[3] * dim }),
             rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry)))
 
-        self.levelBadge:SetShown(found)
-        self.level:SetText(self.levelValue)
         self.countBadge:SetShown(count > 1)
         self.count:SetText("x" .. count)
 

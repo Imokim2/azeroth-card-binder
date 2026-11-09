@@ -27,8 +27,7 @@ end
 local function observeUnit(unit)
     local guid = apiValue("string", UnitGUID, unit)
     if not ACB.source(guid) then return end
-    return guid, apiValue("boolean", UnitIsDeadOrGhost, unit), apiValue("string", UnitClassification, unit),
-        apiValue("number", UnitLevel, unit)
+    return guid, apiValue("boolean", UnitIsDeadOrGhost, unit), apiValue("string", UnitClassification, unit)
 end
 
 local function scanSlot(snapshot, ok, ...)
@@ -56,17 +55,16 @@ local function scanLoot(snapshot)
         for slot = 1, snapshot.slots do scanSlot(snapshot, pcall(GetLootSourceInfo, slot)) end
     end
     for _, unit in ipairs(units) do
-        local guid, dead, rank, level = observeUnit(unit)
+        local guid, dead, rank = observeUnit(unit)
         if guid and snapshot.sources[guid] then
             if dead ~= nil then snapshot.dead[guid] = dead end
             if rank then snapshot.rank[guid] = rank end
-            if level then snapshot.level[guid] = level end
         end
     end
 end
 
 local function newSnapshot()
-    return { at = GetTime(), sources = {}, dead = {}, rank = {}, level = {} }
+    return { at = GetTime(), sources = {}, dead = {}, rank = {} }
 end
 
 local function finishGather()
@@ -111,7 +109,7 @@ local function lootOpened(fromItem)
         if card.profession then
             node, nodeCount = guid, nodeCount + 1
         elseif not pickpocket and snapshot.dead[guid] ~= false then
-            collection:roll(guid, "loot", snapshot.rank[guid], snapshot.level[guid])
+            collection:roll(guid, "loot", snapshot.rank[guid])
         else
             log("Creature skipped: living source or recent Pick Pocket")
         end
@@ -165,11 +163,10 @@ end
 local function watchBoss()
     if not encounter then return end
     for _, unit in ipairs(units) do
-        local guid, dead, rank, level = observeUnit(unit)
+        local guid, dead, rank = observeUnit(unit)
         if dead == false and ACB.source(guid) == ACB.cards["npc:639"] then
             if encounter.guid and encounter.guid ~= guid then encounter.ambiguous = true end
             encounter.guid, encounter.rank = guid, rank or encounter.rank
-            encounter.level = level or encounter.level
         end
     end
 end
@@ -203,7 +200,7 @@ local function encounterEvent(event, id, name, difficulty, success)
     if not matchedCorpse or apiValue("boolean", UnitIsDeadOrGhost, "player") ~= false then
         log("VanCleef completion skipped: no matching readable corpse or player dead")
     elseif saved.bossTrial then
-        collection:roll(attempt.guid, "encounter", attempt.rank, attempt.level)
+        collection:roll(attempt.guid, "encounter", attempt.rank)
         ACB.refresh()
     else
         log("VanCleef completion eligible (trial disabled)")
@@ -226,7 +223,7 @@ end
 
 local function sendTrade(peer, message)
     if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then
-        return false, "Trade previews are available outdoors and out of combat."
+        return false, "Trading is available outdoors and out of combat."
     end
     if not C_ChatInfo or apiValue("boolean", C_ChatInfo.IsAddonMessagePrefixRegistered, ACB.tradePrefix) ~= true then
         return false, "Addon whisper registration is unavailable."
@@ -259,12 +256,7 @@ local function initialize()
     saved = tableOrEmpty(AzerothCardBinderDB)
     AzerothCardBinderDB = saved
     saved.counts, saved.achievements = tableOrEmpty(saved.counts), tableOrEmpty(saved.achievements)
-    saved.levels = tableOrEmpty(saved.levels)
-    for key, level in pairs(saved.levels) do
-        if type(level) ~= "number" or level ~= math.floor(level) or level < -1 or level == 0 or level > 200 then
-            saved.levels[key] = nil
-        end
-    end
+    saved.levels = nil -- levels were shown on cards in an earlier build and are no longer kept
     for key, count in pairs(saved.counts) do
         if type(count) ~= "number" or count < 1 or count > 1000000000 or count ~= math.floor(count) then
             saved.counts[key] = nil
@@ -275,7 +267,11 @@ local function initialize()
     trade = ACB.newTrade(saved.counts, GetTime, function()
         sequence = sequence + 1
         return ("%d-%d-%d"):format(time(), math.random(1, 999999), sequence)
-    end, sendTrade)
+    end, sendTrade, function(give, take)
+        local done = collection:swap(give, take)
+        ACB.refresh()
+        return done
+    end)
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.tradePrefix)
     end

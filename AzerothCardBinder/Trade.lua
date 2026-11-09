@@ -2,27 +2,43 @@ local _, ACB = ...
 
 ACB.tradePrefix = "AzerothBinder1"
 
-function ACB.newTrade(counts, now, makeID, send)
+-- A swap runs over addon whispers: the sender offers a spare card (O), the partner replies with one
+-- of their own (R), and each side confirms the exact pair (C). When a side has sent its confirmation
+-- and received the partner's, it applies the swap once through `apply`.
+function ACB.newTrade(counts, now, makeID, send, apply)
     local trade = { seen = {}, status = "Choose a partner and a duplicate to offer." }
+    apply = apply or function() return true end
 
     function trade:reset(status)
         self.session = nil
-        self.status = status or "Preview cleared. Choose a partner to start again."
+        self.status = status or "Trade cleared. Choose a partner to start again."
     end
 
     function trade:active()
-        if self.session and now() >= self.session.expires then
-            self:reset("Preview expired. Start a new one with your partner.")
+        local session = self.session
+        if session and now() >= session.expires then
+            self:reset(session.applied and self.status or "Trade expired. Start a new one with your partner.")
         end
         return self.session
+    end
+
+    -- A trade that has already been applied stays around for a while only so a lost confirmation can
+    -- be re-sent; it must not block a new trade.
+    local function busy(self)
+        local session = self:active()
+        return session and not session.applied
     end
 
     local function hasDuplicate(key)
         return ACB.cards[key] and (counts[key] or 0) >= 2
     end
 
+    local function confirmation(session)
+        return table.concat({ "C", session.id, session.give, session.take }, "|")
+    end
+
     function trade:listen(peer)
-        if self:active() or not peer then return end
+        if busy(self) or not peer then return end
         self.session = { peer = peer, expires = now() + 120 }
         self.status = "Listening for an offer from " .. peer .. "."
     end
@@ -30,19 +46,18 @@ function ACB.newTrade(counts, now, makeID, send)
     function trade:retry()
         local session = self:active()
         if not session or not session.give then return end
-        local command = session.sentConfirm and "C" or (session.initiator and "O" or "R")
-        local message = command .. "|" .. session.id .. "|" .. session.give
-        if command == "C" then message = message .. "|" .. session.take end
+        local message = session.sentConfirm and confirmation(session)
+            or ((session.initiator and "O" or "R") .. "|" .. session.id .. "|" .. session.give)
         local sent, reason = send(session.peer, message)
-        if sent then
-            self.status = session.sentConfirm and "Confirmation sent again." or "Offer sent."
-        else
+        if not sent then
             self.status = reason
+        elseif not session.applied then
+            self.status = session.sentConfirm and "Confirmation sent again." or "Offer sent."
         end
     end
 
     function trade:offer(peer, key)
-        if self:active() or not peer then return end
+        if busy(self) or not peer then return end
         if not hasDuplicate(key) then
             self.status = "Choose a card with at least two copies."
             return
@@ -64,6 +79,20 @@ function ACB.newTrade(counts, now, makeID, send)
         self:retry()
     end
 
+    -- Apply the swap once both confirmations are in.
+    local function finish(self)
+        local session = self.session
+        if not session or session.applied or not session.sentConfirm or not session.peerConfirmed then return end
+        session.applied = true
+        session.expires = now() + 120
+        local give, take = ACB.cards[session.give], ACB.cards[session.take]
+        if apply(session.give, session.take) then
+            self.status = ("Trade complete. You gave %s and received %s."):format(give.name, take.name)
+        else
+            self.status = "The trade could not finish because your duplicate is no longer available."
+        end
+    end
+
     function trade:confirm()
         local session = self:active()
         if not session or session.sentConfirm or not session.take or not session.give then return end
@@ -71,10 +100,11 @@ function ACB.newTrade(counts, now, makeID, send)
             self.status = "The offered duplicate is no longer available."
             return
         end
-        local sent, reason = send(session.peer, table.concat({ "C", session.id, session.give, session.take }, "|"))
+        local sent, reason = send(session.peer, confirmation(session))
         if sent then
             session.sentConfirm = true
             self.status = "Your confirmation was sent."
+            finish(self)
         else
             self.status = reason
         end
@@ -95,11 +125,21 @@ function ACB.newTrade(counts, now, makeID, send)
         elseif command == "R" and take == "" and id == session.id and session.initiator
             and not session.take and session.give ~= give then
             session.take = give
-            self.status = "Reply received. Review both cards and confirm."
+            self.status = "Reply received. Review both cards and accept."
         elseif command == "C" and id == session.id and session.give and session.take
             and session.take == give and take == "|" .. session.give then
+            if session.peerConfirmed then
+                -- The partner re-sent, so they probably missed our confirmation. Answer a couple of
+                -- times without starting an endless exchange.
+                if session.sentConfirm and (session.echoes or 0) < 2 then
+                    session.echoes = (session.echoes or 0) + 1
+                    send(session.peer, confirmation(session))
+                end
+                return
+            end
             session.peerConfirmed = true
-            self.status = "Partner confirmed the displayed cards."
+            self.status = "Partner accepted the displayed cards."
+            finish(self)
         end
     end
 
