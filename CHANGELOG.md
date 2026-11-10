@@ -4,6 +4,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- Companion app core: the sync engine joins everything into one loop (upload, roll tape, standings, `Data/Sync.lua`) that runs whenever the game finishes writing its saved file. Still no window around it.
+- Server: a flag review API (clear, confirm, ban) behind an admin token, luck that a reviewer has cleared is not flagged again, and a rebuild job that recomputes everything derived from the stored batches (a page of players at a time, with a dry run).
+
+- **Ladder tab** in the binder: the top of the Ranked ladder, where you stand, and who finished each set first, with a "(verified)" mark beside ranked players in the trade window and the binder view. The standings come from the companion app, so they need the app and a reload; without it the tab says so.
+- Server: trade matching (the two halves of a trade are paired; a half nobody confirms within a week is flagged and stops counting), the firsts feed (`GET /v1/firsts`) and the ranked players' characters on the leaderboard.
+
 - **The zone card bar is now green and takes the reputation bar's place** (the bar above the experience bar), in the same green, instead of the honour bar. It hands the reputation bar back when switched off.
 - **Trading works with any card**, not just duplicates, including a last copy. Trade panel text says when an offer is your only copy. The shared rules and test vectors allow a trade out of a last copy.
 - **Viewing other players' binders** now explains itself: you are told when the request was sent, when someone keeps their binder private, when nothing comes back, and when only part arrives. Binder parts go out at a pace the game accepts and a refused part is sent again. Before, a binder of more than about ten messages could be cut short without any sign.

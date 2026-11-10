@@ -54,9 +54,10 @@ function ACB.initUI(saved, trade)
     tradeView:SetBackdropColor(0.13, 0.09, 0.07, 1)
     tradeView:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
     local settingsView = ACB.createSettingsView(frame, saved)
+    local ladderView = ACB.createLadderView(frame, saved)
 
     local tabs = {}
-    for index, destination in ipairs({ "index", "collection", "trade", "achievements", "settings" }) do
+    for index, destination in ipairs({ "index", "collection", "trade", "achievements", "ladder", "settings" }) do
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
@@ -177,11 +178,17 @@ function ACB.initUI(saved, trade)
         end
         titleMark:SetText(saved.title and ("Title: " .. saved.title) or "")
         local inTrade, inSettings = mode == "trade", mode == "settings"
-        local inAchievements = mode == "achievements"
-        collectionView:SetShown(not inTrade and not inSettings and not inAchievements)
+        local inAchievements, inLadder = mode == "achievements", mode == "ladder"
+        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder)
         tradeView:SetShown(inTrade)
         settingsView:SetShown(inSettings)
         achievementView:SetShown(inAchievements)
+        ladderView:SetShown(inLadder)
+        if inLadder then
+            regionMark:SetText("BINDER  /  LADDER")
+            ladderView:refresh()
+            return
+        end
         if inSettings then
             regionMark:SetText("BINDER  /  SETTINGS")
             settingsView:refresh()
@@ -222,7 +229,8 @@ function ACB.initUI(saved, trade)
         retry:SetEnabled(give ~= nil)
 
         mine.header:SetText(name)
-        theirs.header:SetText(partnerName ~= "" and partnerName or "Partner")
+        theirs.header:SetText((partnerName ~= "" and partnerName or "Partner")
+            .. (ACB.isVerified(session and session.peer) and " (verified)" or ""))
         chooseText:SetText(offering and offering.name or "Choose a card")
         local function fill(side, card, owned, shiny)
             side.card.frame:SetShown(card ~= nil)

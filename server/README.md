@@ -12,6 +12,9 @@ src/ledger.ts     hash chain checks; src/crypto.ts hashing, signatures, canonica
 src/shared.ts     the rules shared with the app (../packages/shared/src/rules.js), with types
 src/score.ts      the score formula, versioned
 src/tape.ts       the roll tape: entries derived from a secret, and the check of every ranked drop
+src/maintenance.ts the hourly job: match the two halves of trades, write off unconfirmed ones
+src/rebuild.ts    recompute everything derived from the stored batches (a page of players at a time)
+src/derive.ts     what an upload's events say about trades, finished sets and drops (shared by upload and rebuild)
 src/store.ts      PlayerStore, IngestStore and LeaderboardStore: what the rules code needs from storage
 src/sqlStore.ts   those stores on D1 (or SQLite in tests); src/db.ts the small Db interface and the D1 adapter
 migrations/       forward-only SQL; CHECKSUMS.txt records each one so a published migration cannot be edited

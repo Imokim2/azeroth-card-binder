@@ -52,11 +52,28 @@ Every entry is derived from a server secret, the player and the position, so not
 
 ### Checks that flag instead of reject
 
-After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour) and `fast-start` (over 200 unique cards in an account's first hour). Flags carry no public detail and are not part of any response.
+After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour) and `trade-unmatched` (a trade half the partner never confirmed within seven days; see below). Flags carry no public detail and are not part of any response.
 
 ### `GET /v1/leaderboard?limit=N`
 
-The best **public** players, highest score first, ties broken by who reached the score first. `limit` is 1 to 100 (default 100). `200 { generatedAt, entries: [{ rank, playerId, displayName, scoreTenths, uniqueCards, setsDone }] }`. Cached for 60 seconds.
+The best **public** players, highest score first, ties broken by who reached the score first. `limit` is 1 to 100 (default 100). `200 { generatedAt, entries: [{ rank, playerId, displayName, scoreTenths, uniqueCards, setsDone, characters }] }`. `characters` lists the player's characters in the form players are named by between themselves (`name-realmname`, lower case), so a client can mark them as verified. Cached for 60 seconds.
+
+### `GET /v1/firsts`
+
+Who finished each set first, among the players who may appear on the ladder (public, not banned, not held): `200 { generatedAt, firsts: [{ setCode, title, playerId, displayName, at }] }`, earliest first. `at` is when the server received the upload with the finishing event, not the player's own clock. If the first player is later held back or banned, the next one is first. Cached for 60 seconds.
+
+### Trade matching
+
+Every `tradeIn` and `tradeOut` is stored as one half of a trade. A half is matched when the other player's upload holds the opposite half: the same trade id and card, each naming the other as partner. Once an hour the server pairs up what it has; a half still unmatched after seven days is written off, a `trade-unmatched` flag is raised, and the copies it brought in stop counting towards the score and towards finishing a set. If the partner's upload turns up later, the halves match and the score is put right.
+
+### Admin routes
+
+For the people who run the service, not for clients. They need the header `authorization: Bearer <ADMIN_TOKEN>`, where the token is a Worker secret (`wrangler secret put ADMIN_TOKEN`). With no token configured these addresses answer `not_found`, as if they did not exist; a missing or wrong token answers `unauthorized`. Never cached.
+
+- `GET /v1/admin/flags?state=open|cleared|confirmed|all&limit=N` (default `open`, `limit` 1 to 500): `200 { flags: [{ id, playerId, displayName, kind, state, notes, createdAt, reviewedAt, reviewNote }] }`, oldest first.
+- `POST /v1/admin/flags/:id { state: "cleared" | "confirmed", note? }` (note up to 500 characters): a reviewer's decision. A **held** player stays off the ladder until their flag is **cleared**; **confirmed** keeps them off. Luck that was cleared is not flagged again until it is two more orders of magnitude beyond what was cleared. `404` for an unknown flag.
+- `POST /v1/admin/players/:id/ban { banned: boolean }`: a banned player cannot upload (`banned`) and is hidden from the ladder; nothing is deleted. `404` for an unknown player.
+- `POST /v1/admin/rebuild { after?, limit?, dryRun?, force? }`: recomputes everything derived from the stored batches (state, drops, trade halves, finished sets, score and its rules version) for one page of players (`limit` 1 to 200, default 50, in id order after `after`). `200 { checked, changed: [{ playerId, differences }], failed: [{ playerId, rule, index }], next, dryRun }`; carry on with `after: next` until it is `null`. A dry run writes nothing. A player whose stored history no longer passes the rules is listed in `failed` and left as it is. Trade halves come back open; the hourly job matches them again.
 
 ### `GET /v1/player/:id`
 
@@ -74,6 +91,7 @@ Every error is `{ "error": { "code", "message", "detail"?, "retryAfter"? } }` wi
 | `bad_request` | 400 | The request could not be understood. |
 | `bad_signature` | 401 | The signature does not match the key. |
 | `unknown_key` | 401 | This key is not registered. |
+| `unauthorized` | 401 | The admin token is missing or wrong. |
 | `bad_identity` | 401 | The sign-in could not be verified. |
 | `banned` | 403 | This player is not allowed to upload. |
 | `not_found` | 404 | There is nothing here. |

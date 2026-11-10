@@ -42,6 +42,10 @@ Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each reco
 
 Every card has a description of at most 80 characters so it fits the card face. The original hand-made cards keep their lines. All raid and dungeon bosses and about a hundred well-known rares and elites have a line written for them. Most other creatures get a line built from their name: a named group ("the Scarlet Crusade"), a kind of creature (boar, murloc, ghoul), a title or job (guard, captain, miner) or, failing that, their rank. About a third of the creatures fall back to a rank line. The 39 nodes have their own lines. Read a few cards from a big set such as The Barrens for anything that sounds wrong.
 
+## Ladder tab
+
+Open the binder and click **Ladder**. Without the companion app it says you are not on the ladder (or to switch to Ranked) and the list is empty, with "Nobody yet." under "First to finish a set". Check the tab opens without an error and the columns line up. With the app and a server running it should list up to 100 players, show your own place and mark your row in gold. The "(verified)" mark in the trade window and binder view only appears for characters on the ladder.
+
 ## Zone card bar
 
 A green bar in the reputation bar's place, above the experience bar, shows the cards you own in the place you are in, such as "Westfall 12 / 87". Check it sits exactly over where the reputation bar was and that bar is gone while it shows. Walk between two zones and through a dungeon door and check it changes by itself, and that it moves when you find a card. In a city with no set it hides and the reputation bar returns. Switching it off (Settings or `/acb bar`) also brings the reputation bar back. If it does not take the right bar's place, `/acb bar debug` lists the bars it looked for; send me that. Shift-drag moves it (the position is kept); `/acb bar reset` clears that.

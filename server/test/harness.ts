@@ -30,6 +30,7 @@ export const vectors = JSON.parse(readFileSync(new URL("vectors/rules.json", roo
 export const CLIENT = "0.1.0";
 export const NOW = 1_700_000_000;
 export const TAPE_SECRET = "test-only tape secret, never used anywhere real";
+export const ADMIN_TOKEN = "test-only admin token, never used anywhere real";
 
 export function setup(options: { identity?: boolean } = {}) {
   const { db, raw } = openTestDb();
@@ -39,7 +40,7 @@ export function setup(options: { identity?: boolean } = {}) {
   let healthy = true;
   const identity = options.identity === false ? undefined : { verify: async (token: string) => (token.startsWith("discord:") ? token.slice(8) : null) };
   const deps: Deps = {
-    players: store, ingest: store, board: store, tapes: store, catalog, tapeSecret: TAPE_SECRET,
+    players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, rebuild: store, catalog, tapeSecret: TAPE_SECRET, adminToken: ADMIN_TOKEN,
     now: () => clock.now, log: (entry) => logs.push(entry),
     health: async () => { if (!healthy) throw new Error("database down"); await db.all("SELECT 1"); },
     minClient: "0.1.0", version: "test", ...(identity ? { identity } : {}),

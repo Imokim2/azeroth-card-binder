@@ -16,9 +16,16 @@ d1_databases = [
   { binding = "DB", database_name = "warcards-staging", database_id = "REPLACE-WITH-STAGING-DATABASE-ID", migrations_dir = "migrations" },
 ]
 
+# Once an hour: pair up trades and write off the ones nobody confirmed (src/maintenance.ts).
+[env.staging.triggers]
+crons = ["17 * * * *"]
+
 [env.production]
 name = "warcards-api"
 vars = { MIN_CLIENT = "0.1.0", VERSION = "0.1.0" }
 d1_databases = [
   { binding = "DB", database_name = "warcards", database_id = "REPLACE-WITH-PRODUCTION-DATABASE-ID", migrations_dir = "migrations" },
 ]
+
+[env.production.triggers]
+crons = ["17 * * * *"]

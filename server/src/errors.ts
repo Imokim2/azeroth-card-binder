@@ -4,6 +4,7 @@ export const ERRORS = {
   bad_request: { status: 400, message: "The request could not be understood." },
   bad_signature: { status: 401, message: "The signature does not match the key." },
   unknown_key: { status: 401, message: "This key is not registered." },
+  unauthorized: { status: 401, message: "The admin token is missing or wrong." },
   bad_identity: { status: 401, message: "The sign-in could not be verified." },
   banned: { status: 403, message: "This player is not allowed to upload." },
   not_found: { status: 404, message: "There is nothing here." },

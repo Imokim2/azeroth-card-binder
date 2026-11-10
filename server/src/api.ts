@@ -5,7 +5,8 @@ import type { ErrorCode } from "./errors.ts";
 import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import type { Catalog } from "./shared.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
-import type { IngestStore, LeaderboardStore, PlayerStore, TapeStore, Visibility } from "./store.ts";
+import { rebuild } from "./rebuild.ts";
+import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, TapeStore, TradeStore, Visibility } from "./store.ts";
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
 
@@ -19,6 +20,10 @@ export type Deps = {
   ingest: IngestStore;
   board: LeaderboardStore;
   tapes: TapeStore;
+  trades: TradeStore;
+  moderation: ModerationStore;
+  rebuild: RebuildStore;
+  adminToken?: string | undefined; // the secret that opens /v1/admin/*; without it those routes do not exist
   catalog: Catalog;
   tapeSecret?: string | undefined; // derives the roll tape; Ranked is closed (ranked_unavailable) without it
   now: () => number; // seconds
@@ -162,13 +167,88 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const asked = Number(url.searchParams.get("limit") ?? 100);
     const limit = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, 100) : 100;
     const entries = await deps.board.top(limit);
+    // The characters of the ranked players, so the add-on can mark them as verified beside their names.
+    const characters = await deps.board.charactersOf(entries.map((entry) => entry.playerId));
     return json(200, {
       generatedAt: deps.now(),
       entries: entries.map((entry, index) => ({
         rank: index + 1, playerId: entry.playerId, displayName: entry.displayName, scoreTenths: entry.score,
-        uniqueCards: entry.uniqueCards, setsDone: entry.setsDone,
+        uniqueCards: entry.uniqueCards, setsDone: entry.setsDone, characters: characters[entry.playerId] ?? [],
       })),
     }, { "cache-control": `public, max-age=${PUBLIC_CACHE_SECONDS}` });
+  }
+
+  // Who finished each set first (roadmap C6), among the players who may appear on the ladder.
+  async function firsts(): Promise<Response> {
+    const titles = new Map(deps.catalog.sets.map((set) => [set.code, set.title]));
+    const rows = await deps.board.firsts();
+    return json(200, {
+      generatedAt: deps.now(),
+      firsts: rows.filter((row) => titles.has(row.setCode)).map((row) => ({
+        setCode: row.setCode, title: titles.get(row.setCode), playerId: row.playerId, displayName: row.displayName, at: row.receivedAt,
+      })),
+    }, { "cache-control": `public, max-age=${PUBLIC_CACHE_SECONDS}` });
+  }
+
+  // ---- Admin (roadmap D4): reviewing flags and banning players, behind one secret token ----
+  async function sameText(a: string, b: string): Promise<boolean> {
+    // Compare hashes, not the texts, so the time taken does not depend on how much of the token was right.
+    const encoder = new TextEncoder();
+    const [left, right] = await Promise.all([crypto.subtle.digest("SHA-256", encoder.encode(a)), crypto.subtle.digest("SHA-256", encoder.encode(b))]);
+    const x = new Uint8Array(left);
+    const y = new Uint8Array(right);
+    let difference = 0;
+    for (let index = 0; index < x.length; index++) difference |= (x[index] as number) ^ (y[index] as number);
+    return difference === 0;
+  }
+
+  async function requireAdmin(request: Request): Promise<void> {
+    if (!deps.adminToken) throw new ApiError("not_found"); // not configured: the routes are not there at all
+    const sent = /^Bearer (.+)$/.exec(request.headers.get("authorization") ?? "")?.[1];
+    if (!sent || !(await sameText(sent, deps.adminToken))) throw new ApiError("unauthorized");
+  }
+
+  async function adminFlags(request: Request, url: URL): Promise<Response> {
+    await requireAdmin(request);
+    const state = url.searchParams.get("state") ?? "open";
+    if (!["open", "cleared", "confirmed", "all"].includes(state)) throw new ApiError("bad_request", { field: "state" });
+    const asked = Number(url.searchParams.get("limit") ?? 100);
+    const limit = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, 500) : 100;
+    const flags = await deps.moderation.flags(state as FlagRecord["state"] | "all", limit);
+    return json(200, { flags }, { "cache-control": "no-store" });
+  }
+
+  async function adminReview(request: Request, id: string): Promise<Response> {
+    await requireAdmin(request);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    const { state, note } = body ?? {};
+    if (state !== "cleared" && state !== "confirmed") throw new ApiError("bad_request", { field: "state" });
+    if (note !== undefined && (typeof note !== "string" || note.length > 500)) throw new ApiError("bad_request", { field: "note" });
+    if (!(await deps.moderation.review(id, state, typeof note === "string" ? note : "", deps.now()))) throw new ApiError("not_found");
+    return json(200, { id, state }, { "cache-control": "no-store" });
+  }
+
+  async function adminBan(request: Request, playerId: string): Promise<Response> {
+    await requireAdmin(request);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    if (typeof body?.["banned"] !== "boolean") throw new ApiError("bad_request", { field: "banned" });
+    if (!(await deps.moderation.setBanned(playerId, body["banned"]))) throw new ApiError("not_found");
+    return json(200, { playerId, banned: body["banned"] }, { "cache-control": "no-store" });
+  }
+
+  // Recompute everything derived from the stored batches (roadmap D8), a page of players at a time.
+  async function adminRebuild(request: Request): Promise<Response> {
+    await requireAdmin(request);
+    const body = ((await readJson(request)) as Record<string, unknown> | null) ?? {};
+    const { after, limit, dryRun, force } = body;
+    if (after !== undefined && after !== null && (typeof after !== "string" || after.length > 40)) throw new ApiError("bad_request", { field: "after" });
+    if (limit !== undefined && (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 200)) throw new ApiError("bad_request", { field: "limit" });
+    if ((dryRun !== undefined && typeof dryRun !== "boolean") || (force !== undefined && typeof force !== "boolean")) throw new ApiError("bad_request", { field: "dryRun" });
+    const report = await rebuild({ rebuild: deps.rebuild, catalog: deps.catalog }, {
+      after: (after as string | null | undefined) ?? null, ...(limit !== undefined ? { limit: limit as number } : {}),
+      dryRun: dryRun === true, force: force === true,
+    });
+    return json(200, report, { "cache-control": "no-store" });
   }
 
   async function health(): Promise<Response> {
@@ -192,12 +272,19 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       return { route: name, response: run() };
     };
     const playerMatch = /^\/v1\/player\/([0-9A-Z]{26})$/.exec(url.pathname);
+    const reviewMatch = /^\/v1\/admin\/flags\/([0-9A-Za-z]{1,40})$/.exec(url.pathname);
+    const banMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/ban$/.exec(url.pathname);
     const chosen =
       url.pathname === "/v1/health" ? allow("health", ["GET"], health)
       : url.pathname === "/v1/register" ? allow("register", ["POST"], () => register(request))
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))
+      : url.pathname === "/v1/firsts" ? allow("firsts", ["GET"], firsts)
+      : url.pathname === "/v1/admin/flags" ? allow("admin-flags", ["GET"], () => adminFlags(request, url))
+      : reviewMatch ? allow("admin-review", ["POST"], () => adminReview(request, reviewMatch[1] as string))
+      : url.pathname === "/v1/admin/rebuild" ? allow("admin-rebuild", ["POST"], () => adminRebuild(request))
+      : banMatch ? allow("admin-ban", ["POST"], () => adminBan(request, banMatch[1] as string))
       : playerMatch ? allow("player", ["GET"], () => player(playerMatch[1] as string))
       : { route: "unknown", response: Promise.resolve(errorResponse("not_found")) };
     return { route: chosen.route, response: await chosen.response };

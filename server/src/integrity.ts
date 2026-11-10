@@ -66,13 +66,15 @@ export type Flag = { kind: string; notes: string };
 // Everything the checks look at after an accepted upload.
 export function integrityFlags(args: {
   catalog: Catalog; state: LedgerState; attempts: Record<string, number>; drops: Record<string, number>;
-  tapeNextBefore: number; tapeNextNow: number; lastUploadAt: number | null; now: number; playerCreatedAt: number; openKinds: string[];
+  tapeNextBefore: number; tapeNextNow: number; lastUploadAt: number | null; now: number; playerCreatedAt: number; openKinds: string[]; clearedLuck?: number;
 }): Flag[] {
   const flags: Flag[] = [];
   const open = new Set(args.openKinds);
   const luck = luckScore(args.catalog, args.attempts, args.drops);
-  if (luck >= LUCK_HOLD && !open.has("luck-hold")) flags.push({ kind: "luck-hold", notes: `luck ${luck.toFixed(1)}` });
-  else if (luck >= LUCK_REVIEW && !open.has("luck-review") && !open.has("luck-hold")) flags.push({ kind: "luck-review", notes: `luck ${luck.toFixed(1)}` });
+  // Luck a reviewer has already cleared is not flagged again until it grows by two more orders of magnitude.
+  const worth = luck >= (args.clearedLuck ?? 0) + (args.clearedLuck ? 2 : 0);
+  if (luck >= LUCK_HOLD && worth && !open.has("luck-hold")) flags.push({ kind: "luck-hold", notes: `luck ${luck.toFixed(1)}` });
+  else if (luck >= LUCK_REVIEW && worth && !open.has("luck-review") && !open.has("luck-hold")) flags.push({ kind: "luck-review", notes: `luck ${luck.toFixed(1)}` });
 
   // Entries used per hour between two uploads: each attempt uses one entry.
   if (args.lastUploadAt !== null && args.now - args.lastUploadAt >= MIN_WINDOW_SECONDS && !open.has("rate")) {

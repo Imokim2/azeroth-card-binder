@@ -6,7 +6,11 @@ import { gzip } from "./gzip.ts";
 import { newState } from "./shared.ts";
 import type { LedgerState } from "./shared.ts";
 import { StoreConflict } from "./store.ts";
-import type { BoardEntry, Commit, IngestStore, IssuedTape, LeaderboardStore, Player, PlayerStore, StoredLedger, TapeStore, Visibility } from "./store.ts";
+import { peerName } from "./names.ts";
+import type { BoardEntry, Commit, IngestStore, IssuedTape, LeaderboardStore, Player, PlayerStore, StoredLedger, TapeStore, TradeStore, Visibility } from "./store.ts";
+import type { Derived, FlagRecord, ModerationStore, RebuildStore } from "./store.ts";
+import type { LedgerEvent } from "./ledger.ts";
+import { gunzip } from "./gzip.ts";
 
 type PlayerRow = { id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number };
 
@@ -19,7 +23,7 @@ export class KeyUnavailable extends Error {}
 
 const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at";
 
-export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore {
+export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore {
   readonly #db: Db;
   constructor(db: Db) {
     this.#db = db;
@@ -76,12 +80,15 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       "SELECT head_seq, head_hash, state_json, tape_next, pity_json, drops_json, updated_at FROM ledger_state WHERE player_id = ?", [playerId]);
     const flags = await this.#db.all<{ kind: string }>("SELECT DISTINCT kind FROM flags WHERE player_id = ? AND state != 'cleared'", [playerId]);
     const openFlags = flags.map((flag) => flag.kind);
+    // Luck that a reviewer has already looked at and cleared: only clearly more than that is flagged again.
+    const cleared = await this.#db.all<{ notes: string }>("SELECT notes FROM flags WHERE player_id = ? AND state = 'cleared' AND kind IN ('luck-review', 'luck-hold')", [playerId]);
+    const clearedLuck = Math.max(0, ...cleared.map((flag) => Number(/luck ([\d.]+)/.exec(flag.notes)?.[1] ?? 0)));
     const row = rows[0];
-    if (!row) return { head: { seq: 0, hash: GENESIS }, state: newState(), pity: {}, tapeNext: 1, drops: {}, lastUpload: null, openFlags };
+    if (!row) return { head: { seq: 0, hash: GENESIS }, state: newState(), pity: {}, tapeNext: 1, drops: {}, lastUpload: null, openFlags, clearedLuck };
     return {
       head: { seq: row.head_seq, hash: row.head_hash }, state: JSON.parse(row.state_json) as LedgerState,
       pity: JSON.parse(row.pity_json) as Record<string, number>, tapeNext: row.tape_next,
-      drops: JSON.parse(row.drops_json) as Record<string, number>, lastUpload: row.updated_at, openFlags,
+      drops: JSON.parse(row.drops_json) as Record<string, number>, lastUpload: row.updated_at, openFlags, clearedLuck,
     };
   }
 
@@ -149,6 +156,20 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
         params: [flag.id, playerId, flag.kind, flag.notes, commit.receivedAt],
       });
     }
+    // Trade halves, ten rows to a statement (a statement may bind at most 100 values).
+    for (let from = 0; from < commit.trades.length; from += 10) {
+      const group = commit.trades.slice(from, from + 10);
+      statements.push({
+        sql: "INSERT INTO trades (player_id, seq, trade_id, direction, card_key, char, partner, t, received_at) VALUES " + group.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", "),
+        params: group.flatMap((row) => [playerId, row.seq, row.tradeId, row.direction, row.key, row.char, row.partner, row.t, commit.receivedAt]),
+      });
+    }
+    for (const done of commit.completions) {
+      statements.push({
+        sql: "INSERT OR IGNORE INTO set_completions (set_code, player_id, t, received_at) VALUES (?, ?, ?, ?)",
+        params: [done.setCode, playerId, done.t, commit.receivedAt],
+      });
+    }
     try {
       await this.#db.batch(statements);
     } catch (error) {
@@ -174,6 +195,143 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       sql: "INSERT INTO tapes (player_id, start_idx, end_idx, commitment, issued_at) VALUES (?, ?, ?, ?, ?)",
       params: [playerId, issued.start, issued.end, issued.commitment, at],
     }]);
+  }
+
+  async flags(state: FlagRecord["state"] | "all", limit: number): Promise<FlagRecord[]> {
+    const rows = await this.#db.all<{
+      id: string; player_id: string; display_name: string | null; kind: string; state: FlagRecord["state"]; notes: string;
+      created_at: number; reviewed_at: number | null; review_note: string;
+    }>(
+      `SELECT f.id, f.player_id, s.display_name, f.kind, f.state, f.notes, f.created_at, f.reviewed_at, f.review_note
+       FROM flags f LEFT JOIN scores s ON s.player_id = f.player_id
+       WHERE (? = 'all' OR f.state = ?) ORDER BY f.created_at ASC, f.id ASC LIMIT ?`, [state, state, limit]);
+    return rows.map((row) => ({
+      id: row.id, playerId: row.player_id, displayName: row.display_name ?? "", kind: row.kind, state: row.state, notes: row.notes,
+      createdAt: row.created_at, reviewedAt: row.reviewed_at, reviewNote: row.review_note,
+    }));
+  }
+
+  async review(id: string, state: "cleared" | "confirmed", note: string, at: number): Promise<boolean> {
+    const found = await this.#db.all<{ id: string }>("SELECT id FROM flags WHERE id = ?", [id]);
+    if (!found[0]) return false;
+    await this.#db.batch([{ sql: "UPDATE flags SET state = ?, review_note = ?, reviewed_at = ? WHERE id = ?", params: [state, note, at, id] }]);
+    return true;
+  }
+
+  async setBanned(playerId: string, banned: boolean): Promise<boolean> {
+    const found = await this.#db.all<{ id: string }>("SELECT id FROM players WHERE id = ?", [playerId]);
+    if (!found[0]) return false;
+    await this.#db.batch([{ sql: "UPDATE players SET status = ? WHERE id = ?", params: [banned ? "banned" : "active", playerId] }]);
+    return true;
+  }
+
+  async playerIds(after: string | null, limit: number): Promise<string[]> {
+    const rows = await this.#db.all<{ id: string }>("SELECT id FROM players WHERE id > ? ORDER BY id ASC LIMIT ?", [after ?? "", limit]);
+    return rows.map((row) => row.id);
+  }
+
+  async batchesOf(playerId: string): Promise<{ events: LedgerEvent[]; receivedAt: number }[]> {
+    const rows = await this.#db.all<{ events_gzip: ArrayBuffer | Uint8Array; received_at: number }>(
+      "SELECT events_gzip, received_at FROM batches WHERE player_id = ? ORDER BY first_seq ASC", [playerId]);
+    const out: { events: LedgerEvent[]; receivedAt: number }[] = [];
+    for (const row of rows) out.push({ events: JSON.parse(await gunzip(new Uint8Array(row.events_gzip))) as LedgerEvent[], receivedAt: row.received_at });
+    return out;
+  }
+
+  async derivedNow(playerId: string): Promise<{ state: LedgerState; drops: Record<string, number>; score: number | null } | null> {
+    const rows = await this.#db.all<{ state_json: string; drops_json: string }>("SELECT state_json, drops_json FROM ledger_state WHERE player_id = ?", [playerId]);
+    if (!rows[0]) return null;
+    const score = await this.#db.all<{ score: number }>("SELECT score FROM scores WHERE player_id = ?", [playerId]);
+    return { state: JSON.parse(rows[0].state_json) as LedgerState, drops: JSON.parse(rows[0].drops_json) as Record<string, number>, score: score[0]?.score ?? null };
+  }
+
+  async writeDerived(playerId: string, derived: Derived): Promise<void> {
+    const statements: Statement[] = [
+      { sql: "UPDATE ledger_state SET state_json = ?, drops_json = ? WHERE player_id = ?", params: [JSON.stringify(derived.state), JSON.stringify(derived.drops), playerId] },
+      { sql: "DELETE FROM drops WHERE player_id = ?", params: [playerId] },
+      { sql: "DELETE FROM trades WHERE player_id = ?", params: [playerId] },
+      { sql: "DELETE FROM set_completions WHERE player_id = ?", params: [playerId] },
+      {
+        sql: "UPDATE scores SET score = ?, unique_cards = ?, sets_done = ?, rules_version = ? WHERE player_id = ?",
+        params: [derived.score.score, derived.score.uniqueCards, derived.score.setsDone, derived.rulesVersion, playerId],
+      },
+    ];
+    for (let from = 0; from < derived.dropRows.length; from += 16) {
+      const group = derived.dropRows.slice(from, from + 16);
+      statements.push({
+        sql: "INSERT INTO drops (player_id, seq, card_key, t, shiny, tape_idx) VALUES " + group.map(() => "(?, ?, ?, ?, ?, ?)").join(", "),
+        params: group.flatMap((event) => [playerId, event.seq, event.key, event.t, event.shiny, event.tape]),
+      });
+    }
+    // Trade halves go back as open: matching them again is the hourly job's work, not the rebuild's.
+    for (let from = 0; from < derived.trades.length; from += 10) {
+      const group = derived.trades.slice(from, from + 10);
+      statements.push({
+        sql: "INSERT INTO trades (player_id, seq, trade_id, direction, card_key, char, partner, t, received_at) VALUES " + group.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", "),
+        params: group.flatMap((row) => [playerId, row.seq, row.tradeId, row.direction, row.key, row.char, row.partner, row.t, row.receivedAt]),
+      });
+    }
+    for (const done of derived.completions) {
+      statements.push({ sql: "INSERT OR IGNORE INTO set_completions (set_code, player_id, t, received_at) VALUES (?, ?, ?, ?)", params: [done.setCode, playerId, done.t, done.receivedAt] });
+    }
+    await this.#db.batch(statements);
+  }
+
+  async matchOpen(): Promise<string[]> {
+    const pair = `EXISTS (SELECT 1 FROM trades o WHERE o.trade_id = trades.trade_id AND o.direction != trades.direction
+      AND o.card_key = trades.card_key AND o.player_id != trades.player_id AND o.partner = trades.char AND o.char = trades.partner)`;
+    // Halves that were written off but whose other half has since arrived are taken back, and their score changes.
+    const recovered = await this.#db.all<{ player_id: string }>(`SELECT DISTINCT player_id FROM trades WHERE state = 'unmatched' AND ${pair}`);
+    await this.#db.batch([{ sql: `UPDATE trades SET state = 'matched' WHERE state IN ('open', 'unmatched') AND ${pair}`, params: [] }]);
+    return recovered.map((row) => row.player_id);
+  }
+
+  async expire(before: number): Promise<{ playerId: string; direction: "in" | "out"; key: string }[]> {
+    const rows = await this.#db.all<{ player_id: string; direction: "in" | "out"; card_key: string }>(
+      "SELECT player_id, direction, card_key FROM trades WHERE state = 'open' AND received_at < ?", [before]);
+    if (rows.length > 0) await this.#db.batch([{ sql: "UPDATE trades SET state = 'unmatched' WHERE state = 'open' AND received_at < ?", params: [before] }]);
+    return rows.map((row) => ({ playerId: row.player_id, direction: row.direction, key: row.card_key }));
+  }
+
+  async excluded(playerId: string): Promise<Record<string, number>> {
+    const rows = await this.#db.all<{ card_key: string; n: number }>(
+      "SELECT card_key, COUNT(*) AS n FROM trades WHERE player_id = ? AND direction = 'in' AND state = 'unmatched' GROUP BY card_key", [playerId]);
+    return Object.fromEntries(rows.map((row) => [row.card_key, row.n]));
+  }
+
+  async setScore(playerId: string, score: { score: number; uniqueCards: number; setsDone: number }): Promise<void> {
+    await this.#db.batch([{
+      sql: "UPDATE scores SET score = ?, unique_cards = ?, sets_done = ? WHERE player_id = ?",
+      params: [score.score, score.uniqueCards, score.setsDone, playerId],
+    }]);
+  }
+
+  async addFlag(playerId: string, flag: { id: string; kind: string; notes: string }, at: number): Promise<void> {
+    await this.#db.batch([{
+      sql: "INSERT INTO flags (id, player_id, kind, notes, created_at) VALUES (?, ?, ?, ?, ?)",
+      params: [flag.id, playerId, flag.kind, flag.notes, at],
+    }]);
+  }
+
+  async charactersOf(playerIds: string[]): Promise<Record<string, string[]>> {
+    const out: Record<string, string[]> = {};
+    if (playerIds.length === 0) return out;
+    const rows = await this.#db.all<{ player_id: string; name: string; realm: string }>(
+      `SELECT player_id, name, realm FROM characters WHERE player_id IN (${playerIds.map(() => "?").join(", ")}) ORDER BY last_seen DESC, name, realm`, playerIds);
+    for (const row of rows) (out[row.player_id] ??= []).push(peerName(row.name, row.realm));
+    return out;
+  }
+
+  async firsts(): Promise<{ setCode: string; playerId: string; displayName: string; receivedAt: number }[]> {
+    const rows = await this.#db.all<{ set_code: string; player_id: string; display_name: string; received_at: number }>(
+      `SELECT set_code, player_id, display_name, received_at FROM (
+         SELECT c.set_code, c.player_id, s.display_name, c.received_at,
+                ROW_NUMBER() OVER (PARTITION BY c.set_code ORDER BY c.received_at ASC, c.player_id ASC) AS n
+         FROM set_completions c JOIN players p ON p.id = c.player_id JOIN scores s ON s.player_id = c.player_id
+         WHERE p.visibility = 'public' AND p.status = 'active'
+         AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')
+       ) WHERE n = 1 ORDER BY received_at ASC, set_code ASC`);
+    return rows.map((row) => ({ setCode: row.set_code, playerId: row.player_id, displayName: row.display_name, receivedAt: row.received_at }));
   }
 
   async top(limit: number): Promise<BoardEntry[]> {
