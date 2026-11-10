@@ -25,13 +25,19 @@ export interface PlayerStore {
 
 // pity: how many bad-luck-guarantee drops each card has had (checked against attempts); tapeNext: the tape position
 // the add-on said it will use next, at its last upload.
-export type StoredLedger = { head: Head; state: LedgerState; pity: Record<string, number>; tapeNext: number };
+// drops: drop events per card so far; lastUpload: when the last upload was stored (null if never); openFlags: kinds of
+// flags still open for this player.
+export type StoredLedger = {
+  head: Head; state: LedgerState; pity: Record<string, number>; tapeNext: number;
+  drops: Record<string, number>; lastUpload: number | null; openFlags: string[];
+};
 
 export type Commit = {
   events: LedgerEvent[];
   head: Head;
   state: LedgerState;
   pity: Record<string, number>;
+  drops: Record<string, number>;
   tapeNext: number;
   receivedAt: number;
   character: { name: string; realm: string };

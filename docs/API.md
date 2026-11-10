@@ -50,6 +50,10 @@ Ranked random numbers. Body: `{ key, sentAt, sig }`, where `sig` signs the canon
 
 Every entry is derived from a server secret, the player and the position, so nothing is stored per entry and a player cannot compute entries they were not given. A ranked drop is checked against the entry at its `tape` position: it must be at a position that was issued; its roll must be at or below the card's rate, or count as a bad-luck guarantee (a card earns one per `limit` attempts, judged from the snapshot's attempts); and its shiny flag must match the entry's second half while the card has no shiny yet. The `tapeIndex` of an upload may never pass the first position after the last one issued. Failures are `tape_invalid` with `detail.reason` (`not-issued`, `pity`, `shiny`, `next`).
 
+### Checks that flag instead of reject
+
+After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour) and `fast-start` (over 200 unique cards in an account's first hour). Flags carry no public detail and are not part of any response.
+
 ### `GET /v1/leaderboard?limit=N`
 
 The best **public** players, highest score first, ties broken by who reached the score first. `limit` is 1 to 100 (default 100). `200 { generatedAt, entries: [{ rank, playerId, displayName, scoreTenths, uniqueCards, setsDone }] }`. Cached for 60 seconds.

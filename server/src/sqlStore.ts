@@ -72,20 +72,24 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
   }
 
   async load(playerId: string): Promise<StoredLedger> {
-    const rows = await this.#db.all<{ head_seq: number; head_hash: string; state_json: string; tape_next: number; pity_json: string }>(
-      "SELECT head_seq, head_hash, state_json, tape_next, pity_json FROM ledger_state WHERE player_id = ?", [playerId]);
+    const rows = await this.#db.all<{ head_seq: number; head_hash: string; state_json: string; tape_next: number; pity_json: string; drops_json: string; updated_at: number }>(
+      "SELECT head_seq, head_hash, state_json, tape_next, pity_json, drops_json, updated_at FROM ledger_state WHERE player_id = ?", [playerId]);
+    const flags = await this.#db.all<{ kind: string }>("SELECT DISTINCT kind FROM flags WHERE player_id = ? AND state != 'cleared'", [playerId]);
+    const openFlags = flags.map((flag) => flag.kind);
     const row = rows[0];
-    if (!row) return { head: { seq: 0, hash: GENESIS }, state: newState(), pity: {}, tapeNext: 1 };
+    if (!row) return { head: { seq: 0, hash: GENESIS }, state: newState(), pity: {}, tapeNext: 1, drops: {}, lastUpload: null, openFlags };
     return {
       head: { seq: row.head_seq, hash: row.head_hash }, state: JSON.parse(row.state_json) as LedgerState,
       pity: JSON.parse(row.pity_json) as Record<string, number>, tapeNext: row.tape_next,
+      drops: JSON.parse(row.drops_json) as Record<string, number>, lastUpload: row.updated_at, openFlags,
     };
   }
 
   async noteTapeNext(playerId: string, tapeNext: number, at: number): Promise<void> {
     await this.#db.batch([{
       sql: `INSERT INTO ledger_state (player_id, head_seq, head_hash, state_json, updated_at, tape_next) VALUES (?, 0, ?, ?, ?, ?)
-            ON CONFLICT (player_id) DO UPDATE SET tape_next = MAX(ledger_state.tape_next, excluded.tape_next)`,
+            ON CONFLICT (player_id) DO UPDATE SET tape_next = MAX(ledger_state.tape_next, excluded.tape_next),
+            updated_at = excluded.updated_at`,
       params: [playerId, GENESIS, JSON.stringify(newState()), at, tapeNext],
     }]);
   }
@@ -117,12 +121,13 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       });
     }
     statements.push({
-      sql: `INSERT INTO ledger_state (player_id, head_seq, head_hash, state_json, updated_at, tape_next, pity_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+      sql: `INSERT INTO ledger_state (player_id, head_seq, head_hash, state_json, updated_at, tape_next, pity_json, drops_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (player_id) DO UPDATE SET head_seq = excluded.head_seq, head_hash = excluded.head_hash,
             state_json = excluded.state_json, updated_at = excluded.updated_at, tape_next = excluded.tape_next,
-            pity_json = excluded.pity_json`,
-      params: [playerId, commit.head.seq, commit.head.hash, JSON.stringify(commit.state), commit.receivedAt, commit.tapeNext, JSON.stringify(commit.pity)],
+            pity_json = excluded.pity_json, drops_json = excluded.drops_json`,
+      params: [playerId, commit.head.seq, commit.head.hash, JSON.stringify(commit.state), commit.receivedAt, commit.tapeNext,
+        JSON.stringify(commit.pity), JSON.stringify(commit.drops)],
     });
     const score = commit.score;
     statements.push({
@@ -175,6 +180,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     const rows = await this.#db.all<ScoreRow>(
       `SELECT ${SCORE_COLUMNS} FROM scores s JOIN players p ON p.id = s.player_id
        WHERE p.visibility = 'public' AND p.status = 'active'
+       AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')
        ORDER BY s.score DESC, s.updated_at ASC, s.player_id ASC LIMIT ?`, [limit]);
     return rows.map(toEntry);
   }
@@ -182,12 +188,14 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
   async entry(playerId: string): Promise<{ entry: BoardEntry; rank: number } | null> {
     const rows = await this.#db.all<ScoreRow>(
       `SELECT ${SCORE_COLUMNS} FROM scores s JOIN players p ON p.id = s.player_id
-       WHERE s.player_id = ? AND p.visibility = 'public' AND p.status = 'active'`, [playerId]);
+       WHERE s.player_id = ? AND p.visibility = 'public' AND p.status = 'active'
+       AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')`, [playerId]);
     const row = rows[0];
     if (!row) return null;
     const ahead = await this.#db.all<{ n: number }>(
       `SELECT COUNT(*) AS n FROM scores s JOIN players p ON p.id = s.player_id
        WHERE p.visibility = 'public' AND p.status = 'active'
+       AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')
        AND (s.score > ? OR (s.score = ? AND s.updated_at < ?) OR (s.score = ? AND s.updated_at = ? AND s.player_id < ?))`,
       [row.score, row.score, row.updated_at, row.score, row.updated_at, row.player_id]);
     return { entry: toEntry(row), rank: (ahead[0]?.n ?? 0) + 1 };

@@ -101,13 +101,16 @@ export function chain(partials: Record<string, unknown>[], prev = reference.GENE
 // What the Casual history adds up to, for snapshots and score expectations.
 export const casualState = replay(casualPartials, catalog);
 if (!casualState.ok) throw new Error("the shared Casual history breaks a rule");
+// Honest attempts for that history: about a hundred kills for every drop, so the luck check sees ordinary luck.
+export const casualAttempts: Record<string, number> = {};
+for (const event of casualPartials) if (event["kind"] === "drop") casualAttempts[String(event["key"])] = (casualAttempts[String(event["key"])] ?? 0) + 100;
 export const casualSnapshot = { counts: casualState.state.counts, dust: casualState.state.dust, sets: casualState.state.sets };
 
 export function signedUpload(player: Player, events: Record<string, unknown>[], overrides: Record<string, unknown> = {}) {
   const body: Record<string, unknown> = {
     specVersion: 1, key: player.publicKeyHex, character: "Alice", realm: "RealmName", schema: 2,
     catalogVersion: catalog.catalogVersion, events, tapeIndex: 0, sentAt: NOW,
-    snapshot: { ...casualSnapshot, attempts: { "npc:589": 3 }, titles: {} }, ...overrides,
+    snapshot: { ...casualSnapshot, attempts: casualAttempts, titles: {} }, ...overrides,
   };
   // The reference signer rejects nothing; canonicalJson here guards against building a body the server cannot read.
   canonicalJson(body);

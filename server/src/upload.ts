@@ -10,6 +10,7 @@ import { RULES_VERSION, scoreOf } from "./score.ts";
 import { StoreConflict } from "./store.ts";
 import type { IngestStore, Player, TapeStore } from "./store.ts";
 import { checkTape, tapeKey } from "./tape.ts";
+import { integrityFlags } from "./integrity.ts";
 
 export const SUPPORTED_SPEC_VERSIONS = [1];
 export const MAX_EVENTS_PER_UPLOAD = 5000;
@@ -140,12 +141,18 @@ export async function acceptUpload(
   const flags: { id: string; kind: string; notes: string }[] = [];
   const differences = snapshotDifferences(upload.snapshot, played.state);
   if (differences.length > 0) flags.push({ id: newId(deps.now() * 1000), kind: "snapshot-mismatch", notes: differences.join(",") });
+  const drops = { ...stored.drops };
+  for (const event of events) if (event["kind"] === "drop") drops[String(event["key"])] = (drops[String(event["key"])] ?? 0) + 1;
+  const tapeNext = Math.max(stored.tapeNext, upload.tapeIndex);
+  for (const flag of integrityFlags({
+    catalog: deps.catalog, state: played.state, attempts: upload.snapshot.attempts, drops, tapeNextBefore: stored.tapeNext, tapeNextNow: tapeNext,
+    lastUploadAt: stored.lastUpload, now: deps.now(), playerCreatedAt: player.createdAt, openKinds: stored.openFlags,
+  })) flags.push({ id: newId(deps.now() * 1000), ...flag });
   const attempts = Object.values(upload.snapshot.attempts).reduce((sum, value) => sum + value, 0);
   const score = scoreOf(deps.catalog, played.state);
   try {
     await deps.ingest.commit(player.id, {
-      events: events as unknown as LedgerEvent[], head: chain.head, state: played.state, pity,
-      tapeNext: Math.max(stored.tapeNext, upload.tapeIndex), receivedAt: deps.now(),
+      events: events as unknown as LedgerEvent[], head: chain.head, state: played.state, pity, drops, tapeNext, receivedAt: deps.now(),
       character: { name: upload.character, realm: upload.realm },
       score: { displayName: `${upload.character}-${upload.realm}`, ...score, attempts, rulesVersion: RULES_VERSION },
       flags,

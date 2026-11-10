@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { scoreOf } from "../src/score.ts";
-import { CLIENT, NOW, casualSnapshot, casualState, catalog, chain, chainedHistory, newPlayer, registration, setup, signedUpload, vectors } from "./harness.ts";
+import { CLIENT, NOW, casualAttempts, casualSnapshot, casualState, catalog, chain, chainedHistory, newPlayer, registration, setup, signedUpload, vectors } from "./harness.ts";
 
 type Body = { error?: { code: string; detail?: Record<string, unknown> } } & Record<string, unknown>;
 async function read(response: Response): Promise<Body> {
@@ -73,7 +73,7 @@ test("a whole honest history is accepted, scored, and shown on the public pages"
   assert.equal(profile["setsDone"], expected.setsDone);
   assert.equal(profile["rank"], 1);
   assert.equal(profile["displayName"], "Alice-RealmName");
-  assert.equal(profile["attempts"], 3);
+  assert.equal(profile["attempts"], Object.values(casualAttempts).reduce((sum, value) => sum + value, 0));
 
   const board = await env.call("/v1/leaderboard");
   assert.equal(board.headers.get("cache-control"), "public, max-age=60");
