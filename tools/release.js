@@ -3,6 +3,7 @@
 //   node tools/release.js check          syntax-check every Lua and JavaScript file and the add-on's file list
 //   node tools/release.js test           run the Lua tests and the shared-contract tests
 //   node tools/release.js build          check, test, then build dist/AzerothCardBinder-<version>.zip
+//   node tools/release.js globals        rewrite the list of globals the add-on is allowed to use (tools/lua-globals.txt)
 //   node tools/release.js bump <x.y.z>   set the version in the .toc and open a section in CHANGELOG.md
 //
 // It needs LuaJIT on the PATH (or set LUAJIT to its location). Nothing here talks to the network.
@@ -37,6 +38,32 @@ function version() {
     return match[1];
 }
 
+// Every global variable the add-on reads or writes, from LuaJIT's bytecode listing: { "GGET name": [files], ... }.
+// A typo in a variable name becomes a silent global in Lua, so new globals have to be added to the baseline on purpose.
+function addonGlobals() {
+    const found = {};
+    for (const file of files(addonDir, ".lua", [])) {
+        const listing = run(luajit, ["-bl", file]).stdout || "";
+        for (const match of listing.matchAll(/\b(GGET|GSET)\s+\d+\s+\d+\s+; "([^"]+)"/g)) {
+            const entry = `${match[1]} ${match[2]}`;
+            (found[entry] = found[entry] || new Set()).add(path.basename(file));
+        }
+    }
+    return found;
+}
+const globalsPath = path.join(__dirname, "lua-globals.txt");
+
+function updateGlobals() {
+    const lines = Object.keys(addonGlobals()).sort();
+    const header = [
+        "# Global variables the add-on reads (GGET) or writes (GSET). Checked by: node tools/release.js check.",
+        "# A new line here should be a deliberate choice: a misspelt variable name shows up as a new global.",
+        "# Regenerate with: node tools/release.js globals",
+    ];
+    fs.writeFileSync(globalsPath, [...header, ...lines, ""].join("\n"));
+    console.log(`wrote ${path.relative(root, globalsPath)}: ${lines.length} globals`);
+}
+
 function check() {
     const problems = [];
     const skip = ["node_modules", ".git", "dist"];
@@ -50,6 +77,12 @@ function check() {
     for (const file of lua) {
         const result = run(luajit, ["-bl", file]);
         if (result.status !== 0) problems.push(`${relative(file)}: ${(result.stderr || "").trim().split("\n")[0]}`);
+    }
+
+    // No unexpected global variables in the add-on (a cheap stand-in for a linter; see docs/adr/0006).
+    const baseline = new Set(fs.readFileSync(globalsPath, "utf8").split(/\r?\n/).filter((line) => line && !line.startsWith("#")));
+    for (const [entry, owners] of Object.entries(addonGlobals())) {
+        if (!baseline.has(entry)) problems.push(`new global in the add-on: ${entry} (in ${[...owners].join(", ")}). Misspelt name? If it is intended, run: node tools/release.js globals`);
     }
 
     // Every JavaScript file must parse.
@@ -151,10 +184,10 @@ function bump(next) {
 
 const [command, argument] = process.argv.slice(2);
 try {
-    ({ check, test, build, bump: () => bump(argument) })[command]();
+    ({ check, test, build, globals: updateGlobals, bump: () => bump(argument) })[command]();
 } catch (error) {
     if (error instanceof TypeError) {
-        console.error("usage: node tools/release.js check | test | build | bump <x.y.z>");
+        console.error("usage: node tools/release.js check | test | build | globals | bump <x.y.z>");
     } else {
         console.error(error.message);
     }
