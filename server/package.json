@@ -1,0 +1,15 @@
+{
+  "name": "warcards-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "World of Warcards API: verifies signed ledger uploads and serves the leaderboard.",
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}

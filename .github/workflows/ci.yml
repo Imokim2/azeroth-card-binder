@@ -23,10 +23,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Install LuaJIT and zip
         run: sudo apt-get update && sudo apt-get install -y luajit zip
+
+      - name: Type-check the server
+        run: cd server && npm ci && npm run typecheck
 
       - name: Check, test and build
         run: node tools/release.js build

@@ -111,7 +111,7 @@ The signature covers the **canonical JSON** of the object without its `sig` fiel
 
 - The app creates an Ed25519 key pair on first run and keeps the private key in the operating system's keychain. The public key (64 hex characters) is the player's identity on the server.
 - The in-game link code (`/acb link CODE`) proves that a given saved-data file and a given key belong together. The server never sees the file's owner, only the key.
-- Losing the private key means starting a new identity. There is no recovery, and the old ledger stays with the old key. A leaked key is revoked on the server and replaced.
+- Losing the private key, or having it leak, is repaired by signing in with Discord again and registering a new key. The server revokes the old key and keeps the player and the ledger: the chain is not tied to the key, so the next upload simply continues it. Without a Discord sign-in there is no way to take over an identity.
 
 ## 8. Ranked random numbers (the tape)
 

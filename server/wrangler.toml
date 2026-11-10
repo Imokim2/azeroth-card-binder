@@ -1,0 +1,24 @@
+# Cloudflare Worker configuration for the World of Warcards API. Infrastructure is code: this file is the
+# source of truth, not the dashboard. Secrets never go here (use `wrangler secret put`).
+#
+# NOT DEPLOYED YET. The database ids below are placeholders until the Cloudflare account exists (roadmap B2):
+#   npx wrangler d1 create warcards-staging      then paste the id here
+#   npx wrangler d1 migrations apply warcards-staging --env staging
+#   npx wrangler deploy --env staging
+name = "warcards-api"
+main = "src/index.ts"
+compatibility_date = "2026-11-01"
+
+[env.staging]
+name = "warcards-api-staging"
+vars = { MIN_CLIENT = "0.1.0", VERSION = "0.1.0" }
+d1_databases = [
+  { binding = "DB", database_name = "warcards-staging", database_id = "REPLACE-WITH-STAGING-DATABASE-ID", migrations_dir = "migrations" },
+]
+
+[env.production]
+name = "warcards-api"
+vars = { MIN_CLIENT = "0.1.0", VERSION = "0.1.0" }
+d1_databases = [
+  { binding = "DB", database_name = "warcards", database_id = "REPLACE-WITH-PRODUCTION-DATABASE-ID", migrations_dir = "migrations" },
+]
