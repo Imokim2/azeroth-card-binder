@@ -75,7 +75,7 @@ The server:
 2. checks `events[0].seq` equals stored `head.seq + 1` and recomputes every hash;
 3. checks card keys, counts and rates against its own copy of the catalog;
 4. checks plausibility (Section 5) and stores the batch;
-5. replies `{ ackSeq, minClient, tape?, syncVersion }`.
+5. replies `{ ackSeq, ackHash, minClient, tape?, syncVersion }`; the app writes `{ seq = ackSeq, hash = ackHash }` into `Sync.lua`'s `acks`.
 
 ### 2.3 Database (D1)
 
@@ -99,7 +99,7 @@ Keep rows few: whole upload batches are stored as one compressed blob, and only 
 `AzerothCardBinder/Data/Sync.lua`, written by the app, loaded by the add-on on reload:
 
 ```
-ACB.sync = { syncVersion, ackSeq, tape = { "<hex>", ... 10000 entries }, tapeStart,
+ACB.sync = { syncVersion, syncedAt, acks = { { seq, hash }, ... }, tape = { "<hex>", ... 10000 entries }, tapeStart,
              season = { id, endsAt }, leaderboard = { top 100 }, you = { rank, score },
              verified = { <names> }, minClient }
 ```
@@ -137,7 +137,7 @@ Done when: a new contributor can clone the repo, run the tests and build a relea
 - [x] **A3. Attempts counters**: `saved.attempts[key]` incremented on every roll in `Collection.lua`. Keep `misses` (pity) separate.
 - [x] **A4. Persistent roll memory**: `saved.rolledGuids` so the same corpse cannot be re-rolled after a reload.
 - [x] **A5. Ledger and hash chain** in a new `Ledger.lua`. Every drop, craft, recycle and trade appends an event. Verify the chain on load; if it fails, set `saved.mode = "casual"` and show "binder unverified" on the Settings tab.
-- [ ] **A6. Ledger pruning** after the app acknowledges (`ackSeq` from `Sync.lua`), keeping `head`. Until it ships the ledger only grows, at about 250 bytes an event, and a player who never installs the app never prunes it. Measured on a desktop with LuaJIT's JIT switched off (the game's own Lua may be slower), 5,000 events take about 0.4 s to verify at login and about 0.15 ms each to write. Decide a cap for never-synced binders when this item is built.
+- [x] **A6. Ledger pruning** after the app acknowledges. `Data/Sync.lua` (a stub ships with the add-on; the app overwrites it) lists `acks = { { seq, hash }, ... }`, one per binder uploaded, because every WoW account on a computer shares that file. An ack counts only if the binder has that event with that hash, so another account's ack is ignored. Events up to the ack are removed (`saved.head` keeps the chain going), and nothing is pruned from a binder that fails its check. Events are rare (about one per hundred kills), so growth is slow and no cap is needed beyond the Ranked rule: at 5,000 events waiting for the app, a Ranked binder's status says rolls are paused (the pause itself arrives with Ranked in C2). Measured without the JIT, 5,000 events take about 0.4 s to verify at login.
 - [ ] **A7. Settings tab**: status line done ("Binder verified: N changes on record" or "Binder unverified: reason"). The mode switch and the link code wait for Phase C and B7, because Ranked cannot do anything before the tape exists; "Last synced" waits for `Sync.lua`.
 - [x] **A8. `/acb verify`** prints the chain status and counts to chat.
 - [x] **A9. Trade receipts**: each trade carries a shared trade id and both partners record `tradeIn` / `tradeOut` with the partner name.

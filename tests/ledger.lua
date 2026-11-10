@@ -263,3 +263,61 @@ test("the Settings tab and /acb verify report whether the binder is verified", f
         tostring(settingsLine()))
     ACB.ledger = original
 end)
+
+test("events the server has stored are pruned, foreign or wrong acknowledgements are ignored, and the chain continues", function()
+    local saved = {}
+    local ledger, collection = open(saved)
+    for number = 1, 6 do collection:roll(guid(589, "p" .. number), "loot") end
+    local events = saved.ledger
+    local third, sixth = events[3], events[6]
+    equal(#events, 6)
+    -- Not an ack for this binder: wrong hash, beyond the head, malformed.
+    equal(ledger:prune({ { seq = 3, hash = string.rep("a", 32) }, { seq = 99, hash = sixth.h }, "junk", { seq = "x" } }), 0)
+    equal(#saved.ledger, 6)
+    equal(ledger:prune(nil), 0)
+    -- An ack for another binder listed beside this one's is skipped; this one's is used.
+    equal(ledger:prune({ { seq = 5, hash = string.rep("b", 32) }, { seq = 3, hash = third.h } }), 3)
+    equal(#saved.ledger, 3)
+    equal(saved.ledger[1].seq, 4)
+    equal(ledger:verify(), true)
+    equal(ledger:waiting(), 3)
+    -- Pruning never touches the head, and new events carry on from it.
+    equal(saved.head.seq, 6)
+    collection:roll(guid(589, "after-prune"), "loot")
+    equal(saved.ledger[#saved.ledger].seq, 7)
+    equal(ledger:verify(), true)
+    -- An ack that names the head itself clears everything.
+    local headHash = saved.head.hash
+    equal(ledger:prune({ { seq = 7, hash = headHash } }), 4)
+    equal(#saved.ledger, 0)
+    equal(ledger:verify(), true)
+    collection:roll(guid(589, "empty"), "loot")
+    equal(saved.ledger[1].seq, 8)
+    equal(saved.ledger[1].prev, headHash)
+    equal(ledger:verify(), true)
+    -- Editing what is left is still caught after pruning.
+    local edited = copy(saved)
+    edited.ledger[1].count = 40
+    equal(newLedger(edited):verify(), false)
+end)
+
+test("a Ranked binder with too many events waiting for the app is told so", function()
+    local keep = ACB.backlogLimit
+    ACB.backlogLimit = 3
+    local saved = {}
+    local ledger, collection = open(saved)
+    saved.mode = "ranked"
+    for number = 1, 2 do collection:roll(guid(589, "w" .. number), "loot") end
+    equal(ledger:backlogFull(), false)
+    assert(not ledger:status():find("paused"))
+    collection:roll(guid(589, "w3"), "loot")
+    equal(ledger:backlogFull(), true)
+    assert(ledger:status():find("Ranked rolls are paused until the companion app syncs"), ledger:status())
+    saved.mode = "casual"
+    assert(not ledger:status():find("paused"))
+    ACB.sync.syncedAt = 1700000000
+    date = function() return "14 Nov 22:13" end -- the game provides date()
+    assert(ledger:status():find("Last synced 14 Nov 22:13"), ledger:status())
+    date, ACB.sync.syncedAt = nil, nil
+    ACB.backlogLimit = keep
+end)

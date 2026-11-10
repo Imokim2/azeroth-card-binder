@@ -29,6 +29,7 @@ loadAddon("Lore.lua")
 loadAddon("Achievements.lua")
 loadAddon("Hash.lua")
 loadAddon("Ledger.lua")
+loadAddon("Data/Sync.lua")
 loadAddon("Collection.lua")
 loadAddon("Trade.lua")
 

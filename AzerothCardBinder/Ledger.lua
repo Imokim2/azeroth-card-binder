@@ -9,6 +9,9 @@ local GENESIS = string.rep("0", 32)
 ACB.GENESIS = GENESIS
 
 local KINDS = { drop = true, craft = true, recycle = true, tradeIn = true, tradeOut = true, set = true, mode = true }
+-- Un-synced events at which Ranked rolls pause until the companion app has picked them up.
+ACB.backlogLimit = 5000
+
 local MAX_INTEGER = 9007199254740991 -- the largest integer a double holds exactly (2^53 - 1)
 
 local function whole(value, minimum)
@@ -172,6 +175,39 @@ function ACB.newLedger(saved, now, character)
         return true, #events
     end
 
+    -- Drop the events the server has stored. `acks` is the list from Data/Sync.lua; an ack counts only when
+    -- it names an event this binder really has (same position and same hash), because every WoW account on
+    -- the computer shares that file. The newest event stays represented by `saved.head`. Returns how many
+    -- events were removed.
+    function ledger:prune(acks)
+        local events, head = saved.ledger, saved.head
+        local through = 0
+        for _, ack in ipairs(type(acks) == "table" and acks or {}) do
+            if type(ack) == "table" and whole(ack.seq, 1) and ack.seq > through and ack.seq <= head.seq then
+                local match = ack.seq == head.seq and ack.hash == head.hash
+                for _, event in ipairs(events) do
+                    if event.seq == ack.seq and event.h == ack.hash then match = true end
+                end
+                if match then through = ack.seq end
+            end
+        end
+        local kept, removed = {}, 0
+        for _, event in ipairs(events) do
+            if event.seq > through then kept[#kept + 1] = event else removed = removed + 1 end
+        end
+        if removed > 0 then saved.ledger = kept end
+        return removed
+    end
+
+    -- How many events the app has not yet picked up, and whether Ranked has to wait for it.
+    function ledger:waiting()
+        return #saved.ledger
+    end
+
+    function ledger:backlogFull()
+        return #saved.ledger >= ACB.backlogLimit
+    end
+
     -- Check the ledger, remember the result, and fall back to Casual mode when it fails.
     function ledger:check()
         self.ok, self.detail = self:verify()
@@ -182,7 +218,15 @@ function ACB.newLedger(saved, now, character)
     -- One line for the Settings tab and /acb verify.
     function ledger:status()
         if self.ok == nil then self:check() end
-        if self.ok then return ("Binder verified: %d changes on record."):format(saved.head.seq) end
+        if self.ok then
+            local line = ("Binder verified: %d changes on record."):format(saved.head.seq)
+            local synced = ACB.sync and ACB.sync.syncedAt
+            if type(synced) == "number" and date then line = line .. " Last synced " .. date("%d %b %H:%M", synced) .. "." end
+            if saved.mode == "ranked" and self:backlogFull() then
+                line = line .. " Ranked rolls are paused until the companion app syncs."
+            end
+            return line
+        end
         return "Binder unverified: " .. self.detail .. ". Ranked mode stays off for it."
     end
 

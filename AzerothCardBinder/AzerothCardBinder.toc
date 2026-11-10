@@ -13,6 +13,7 @@ Lore.lua
 Achievements.lua
 Hash.lua
 Ledger.lua
+Data/Sync.lua
 Collection.lua
 Trade.lua
 CardModels.lua
