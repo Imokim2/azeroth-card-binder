@@ -128,6 +128,7 @@ function ACB.initUI(saved, trade)
     local page = 1
     local mode = "collection"
     local collectionView = ACB.createFolio(frame, saved, function(setIndex) ACB.open(setIndex) end)
+    local achievementView = ACB.createAchievements(frame, saved)
     local tradeView = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     tradeView:SetPoint("TOPLEFT", 20, -109)
     tradeView:SetSize(900, 500)
@@ -157,7 +158,7 @@ function ACB.initUI(saved, trade)
         checks[setting.key] = check
     end
     local titleY = 62 + #ACB.settings * 56 + 6
-    label(settingsView, "GameFontNormal", 32, titleY + 6, parchment, "Title shown beside your name")
+    label(settingsView, "GameFontNormal", 32, titleY + 6, parchment, "Title shown in player tooltips")
     button(settingsView, "Previous title", 290, titleY, 110, function()
         ACB.cycleTitle(saved, -1)
         ACB.refresh()
@@ -175,7 +176,7 @@ function ACB.initUI(saved, trade)
         "Everything here is also a slash command: /acb popup, hints, privacy, diag, boss and title.")
 
     local tabs = {}
-    for index, destination in ipairs({ "index", "collection", "trade", "settings" }) do
+    for index, destination in ipairs({ "index", "collection", "trade", "achievements", "settings" }) do
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
@@ -296,13 +297,19 @@ function ACB.initUI(saved, trade)
         end
         titleMark:SetText(saved.title and ("Title: " .. saved.title) or "")
         local inTrade, inSettings = mode == "trade", mode == "settings"
-        collectionView:SetShown(not inTrade and not inSettings)
+        local inAchievements = mode == "achievements"
+        collectionView:SetShown(not inTrade and not inSettings and not inAchievements)
         tradeView:SetShown(inTrade)
         settingsView:SetShown(inSettings)
+        achievementView:SetShown(inAchievements)
         if inSettings then
             regionMark:SetText("BINDER  /  SETTINGS")
             for _, setting in ipairs(ACB.settings) do checks[setting.key]:SetChecked(ACB.settingOn(saved, setting)) end
-            titleName:SetText(saved.title or "None earned yet")
+            titleName:SetText(saved.title or "No title shown")
+            return
+        elseif inAchievements then
+            regionMark:SetText("BINDER  /  ACHIEVEMENTS")
+            achievementView:refresh()
             return
         end
         if not inTrade then

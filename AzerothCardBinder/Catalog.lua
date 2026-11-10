@@ -2,11 +2,9 @@ local _, ACB = ...
 
 -- A card you find for the first time has a 1 in `shinyOdds` chance to be a shiny copy.
 ACB.shinyOdds = 20
--- Bad-luck safety net: once a card's chances add up to 100%, the next attempt is guaranteed. That is
--- a multiple of 1 of the expected number of attempts: a 0.5% card is guaranteed on the 200th attempt,
--- 1% on the 100th and 5% on the 20th. Set to 0 to switch the safety net off.
+-- Each eligible attempt contributes the card's listed rate towards the guarantee. Set to 0 to disable it.
 ACB.pityFactor = 1
-ACB.rates = { normal = 50, elite = 100, rare = 500, rareelite = 500, gathering = 50 }
+ACB.rates = { normal = 100, elite = 200, rare = 1000, rareelite = 1000, gathering = 100 }
 -- Binder Dust: recycling a spare copy gives dust, and dust crafts a card you do not own yet.
 -- Ten spares of one rarity pay for a card of that rarity. Crafted cards are never shiny.
 ACB.dust = {
@@ -279,6 +277,6 @@ function ACB.setOrder()
 end
 
 ACB.achievements = {
-    { key = "crew", name = "The Defias Crew", bossesOnly = true },
-    { key = "deadmines", name = "Down in the Deadmines" },
+    { key = "crew", name = "The Defias Crew", title = "Defias Bane", bossesOnly = true },
+    { key = "deadmines", name = "Down in the Deadmines", title = "Deadmines Historian" },
 }

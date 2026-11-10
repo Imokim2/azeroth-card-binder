@@ -32,27 +32,18 @@ function ACB.setSetting(saved, key, on)
     return true
 end
 
--- The set titles a player has earned, in the order the sets are listed.
-function ACB.earnedTitles(saved)
-    local earned = {}
-    for _, page in ipairs(ACB.pages) do
-        if page.reward and saved.titles and saved.titles[page.reward] then earned[#earned + 1] = page.reward end
-    end
-    return earned
-end
-
 -- Step through the earned titles, with "no title" as the first stop. Returns the title now shown, if any.
 function ACB.cycleTitle(saved, step)
     local earned = ACB.earnedTitles(saved)
     if #earned == 0 then
         saved.title = nil
-        return nil
+        return
     end
     local position = 0
     for index, title in ipairs(earned) do
         if title == saved.title then position = index end
     end
     position = (position + step) % (#earned + 1)
-    saved.title = position > 0 and earned[position] or nil
+    ACB.selectTitle(saved, earned[position])
     return saved.title
 end

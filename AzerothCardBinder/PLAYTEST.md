@@ -1,20 +1,20 @@
 # World of Warcards · First playtest
 
-Version 0.2.3 targets World of Warcraft: Forever, interface 16001. The add-on is standalone and stores one binder per WoW account installation using SavedVariables.
+Version 0.2.9 targets World of Warcraft: Forever, interface 16001. The add-on is standalone and stores one binder per WoW account installation using SavedVariables.
 
 ## Install
 
 1. Extract the ZIP into `World of Warcraft/_forever_/Interface/AddOns/`. The final path should end in `AddOns/AzerothCardBinder/AzerothCardBinder.toc`.
 2. Restart WoW, enable **World of Warcards** on the character screen, then click the book icon on the minimap or type `/acb`. Drag the minimap icon to move it around the rim.
-3. Open **Index** or type `/acb index`. Search for a set by name or category, then click it to open its **Collection**. The index shows how many cards you own in each set.
-4. Click a pocket to see the larger card, rarity, drop chance, and copy counts on the right. Deadmines has three pages of four cards and tracks the eight boss cards and full twelve-card set separately.
-5. For the portrait playtest, select **Edwin VanCleef** on Deadmines page 2 and **Foe Reaper 4000** in Westfall. The enlarged card previews the scene even when the pocket is still marked Missing. Check the framing, whether the pose holds still, and how the character reads against the backdrop. Try a Gathering card to check that its resource model and backdrop display together. These checks require the live client.
+3. Open **Index** or type `/acb index`. Search by set, category, or card name. Card matches show their set and whether you own them. Click one to open its exact binder page, or choose **Open card in binder** from a catalogued enemy's portrait menu. The addon starts requesting later portraits for the open set in the background.
+4. Click a pocket to see the larger card, rarity, drop chance, and copy counts on the right. Deadmines tracks boss cards and full set progress separately.
+5. For the portrait playtest, select **Edwin VanCleef** on Deadmines page 2 and **Foe Reaper 4000** in Westfall. The enlarged model turns gently from side to side while the pocket previews stay still. Left-drag the enlarged NPC portrait to rotate it by hand. The automatic turn pauses during the drag. Missing cards show a grey, hazy preview and return to full colour when collected. Try a Gathering card to check the model or fallback icon.
 
 ## Collection
 
-Opening loot with a readable source from the catalog gives a personal roll per source. There are 18 cards. Normal enemies roll at 0.5%, elites at 1%, and rares and rare elites at 5%. The binder lists the catalog's expected rank. If the game gives the add-on a readable rank for the same source, the roll uses that rank. Copper Vein and Peacebloom use a prototype rate of 0.5% per node, with a readable player gathering cast and matching node loot required.
+Opening loot with a readable source from the catalog gives a personal roll per source. The base rates are 1% for normal enemies, 2% for elites, and 10% for rares and rare elites. The binder lists the catalog's expected rank. If the game gives the addon a readable rank for the same source, the random roll uses that rank. Gathering uses a rate of 1% per node, with a readable player gathering cast and matching node loot required.
 
-Cards are keyed by NPC or object ID. A session remembers each rolled spawn token, including misses, across loot windows and zone transitions. Reloading the interface or relogging starts a fresh session. Sources with no readable identity, empty loot windows, and sources outside the catalog are skipped. Group loot that never exposes the corpse to you may produce no roll. Use a clean logout or reload to check that Forever restores the binder.
+Cards are keyed by NPC or object ID. A session remembers each rolled spawn token, including misses, across loot windows and zone transitions. Reloading the interface or relogging starts a fresh session. When Forever exposes a source at `LOOT_READY` and omits `LOOT_OPENED`, the addon uses the ready snapshot. Loot without a readable catalogued source cannot advance the meter. Use a clean logout or reload to check that Forever restores the binder.
 
 ## Deadmines and gathering checklist
 
@@ -30,11 +30,11 @@ The encounter trial is deliberately narrow. If the required events, boss token o
 
 When a card is added to the binder, a pop-up shows the card with a sound: **New card**, **Duplicate**, **Shiny card!** or **Received in trade**. Pop-ups queue, pause under the mouse, open the binder when left-clicked and close on right-click. `/acb popup` turns them on or off, and `/acb popup test` shows a sample so you can check the look and sound.
 
-The first copy of each card you find has a 1 in 20 chance of being a shiny copy, shown with a foil sheen, a sweep of light and a cyan trim. You can own one shiny per card. Trades never move a shiny copy, so a shiny stays with the player who found it. The sound kit names are looked up when the pop-up plays and skipped if this client does not have them, so listen for a sound on the first test.
+Owned cards get a subtle tint in their rarity colour. The first copy of each card you find has a 1 in 20 chance of being a shiny copy, shown with a cyan and violet foil sheen, a sweep of light and a cyan trim. Use `/acb popup test` to preview a shiny without owning one. You can own one shiny per card. Trades never move a shiny copy, so a shiny stays with the player who found it. The sound kit names are looked up when the pop-up plays and skipped if this client does not have them, so listen for a sound on the first test.
 
 ## The full catalog
 
-There is now a card for every creature in Forever's dungeons, raids, battlegrounds and zones that wowforever.ninja has data for: about 4,000 cards in 68 sets, plus the original hand-made Deadmines, Westfall and gathering sets. Rarity follows rank (bosses legendary, other rares and elites epic, normal creatures common). New cards get a short generated description; the hand-written ones keep theirs. Zone art is found by name from the game's map and dungeon journal, falling back to a colour wash. Big sets run to many pages: use the mouse wheel on the left page to turn one page, or hold Shift for ten. Check that a large set such as The Barrens scrolls smoothly and that the index search finds sets by name.
+The binder has 3,415 cards in 69 sets, including gathering nodes and creatures from Forever's dungeons, raids, battlegrounds and zones. The creature catalog keeps entries that are neutral or hostile to both factions. Rarity follows rank (bosses legendary, other rares and elites epic, normal creatures common). Zone art comes from the game's map and dungeon journal where available, with a colour wash for other zones. Use the mouse wheel over the left page to turn one page at a time. Hold Shift to turn ten. Check that a large set such as The Barrens scrolls smoothly and that the index search finds sets by name.
 
 Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each recognised by every object id the game uses for it. 31 have a 3D model; Earthroot, Mageroyal, Briarthorn, Kingsblood, Ghost Mushroom, Silver Vein, Indurium and Dark Iron show an icon until a matching mesh is found. Mine and pick a few node types, including a high-level one, and check the card appears in the Gathering set with the right skill in its text.
 
@@ -44,22 +44,26 @@ Every card has a description of at most 80 characters so it fits the card face. 
 
 ## Bad-luck safety net
 
-Every card has a miss counter for its source. Once a card's chances add up to 100%, the attempt that reaches it is guaranteed: the 200th for a 0.5% card, the 100th for 1% and the 20th for 5%. The counter resets on a drop. The tooltip hint and the log show progress. Change or switch off `ACB.pityFactor` in `Catalog.lua` (0 turns it off).
+Each eligible miss fills the card's protection meter by its listed base rate. The attempt that would reach 100% guarantees a drop. Normal and gathering cards are guaranteed by attempt 100, elite cards by attempt 50, and rare and rare elite cards by attempt 10. Random rolls use the base rate until the guarantee. Any drop resets that card's meter. Existing misses count at the new rate. The binder and tooltip show progress and flag a guaranteed next attempt.
 
 ## Hints
 
 Mob and node tooltips add a line saying whether the card is in your binder, its chance, and the safety-net progress. In the binder, a missing card's page says where to find it. `/acb hints` turns the tooltip lines off. Check that the line appears on a Westfall Defias Pillager, a Foe Reaper 4000 and a Copper Vein.
 
-## Sets, titles and the wanted list
+## Achievements, sets and titles
 
-Each set has a progress bar in the folio and the index. Finishing a set shows a **Set complete** pop-up and earns a title (Defias Delver, Westfall Warden, Fieldhand). The chosen title shows in the binder header; `/acb title` lists them and `/acb title <number>` picks one. Missing cards have an **Add to wanted list** button on their page.
+- Open **Achievements** beside **Trade**, or type `/acb achievements`. Scroll the left page to see milestones for unique cards, completed sets, successful trades, shinies and the Deadmines. Duplicate cards and failed trades leave progress unchanged.
+- Finishing a set still shows a **Set complete** pop-up and earns its set title. Existing cards and sets count towards milestones. Trade progress starts from the saved history of up to 20 earlier trades and then counts every completed trade.
+- Select a title on the right page to equip it, or click **Hide title** to clear it. The chosen title appears in the binder header. `/acb title` lists your titles, `/acb title <number>` equips one, and `/acb title off` hides it.
+- With both players on this build, equip a title and have the other player hover over your character outdoors and out of combat. Look for **Binder title** in their tooltip. After a title change, allow up to 45 seconds for the other player's cached title to expire, then hover again.
+- Missing cards have an **Add to wanted list** button on their page.
 
 ## Sharing
 
-- Right-click a player: **Offer a card trade** opens the Trade tab with their name filled in, and **View their binder** asks for a read-only copy of their collection. `/acb view <name>` does the same. `/acb privacy` stops others viewing yours.
+- Right-click a player and choose **Offer a card trade** or **View their binder**. `/acb view <name>` also requests a read-only binder. Test with both players on this build, outdoors and out of combat. If Forever declines the addon whisper, the addon reports the reason it received. `/acb privacy` stops others viewing yours.
 - **Share lists** in the trade window sends your spare cards and your wanted cards to your partner. The window then shows which of their spares you need and which of yours they want. **History** lists your last trades.
-- **Link in chat** on a card you own (or `/acb link <name>`) puts a clickable card link in chat. Clicking a link opens the card at a readable size.
-- If a right-click entry or a link click does nothing, report which; both use client menu and hyperlink hooks that need a live check.
+- Shift-click a collection pocket or the enlarged card in **Collection** or **Index**. This puts the card into your chat draft. **Link in chat** and `/acb link <name>` still work for owned cards.
+- With both players on this build, send a card in a whisper and click it on the other client. The recipient's binder should open to the exact card and show their owned and spare counts. Players without this build see the card name with its reference as plain text.
 
 ## Trading
 
@@ -73,7 +77,7 @@ This release exchanges offers and confirmations over addon whispers and applies 
 
 ## Binder Dust, settings and artwork
 
-- **Kills since last drop.** Open any card in the Collection tab. Under the drop chance it shows how many kills (or gathers) you have made since the card last dropped, against the guaranteed attempt, for example "Kills since last drop: 120 / 200". Check it climbs after a kill whose card did not drop and resets on a drop.
+- **Loot attempts.** Open a card in Collection. The stats show the protection percentage and the number of identified loot or gathering attempts since its last drop. Loot the corpse of a catalogued enemy and check that the counter advances on a miss and resets on a drop.
 - **Binder Dust.** On a card you own twice or more, **Recycle a spare** gives dust (common 1, rare 2, epic 5, legendary 10) and removes one copy; the last copy can never be recycled. On a card you do not own, **Craft** costs ten times the recycle value (10, 20, 50, 100) and adds a plain, non-shiny copy with a pop-up reading CRAFTED WITH DUST. The balance shows at the top of the card page and with `/acb dust`. Change the values in `ACB.dust` in `Catalog.lua`.
 - **Settings tab.** Tick boxes for pop-ups, tooltip hints, letting others view your binder, diagnostics and the VanCleef trial, plus Previous title and Next title for the set title shown beside your name. `/acb settings` opens it, and the slash commands (`/acb hints`, `popup`, `privacy`) update the open tab.
 - **Zone artwork.** Cards use a packaged painting when there is one (Deadmines, Westfall, Elwynn Forest). Otherwise they try the Dungeon Journal picture, then a loading screen named after the place, then the map of the zone a dungeon sits in, then a colour gradient. In game, open a few dungeons, raids and zones and note which ones end up on the plain gradient. `Art/Portrait-Backdrops-Needed.txt` has a painting prompt for each of the 65 other places.

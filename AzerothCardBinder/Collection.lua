@@ -16,10 +16,12 @@ function ACB.source(guid)
 end
 
 -- Remember finished trades, newest first.
-function ACB.logTrade(saved, give, take, peer, when)
+function ACB.logTrade(saved, give, take, peer, when, report)
     saved.history = saved.history or {}
+    saved.tradeCount = (saved.tradeCount or #saved.history) + 1
     table.insert(saved.history, 1, { give = give, take = take, peer = peer, time = when })
     while #saved.history > 20 do table.remove(saved.history) end
+    ACB.updateAchievements(saved, report)
 end
 
 -- The trade history as printable lines.
@@ -57,6 +59,13 @@ function ACB.dustFor(card)
     return ACB.dust.recycle[card.rarity] or 0, ACB.dust.craft[card.rarity] or 0
 end
 
+function ACB.luckText(saved, card, showEmpty)
+    local misses, limit = ACB.luck(saved, card)
+    if not limit or (misses == 0 and not showEmpty) then return end
+    if misses + 1 >= limit then return "Next attempt guaranteed" end
+    return ("Bad luck: %g%%"):format(misses * 100 / limit)
+end
+
 function ACB.progress(counts, page, bossesOnly)
     local owned, total = 0, 0
     for _, card in ipairs(ACB.pages[page].cards) do
@@ -76,32 +85,35 @@ function ACB.newCollection(saved, random, report, log, found, completed)
     local collection = { saved = saved, rolled = {} }
 
     -- The first time every card of a set is owned, record it and hand out the set's title.
-    local function checkSet(card)
-        local page = ACB.pages[card.page]
-        local owned, total = ACB.progress(saved.counts, card.page)
-        if not page or not page.code or total == 0 or owned < total then return end
+    local function checkSet(index, announce)
+        local page = ACB.pages[index]
+        if not page.code then return end
         saved.sets = saved.sets or {}
-        if saved.sets[page.code] then return end
+        local alreadyFinished = saved.sets[page.code]
+        if not alreadyFinished then
+            local owned, total = ACB.progress(saved.counts, index)
+            if total == 0 or owned < total then return end
+        end
         saved.sets[page.code] = true
         if page.reward then
             saved.titles = saved.titles or {}
             saved.titles[page.reward] = true
-            saved.title = saved.title or page.reward
+            if announce and not alreadyFinished and not saved.titleHidden then saved.title = saved.title or page.reward end
         end
-        report(("Set complete: %s%s"):format(page.title, page.reward and (". Title earned: " .. page.reward) or ""))
-        completed(page, page.reward)
+        if announce and not alreadyFinished then
+            report(("Set complete: %s%s"):format(page.title, page.reward and (". Title earned: " .. page.reward) or ""))
+            completed(page, page.reward)
+        end
+    end
+
+    function collection:restoreAchievements()
+        for index in ipairs(ACB.pages) do checkSet(index, false) end
+        ACB.updateAchievements(saved)
     end
 
     local function checkAchievements(card)
-        checkSet(card)
-        if card.page ~= 1 then return end
-        for _, achievement in ipairs(ACB.achievements) do
-            local owned, total = ACB.progress(saved.counts, 1, achievement.bossesOnly)
-            if owned == total and not saved.achievements[achievement.key] then
-                saved.achievements[achievement.key] = true
-                report("Binder achievement: " .. achievement.name)
-            end
-        end
+        checkSet(card.page, true)
+        ACB.updateAchievements(saved, report)
     end
 
     function collection:roll(guid, origin, observedRank)
@@ -116,8 +128,8 @@ function ACB.newCollection(saved, random, report, log, found, completed)
         self.rolled[guid] = true
         local threshold = ACB.rates[observedRank] or ACB.rates[card.rank]
         saved.misses = saved.misses or {}
-        local misses = saved.misses[card.key] or 0
-        local limit = (ACB.pityFactor or 0) > 0 and math.ceil(ACB.pityFactor * 10000 / threshold) or nil
+        -- The card's listed rate keeps the guarantee stable when the source's rank is unreadable.
+        local misses, limit = ACB.luck(saved, card)
         local guaranteed = limit ~= nil and misses + 1 >= limit
         local dropped = guaranteed or random(1, 10000) <= threshold
         log(("%s: %s at %g%% (%s)"):format(origin, card.name, threshold / 100,

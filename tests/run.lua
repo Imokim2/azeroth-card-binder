@@ -26,14 +26,16 @@ loadAddon("Catalog.lua")
 loadAddon("CatalogForever.lua")
 loadAddon("CatalogNodes.lua")
 loadAddon("Lore.lua")
+loadAddon("Achievements.lua")
 loadAddon("Collection.lua")
 loadAddon("Trade.lua")
 
 for _, rate in ipairs({
-    { id = 589, limit = 50, rank = "normal" },
-    { id = 639, limit = 100, rank = "elite" },
-    { id = 573, limit = 500, rank = "rare" },
-    { id = 3586, limit = 500, rank = "rareelite" },
+    { id = 589, limit = 100, rank = "normal" },
+    { id = 639, limit = 200, rank = "elite" },
+    { id = 573, limit = 1000, rank = "rare" },
+    { id = 3586, limit = 1000, rank = "rareelite" },
+    { id = 1731, limit = 100, rank = "gathering", kind = "GameObject" },
 }) do
     test(rate.rank .. " exact odds and no reroll after miss", function()
         local saved = { counts = {}, achievements = {} }
@@ -45,12 +47,14 @@ for _, rate in ipairs({
             rolls = rolls + 1
             return draws[rolls]
         end, ignore, ignore)
-        equal(collection:roll(guid(rate.id, "A"), "loot"), true)
-        equal(collection:roll(guid(rate.id, "A"), "loot"), nil)
-        equal(collection:roll(guid(rate.id, "B"), "loot"), false)
-        equal(collection:roll(guid(rate.id, "B"), "loot"), nil)
+        local first, second = guid(rate.id, "A", rate.kind), guid(rate.id, "B", rate.kind)
+        local origin = rate.kind and "gather" or "loot"
+        equal(collection:roll(first, origin), true)
+        equal(collection:roll(first, origin), nil)
+        equal(collection:roll(second, origin), false)
+        equal(collection:roll(second, origin), nil)
         equal(rolls, 2)
-        equal(saved.counts["npc:" .. rate.id], 1)
+        equal(saved.counts[ACB.source(first).key], 1)
     end)
 end
 
@@ -271,20 +275,26 @@ test("the bad-luck safety net guarantees a card after enough misses and then res
     end, ignore, ignore)
     local misses, limit = ACB.luck(saved, ACB.cards["npc:589"])
     equal(misses, 0)
-    equal(limit, 200) -- a 0.5% card, guaranteed on the 200th kill
-    equal(select(2, ACB.luck(saved, ACB.cards["npc:639"])), 100) -- a 1% card
-    equal(select(2, ACB.luck(saved, ACB.cards["npc:573"])), 20) -- a 5% card
+    equal(limit, 100) -- a 1% card
+    equal(select(2, ACB.luck(saved, ACB.cards["npc:639"])), 50) -- a 2% card
+    equal(select(2, ACB.luck(saved, ACB.cards["npc:573"])), 10) -- a 10% card
+    equal(select(2, ACB.luck(saved, ACB.cards["node:1731"])), 100)
     for attempt = 1, limit - 1 do
         equal(collection:roll(guid(589, "miss" .. attempt), "loot"), false)
     end
     equal(saved.counts["npc:589"], nil)
     equal(ACB.luck(saved, ACB.cards["npc:589"]), limit - 1)
+    equal(ACB.luckText(saved, ACB.cards["npc:589"]), "Next attempt guaranteed")
     local before = draws
     equal(collection:roll(guid(589, "lucky"), "loot"), true)
     equal(draws, before) -- the guaranteed drop needs no roll
     equal(saved.counts["npc:589"], 1)
     equal(ACB.luck(saved, ACB.cards["npc:589"]), 0)
     equal(collection:roll(guid(589, "after"), "loot"), false)
+    equal(ACB.luckText(saved, ACB.cards["npc:589"]), "Bad luck: 1%")
+    saved.misses["npc:639"] = 51 -- misses banked before the new cap
+    equal(collection:roll(guid(639, "legacy"), "loot", "normal"), true)
+    equal(ACB.luck(saved, ACB.cards["npc:639"]), 0)
     ACB.pityFactor = 0 -- switched off
     for attempt = 1, 300 do collection:roll(guid(589, "off" .. attempt), "loot") end
     equal(saved.counts["npc:589"], 1)
@@ -317,6 +327,39 @@ test("finishing a set earns its title once and announces it", function()
     for _, id in ipairs({ 900001, 900002 }) do
         ACB.cards["npc:" .. id], ACB.sources.Creature[id] = nil, nil
     end
+end)
+
+test("milestones use unique cards, backfill sets and keep a lifetime trade count", function()
+    local saved = { counts = {}, shiny = {}, achievements = { crew = true }, history = {} }
+    local westfall = ACB.pages[2]
+    for index = 1, 9 do saved.counts[westfall.cards[index].key] = 5 end
+    saved.shiny[westfall.cards[1].key] = true
+    saved.shiny[westfall.cards[10].key] = true -- A shiny with no owned copy does not count.
+    ACB.updateAchievements(saved)
+    equal(ACB.achievementTotals(saved).cards, 9)
+    equal(ACB.achievementTotals(saved).shiny, 1)
+    equal(saved.achievements.cards10, nil)
+    equal(saved.titles["Shiny Seeker"], true)
+    equal(saved.titles["Defias Bane"], true)
+    for _, card in ipairs(westfall.cards) do saved.counts[card.key] = 1 end
+    local collection = ACB.newCollection(saved, function() return 1 end, ignore, ignore)
+    collection:restoreAchievements()
+    equal(saved.sets[westfall.code], true)
+    equal(saved.titles["Card Seeker"], true)
+    equal(saved.titles["Set Keeper"], true)
+    equal(saved.titles[westfall.reward], true)
+    equal(saved.title, nil)
+    for i = 1, 20 do saved.history[i] = { give = "npc:589", take = "npc:639" } end
+    local announcements = 0
+    for i = 1, 6 do
+        ACB.logTrade(saved, "npc:589", "npc:639", "bob-realm", i, function(message)
+            if message:find("Spare for Spare", 1, true) then announcements = announcements + 1 end
+        end)
+    end
+    equal(saved.tradeCount, 26)
+    equal(#saved.history, 20)
+    equal(saved.titles["Card Broker"], true)
+    equal(announcements, 1)
 end)
 
 test("partners can share spares and wants, and trades are logged", function()
@@ -476,10 +519,11 @@ local methods = {
         self.texture = texture
         return true
     end,
-    SetDesaturated = ignore, SetAlpha = ignore, SetMultiLine = ignore,
+    SetDesaturated = function(self, desaturated) self.desaturated = desaturated end,
+    SetAlpha = function(self, alpha) self.alpha = alpha end, SetMultiLine = ignore,
     SetFontObject = ignore, SetScrollChild = ignore, SetVerticalScroll = ignore, HighlightText = ignore,
     ClearFocus = ignore, SetClipsChildren = ignore,
-    SetColorTexture = function(self) self.colorTexture = true end, SetFont = ignore,
+    SetColorTexture = function(self) self.colorTexture = true end, SetFont = ignore, SetBlendMode = ignore,
     SetVertexColor = function(self, r, g, b) self.vertex = { r, g, b } end,
     SetFrameLevel = function(self, level) self.level = level end,
     GetFrameLevel = function(self) return self.level or 1 end, SetMaxLines = ignore,
@@ -490,14 +534,18 @@ local methods = {
     SetCreature = function(self, creature) self.creature = creature end,
     SetModel = function(self, file) self.fileID = file end,
     GetModelFileID = function(self) return self.fileID end,
+    SetDesaturation = function(self, strength) self.desaturation = strength end,
+    SetModelAlpha = function(self, alpha) self.modelAlpha = alpha end,
     SetPortraitZoom = function(self, zoom) self.portraitZoom = zoom end,
-    SetCamDistanceScale = ignore, SetFacing = ignore, SetPosition = ignore, SetPaused = ignore,
+    SetCamDistanceScale = ignore, SetFacing = function(self, facing) self.facing = facing end, SetPosition = ignore, SetPaused = ignore,
     HasAnimation = function(self, animation) return self.supportedAnimation == animation end,
     FreezeAnimation = function(self, animation, variation, frame) self.frozen = { animation, variation, frame } end,
     Show = function(self) self.shown = true end,
     Hide = function(self) self.shown = false end,
     SetShown = function(self, shown) self.shown = shown end,
     IsShown = function(self) return self.shown end,
+    IsMouseOver = function(self) return self.mouseOver ~= false end,
+    GetEffectiveScale = function(self) return self.scale or 1 end,
     SetText = function(self, text) self.text = text end,
     GetText = function(self) return self.text or "" end,
     SetEnabled = function(self, enabled) equal(type(enabled), "boolean"); self.enabled = enabled end,
@@ -526,7 +574,23 @@ Minimap = setmetatable({
     GetCenter = function() return 100, 100 end,
     GetEffectiveScale = function() return 0.8 end,
 }, { __index = methods })
-function GetCursorPosition() return 80, 140 end
+local cursorX, shiftDown, leftDown = 80, false, false
+function GetCursorPosition() return cursorX, 140 end
+function IsShiftKeyDown() return shiftDown end
+function IsMouseButtonDown(button) return button == "LeftButton" and leftDown end
+
+local chatFilters, chatCallbacks = {}, {}
+local draft, activeChat
+ChatFrameUtil = {
+    AddMessageEventFilter = function(event, callback) chatFilters[event] = callback end,
+    OpenChat = function(message) draft = message end,
+    GetActiveWindow = function() return activeChat end,
+}
+EventRegistry = {
+    RegisterCallback = function(_, event, callback, owner)
+        chatCallbacks[event] = function(...) callback(owner, ...) end
+    end,
+}
 
 local secret = setmetatable({}, { __tostring = function() error("secret value used") end })
 function issecretvalue(value) return value == secret end
@@ -613,6 +677,29 @@ test("UI and SavedVariables initialize through ADDON_LOADED", function()
     equal(ACB.tradePeer("Bob|malformed"), nil)
 end)
 
+test("the Achievements tab lists earned titles and lets the player equip and hide one", function()
+    local saved = AzerothCardBinderDB
+    local originalTitles, originalAchievements, originalHidden = saved.titles, saved.achievements, saved.titleHidden
+    saved.titles, saved.achievements = { ["Card Trader"] = true }, { trades1 = true }
+    for _, widget in ipairs(widgets) do
+        if widget.text == "Achievements" and widget.OnClick then widget:OnClick() break end
+    end
+    local choose, hide, status
+    for _, widget in ipairs(widgets) do
+        if widget.title == "Card Trader" and widget.OnClick then choose = widget end
+        if widget.text == "Hide title" then hide = widget.parent end
+        if widget.text == "1 / 18 achievements earned" then status = widget end
+    end
+    assert(status and choose and hide)
+    choose:OnClick()
+    equal(saved.title, "Card Trader")
+    hide:OnClick()
+    equal(saved.title, nil)
+    equal(saved.titleHidden, true)
+    saved.titles, saved.achievements, saved.titleHidden = originalTitles, originalAchievements, originalHidden
+    ACB.open(1)
+end)
+
 test("cards draw for missing, owned and gathering entries", function()
     AzerothCardBinderDB.counts["npc:639"] = 2
     AzerothCardBinderDB.counts["node:1731"] = 1
@@ -622,13 +709,74 @@ test("cards draw for missing, owned and gathering entries", function()
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
 end)
 
+test("opening a set queues later portraits and leaving the set stops the loader", function()
+    local cards = ACB.pages[2].cards
+    local loader
+    for _, widget in ipairs(widgets) do
+        if widget.width == 2 and widget.height == 2 and widget.OnUpdate then loader = widget break end
+    end
+    assert(loader)
+    ACB.open("index")
+    equal(loader:IsShown(), false)
+    ACB.openCard(cards[1].key)
+    equal(loader:IsShown(), true)
+    equal(loader.creature, nil)
+    loader:OnUpdate(0.08)
+    equal(loader.creature, cards[5].id)
+    loader:OnUpdate(0.2)
+    equal(loader.creature, cards[5].id) -- still waiting on the first model
+    loader.fileID = 123456
+    loader:OnUpdate(0.08)
+    equal(loader.creature, cards[6].id)
+    loader:OnUpdate(1)
+    equal(loader.creature, cards[7].id) -- one missing model cannot block the queue
+    ACB.open("index")
+    equal(loader:IsShown(), false)
+    equal(loader.creature, nil)
+    ACB.openCard(cards[1].key)
+    loader:OnUpdate(0.08)
+    equal(loader.creature, cards[6].id) -- card 5 already loaded, card 6 can retry
+    loader.parent:OnHide() -- closing the binder dispatches this on the live client
+    equal(loader:IsShown(), false)
+end)
+
+test("missing models appear in the pocket and detail and regain colour when collected", function()
+    local saved = AzerothCardBinderDB
+    local edwin = ACB.cards["npc:639"]
+    ACB.openCard(edwin.key)
+    local models = {}
+    for _, widget in ipairs(widgets) do
+        if widget.creature == edwin.id then
+            local frame = widget.parent.parent
+            if frame.scale == 0.60 or frame.scale == 1.48 then
+                assert(frame.parent.parent:IsShown() ~= false)
+                equal(frame.OnUpdate ~= nil, frame.scale == 1.48)
+                models[frame.scale] = widget
+                equal(widget:IsShown(), true)
+                equal(widget.desaturation, 1)
+                assert(widget.modelAlpha > 0 and widget.modelAlpha < 1)
+            end
+        end
+    end
+    assert(models[0.60] and models[1.48])
+    saved.counts[edwin.key] = 1
+    ACB.refresh()
+    for _, model in pairs(models) do
+        equal(model.creature, edwin.id)
+        equal(model.desaturation, 0)
+        equal(model.modelAlpha, 1)
+    end
+    saved.counts[edwin.key] = nil
+    ACB.openCard(ACB.pages[1].cards[1].key)
+end)
+
 test("tooltip hints say whether a card is owned and where to find it", function()
     local saved = AzerothCardBinderDB
     local card = ACB.cards["npc:589"]
     saved.counts["npc:589"], saved.misses["npc:589"] = nil, 120
     local lines = ACB.hintLines(saved, card)
-    equal(lines[1][1], "Card: not in your binder yet (0.5% chance)")
-    equal(lines[2][1], "Bad-luck safety net: 120 / 200")
+    equal(lines[1][1], "Card: not in your binder yet (1% chance)")
+    equal(lines[2][1], "Next attempt guaranteed")
     saved.counts["npc:589"] = 2
     equal(ACB.hintLines(saved, card)[1][1], "Card: in your binder (x2)")
     saved.counts["npc:589"], saved.misses["npc:589"] = nil, nil
@@ -639,7 +787,7 @@ test("tooltip hints say whether a card is owned and where to find it", function(
     local added = {}
     local tip = { AddLine = function(_, text) added[#added + 1] = text end, Show = ignore }
     hintCallbacks[1](tip, { guid = guid(589, "tip") })
-    equal(added[1], "Card: not in your binder yet (0.5% chance)")
+    equal(added[1], "Card: not in your binder yet (1% chance)")
     added = {}
     hintCallbacks[1](tip, { guid = guid(99999, "unknown") })
     hintCallbacks[1](tip, { guid = secret })
@@ -648,6 +796,103 @@ test("tooltip hints say whether a card is owned and where to find it", function(
     hintCallbacks[1](tip, { guid = guid(589, "tip") })
     equal(#added, 0)
     saved.hints = nil
+end)
+
+test("player tooltip titles come from solicited replies and an equipped title can be hidden", function()
+    local originalTooltip, originalUnitGUID, originalUnitFullName = GameTooltip, UnitGUID, UnitFullName
+    local saved = AzerothCardBinderDB
+    local peerGUID, currentGUID = "Player-1-00000001", "Player-1-00000001"
+    local messages, lines, refreshes = {}, {}, 0
+    GameTooltip = {
+        GetUnit = function() return "Bob", "mouseover" end,
+        GetPrimaryTooltipData = function() return { guid = currentGUID } end,
+        IsShown = function() return true end,
+        AddLine = function(_, line) lines[#lines + 1] = line end,
+        RefreshDataNextUpdate = function() refreshes = refreshes + 1 end,
+    }
+    UnitGUID = function(unit)
+        if unit == "mouseover" then return currentGUID end
+        return originalUnitGUID(unit)
+    end
+    UnitFullName = function(unit)
+        if unit == "mouseover" then return "Bob", "Realm Name" end
+        return originalUnitFullName(unit)
+    end
+    Enum.SendAddonMessageResult = { Success = 0 }
+    C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
+        equal(prefix, ACB.viewPrefix)
+        equal(channel, "WHISPER")
+        equal(peer, "bob-realmname")
+        messages[#messages + 1] = message
+        return 0
+    end
+    local function receive(message, sender)
+        emit("CHAT_MSG_ADDON", ACB.viewPrefix, message, "WHISPER", sender or "Bob-RealmName")
+    end
+    local function hover()
+        hintCallbacks[1](GameTooltip, { guid = peerGUID })
+    end
+    receive("T|Card Trader")
+    hintCallbacks[1](GameTooltip, { guid = secret })
+    hover()
+    hover()
+    equal(#messages, 1)
+    equal(messages[1], "T?")
+    equal(#lines, 0)
+    receive("T||Hspoof|h", "Bob-RealmName")
+    receive("T|Card Trader", "Mallory-RealmName")
+    equal(refreshes, 0)
+    receive("T|Card Trader")
+    equal(refreshes, 1)
+    hover()
+    equal(lines[1], "Binder title: Card Trader")
+    equal(#messages, 1)
+
+    local start = clock
+    clock = clock + 46
+    hover()
+    equal(messages[2], "T?")
+    currentGUID = "Player-1-00000002"
+    receive("T|Foil Hunter")
+    equal(refreshes, 1)
+    saved.titles["Card Trader"] = true
+    ACB.selectTitle(saved, "Card Trader")
+    receive("T?")
+    equal(messages[3], "T|Card Trader")
+    receive("T?")
+    equal(#messages, 3)
+    clock = clock + 6
+    ACB.selectTitle(saved)
+    receive("T?")
+    equal(messages[4], "T|")
+
+    GameTooltip, UnitGUID, UnitFullName = originalTooltip, originalUnitGUID, originalUnitFullName
+    saved.titles["Card Trader"], saved.titleHidden = nil, nil
+    Enum.SendAddonMessageResult, C_ChatInfo.SendAddonMessage, clock = nil, nil, start
+end)
+
+test("binder requests use the addon whisper result when the general chat flags are unavailable", function()
+    local originalSend, originalFlag = C_ChatInfo.SendAddonMessage, C_ChatInfo.AreOutgoingAddonChatMessagesRestricted
+    local originalCodes = Enum.SendAddonMessageResult
+    local result, sends = 0, 0
+    Enum.SendAddonMessageResult = { Success = 0, AddOnMessageLockdown = 11, TargetOffline = 12 }
+    C_ChatInfo.AreOutgoingAddonChatMessagesRestricted = function() return secret end
+    C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
+        equal(prefix, ACB.viewPrefix)
+        equal(message, "Q")
+        equal(channel, "WHISPER")
+        equal(peer, "carol-realmname")
+        sends = sends + 1
+        return result
+    end
+    equal(ACB.requestBinder("carol-realmname"), true)
+    result = 11
+    local sent, reason = ACB.requestBinder("carol-realmname")
+    equal(sent, false)
+    equal(reason, "Forever is blocking addon whispers right now.")
+    equal(sends, 2)
+    C_ChatInfo.SendAddonMessage, C_ChatInfo.AreOutgoingAddonChatMessagesRestricted = originalSend, originalFlag
+    Enum.SendAddonMessageResult = originalCodes
 end)
 
 test("card links round-trip and unknown links are ignored", function()
@@ -665,6 +910,60 @@ test("card links round-trip and unknown links are ignored", function()
     equal(ACB.findCard(saved, "edwin").key, "npc:639")
     equal(ACB.findCard(saved, "pillager"), nil) -- not owned
     equal(ACB.findCard(saved, ""), nil)
+end)
+
+test("shift-click drafts a link and the recipient opens the exact card with local counts", function()
+    local saved = AzerothCardBinderDB
+    local edwin = ACB.cards["npc:639"]
+    ACB.openCard(edwin.key)
+    local pocket, detail, stats
+    for _, widget in ipairs(widgets) do
+        if widget.text == edwin.name and widget.parent.OnClick then pocket = widget.parent end
+        if widget.OnMouseUp and widget.OnMouseDown and widget.scale == 1.48 then detail = widget end
+        if widget.text == "BASE DROP CHANCE" then stats = widget.parent end
+    end
+    assert(pocket and detail and stats)
+    saved.counts[edwin.key], saved.shiny[edwin.key] = 1, true
+    shiftDown = true
+    pocket:OnClick()
+    equal(draft, "[ACB:npc:639:1 Edwin VanCleef (Shiny)]")
+    local sent = draft
+
+    ACB.open("index")
+    draft = "Look at "
+    activeChat = { Insert = function(_, text) draft = draft .. text end, SetFocus = ignore }
+    detail:OnMouseDown("LeftButton")
+    detail:OnMouseUp("LeftButton")
+    equal(draft, "Look at " .. sent)
+    activeChat, shiftDown = nil, false
+
+    local event = "CHAT_MSG_WHISPER"
+    local filter = assert(chatFilters[event])
+    equal(filter(nil, event, secret), nil)
+    equal(filter(nil, event, "[ACB:npc:99999:1 Unknown]"), nil)
+    local skip, rendered, sender = filter(nil, event, "Check " .. sent .. "!", "Bob")
+    equal(skip, false)
+    equal(rendered, "Check " .. ACB.cardLink(edwin, true) .. "!")
+    equal(sender, "Bob")
+
+    saved.counts[edwin.key], saved.shiny[edwin.key] = 3, nil
+    ACB.open(2)
+    AzerothCardBinderWindow:Hide()
+    chatCallbacks.SetItemRef("item:1", "", "LeftButton")
+    equal(AzerothCardBinderWindow:IsShown(), false)
+    chatCallbacks.SetItemRef(rendered:match("|H(.-)|h"), rendered, "LeftButton")
+    equal(AzerothCardBinderWindow:IsShown(), true)
+    local found, counts = {}, {}
+    for _, widget in ipairs(widgets) do
+        found[widget.text or ""] = true
+        if widget.parent == stats then counts[widget.text or ""] = true end
+    end
+    equal(found[("Page 2 of %d"):format(math.ceil(#ACB.pages[edwin.page].cards / 4))], true)
+    equal(found["SELECTED CARD  /  DM 08"], true)
+    equal(found["3 owned / 2 spare"], true)
+    equal(counts["3"] and counts["2"], true)
+    saved.counts[edwin.key] = nil
+    ACB.openCard(ACB.pages[1].cards[1].key)
 end)
 
 test("a binder can be viewed read-only, only when asked for, and can be made private", function()
@@ -709,16 +1008,17 @@ test("a binder can be viewed read-only, only when asked for, and can be made pri
     ACB.receiveView("alice-realm", sentToB[1])
     ACB.receiveView("alice-realm", sentToB[1]) -- a repeated part changes nothing
     equal(#shown, 0)
-    ACB.receiveView("alice-realm", "B|2/2|c99999=4,c589=3") -- unknown cards are dropped
+    ACB.receiveView("alice-realm", sentToB[2] .. ",c99999=4") -- unknown cards are dropped
     equal(#shown, 1)
     equal(shown[1].peer, "alice-realm")
     equal(shown[1].counts["npc:589"], 3)
     equal(shown[1].shiny["npc:639"], true)
     equal(shown[1].counts["npc:99999"], nil)
     local lines = ACB.inspectLines(shown[1].counts, shown[1].shiny)
-    assert(lines[1]:find("^21 of %d+ cards collected, 1 shiny$"))
+    local deadminesCards = #ACB.pages[1].cards
+    assert(lines[1]:find(("^%d of %%d+ cards collected, 1 shiny$"):format(deadminesCards + 1)))
     local text = table.concat(lines, " ")
-    assert(text:find("Deadmines   20 / %d+"))
+    assert(text:find(("Deadmines   %d / %d"):format(deadminesCards, deadminesCards), 1, true))
     assert(text:find("Westfall   1 / %d+"))
     -- Garbage is dropped.
     ACB.receiveView("alice-realm", "B|9/2|npc:589=2")
@@ -727,23 +1027,68 @@ test("a binder can be viewed read-only, only when asked for, and can be made pri
     equal(#shown, 1)
 end)
 
-test("right-clicking a player offers a trade and a binder view", function()
+test("a fully collected binder fits the message limit and arrives within the request window", function()
+    local full, timers = { counts = {}, shiny = {} }, {}
+    for key in pairs(ACB.cards) do
+        full.counts[key], full.shiny[key] = 99, true
+    end
+    local now, received, show
+    now = 100
+    ACB.initSocial(full, function(_, message)
+        assert(#ACB.viewPrefix + 1 + #message <= 255, "addon whisper exceeds the message budget")
+        received("alice-realm", message)
+        return true
+    end, function() return now end, function(delay, action)
+        timers[#timers + 1] = { due = now + delay, run = action }
+    end)
+    local sendResponse = ACB.receiveView
+    sendResponse("bob-realm", "Q")
+    assert(#timers > 150)
+    ACB.initSocial({ counts = {} }, function() return true end, function() return now end, ignore)
+    received = ACB.receiveView
+    ACB.showInspect = function(_, counts, shiny) show = { counts = counts, shiny = shiny } end
+    assert(ACB.requestBinder("alice-realm"))
+    for _, timer in ipairs(timers) do
+        now = timer.due
+        timer.run()
+    end
+    assert(show, "the last part arrived too late")
+    for key in pairs(ACB.cards) do
+        equal(show.counts[key], 99)
+        equal(show.shiny[key], true)
+    end
+end)
+
+test("player and enemy portrait menus offer the relevant binder actions", function()
     local callbacks = {}
-    Menu = { ModifyMenu = function(_, callback) callbacks[#callbacks + 1] = callback end }
+    Menu = { ModifyMenu = function(tag, callback) callbacks[tag] = callback end }
     ACB.initSocial({ counts = {} }, function() return true end, function() return 1 end, function(_, action) action() end)
     Menu = nil
-    equal(#callbacks, 5)
+    local playerMenu = assert(callbacks.MENU_UNIT_PLAYER)
+    local targetMenu = assert(callbacks.MENU_UNIT_TARGET)
+    assert(callbacks.MENU_UNIT_FOCUS and callbacks.MENU_UNIT_BOSS)
     local buttons = {}
     local root = { CreateDivider = ignore, CreateButton = function(_, text, action) buttons[text] = action end }
-    callbacks[1](nil, root, { name = "Bob", server = "RealmName" })
+    playerMenu(nil, root, { name = "Bob", server = "RealmName" })
     assert(buttons["Offer a card trade"] and buttons["View their binder"])
     AzerothCardBinderWindow:Hide()
     buttons["Offer a card trade"]()
     equal(AzerothCardBinderWindow:IsShown(), true)
     buttons = {}
-    callbacks[1](nil, root, { name = secret })
-    callbacks[1](nil, root, nil)
+    playerMenu(nil, root, { name = secret })
+    playerMenu(nil, root, nil)
     equal(next(buttons), nil) -- unreadable or missing players get no entries
+    target = secret
+    targetMenu(nil, root, { unit = "target" })
+    equal(next(buttons), nil)
+    target = guid(639, "portrait")
+    targetMenu(nil, root, { unit = "target" })
+    assert(buttons["Open card in binder"])
+    AzerothCardBinderWindow:Hide()
+    buttons["Open card in binder"]()
+    equal(AzerothCardBinderWindow:IsShown(), true)
+    target = nil
+    ACB.openCard(ACB.pages[1].cards[1].key)
 end)
 
 test("a finished set shows its own pop-up with the title", function()
@@ -771,15 +1116,17 @@ test("card studs follow the rarity colour, sit above the text, and the serial nu
         equal(stud.vertex[3], legendary[3])
     end
     assert(card.studFrame.level > card.textBox.level, "studs sit above the text box")
-    assert(card.studFrame.level > card.badges.level, "studs sit above the name and text")
+    assert(card.studFrame.level > card.badges.level + 1, "studs sit above the name and count badges")
     equal(card.serial.text, "No. 000639")
     card:set(ACB.cards["npc:573"], 1) -- epic
     equal(card.studs[3].vertex[1], epic[1])
     equal(card.serial.text, "No. 000573")
     card:set(ACB.cards["node:1731"], 1)
     equal(card.serial.text, "No. N01731")
-    card:set(ACB.cards["npc:639"], 0) -- missing cards keep the rarity colour, dimmer
-    equal(card.studs[1].vertex[1], legendary[1] * 0.5)
+    card:set(ACB.cards["npc:639"], 0) -- missing cards use the same muted finish on the studs and gem
+    for channel = 1, 3 do equal(card.studs[1].vertex[channel], card.gem.vertex[channel]) end
+    assert(card.studs[1].vertex[1] < legendary[1])
+    equal(card.serial.text, "No. 000639")
 end)
 
 test("sets are listed by level, then by name", function()
@@ -802,14 +1149,27 @@ test("sets are listed by level, then by name", function()
     equal(ACB.pages[2].title, "Westfall")
 end)
 
-test("shiny cards show the foil and plain or missing cards do not", function()
+test("owned cards show rarity tint and the moving foil only plays for shiny copies", function()
     local card = ACB.createCard(UIParent)
     card:set(ACB.cards["npc:639"], 1, true)
     equal(card.foil:IsShown(), true)
+    equal(card.tint:IsShown(), true)
+    local band
+    for _, widget in ipairs(widgets) do
+        if widget.parent == card.foil and widget.width and widget.height then band = widget end
+    end
+    assert(band)
+    card.foil:OnUpdate(0.5)
+    assert(band.point[4] > 0 and band.point[4] + band.width < card.model.width)
+    assert(band.alpha > 0)
+    card.foil:OnUpdate(1.5)
+    equal(band.alpha, 0)
     card:set(ACB.cards["npc:639"], 1, false)
     equal(card.foil:IsShown(), false)
+    equal(card.tint:IsShown(), true)
     card:set(ACB.cards["npc:639"], 0, true)
     equal(card.foil:IsShown(), false)
+    equal(card.tint:IsShown(), false)
 end)
 
 test("pop-ups queue, fade away, play a sound and can be turned off", function()
@@ -840,24 +1200,56 @@ test("pop-ups queue, fade away, play a sound and can be turned off", function()
     equal(ACB.playToastSound("epic", false), nil) -- no sound system, nothing breaks
 end)
 
-test("cinematic detail applies the pose after loading and falls back for unsupported animations", function()
-    local card = ACB.createCard(UIParent, true)
+test("cinematic detail sways, pauses for dragging and keeps the combat pose", function()
+    local card = ACB.createCard(UIParent, true, ignore)
     card:set(ACB.cards["npc:639"], 0)
     equal(card.model.creature, 639)
     equal(card.model:IsShown(), true)
     equal(card.owned, 0)
     equal(card.model.frozen, nil)
     equal(card.art.base.texture, ACB.folioArt .. "Deadmines.tga")
+    equal(card.art.base.desaturated, true)
+    equal(card.veil:IsShown(), true)
+    card.model.desaturation = nil -- Simulate the client completing a new load.
     card.model.fileID, card.model.supportedAnimation = 1000, 17
     card.model:OnModelLoaded()
+    equal(card.model.desaturation, 1)
     equal(card.model.frozen[1], 17)
     equal(card.model.frozen[3], 24)
     local humanoidZoom = card.model.portraitZoom
+    local defaultFacing = card.model.facing
+    equal(defaultFacing, -0.47)
+    card.frame:OnUpdate(2)
+    local swing = card.model.facing - defaultFacing
+    assert(swing > 0 and swing < math.rad(10))
+    card.frame:OnUpdate(4)
+    assert(math.abs(card.model.facing - (defaultFacing - swing)) < 0.0001)
+    card.frame:OnUpdate(2)
+    equal(card.model.facing, defaultFacing)
+
+    card.model.mouseOver = false
+    leftDown = true
+    card.frame:OnMouseDown("LeftButton")
+    cursorX = cursorX + 40
+    card.frame:OnUpdate(0)
+    equal(card.model.facing, defaultFacing)
+    cursorX = cursorX - 40
+    card.model.mouseOver = true
+    card.frame:OnMouseDown("LeftButton")
+    cursorX = cursorX + 40
+    card.frame:OnUpdate(2)
+    assert(math.abs(card.model.facing - 0.53) < 0.0001)
+    equal(card.model.frozen[3], 24)
+    leftDown = false
+    cursorX = cursorX - 40
+    card.frame:OnUpdate(2)
+    assert(math.abs(card.model.facing - (0.53 + swing)) < 0.0001)
 
     card:set(ACB.cards["npc:573"], 0)
     card.model.fileID, card.model.supportedAnimation = 1001, nil
     card.model:OnModelLoaded()
     equal(card.model.frozen[1], 0)
+    equal(card.model.facing, -0.34)
     assert(card.model.portraitZoom < humanoidZoom)
     equal(card.art.base.texture, ACB.folioArt .. "Westfall.tga")
 
@@ -866,6 +1258,23 @@ test("cinematic detail applies the pose after loading and falls back for unsuppo
     equal(card.model.frozen, nil)
     equal(card.node:IsShown(), false)
     equal(card.art.base.texture, ACB.folioArt .. "Elwynn.tga")
+    card.frame:OnUpdate(2)
+    assert(card.model.facing > 0.6)
+
+    for _, entry in ipairs(ACB.pages[3].cards) do
+        if not entry.model then
+            card:set(entry, 0)
+            equal(card.node:IsShown(), true)
+            equal(card.node.desaturated, true)
+            card.frame:OnUpdate(2)
+            equal(card.model.facing, 0.6)
+            card:set(entry, 1)
+            equal(card.node:IsShown(), true)
+            equal(card.node.desaturated, false)
+            equal(card.veil:IsShown(), false)
+            break
+        end
+    end
 
     local pocket = ACB.createCard(UIParent, false)
     pocket.art.base.rejectTexture = true
@@ -953,7 +1362,14 @@ test("index searches categories and opens sets beyond the original tabs", functi
     equal(indexRow("Westfall"):IsShown(), true)
     search:SetText("%")
     search:OnTextChanged()
-    findWidget(function(widget) return widget.text == "No matching sets" end)
+    findWidget(function(widget) return widget.text == "No matching sets or cards" end)
+    search:SetText(" eDwin VaNcleef ")
+    search:OnTextChanged()
+    local cardRow = findWidget(function(widget) return widget.cardKey == "npc:639" end)
+    equal(cardRow:IsShown(), true)
+    cardRow:OnClick()
+    findWidget(function(widget) return widget.text == "SELECTED CARD  /  DM 08" end)
+    SlashCmdList.AZEROTHCARDBINDER("index")
     search:SetText("Test Set 04")
     search:OnTextChanged()
     indexRow("Test Set 04"):OnClick()
@@ -990,13 +1406,44 @@ test("loot slots dedup by source, including mixed sources and auto-loot close", 
     slots = { { a, 2, b, 1 }, { a, 3 } }
     emit("LOOT_READY", true)
     slots = {}
-    emit("LOOT_CLOSED")
     emit("LOOT_OPENED", true, false)
     for _, callback in ipairs(timers) do callback() end
     equal(rolls, 2)
     equal(AzerothCardBinderDB.counts["npc:589"], 2)
     openLoot({ a, 1 }, { b, 1 })
     equal(rolls, 2)
+end)
+
+test("ready-only loot advances the open binder's protection once per identified corpse", function()
+    local saved = AzerothCardBinderDB
+    local card, before = ACB.cards["npc:589"], rolls
+    local spawn = guid(589, "ready-only")
+    saved.misses[card.key] = nil
+    draw = 10000
+    ACB.openCard(card.key)
+    slots = { { spawn, 1 } }
+    emit("LOOT_READY", true)
+    slots = {}
+    timers[#timers]()
+    equal(rolls, before + 1)
+    equal(saved.misses[card.key], 1)
+    local protection
+    for _, widget in ipairs(widgets) do
+        if widget.text == "Bad luck: 1%" then protection = widget end
+    end
+    assert(protection)
+    openLoot({ spawn, 1 }) -- a later event or reopening the same corpse does not count again
+    equal(rolls, before + 1)
+    emit("LOOT_READY", true)
+    slots = {}
+    timers[#timers]()
+    equal(rolls, before + 1)
+    slots = { { "Item-1-00000001", 1, guid(589, "item-origin"), 1 } }
+    emit("LOOT_READY", true)
+    slots = {}
+    timers[#timers]()
+    equal(rolls, before + 1)
+    saved.misses[card.key], draw = nil, 1
 end)
 
 test("secret, unknown, live, pickpocket and item-container sources are skipped", function()
@@ -1011,7 +1458,7 @@ test("secret, unknown, live, pickpocket and item-container sources are skipped",
     equal(rolls, before)
     clock = clock + 3
     target, dead, rank = guid(590, "rank"), true, "elite"
-    draw = 100
+    draw = 200
     openLoot({ target, 1 })
     equal(rolls, before + 1)
     equal(AzerothCardBinderDB.counts["npc:590"], 1)
@@ -1095,11 +1542,13 @@ end)
 
 test("Trade panel sends only supported outdoor whispers and filters incoming messages", function()
     local sent = {}
-    Enum = { SendAddonMessageResult = { Success = 0 } }
+    local tradesBefore = AzerothCardBinderDB.tradeCount
+    Enum = { SendAddonMessageResult = { Success = 0, AddOnMessageLockdown = 11 } }
     C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
         equal(prefix, ACB.tradePrefix)
         equal(channel, "WHISPER")
         equal(peer, "bob-realmname")
+        if locked then return Enum.SendAddonMessageResult.AddOnMessageLockdown end
         sent[#sent + 1] = message
         return 0
     end
@@ -1135,7 +1584,11 @@ test("Trade panel sends only supported outdoor whispers and filters incoming mes
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "R|" .. id .. "|npc:573", "WHISPER", "Bob")
     click("Accept trade")
     equal(sent[2], "C|" .. id .. "|" .. give .. "|npc:573")
+    equal(AzerothCardBinderDB.tradeCount, tradesBefore)
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "C|" .. id .. "|npc:573|" .. give, "WHISPER", "Bob-RealmName")
+    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "C|" .. id .. "|npc:573|" .. give, "WHISPER", "Bob-RealmName")
+    equal(AzerothCardBinderDB.tradeCount, tradesBefore + 1)
+    equal(AzerothCardBinderDB.titles["Card Trader"], true)
     local complete
     for _, widget in ipairs(widgets) do
         if widget.text == ("Trade complete. You gave %s and received Foe Reaper 4000."):format(ACB.cards[give].name) then
@@ -1204,7 +1657,7 @@ test("the folio shows kills since the last drop and a dust button that recycles 
 
     saved.counts["npc:639"], saved.misses["npc:639"], saved.dust = 2, 37, 0
     assert(ACB.openCard("npc:639"))
-    widgetWithText(("Kills since last drop: %d / %d"):format(37, limit))
+    widgetWithText(("Loot attempts: %d / %d"):format(37, limit))
     widgetWithText("Binder Dust: 0")
     local recycle = widgetWithText(("Recycle a spare: +%d dust"):format(yield))
     equal(recycle.parent.enabled, true)
@@ -1229,7 +1682,7 @@ test("the folio shows kills since the last drop and a dust button that recycles 
 
     -- A gathering node counts gathers, not kills.
     ACB.openCard("node:1731")
-    widgetWithText(("Gathers since last drop: %d / %d"):format(0, select(2, ACB.luck(saved, ACB.cards["node:1731"]))))
+    widgetWithText(("Gather attempts: %d / %d"):format(0, select(2, ACB.luck(saved, ACB.cards["node:1731"]))))
     equal(ACB.openCard("npc:99999"), false)
     saved.dust, saved.misses["npc:639"], saved.counts["npc:639"], saved.counts["npc:590"] = unpack(keep, 1, 4)
     ACB.open("collection")

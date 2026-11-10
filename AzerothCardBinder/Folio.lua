@@ -5,6 +5,7 @@ ACB.folioArt = "Interface\\AddOns\\AzerothCardBinder\\Art\\"
 local DISPLAY_FONT = "Fonts\\MORPHEUS.ttf"
 local INK = { 0.21, 0.13, 0.08 }
 local SEPIA = { 0.37, 0.25, 0.15 }
+local MISSING_INK = { 0.34, 0.32, 0.29 }
 local EDGE = { 0.59, 0.44, 0.29 }
 local POCKET = { 0.76, 0.64, 0.46 }
 local SELECTED = { 0.79, 0.67, 0.47 }
@@ -63,12 +64,12 @@ local function paper(parent, x, mirror)
 end
 
 -- A holder keeps both scaled card sizes aligned to the page's coordinates.
-local function mountCard(parent, x, y, scale, isDetail)
+local function mountCard(parent, x, y, scale, share)
     local holder = place(CreateFrame("Frame", nil, parent), x, y, ACB.cardWidth * scale, ACB.cardHeight * scale)
-    local card = ACB.createCard(holder, isDetail)
+    local card = ACB.createCard(holder, true, share)
     card.frame:SetScale(scale)
     card.frame:SetPoint("CENTER", holder, "CENTER")
-    card.frame:EnableMouse(isDetail)
+    card.frame:EnableMouse(share ~= nil)
     return card
 end
 
@@ -114,7 +115,7 @@ local function createIndex(parent, saved, selectSet)
     local index = paper(parent, 20)
     text(index, 23, 17, "FIND A COLLECTION", 10, SEPIA, 403)
     text(index, 22, 33, "Collection Index", 35, INK, 403, "LEFT", true)
-    text(index, 24, 73, "Search by set name or category", 11, SEPIA, 403)
+    text(index, 24, 73, "Search by set, category or card name", 11, SEPIA, 403)
     local search = panel(index, "EditBox", 23, 90, 402, 27, { 0.91, 0.84, 0.68 }, EDGE)
     search:SetFont("Fonts\\FRIZQT__.TTF", 13, "")
     search:SetTextColor(unpack(INK))
@@ -138,7 +139,7 @@ local function createIndex(parent, saved, selectSet)
             bar = progressBar(row, 9, 26, 380),
         }
         row:SetScript("OnClick", function(self)
-            selectSet(self.setIndex)
+            if self.cardKey then ACB.openCard(self.cardKey) else selectSet(self.setIndex) end
         end)
     end
 
@@ -157,18 +158,31 @@ local function createIndex(parent, saved, selectSet)
     function index:showSets(current)
         activeSet = current
         local query = search:GetText():lower():match("^%s*(.-)%s*$")
-        local results = {}
+        local exact, sets, matches = {}, {}, {}
         for _, setIndex in ipairs(ACB.setOrder()) do
             local entry = ACB.pages[setIndex]
             local searchable = (entry.title .. " " .. (entry.group or "")):lower()
-            if #entry.cards > 0 and searchable:find(query, 1, true) then results[#results + 1] = setIndex end
+            if #entry.cards > 0 and searchable:find(query, 1, true) then sets[#sets + 1] = setIndex end
+            if query ~= "" then
+                for _, card in ipairs(entry.cards) do
+                    local name = card.name:lower()
+                    if name:find(query, 1, true) then
+                        local list = name == query and exact or matches
+                        list[#list + 1] = card
+                    end
+                end
+            end
         end
+        local results = exact
+        for _, setIndex in ipairs(sets) do results[#results + 1] = setIndex end
+        for _, card in ipairs(matches) do results[#results + 1] = card end
 
         local total = #results
         pageCount = math.max(1, math.ceil(total / SETS_PER_INDEX_PAGE))
         pageNumber = math.min(pageNumber, pageCount)
-        resultCount:SetText(total == 0 and "No matching sets" or ("%d %s"):format(total, total == 1 and "set" or "sets"))
-        pageLabel:SetText(total > 0 and ("Sets  /  %d of %d"):format(pageNumber, pageCount) or "")
+        local noun = query == "" and "set" or "result"
+        resultCount:SetText(total == 0 and "No matching sets or cards" or ("%d %s%s"):format(total, noun, total == 1 and "" or "s"))
+        pageLabel:SetText(total > 0 and ("Results  /  %d of %d"):format(pageNumber, pageCount) or "")
         back:SetEnabled(pageNumber > 1)
         more:SetEnabled(pageNumber < pageCount)
         back:SetAlpha(pageNumber > 1 and 1 or 0.45)
@@ -176,9 +190,12 @@ local function createIndex(parent, saved, selectSet)
 
         local first = (pageNumber - 1) * SETS_PER_INDEX_PAGE
         for position, row in ipairs(rows) do
-            local setIndex = results[first + position]
+            local result = results[first + position]
+            local card = type(result) == "table" and result
+            local setIndex = type(result) == "number" and result or nil
             row.frame.setIndex = setIndex
-            row.frame:SetShown(setIndex ~= nil)
+            row.frame.cardKey = card and card.key or nil
+            row.frame:SetShown(result ~= nil)
             if setIndex then
                 local entry = ACB.pages[setIndex]
                 local collected, cards = ACB.progress(saved.counts, setIndex)
@@ -189,6 +206,14 @@ local function createIndex(parent, saved, selectSet)
                 row.group:SetText((entry.group or "") .. (entry.levels and ("  /  Levels " .. entry.levels) or ""))
                 row.progress:SetText(collected >= cards and "Complete" or ("%d / %d"):format(collected, cards))
                 row.bar:set(collected, cards)
+            elseif card then
+                local count = saved.counts[card.key] or 0
+                row.frame:SetBackdropColor(unpack(POCKET))
+                row.frame:SetBackdropBorderColor(unpack(EDGE))
+                row.title:SetText(card.name)
+                row.group:SetText(ACB.pages[card.page].title .. "  /  " .. ACB.rarities[card.rarity].name)
+                row.progress:SetText(count > 0 and ("%d owned"):format(count) or "Missing")
+                row.bar:set(count > 0 and 1 or 0, 1)
             end
         end
     end
@@ -206,8 +231,11 @@ function ACB.createFolio(parent, saved, selectSet)
     view:SetAllPoints(parent)
     local left, right = paper(view, 20), paper(view, 471, true)
     local indexPage = createIndex(view, saved, selectSet)
+    local preloadPortraits = ACB.createPortraitLoader(view, left)
+    view:SetScript("OnHide", function() preloadPortraits() end)
     local region, state
     local byRegion = {}
+    local function share(entry) ACB.linkCard(saved, entry) end
 
     text(left, 23, 17, "REGION COLLECTION", 10, SEPIA, 180)
     local title = text(left, 22, 33, "", 35, INK, 280, "LEFT", true)
@@ -222,20 +250,21 @@ function ACB.createFolio(parent, saved, selectSet)
         local y = 105 + math.floor((index - 1) / 2) * 168
         local pocket = panel(left, "Button", x, y, 197, 159, POCKET, EDGE)
         pocket:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-        local empty = panel(pocket, "Frame", 58, 6, 81, 114, { 0.71, 0.60, 0.44 }, EDGE)
-        local seal = empty:CreateTexture(nil, "ARTWORK")
-        seal:SetSize(46, 46)
-        seal:SetPoint("CENTER")
-        seal:SetTexture(ACB.folioArt .. "Seal.tga")
         pockets[index] = {
-            frame = pocket, empty = empty,
-            miniature = mountCard(pocket, 58, 6, 0.60, false),
+            frame = pocket,
+            miniature = mountCard(pocket, 58, 6, 0.60),
             number = text(pocket, 7, 7, "", 10, SEPIA, 35),
             name = text(pocket, 4, 124, "", 15, INK, 189, "CENTER", true),
             status = text(pocket, 4, 143, "", 10, SEPIA, 189, "CENTER"),
         }
         pocket:SetScript("OnClick", function()
-            state.slot = (state.leaf - 1) * CARDS_PER_LEAF + index
+            local slot = (state.leaf - 1) * CARDS_PER_LEAF + index
+            local entry = ACB.pages[region].cards[slot]
+            if IsShiftKeyDown() then
+                share(entry)
+                return
+            end
+            state.slot = slot
             view:showRegion(region)
         end)
     end
@@ -267,14 +296,15 @@ function ACB.createFolio(parent, saved, selectSet)
     local name = text(right, 22, 37, "", 34, INK, 405, "LEFT", true)
     name:SetWordWrap(false)
     rule(right, 23, 96, 402)
-    local detail = mountCard(right, 28, 117, 1.48, true)
+    local detail = mountCard(right, 28, 117, 1.48, share)
     local stats = panel(right, "Frame", 247, 117, 174, 281, { 0.83, 0.72, 0.54 }, EDGE)
     local emblem = place(stats:CreateTexture(nil, "ARTWORK"), 66, 12, 42, 42)
     emblem:SetTexture(ACB.folioArt .. "Seal.tga")
     local rarity = text(stats, 0, 63, "", 13, INK, 174, "CENTER")
     local chance = text(stats, 0, 88, "", 45, INK, 174, "CENTER", true)
-    text(stats, 0, 138, "DROP CHANCE", 10, SEPIA, 174, "CENTER")
-    local luckText = text(stats, 0, 151, "", 9, SEPIA, 174, "CENTER")
+    text(stats, 0, 133, "BASE DROP CHANCE", 9, SEPIA, 174, "CENTER")
+    local luckText = text(stats, 0, 145, "", 9, SEPIA, 174, "CENTER")
+    local attemptsText = text(stats, 0, 156, "", 9, SEPIA, 174, "CENTER")
     rule(stats, 15, 168, 144)
     local owned = text(stats, 16, 175, "", 26, INK, 60, "CENTER", true)
     text(stats, 87, 182, "Owned", 13, SEPIA, 75)
@@ -297,7 +327,7 @@ function ACB.createFolio(parent, saved, selectSet)
     wantButton:SetScript("OnClick", function()
         local entry = ACB.pages[region].cards[state.slot]
         if (saved.counts[entry.key] or 0) > 0 then
-            ACB.linkCard(saved, entry)
+            share(entry)
             return
         end
         saved.wanted = saved.wanted or {}
@@ -351,19 +381,19 @@ function ACB.createFolio(parent, saved, selectSet)
             local slot = first + position
             local entry = page.cards[slot]
             pocket.frame:SetShown(entry ~= nil)
-            if entry then
+            if entry and not showIndex then
                 local count = saved.counts[entry.key] or 0
                 local active = slot == state.slot
                 pocket.frame:SetBackdropColor(unpack(active and SELECTED or POCKET))
                 pocket.frame:SetBackdropBorderColor(unpack(active and INK or EDGE))
                 pocket.number:SetText(("%02d"):format(slot))
                 pocket.name:SetText(entry.name)
+                pocket.name:SetTextColor(unpack(count > 0 and INK or MISSING_INK))
                 local shiny = saved.shiny and saved.shiny[entry.key] == true
+                local wanted = saved.wanted and saved.wanted[entry.key] == true
                 pocket.status:SetText(count > 0 and ("%d owned / %d spare%s"):format(count, count - 1, shiny and " / Shiny" or "")
-                    or (saved.wanted and saved.wanted[entry.key] and "Missing / Wanted" or "Missing"))
-                pocket.empty:SetShown(count == 0)
-                pocket.miniature.frame:SetShown(count > 0)
-                if count > 0 then setCard(pocket.miniature, entry, count, shiny) end
+                    or (wanted and "Missing / Wanted" or "Missing"))
+                setCard(pocket.miniature, entry, count, shiny, wanted)
             end
         end
 
@@ -374,12 +404,12 @@ function ACB.createFolio(parent, saved, selectSet)
         selected:SetText(("SELECTED CARD  /  %s %02d"):format(code, state.slot))
         name:SetText(entry.name)
         rarity:SetText(tier.name:upper())
-        rarity:SetTextColor(unpack(RARITY_INK[entry.rarity] or INK))
+        rarity:SetTextColor(unpack(count == 0 and MISSING_INK or RARITY_INK[entry.rarity] or INK))
         chance:SetText(("%g%%"):format(ACB.rates[entry.rank] / 100))
         local misses, limit = ACB.luck(saved, entry)
-        local what = entry.profession and "Gathers" or "Kills"
-        luckText:SetText(limit and ("%s since last drop: %d / %d"):format(what, misses, limit)
-            or ("%s since last drop: %d"):format(what, misses))
+        local what = entry.profession and "Gather attempts" or "Loot attempts"
+        attemptsText:SetText(limit and ("%s: %d / %d"):format(what, misses, limit) or ("%s: %d"):format(what, misses))
+        luckText:SetText(ACB.luckText(saved, entry, true) or "")
         local dust = saved.dust or 0
         local yield, cost = ACB.dustFor(entry)
         dustMark:SetText(("Binder Dust: %d"):format(dust))
@@ -400,6 +430,11 @@ function ACB.createFolio(parent, saved, selectSet)
         local wanted = saved.wanted and saved.wanted[entry.key] == true
         wantText:SetText(count > 0 and "Link in chat" or (wanted and "On your wanted list" or "Add to wanted list"))
         setCard(detail, entry, count, saved.shiny and saved.shiny[entry.key], wanted)
+        if showIndex then
+            preloadPortraits()
+        else
+            preloadPortraits(page.cards, first + 1, math.min(first + CARDS_PER_LEAF, total))
+        end
 
         for slot, label in ipairs(milestones) do
             label:SetShown(index == 1)
@@ -410,6 +445,99 @@ function ACB.createFolio(parent, saved, selectSet)
                 label:SetText(("%s  /  %s"):format(achievement.name, status))
             end
         end
+    end
+
+    return view
+end
+
+local function folioScroll(parent, y, height)
+    local scroll = place(CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate"), 24, y, 374, height)
+    local body = CreateFrame("Frame", nil, scroll)
+    body:SetSize(374, height)
+    scroll:SetScrollChild(body)
+    return body
+end
+
+function ACB.createAchievements(parent, saved)
+    local view = CreateFrame("Frame", nil, parent)
+    view:SetAllPoints(parent)
+    local left, right = paper(view, 20), paper(view, 471, true)
+
+    text(left, 24, 17, "BINDER RECORD", 10, SEPIA, 180)
+    text(left, 22, 33, "Achievements", 35, INK, 400, "LEFT", true)
+    local summary = text(left, 24, 78, "", 13, SEPIA, 390)
+    rule(left, 23, 97, 402)
+    local list = folioScroll(left, 107, 368)
+    local rows, y = {}, 0
+    for _, track in ipairs(ACB.achievementTracks) do
+        text(list, 3, y + 4, track.label:upper(), 11, SEPIA, 350)
+        y = y + 23
+        for _, entry in ipairs(track.entries) do
+            local row = panel(list, "Frame", 0, y, 372, 47, POCKET, EDGE)
+            text(row, 9, 5, entry.name, 14, INK, 255, "LEFT", true)
+            text(row, 9, 24, entry.title, 10, SEPIA, 252)
+            rows[#rows + 1] = {
+                track = track, entry = entry,
+                status = text(row, 264, 7, "", 11, INK, 99, "RIGHT"),
+                bar = progressBar(row, 267, 30, 96),
+            }
+            y = y + 52
+        end
+        y = y + 8
+    end
+    list:SetHeight(y)
+
+    text(right, 24, 17, "TITLE COLLECTION", 10, SEPIA, 200)
+    text(right, 22, 33, "Binder Titles", 35, INK, 400, "LEFT", true)
+    text(right, 24, 78, "Your chosen title appears in player tooltips for other collectors.", 11, SEPIA, 400)
+    rule(right, 23, 97, 402)
+    local active = text(right, 24, 116, "", 17, INK, 270, "LEFT", true)
+    local function choose(title)
+        ACB.selectTitle(saved, title)
+        ACB.refresh()
+    end
+    local hide = panel(right, "Button", 314, 109, 110, 27, POCKET, EDGE)
+    text(hide, 0, 6, "Hide title", 12, INK, 110, "CENTER")
+    hide:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    hide:SetScript("OnClick", function() choose(nil) end)
+    rule(right, 23, 147, 402)
+    local titles = folioScroll(right, 160, 315)
+    local empty = text(titles, 4, 6, "Earn achievements and finish sets to unlock titles.", 12, SEPIA, 356)
+    local titleRows = {}
+
+    function view:refresh()
+        local totals, earnedCount = ACB.achievementTotals(saved), 0
+        for _, row in ipairs(rows) do
+            local have, goal = ACB.achievementProgress(saved, totals, row.track, row.entry)
+            local earned = saved.achievements[row.entry.key] == true
+            if earned then earnedCount = earnedCount + 1 end
+            row.status:SetText(earned and "Earned" or ("%d / %d"):format(have, goal))
+            row.bar:set(earned and goal or have, goal)
+        end
+        summary:SetText(("%d / %d achievements earned"):format(earnedCount, #rows))
+        active:SetText(saved.title or "No title equipped")
+        hide:SetEnabled(saved.title ~= nil)
+        local earned = ACB.earnedTitles(saved)
+        empty:SetShown(#earned == 0)
+        titles:SetHeight(math.max(315, #earned * 32))
+        for index, title in ipairs(earned) do
+            local row = titleRows[index]
+            if not row then
+                row = panel(titles, "Button", 0, (index - 1) * 32, 372, 28, POCKET, EDGE)
+                row.name = text(row, 9, 5, "", 13, INK, 255)
+                row.status = text(row, 270, 6, "", 10, SEPIA, 92, "RIGHT")
+                row:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+                row:SetScript("OnClick", function(self) choose(self.title) end)
+                titleRows[index] = row
+            end
+            row.title = title
+            row.name:SetText(title)
+            local equipped = saved.title == title
+            row.status:SetText(equipped and "Equipped" or "Equip")
+            row:SetBackdropColor(unpack(equipped and SELECTED or POCKET))
+            row:SetShown(true)
+        end
+        for index = #earned + 1, #titleRows do titleRows[index]:Hide() end
     end
 
     return view

@@ -2,16 +2,23 @@ local _, ACB = ...
 
 -- Sharing with other players: right-click a player to offer a trade or look at their binder, put a
 -- card in chat as a link, and open a card someone else linked.
---   Card link:   |Haddon:AzerothCardBinder:card:<key>:<shiny 0|1>|h[Name]|h
+--   Card links travel as plain chat text and are rendered as addon links on receipt.
 --   Viewing:     a read-only copy of the owner's counts is whispered on request (prefix below).
 --                /acb privacy stops your binder from being viewable.
 ACB.viewPrefix = "AzerothBinderV1"
 
-local ENTRIES_PER_MESSAGE = 20
-local MAX_PARTS = 150
-local REQUEST_WINDOW, SERVE_GAP = 30, 10
-local MENUS = { "MENU_UNIT_PLAYER", "MENU_UNIT_PARTY", "MENU_UNIT_RAID_PLAYER", "MENU_UNIT_FRIEND", "MENU_UNIT_TARGET" }
-local gold, goldDark, muted = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }, { 0.65, 0.61, 0.54 }
+local ENTRIES_PER_MESSAGE, PART_INTERVAL = 19, 0.3
+local catalogSize = 0
+for _, page in ipairs(ACB.pages) do catalogSize = catalogSize + #page.cards end
+local MAX_PARTS = math.ceil(catalogSize / ENTRIES_PER_MESSAGE)
+local REQUEST_WINDOW, SERVE_GAP = 30 + MAX_PARTS * PART_INTERVAL, 10
+local TITLE_REPLY_WINDOW, TITLE_RETRY, TITLE_CACHE = 5, 20, 45
+local MENUS = { "MENU_UNIT_PLAYER", "MENU_UNIT_PARTY", "MENU_UNIT_RAID_PLAYER", "MENU_UNIT_FRIEND" }
+local PORTRAIT_MENUS = { "MENU_UNIT_TARGET", "MENU_UNIT_FOCUS", "MENU_UNIT_BOSS" }
+local CHAT_TYPES = { "SAY", "YELL", "CHANNEL", "GUILD", "OFFICER", "PARTY", "PARTY_LEADER", "RAID",
+    "RAID_LEADER", "RAID_WARNING", "INSTANCE_CHAT", "INSTANCE_CHAT_LEADER", "WHISPER", "WHISPER_INFORM",
+    "BN_WHISPER", "BN_WHISPER_INFORM" }
+local gold = { 1, 0.82, 0 }
 
 -- ---- Card links ----
 
@@ -24,10 +31,25 @@ end
 
 -- Read the part of a clicked link after the "addon:" prefix back into a catalog card.
 function ACB.parseCardLink(link)
-    if type(link) ~= "string" or #link > 80 then return end
+    link = ACB.read(link, "string")
+    if not link or #link > 80 then return end
     local key, shiny = link:match("^addon:AzerothCardBinder:card:(%a+:%d+):([01])$")
     local entry = key and ACB.cards[key]
     if entry then return entry, shiny == "1" end
+end
+
+local function renderCardLinks(_, _, message, ...)
+    message = ACB.read(message, "string")
+    if not message or not message:find("[ACB:", 1, true) then return end
+    local changed
+    local rendered = message:gsub("%[ACB:(%a+:%d+):([01]) [^%[%]|]+%]", function(key, shiny)
+        local entry = ACB.cards[key]
+        if entry then
+            changed = true
+            return ACB.cardLink(entry, shiny == "1")
+        end
+    end)
+    if changed then return false, rendered, ... end
 end
 
 -- Find an owned card by part of its name.
@@ -103,6 +125,16 @@ end
 
 function ACB.initSocial(saved, send, now, after)
     local pending, served, inbox = {}, {}, {}
+    local titleChecks, titleServed = {}, {}
+
+    function ACB.peerTitle(peer)
+        local at = now()
+        local check = titleChecks[peer]
+        if check and at < check.expires then return check.title end
+        check = { expires = at + TITLE_RETRY, pendingUntil = at + TITLE_REPLY_WINDOW }
+        titleChecks[peer] = check
+        if not send(peer, "T?") then check.pendingUntil = nil end
+    end
 
     -- ---- Windows ----
     local function window(name, width, height, title)
@@ -131,24 +163,6 @@ function ACB.initSocial(saved, send, now, after)
         table.insert(UISpecialFrames, name)
         frame:Hide()
         return frame
-    end
-
-    -- A card someone linked, shown at a readable size.
-    local viewer = window("AzerothCardBinderViewer", 240, 330, "Shared card")
-    local viewerCard = ACB.createCard(viewer)
-    viewerCard.frame:SetPoint("TOP", viewer, "TOP", 0, -52)
-    viewerCard.frame:SetScale(1.45)
-    viewerCard.frame:EnableMouse(false)
-    local viewerNote = viewer:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    viewerNote:SetPoint("BOTTOM", 0, 20)
-    viewerNote:SetTextColor(muted[1], muted[2], muted[3])
-
-    function ACB.showSharedCard(entry, shiny)
-        viewer.title:SetText(shiny and "Shared shiny card" or "Shared card")
-        viewerCard:set(entry, 1, shiny)
-        local mine = saved.counts[entry.key] or 0
-        viewerNote:SetText(mine > 0 and ("You own %d of this card."):format(mine) or "You do not have this card yet.")
-        viewer:Show()
     end
 
     -- Another player's binder, read-only.
@@ -188,12 +202,33 @@ function ACB.initSocial(saved, send, now, after)
 
     function ACB.receiveView(peer, message)
         if not peer or type(message) ~= "string" or #message > 250 then return end
+        if message == "T?" then
+            local at = now()
+            if titleServed[peer] and at < titleServed[peer] then return end
+            titleServed[peer] = at + TITLE_REPLY_WINDOW
+            local title = saved.title
+            send(peer, "T|" .. (ACB.isBinderTitle(title) and saved.titles[title] and title or ""))
+            return
+        end
+        local title = message:match("^T|(.*)$")
+        if title then
+            local at = now()
+            local check = titleChecks[peer]
+            if not check or not check.pendingUntil or at > check.pendingUntil then return end
+            if title ~= "" and not ACB.isBinderTitle(title) then return end
+            check.title = title ~= "" and title or nil
+            check.pendingUntil, check.expires = nil, at + TITLE_CACHE
+            if check.title and ACB.refreshPeerTitle then ACB.refreshPeerTitle(peer) end
+            return
+        end
         if message == "Q" then
             if saved.inspectable == false then return end
-            if served[peer] and now() - served[peer] < SERVE_GAP then return end
-            served[peer] = now()
-            for index, part in ipairs(ACB.encodeBinder(saved)) do
-                after(0.3 * (index - 1), function() send(peer, part) end)
+            local started = now()
+            if served[peer] and started < served[peer] then return end
+            local parts = ACB.encodeBinder(saved)
+            served[peer] = started + math.max(SERVE_GAP, #parts * PART_INTERVAL)
+            for index, part in ipairs(parts) do
+                after(PART_INTERVAL * (index - 1), function() send(peer, part) end)
             end
             return
         end
@@ -250,19 +285,51 @@ function ACB.initSocial(saved, send, now, after)
         end
     end
 
-    -- ---- Clicking a card link ----
-    if hooksecurefunc then
-        pcall(hooksecurefunc, "SetItemRef", function(link)
-            local entry, shiny = ACB.parseCardLink(link)
-            if entry then ACB.showSharedCard(entry, shiny) end
-        end)
+    if Menu and Menu.ModifyMenu then
+        for _, tag in ipairs(PORTRAIT_MENUS) do
+            pcall(Menu.ModifyMenu, tag, function(_, root, context)
+                local unit = ACB.read(type(context) == "table" and context.unit or nil, "string")
+                if not unit or not UnitGUID then return end
+                local ok, guid = pcall(UnitGUID, unit)
+                local entry = ok and ACB.source(guid)
+                if not entry then return end
+                root:CreateDivider()
+                root:CreateButton("Open card in binder", function() ACB.openCard(entry.key) end)
+            end)
+        end
+    end
+
+    local addFilter = ChatFrameUtil and ChatFrameUtil.AddMessageEventFilter or ChatFrame_AddMessageEventFilter
+    if addFilter then
+        for _, chatType in ipairs(CHAT_TYPES) do
+            addFilter("CHAT_MSG_" .. chatType, renderCardLinks)
+        end
+    end
+
+    local function openLink(link)
+        local entry = ACB.parseCardLink(link)
+        if entry then ACB.openCard(entry.key) end
+    end
+    if EventRegistry and EventRegistry.RegisterCallback then
+        EventRegistry:RegisterCallback("SetItemRef", function(_, link) openLink(link) end, ACB)
+    elseif hooksecurefunc then
+        pcall(hooksecurefunc, "SetItemRef", openLink)
     end
 end
 
--- Put a card link in the chat box, or hand it back so the caller can print it.
+-- Draft a message the server can carry without a custom hyperlink.
 function ACB.linkCard(saved, entry)
-    local link = ACB.cardLink(entry, saved.shiny and saved.shiny[entry.key] == true)
-    if ChatEdit_InsertLink and ChatEdit_InsertLink(link) then return link end
-    if ChatFrame_OpenChat then ChatFrame_OpenChat(link) end
-    return link
+    local shiny = saved.shiny and saved.shiny[entry.key] == true
+    local message = ("[ACB:%s:%d %s%s]"):format(entry.key, shiny and 1 or 0, entry.name, shiny and " (Shiny)" or "")
+    if ChatFrameUtil and ChatFrameUtil.OpenChat then
+        local editBox = ChatFrameUtil.GetActiveWindow()
+        if editBox then
+            editBox:Insert(message)
+            editBox:SetFocus()
+        else
+            ChatFrameUtil.OpenChat(message, SELECTED_CHAT_FRAME or DEFAULT_CHAT_FRAME)
+        end
+    elseif not (ChatEdit_InsertLink and ChatEdit_InsertLink(message)) and ChatFrame_OpenChat then
+        ChatFrame_OpenChat(message)
+    end
 end

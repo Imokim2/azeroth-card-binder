@@ -31,7 +31,7 @@ local function observeUnit(unit)
 end
 
 local function scanSlot(snapshot, ok, ...)
-    if not ok then
+    if not ok or select("#", ...) == 0 then
         snapshot.unreadable = snapshot.unreadable + 1
         return
     end
@@ -43,6 +43,7 @@ local function scanSlot(snapshot, ok, ...)
         elseif not guid then
             snapshot.unreadable = snapshot.unreadable + 1
         else
+            if guid:match("^Item%-") then snapshot.itemSource = true end
             snapshot.other = snapshot.other + 1
         end
     end
@@ -93,15 +94,7 @@ local function matchGather(guid, card, at)
     finishGather()
 end
 
-local function lootOpened(fromItem)
-    local snapshot = readyLoot or newSnapshot()
-    readyLoot = nil
-    local readySlots, readyUnreadable = snapshot.slots or 0, snapshot.unreadable or 0
-    scanLoot(snapshot)
-    if fromItem ~= false then
-        log("LOOT_OPENED: item container or unreadable origin")
-        return
-    end
+local function rollLoot(snapshot, event, readySlots, readyUnreadable)
     local candidates, node, nodeCount = 0, nil, 0
     local pickpocket = pickpocketAt and GetTime() - pickpocketAt < 2
     for guid, card in pairs(snapshot.sources) do
@@ -119,9 +112,39 @@ local function lootOpened(fromItem)
     elseif nodeCount > 1 then
         log("Gathering skipped: multiple nodes in loot")
     end
-    log(("LOOT_OPENED: ready=%d open=%d catalog=%d unreadable=%d other=%d"):format(
-        readySlots, snapshot.slots, candidates, readyUnreadable + snapshot.unreadable, snapshot.other))
+    log(("%s: ready=%d slots=%d catalog=%d unreadable=%d other=%d"):format(
+        event, readySlots, snapshot.slots, candidates, readyUnreadable + snapshot.unreadable, snapshot.other))
     ACB.refresh()
+end
+
+local function lootOpened(fromItem)
+    local snapshot = readyLoot or newSnapshot()
+    readyLoot = nil
+    if fromItem ~= false then
+        log("LOOT_OPENED: item container or unreadable origin")
+        return
+    end
+    local readySlots, readyUnreadable = snapshot.slots or 0, snapshot.unreadable or 0
+    scanLoot(snapshot)
+    rollLoot(snapshot, "LOOT_OPENED", readySlots, readyUnreadable)
+end
+
+local function lootReady()
+    local snapshot = newSnapshot()
+    readyLoot = snapshot
+    scanLoot(snapshot)
+    log(("LOOT_READY: slots=%d unreadable=%d"):format(snapshot.slots, snapshot.unreadable))
+    -- Auto-loot can supply sources here and never send LOOT_OPENED to the addon.
+    -- Give the explicit origin flag a chance to arrive before using the ready snapshot.
+    C_Timer.After(0.4, function()
+        if readyLoot ~= snapshot then return end
+        readyLoot = nil
+        if snapshot.itemSource then
+            log("LOOT_READY fallback: item container")
+            return
+        end
+        rollLoot(snapshot, "LOOT_READY fallback", snapshot.slots, 0)
+    end)
 end
 
 local function spellEvent(event, unit, castGUID, spellID)
@@ -225,18 +248,22 @@ local function sendAddon(prefix, peer, message)
     if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then
         return false, "Trading and sharing are available outdoors and out of combat."
     end
-    if not C_ChatInfo or apiValue("boolean", C_ChatInfo.IsAddonMessagePrefixRegistered, prefix) ~= true then
+    if not C_ChatInfo or type(C_ChatInfo.SendAddonMessage) ~= "function"
+        or apiValue("boolean", C_ChatInfo.IsAddonMessagePrefixRegistered, prefix) == false then
         return false, "Addon whisper registration is unavailable."
     end
-    if (C_ChatInfo.AreOutgoingAddonChatMessagesRestricted
-        and apiValue("boolean", C_ChatInfo.AreOutgoingAddonChatMessagesRestricted) ~= false)
-        or (C_ChatInfo.InChatMessagingLockdown
-        and apiValue("boolean", C_ChatInfo.InChatMessagingLockdown) ~= false) then
-        return false, "The client is restricting outgoing addon messages."
-    end
+    -- The addon whisper result is authoritative. The general chat flags can be unavailable.
     local result = apiValue("number", C_ChatInfo.SendAddonMessage, prefix, message, "WHISPER", peer)
-    local success = Enum and Enum.SendAddonMessageResult and Enum.SendAddonMessageResult.Success
-    if result ~= nil and result == success then return true end
+    local codes = Enum and Enum.SendAddonMessageResult
+    if result ~= nil and codes then
+        if result == codes.Success then return true end
+        if result == codes.AddOnMessageLockdown then return false, "Forever is blocking addon whispers right now." end
+        if result == codes.TargetOffline then return false, "That player is offline or unavailable for addon whispers." end
+        if result == codes.AddonMessageThrottle then return false, "Too many addon whispers. Try again in a moment." end
+    end
+    if apiValue("boolean", C_ChatInfo.AreOutgoingAddonChatMessagesRestricted) == true then
+        return false, "This realm is blocking outgoing addon whispers."
+    end
     return false, "Addon whisper could not be sent. Check the partner name and retry."
 end
 
@@ -286,6 +313,11 @@ local function initialize()
         end
     end
     if type(saved.dust) ~= "number" or saved.dust < 0 or saved.dust ~= math.floor(saved.dust) then saved.dust = 0 end
+    local tradeCount = saved.tradeCount
+    if type(tradeCount) ~= "number" or tradeCount < #saved.history or tradeCount > 1000000000
+        or tradeCount ~= math.floor(tradeCount) then
+        saved.tradeCount = #saved.history
+    end
     saved.sets, saved.titles = tableOrEmpty(saved.sets), tableOrEmpty(saved.titles)
     for key, value in pairs(saved.sets) do
         if value ~= true then saved.sets[key] = nil end
@@ -293,7 +325,6 @@ local function initialize()
     for key, value in pairs(saved.titles) do
         if value ~= true or type(key) ~= "string" then saved.titles[key] = nil end
     end
-    if type(saved.title) ~= "string" or not saved.titles[saved.title] then saved.title = nil end
     collection = ACB.newCollection(saved, math.random, report, log, function(card, info)
         if ACB.showToast then ACB.showToast(card, info) end
     end, function(page, reward)
@@ -301,13 +332,15 @@ local function initialize()
         if ACB.refresh then ACB.refresh() end
     end)
     ACB.collection = collection
+    collection:restoreAchievements()
+    if not ACB.isBinderTitle(saved.title) or not saved.titles[saved.title] then saved.title = nil end
     local sequence = 0
     trade = ACB.newTrade(saved.counts, GetTime, function()
         sequence = sequence + 1
         return ("%d-%d-%d"):format(time(), math.random(1, 999999), sequence)
     end, sendTrade, function(give, take, peer)
         local done = collection:swap(give, take)
-        if done then ACB.logTrade(saved, give, take, peer, time()) end
+        if done then ACB.logTrade(saved, give, take, peer, time(), report) end
         ACB.refresh()
         return done
     end, function() return ACB.wantedCards(saved) end)
@@ -342,13 +375,13 @@ local function initialize()
             local choice = cmd:match("^title%s+(.+)$")
             local earned = ACB.earnedTitles(saved)
             if choice == "off" then
-                saved.title = nil
+                ACB.selectTitle(saved)
                 report("Title cleared.")
             elseif choice and earned[tonumber(choice) or 0] then
-                saved.title = earned[tonumber(choice)]
+                ACB.selectTitle(saved, earned[tonumber(choice)])
                 report("Title set to " .. saved.title .. ".")
             elseif #earned == 0 then
-                report("Finish a set to earn a title.")
+                report("Earn an achievement or finish a set to unlock a title.")
             else
                 for number, title in ipairs(earned) do
                     report(("%d. %s%s"):format(number, title, title == saved.title and " (shown)" or ""))
@@ -383,7 +416,7 @@ local function initialize()
             else
                 ACB.showToast(demo, { count = 1, first = true, shiny = true })
             end
-        elseif cmd == "trade" or cmd == "index" then
+        elseif cmd == "trade" or cmd == "index" or cmd == "achievements" then
             local unit = cmd == "trade" and apiValue("boolean", UnitIsPlayer, "target") == true
             local name, realm
             if unit then name, realm = UnitFullName("target") end
@@ -398,26 +431,15 @@ local function initialize()
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, link, view, settings, dust, privacy, title, popup, popup test, hints, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, privacy, title, popup, popup test, hints, diag, log, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end
 end
 
 local handlers = {
-    LOOT_READY = function()
-        readyLoot = newSnapshot()
-        scanLoot(readyLoot)
-        log(("LOOT_READY: slots=%d unreadable=%d"):format(readyLoot.slots, readyLoot.unreadable))
-    end,
+    LOOT_READY = lootReady,
     LOOT_OPENED = function(_, fromItem) lootOpened(read(fromItem, "boolean")) end,
-    LOOT_CLOSED = function()
-        local closing = readyLoot
-        -- Autoloot can close the window before this frame receives LOOT_OPENED.
-        C_Timer.After(0, function()
-            if readyLoot == closing then readyLoot = nil end
-        end)
-    end,
     UNIT_SPELLCAST_SENT = function(unit, _, castGUID, spellID)
         spellEvent("UNIT_SPELLCAST_SENT", unit, castGUID, spellID)
     end,
@@ -437,14 +459,12 @@ local handlers = {
         local kind = read(prefix, "string")
         if (kind ~= ACB.tradePrefix and kind ~= ACB.viewPrefix) or read(channel, "string") ~= "WHISPER" then return end
         if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then return end
-        if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown
-            and apiValue("boolean", C_ChatInfo.InChatMessagingLockdown) ~= false then return end
         if kind == ACB.tradePrefix then
             trade:receive(normalizePeer(sender), read(message, "string"))
+            ACB.refresh()
         else
             ACB.receiveView(normalizePeer(sender), read(message, "string"))
         end
-        ACB.refresh()
     end,
 }
 for _, event in ipairs({ "UNIT_SPELLCAST_START", "UNIT_SPELLCAST_SUCCEEDED",
