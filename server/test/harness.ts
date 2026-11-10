@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { createApi } from "../src/api.ts";
 import type { Deps } from "../src/api.ts";
-import { canonicalJson } from "../src/crypto.ts";
+import { canonicalJson } from "../../packages/shared/src/crypto.ts";
 import { SqlStore } from "../src/sqlStore.ts";
 import type { Catalog, LedgerState } from "../src/shared.ts";
 import { openTestDb } from "./sqliteDb.ts";

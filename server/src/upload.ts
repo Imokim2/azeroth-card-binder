@@ -1,7 +1,7 @@
 // A ledger upload (docs/LEDGER-SPEC.md, section 6): checking its shape, then verifying and storing it.
 import { ApiError } from "./errors.ts";
 import type { ErrorCode } from "./errors.ts";
-import { canonicalJson, newId, verifySignature } from "./crypto.ts";
+import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import { checkChain } from "./ledger.ts";
 import type { LedgerEvent } from "./ledger.ts";
 import { replay, snapshotDifferences } from "./shared.ts";

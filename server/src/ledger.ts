@@ -1,6 +1,6 @@
 // Checking a chain of ledger events (docs/LEDGER-SPEC.md, sections 3 to 5). This is the server's own
 // implementation of what packages/shared/src/ledger.js does; both must give the results in the shared vectors.
-import { sha256Hex } from "./crypto.ts";
+import { sha256Hex } from "../../packages/shared/src/crypto.ts";
 
 export const GENESIS = "0".repeat(32);
 const KINDS = ["drop", "craft", "recycle", "tradeIn", "tradeOut", "set", "mode"];

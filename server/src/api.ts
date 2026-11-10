@@ -2,7 +2,7 @@
 // Request to a standard Response, so the same code runs in a Cloudflare Worker and in plain Node tests.
 import { ApiError, ERRORS } from "./errors.ts";
 import type { ErrorCode } from "./errors.ts";
-import { canonicalJson, newId, verifySignature } from "./crypto.ts";
+import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import type { Catalog } from "./shared.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { IngestStore, LeaderboardStore, PlayerStore, Visibility } from "./store.ts";

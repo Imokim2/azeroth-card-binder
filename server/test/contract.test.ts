@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { canonicalJson, fromHex, newId, sha256Hex, verifySignature } from "../src/crypto.ts";
+import { canonicalJson, fromHex, newId, sha256Hex, verifySignature } from "../../packages/shared/src/crypto.ts";
 import { GENESIS, checkChain, eventText } from "../src/ledger.ts";
 import type { LedgerEvent } from "../src/ledger.ts";
 import { gunzip, gzip } from "../src/gzip.ts";
