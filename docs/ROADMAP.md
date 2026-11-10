@@ -150,7 +150,7 @@ Done when: all tests pass; editing any count by hand marks the binder unverified
 - [ ] **B1. Policy and licence checks** (D1, D3, D4) written up in `docs/POLICY.md`.
 - [ ] **B2. Cloudflare account, staging and production environments**, D1 databases, migrations folder, secrets.
 - [ ] **B3. Worker API** (`server/`): `POST /v1/ledger`, `POST /v1/register`, `GET /v1/player/:id`, `GET /v1/leaderboard`, `GET /v1/health`. Request signing and hash-chain verification as in 2.2. Unit tests with recorded ledgers.
-- [ ] **B4. Shared catalog**: a build script turns the Lua catalog into `catalog.json` (keys, names, rarity, rate, set), used by the server and website. Version it.
+- [x] **B4. Shared catalog**: `node tools/build-catalog-json.js` loads the add-on's Lua catalog with LuaJIT and writes `packages/shared/catalog.json` (3,415 cards, 69 sets, drop rates, shiny odds, dust values, and a `catalogVersion` hash of the content). A test fails if the committed file differs from the generator. After a game patch, rerun it with the other catalog tools and commit the result.
 - [ ] **B5. Companion app skeleton** (`app/`, Electron): finds the WoW folder, lets the player pick the account, shows status.
 - [ ] **B6. Lua parser and file watcher**: reads `AzerothCardBinder.lua` from SavedVariables, debounced, only uploads new events.
 - [ ] **B7. Identity**: the app creates an Ed25519 key, stores the private key in the OS keychain, registers it with Discord login, and binds to the character through the in-game link code (`/acb link CODE`).

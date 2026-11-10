@@ -85,8 +85,21 @@ function check() {
     console.log(`checks passed: ${lua.length} Lua files, ${js.length} JavaScript files, ${json.length} JSON files, ${listed.length} files in the .toc, version ${v}`);
 }
 
+// Every *.test.js under tests/ and every *.test.ts under server/test and app/test is run by Node's test runner.
+function nodeTests() {
+    const found = [];
+    for (const dir of ["tests", "server/test", "app/test"]) {
+        const full = path.join(root, dir);
+        if (!fs.existsSync(full)) continue;
+        for (const name of fs.readdirSync(full).sort()) {
+            if (/.test.(js|ts)$/.test(name)) found.push(path.posix.join(dir, name));
+        }
+    }
+    return found;
+}
+
 function test() {
-    for (const [command, args] of [[luajit, ["tests/run.lua"]], [process.execPath, ["--test", "tests/vectors.test.js"]]]) {
+    for (const [command, args] of [[luajit, ["tests/run.lua"]], [process.execPath, ["--test", ...nodeTests()]]]) {
         const result = run(command, args, { show: true });
         if (result.status !== 0) {
             console.error(`\nTests failed: ${path.basename(command)} ${args.join(" ")}`);
