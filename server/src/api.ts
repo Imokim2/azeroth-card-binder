@@ -5,7 +5,8 @@ import type { ErrorCode } from "./errors.ts";
 import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import type { Catalog } from "./shared.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
-import type { IngestStore, LeaderboardStore, PlayerStore, Visibility } from "./store.ts";
+import type { IngestStore, LeaderboardStore, PlayerStore, TapeStore, Visibility } from "./store.ts";
+import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
 
 export const MAX_BODY_BYTES = 2_000_000;
@@ -17,7 +18,9 @@ export type Deps = {
   players: PlayerStore;
   ingest: IngestStore;
   board: LeaderboardStore;
+  tapes: TapeStore;
   catalog: Catalog;
+  tapeSecret?: string | undefined; // derives the roll tape; Ranked is closed (ranked_unavailable) without it
   now: () => number; // seconds
   log: Logger;
   health: () => Promise<void>; // throws when the database cannot be reached
@@ -110,6 +113,41 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return json(200, { ...ack, minClient: deps.minClient, syncVersion: 1 });
   }
 
+  // Ranked random numbers (spec section 8): all the entries this player has not used yet, topped up with 10,000 new
+  // ones when 2,000 or fewer remain. Asking again returns the same entries, so a lost reply costs nothing.
+  async function tape(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    const { key, sentAt, sig } = body ?? {};
+    if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string") throw new ApiError("bad_request");
+    if (Math.abs(deps.now() - (sentAt as number)) > 86_400) throw new ApiError("bad_request", { field: "sentAt" });
+    const holder = await deps.players.findByActiveKey(key);
+    if (!holder) throw new ApiError("unknown_key");
+    if (holder.status !== "active") throw new ApiError("banned");
+    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, purpose: "tape" })))) throw new ApiError("bad_signature");
+    const secret = await tapeKey(deps.tapeSecret);
+    const next = await deps.tapes.tapeNext(holder.id);
+    let issuedEnd = await deps.tapes.issuedEnd(holder.id);
+    let issued: { start: number; end: number; commitment: string } | null = null;
+    if (issuedEnd - (next - 1) <= REFILL_BELOW) {
+      const start = issuedEnd + 1;
+      const end = issuedEnd + TAPE_SIZE;
+      const fresh: string[] = [];
+      for (let index = start; index <= end; index++) fresh.push(await tapeEntry(secret, holder.id, index));
+      issued = { start, end, commitment: await tapeCommitment(fresh) };
+      try {
+        await deps.tapes.recordIssue(holder.id, issued, deps.now());
+      } catch {
+        throw new ApiError("conflict", undefined, 1); // another request issued at the same moment; ask again
+      }
+      issuedEnd = end;
+    }
+    const entries: string[] = [];
+    for (let index = next; index <= issuedEnd; index++) entries.push(await tapeEntry(secret, holder.id, index));
+    return json(200, { start: next, entries, issued }, { "cache-control": "no-store" });
+  }
+
   async function player(id: string): Promise<Response> {
     const found = await deps.board.entry(id);
     if (!found) throw new ApiError("not_found");
@@ -158,6 +196,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       url.pathname === "/v1/health" ? allow("health", ["GET"], health)
       : url.pathname === "/v1/register" ? allow("register", ["POST"], () => register(request))
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
+      : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))
       : playerMatch ? allow("player", ["GET"], () => player(playerMatch[1] as string))
       : { route: "unknown", response: Promise.resolve(errorResponse("not_found")) };

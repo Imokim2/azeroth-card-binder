@@ -76,7 +76,7 @@ async function uploadBody(options: ClientOptions, binder: Binder, events: Binder
   const body: Record<string, unknown> = {
     specVersion: 1, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
     realm: binder.character?.realm ?? "Unknown", schema: binder.schema, catalogVersion: options.catalogVersion,
-    events, snapshot: binder.snapshot, tapeIndex: 0, sentAt: options.now(),
+    events, snapshot: binder.snapshot, tapeIndex: binder.tapeNext, sentAt: options.now(),
   };
   return { ...body, sig: await options.identity.sign(canonicalJson(body)) };
 }
@@ -121,6 +121,19 @@ export async function syncBinder(options: ClientOptions, binder: Binder, known: 
     }
     return { status: "rejected", code, ...(detail ? { detail } : {}) };
   }
+}
+
+// Ask for the roll tape: every entry not used yet, and a refill when the player is running low. The reply can be
+// requested again at any time and is the same, so a lost reply is harmless.
+export async function fetchTape(options: ClientOptions): Promise<{ status: "tape"; start: number; entries: string[] } | Outcome> {
+  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now() };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "tape" }));
+  const reply = await sendWithRetries(options, "/v1/tape", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  const { start, entries } = reply.body;
+  if (typeof start !== "number" || !Array.isArray(entries) || !entries.every((entry) => typeof entry === "string")) return { status: "rejected", code: "bad_reply" };
+  return { status: "tape", start, entries: entries as string[] };
 }
 
 // Link this key to a Discord account (the sign-in itself is obtained by the app's window; here it is just a token).

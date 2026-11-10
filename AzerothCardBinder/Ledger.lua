@@ -116,6 +116,8 @@ function ACB.newLedger(saved, now, character)
     -- happens for a new binder and for one upgraded from an older version (`upgraded`). A binder that has a
     -- history but lost its check value is not given a new one; it stays unverified.
     function ledger:begin(upgraded)
+        -- Cards owned before the ledger existed cannot be replayed by the server, so such a binder cannot play Ranked.
+        if upgraded and next(saved.counts) ~= nil then saved.legacy = true end
         local fresh = saved.head.seq == 0 and #saved.ledger == 0
         if type(saved.stateSum) ~= "string" and (upgraded or fresh) then saved.stateSum = sumOf(saved) end
     end
@@ -222,6 +224,9 @@ function ACB.newLedger(saved, now, character)
             local line = ("Binder verified: %d changes on record."):format(saved.head.seq)
             local synced = ACB.sync and ACB.sync.syncedAt
             if type(synced) == "number" and date then line = line .. " Last synced " .. date("%d %b %H:%M", synced) .. "." end
+            if saved.mode == "ranked" and ACB.tapeLeft(saved) == 0 then
+                line = line .. " The roll tape has run out: the companion app refills it."
+            end
             if saved.mode == "ranked" and self:backlogFull() then
                 line = line .. " Ranked rolls are paused until the companion app syncs."
             end

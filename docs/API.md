@@ -44,6 +44,12 @@ Uploads new ledger events, signed with the registered key. The body and its sign
 
 Errors about the chain (`replay`, `gap`, `bad_field`, `bad_prev`, `bad_hash`) include `detail.index` (the position in the batch) and, for `replay` and `gap`, `detail.ackSeq` and `detail.ackHash`, so the app can work out what to send next. `rule_broken` includes `detail.rule` (for example `count`, `shiny`, `craft`, `recycle`, `trade`, `set`, `tape`, `time`, `dust`) and `detail.index`.
 
+### `POST /v1/tape`
+
+Ranked random numbers. Body: `{ key, sentAt, sig }`, where `sig` signs the canonical JSON of `{ key, sentAt, purpose: "tape" }` (a signature made for another purpose fails). `200 { start, entries, issued }`: `entries` are all the roll-tape entries this player has not used yet, counting from `start` (the position the add-on last said it would use next); each is 16 hex characters. When 2,000 or fewer remain, 10,000 new entries are added and `issued` is `{ start, end, commitment }` for the new range (the commitment is the SHA-256 of its entries joined by line feeds); otherwise `issued` is `null`. Asking again returns the same entries, so a lost reply costs nothing. `ranked_unavailable` while the server has no tape secret.
+
+Every entry is derived from a server secret, the player and the position, so nothing is stored per entry and a player cannot compute entries they were not given. A ranked drop is checked against the entry at its `tape` position: it must be at a position that was issued; its roll must be at or below the card's rate, or count as a bad-luck guarantee (a card earns one per `limit` attempts, judged from the snapshot's attempts); and its shiny flag must match the entry's second half while the card has no shiny yet. The `tapeIndex` of an upload may never pass the first position after the last one issued. Failures are `tape_invalid` with `detail.reason` (`not-issued`, `pity`, `shiny`, `next`).
+
 ### `GET /v1/leaderboard?limit=N`
 
 The best **public** players, highest score first, ties broken by who reached the score first. `limit` is 1 to 100 (default 100). `200 { generatedAt, entries: [{ rank, playerId, displayName, scoreTenths, uniqueCards, setsDone }] }`. Cached for 60 seconds.
@@ -78,9 +84,11 @@ Every error is `{ "error": { "code", "message", "detail"?, "retryAfter"? } }` wi
 | `bad_prev` | 422 | An event does not follow the one before it. |
 | `bad_hash` | 422 | An event was changed after it was written. |
 | `rule_broken` | 422 | The events describe a binder that cannot exist. |
+| `tape_invalid` | 422 | A ranked drop does not match the roll tape. |
 | `client_too_old` | 426 | Update the companion app. |
 | `internal` | 500 | Something went wrong on our side. |
 | `registration_closed` | 503 | Registration is not open yet. |
+| `ranked_unavailable` | 503 | Ranked play is not open yet. |
 | `overloaded` | 503 | The server is busy. Try again soon. |
 <!-- errors:end -->
 

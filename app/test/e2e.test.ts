@@ -10,7 +10,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { CLIENT, NOW, catalog, newPlayer, setup } from "../../server/test/harness.ts";
 import { readBinder } from "../src/binderFile.ts";
-import { registerKey, syncBinder } from "../src/client.ts";
+import { fetchTape, registerKey, syncBinder } from "../src/client.ts";
 import type { ClientOptions, FetchLike } from "../src/client.ts";
 import { describeInstall, findGameFolders, readText, writeFileAtomic } from "../src/files.ts";
 import { loadOrCreateIdentity } from "../src/identity.ts";
@@ -255,4 +255,47 @@ test("the game folder is found even when it is one or two levels down, and accou
     await rm(base, { recursive: true, force: true });
   }
   void newPlayer;
+});
+
+test("Ranked, end to end: the server issues a tape, the real add-on rolls it, and the server accepts every drop", async () => {
+  const game = await gameFolder();
+  try {
+    const env = setup();
+    const identity = await loadOrCreateIdentity(memoryStore());
+    const client = connect(env, identity);
+    await registerKey(client.options, "discord:alice", "public");
+
+    // The app fetches the tape and writes it into Data/Sync.lua, which the add-on loads at login.
+    const issued = await fetchTape(client.options);
+    assert.equal(issued.status, "tape");
+    if (issued.status !== "tape") return;
+    assert.equal(issued.start, 1);
+    assert.equal(issued.entries.length, 10_000);
+    const install = await describeInstall(game.folder);
+    await writeFileAtomic(install.syncPath, syncFileText({ syncedAt: NOW, acks: [], tape: { start: issued.start, entries: issued.entries } }));
+
+    // The add-on switches to Ranked and rolls sixty kills of a 10% card against the tape.
+    const played = JSON.parse(lua("tests/tools/write-saved.lua", game.saved, "60", install.syncPath)) as { mode: string; tape: { next: number } };
+    assert.equal(played.mode, "ranked");
+    assert.equal(played.tape.next, 61);
+    const binder = readBinder(await readText(game.saved));
+    assert.equal(binder.tapeNext, 61);
+    const drops = binder.events.filter((event) => event.kind === "drop");
+    assert.ok(drops.length >= 6, "the bad-luck guarantee alone gives six drops in sixty attempts");
+    assert.ok(drops.every((event) => event.tape >= 1 && event.tape <= 60));
+    assert.deepEqual(binder.events.map((event) => event.tape).filter((tape) => tape > 0), drops.map((event) => event.tape).sort((a, b) => a - b));
+
+    // The server recomputes every drop from its own secret and accepts them.
+    const outcome = await syncBinder(client.options, binder, null);
+    assert.equal(outcome.status, "synced", JSON.stringify(outcome));
+    assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM drops").get()?.["n"], drops.length);
+    assert.equal(env.raw.prepare("SELECT tape_next FROM ledger_state").get()?.["tape_next"], 61);
+    assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM flags").get()?.["n"], 0);
+
+    // The next tape request starts at the position the add-on will use next.
+    const next = await fetchTape(client.options);
+    assert.equal(next.status === "tape" ? next.start : 0, 61);
+  } finally {
+    await game.cleanup();
+  }
 });

@@ -6,7 +6,7 @@
 local addon = "AzerothCardBinder"
 local ACB = {}
 for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogNodes.lua", "Lore.lua", "Achievements.lua",
-    "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Collection.lua", "SavedData.lua" }) do
+    "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Tape.lua", "Collection.lua", "SavedData.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 local clock = 1700000000
@@ -20,12 +20,22 @@ local collection = ACB.newCollection(saved, function(low) return low end, functi
 local function guid(id, token) return ("Creature-0-session-36-4-%d-%s"):format(id, token) end
 local function find(id, token) assert(collection:roll(guid(id, token), "loot")) end
 
-find(639, "a"); find(639, "b")
-assert(collection:recycle("npc:639"))
-assert(collection:craft("npc:590"))
-for number = 1, 3 do find(589, "c" .. number) end
-assert(collection:swap("npc:589", "npc:573", "bob-realmname", "111-482910-1"))
-for number = 1, tonumber(arg[2] or 0) do find(589, "extra" .. number) end
+if arg[3] then
+    -- Ranked: Sync.lua (written by the app, with the tape) is loaded as the game would, and every kill rolls the tape.
+    assert(loadfile(arg[3]))(addon, ACB)
+    assert(ACB.setMode(saved, ledger, "ranked"))
+    -- A 10% card, so a few drops come quickly; misses use tape entries too.
+    for number = 1, tonumber(arg[2] or 60) do
+        collection:roll(guid(573, "ranked" .. number), "loot")
+    end
+else
+    find(639, "a"); find(639, "b")
+    assert(collection:recycle("npc:639"))
+    assert(collection:craft("npc:590"))
+    for number = 1, 3 do find(589, "c" .. number) end
+    assert(collection:swap("npc:589", "npc:573", "bob-realmname", "111-482910-1"))
+    for number = 1, tonumber(arg[2] or 0) do find(589, "extra" .. number) end
+end
 saved.title = "Zul'Gurub \226\128\147 Ünïcöde" -- raw and escaped non-ASCII text, as a player's title could be
 
 -- The game's serializer layout.
@@ -93,4 +103,5 @@ end
 io.write(encode({
     ledger = saved.ledger, head = saved.head, counts = saved.counts, attempts = saved.attempts, dust = saved.dust,
     sets = saved.sets, titles = saved.titles, mode = saved.mode, schema = saved.schema, title = saved.title,
+    tape = saved.tape,
 }))

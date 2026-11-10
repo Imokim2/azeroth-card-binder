@@ -5,7 +5,7 @@
 local addon = "AzerothCardBinder"
 local ACB = {}
 for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogNodes.lua", "Lore.lua", "Achievements.lua",
-    "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Collection.lua", "SavedData.lua" }) do
+    "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Tape.lua", "Collection.lua", "SavedData.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 local clock = 1700000000

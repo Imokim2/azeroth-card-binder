@@ -8,7 +8,8 @@ import { replay, snapshotDifferences } from "./shared.ts";
 import type { Catalog } from "./shared.ts";
 import { RULES_VERSION, scoreOf } from "./score.ts";
 import { StoreConflict } from "./store.ts";
-import type { IngestStore, Player } from "./store.ts";
+import type { IngestStore, Player, TapeStore } from "./store.ts";
+import { checkTape, tapeKey } from "./tape.ts";
 
 export const SUPPORTED_SPEC_VERSIONS = [1];
 export const MAX_EVENTS_PER_UPLOAD = 5000;
@@ -79,7 +80,7 @@ const CHAIN_ERRORS: Record<string, ErrorCode> = {
 // Verify a signed upload from a registered player and store it. Uploading the same batch twice is safe: the
 // second time nothing is written and the answer is the same.
 export async function acceptUpload(
-  deps: { ingest: IngestStore; catalog: Catalog; now: () => number },
+  deps: { ingest: IngestStore; tapes: TapeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined },
   player: Player,
   upload: Upload,
 ): Promise<Ack> {
@@ -94,7 +95,14 @@ export async function acceptUpload(
 
   const stored = await deps.ingest.load(player.id);
   const events = upload.events;
-  if (events.length === 0) return { ackSeq: stored.head.seq, ackHash: stored.head.hash, accepted: 0, duplicate: false };
+  // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.
+  if (upload.tapeIndex > (await deps.tapes.issuedEnd(player.id)) + 1 && upload.tapeIndex > 1) {
+    throw new ApiError("tape_invalid", { reason: "next", index: events.length });
+  }
+  if (events.length === 0) {
+    if (upload.tapeIndex > stored.tapeNext) await deps.ingest.noteTapeNext(player.id, upload.tapeIndex, deps.now());
+    return { ackSeq: stored.head.seq, ackHash: stored.head.hash, accepted: 0, duplicate: false };
+  }
 
   const first = events[0] as { seq?: unknown };
   const last = events[events.length - 1] as { seq?: unknown; h?: unknown };
@@ -115,6 +123,20 @@ export async function acceptUpload(
   const played = replay(events, deps.catalog, stored.state);
   if (!played.ok) throw new ApiError("rule_broken", { rule: played.rule, index: played.index });
 
+  // Ranked drops must match the tape entries the server issued. The bad-luck guarantee is allowed once per
+  // "limit" attempts a card has had; the snapshot's attempts are signed by the player but are not proof by themselves.
+  let pity = stored.pity;
+  if (events.some((event) => event["kind"] === "drop" && Number(event["tape"]) > 0)) {
+    if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
+    const checked = await checkTape({
+      key: await tapeKey(deps.tapeSecret), playerId: player.id, events: events as unknown as LedgerEvent[], stateBefore: stored.state,
+      catalog: deps.catalog, issuedEnd: await deps.tapes.issuedEnd(player.id), claims: stored.pity,
+      attempts: upload.snapshot.attempts, tapeNext: upload.tapeIndex,
+    });
+    if (checked.failure) throw new ApiError("tape_invalid", { reason: checked.failure.reason, index: checked.failure.index });
+    pity = checked.claims;
+  }
+
   const flags: { id: string; kind: string; notes: string }[] = [];
   const differences = snapshotDifferences(upload.snapshot, played.state);
   if (differences.length > 0) flags.push({ id: newId(deps.now() * 1000), kind: "snapshot-mismatch", notes: differences.join(",") });
@@ -122,7 +144,8 @@ export async function acceptUpload(
   const score = scoreOf(deps.catalog, played.state);
   try {
     await deps.ingest.commit(player.id, {
-      events: events as unknown as LedgerEvent[], head: chain.head, state: played.state, receivedAt: deps.now(),
+      events: events as unknown as LedgerEvent[], head: chain.head, state: played.state, pity,
+      tapeNext: Math.max(stored.tapeNext, upload.tapeIndex), receivedAt: deps.now(),
       character: { name: upload.character, realm: upload.realm },
       score: { displayName: `${upload.character}-${upload.realm}`, ...score, attempts, rulesVersion: RULES_VERSION },
       flags,

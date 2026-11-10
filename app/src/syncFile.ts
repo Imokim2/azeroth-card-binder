@@ -3,7 +3,7 @@
 // a saved file can ever put code into a file the game will run.
 
 export type Ack = { seq: number; hash: string };
-export type SyncData = { syncedAt: number; acks: Ack[] };
+export type SyncData = { syncedAt: number; acks: Ack[]; tape?: { start: number; entries: string[] } };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
 
@@ -13,6 +13,16 @@ export function syncFileText(data: SyncData): string {
     if (!Number.isSafeInteger(ack.seq) || ack.seq < 1 || !isHash(ack.hash)) throw new Error("an acknowledgement is not valid");
     return `        { seq = ${ack.seq}, hash = "${ack.hash}" },`;
   });
+  const tapeLines: string[] = [];
+  if (data.tape) {
+    if (!Number.isSafeInteger(data.tape.start) || data.tape.start < 1) throw new Error("the tape must start at 1 or later");
+    for (const entry of data.tape.entries) if (!/^[0-9a-f]{16}$/.test(entry)) throw new Error("a tape entry is not 16 hex characters");
+    tapeLines.push("    tape = {", `        start = ${data.tape.start},`, "        entries = {");
+    for (let at = 0; at < data.tape.entries.length; at += 4) {
+      tapeLines.push("            " + data.tape.entries.slice(at, at + 4).map((entry) => `"${entry}",`).join(" "));
+    }
+    tapeLines.push("        },", "    },");
+  }
   return [
     "local _, ACB = ...",
     "",
@@ -23,6 +33,7 @@ export function syncFileText(data: SyncData): string {
     "    acks = {",
     ...rows,
     "    },",
+    ...tapeLines,
     "}",
     "",
   ].join("\n");

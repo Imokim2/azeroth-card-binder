@@ -301,10 +301,11 @@ end)
 
 test("a Ranked binder with too many events waiting for the app is told so", function()
     local keep = ACB.backlogLimit
-    ACB.backlogLimit = 3
+    ACB.backlogLimit = 4 -- the switch to Ranked is the first event, then two drops, then the third drop fills it
     local saved = {}
     local ledger, collection = open(saved)
-    saved.mode = "ranked"
+    ACB.sync.tape = { start = 1, entries = { "0000000000000000", "0000000000000000", "0000000000000000" } }
+    assert(ACB.setMode(saved, ledger, "ranked"))
     for number = 1, 2 do collection:roll(guid(589, "w" .. number), "loot") end
     equal(ledger:backlogFull(), false)
     assert(not ledger:status():find("paused"))
@@ -316,6 +317,6 @@ test("a Ranked binder with too many events waiting for the app is told so", func
     ACB.sync.syncedAt = 1700000000
     date = function() return "14 Nov 22:13" end -- the game provides date()
     assert(ledger:status():find("Last synced 14 Nov 22:13"), ledger:status())
-    date, ACB.sync.syncedAt = nil, nil
+    date, ACB.sync.syncedAt, ACB.sync.tape = nil, nil, nil
     ACB.backlogLimit = keep
 end)

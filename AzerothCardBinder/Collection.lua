@@ -150,13 +150,29 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             return
         end
 
+        -- In Ranked mode every attempt uses the next entry of the server's tape. With none left, rolling pauses.
+        local ranked = saved.mode == "ranked"
+        local entry, tapeIndex
+        if ranked then
+            entry, tapeIndex = ACB.takeTape(saved)
+            if not entry then
+                if not self.pausedNotice then
+                    self.pausedNotice = true
+                    report("Ranked rolls are paused: the roll tape has run out. Open the companion app to refill it, or switch to Casual in Settings.")
+                end
+                return
+            end
+            self.pausedNotice = nil
+        end
         remember(guid)
-        local threshold = ACB.rates[observedRank] or ACB.rates[card.rank]
+        -- Ranked uses the card's listed rate, so the server can recheck every drop without seeing the creature.
+        local threshold = ranked and ACB.rates[card.rank] or ACB.rates[observedRank] or ACB.rates[card.rank]
         saved.misses = saved.misses or {}
         -- The card's listed rate keeps the guarantee stable when the source's rank is unreadable.
         local misses, limit = ACB.luck(saved, card)
         local guaranteed = limit ~= nil and misses + 1 >= limit
-        local dropped = guaranteed or random(1, 10000) <= threshold
+        -- The guarantee needs no roll; a Casual roll is drawn only when it is needed.
+        local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= threshold
         if saved.attempts then saved.attempts[card.key] = (saved.attempts[card.key] or 0) + 1 end
         log(("%s: %s at %g%% (%s)"):format(origin, card.name, threshold / 100,
             guaranteed and "card, bad-luck safety net" or dropped and "card" or "miss"))
@@ -171,9 +187,12 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         counts[card.key] = before + 1
         -- The shiny copy is a one-time bonus per card: once you own it, later finds are plain duplicates.
         saved.shiny = saved.shiny or {}
-        local shiny = not saved.shiny[card.key] and random(1, ACB.shinyOdds) == 1
+        local shiny = false
+        if not saved.shiny[card.key] then
+            if ranked then shiny = ACB.tapeShiny(entry, ACB.shinyOdds) == 1 else shiny = random(1, ACB.shinyOdds) == 1 end
+        end
         if shiny then saved.shiny[card.key] = true end
-        record("drop", card.key, { before = before, shiny = shiny })
+        record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex })
         report(("%s: %s (x%d)"):format(shiny and "Shiny card found" or "Card found", card.name, counts[card.key]))
         checkAchievements(card)
         found(card, { count = counts[card.key], first = counts[card.key] == 1, shiny = shiny })

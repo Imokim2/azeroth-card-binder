@@ -54,6 +54,7 @@ GGET hooksecurefunc
 GGET ipairs
 GGET issecretvalue
 GGET math
+GGET next
 GGET pairs
 GGET pcall
 GGET print

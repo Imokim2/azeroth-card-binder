@@ -50,6 +50,10 @@ local function cleanLedgerFields(saved)
         saved.rolledNext = #ring % ACB.rolledMemory + 1
     end
     saved.mode = saved.mode == "ranked" and "ranked" or "casual"
+    if saved.legacy ~= true then saved.legacy = nil end
+    local tape = ACB.tableOrEmpty(saved.tape)
+    local nextEntry = tape.next
+    saved.tape = { next = (type(nextEntry) == "number" and nextEntry >= 1 and nextEntry == math.floor(nextEntry)) and nextEntry or 1 }
     saved.ledger = tableOrEmpty(saved.ledger)
     local head = saved.head
     if type(head) ~= "table" or type(head.seq) ~= "number" or head.seq < 0 or head.seq ~= math.floor(head.seq)

@@ -11,6 +11,7 @@ src/upload.ts     checking and storing a ledger upload (signature, chain, rules,
 src/ledger.ts     hash chain checks; src/crypto.ts hashing, signatures, canonical JSON, ids
 src/shared.ts     the rules shared with the app (../packages/shared/src/rules.js), with types
 src/score.ts      the score formula, versioned
+src/tape.ts       the roll tape: entries derived from a secret, and the check of every ranked drop
 src/store.ts      PlayerStore, IngestStore and LeaderboardStore: what the rules code needs from storage
 src/sqlStore.ts   those stores on D1 (or SQLite in tests); src/db.ts the small Db interface and the D1 adapter
 migrations/       forward-only SQL; CHECKSUMS.txt records each one so a published migration cannot be edited

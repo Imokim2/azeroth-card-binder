@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { scoreOf } from "../src/score.ts";
-import { CLIENT, NOW, catalog, chain, chainedHistory, newPlayer, registration, setup, signedUpload, vectors } from "./harness.ts";
+import { CLIENT, NOW, casualSnapshot, casualState, catalog, chain, chainedHistory, newPlayer, registration, setup, signedUpload, vectors } from "./harness.ts";
 
 type Body = { error?: { code: string; detail?: Record<string, unknown> } } & Record<string, unknown>;
 async function read(response: Response): Promise<Body> {
@@ -66,7 +66,7 @@ test("a whole honest history is accepted, scored, and shown on the public pages"
   assert.equal(body["duplicate"], false);
   assert.equal(body["minClient"], "0.1.0");
 
-  const expected = scoreOf(catalog, vectors.valid.finalState);
+  const expected = scoreOf(catalog, casualState.ok ? casualState.state : (undefined as never));
   const profile = await read(await env.call("/v1/player/" + id));
   assert.equal(profile["scoreTenths"], expected.score);
   assert.equal(profile["uniqueCards"], expected.uniqueCards);
@@ -184,7 +184,7 @@ test("a cheater who recomputes every hash and signs again is still stopped by th
 test("a snapshot that disagrees with the events is flagged, and the events still decide", async () => {
   const env = setup();
   const { player } = await registered(env);
-  const snapshot = { ...vectors.valid.snapshot, attempts: {}, titles: {}, dust: 999 };
+  const snapshot = { ...casualSnapshot, attempts: {}, titles: {}, dust: 999 };
   const response = await env.call("/v1/ledger", { body: signedUpload(player, chainedHistory(), { snapshot }) });
   assert.equal(response.status, 200);
   const flag = env.raw.prepare("SELECT kind, notes, state FROM flags").get();

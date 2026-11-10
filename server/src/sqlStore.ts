@@ -6,7 +6,7 @@ import { gzip } from "./gzip.ts";
 import { newState } from "./shared.ts";
 import type { LedgerState } from "./shared.ts";
 import { StoreConflict } from "./store.ts";
-import type { BoardEntry, Commit, IngestStore, LeaderboardStore, Player, PlayerStore, StoredLedger, Visibility } from "./store.ts";
+import type { BoardEntry, Commit, IngestStore, IssuedTape, LeaderboardStore, Player, PlayerStore, StoredLedger, TapeStore, Visibility } from "./store.ts";
 
 type PlayerRow = { id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number };
 
@@ -19,7 +19,7 @@ export class KeyUnavailable extends Error {}
 
 const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at";
 
-export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore {
+export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore {
   readonly #db: Db;
   constructor(db: Db) {
     this.#db = db;
@@ -72,11 +72,22 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore {
   }
 
   async load(playerId: string): Promise<StoredLedger> {
-    const rows = await this.#db.all<{ head_seq: number; head_hash: string; state_json: string }>(
-      "SELECT head_seq, head_hash, state_json FROM ledger_state WHERE player_id = ?", [playerId]);
+    const rows = await this.#db.all<{ head_seq: number; head_hash: string; state_json: string; tape_next: number; pity_json: string }>(
+      "SELECT head_seq, head_hash, state_json, tape_next, pity_json FROM ledger_state WHERE player_id = ?", [playerId]);
     const row = rows[0];
-    if (!row) return { head: { seq: 0, hash: GENESIS }, state: newState() };
-    return { head: { seq: row.head_seq, hash: row.head_hash }, state: JSON.parse(row.state_json) as LedgerState };
+    if (!row) return { head: { seq: 0, hash: GENESIS }, state: newState(), pity: {}, tapeNext: 1 };
+    return {
+      head: { seq: row.head_seq, hash: row.head_hash }, state: JSON.parse(row.state_json) as LedgerState,
+      pity: JSON.parse(row.pity_json) as Record<string, number>, tapeNext: row.tape_next,
+    };
+  }
+
+  async noteTapeNext(playerId: string, tapeNext: number, at: number): Promise<void> {
+    await this.#db.batch([{
+      sql: `INSERT INTO ledger_state (player_id, head_seq, head_hash, state_json, updated_at, tape_next) VALUES (?, 0, ?, ?, ?, ?)
+            ON CONFLICT (player_id) DO UPDATE SET tape_next = MAX(ledger_state.tape_next, excluded.tape_next)`,
+      params: [playerId, GENESIS, JSON.stringify(newState()), at, tapeNext],
+    }]);
   }
 
   async findBatch(playerId: string, firstSeq: number, lastSeq: number): Promise<{ lastHash: string } | null> {
@@ -106,10 +117,12 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore {
       });
     }
     statements.push({
-      sql: `INSERT INTO ledger_state (player_id, head_seq, head_hash, state_json, updated_at) VALUES (?, ?, ?, ?, ?)
+      sql: `INSERT INTO ledger_state (player_id, head_seq, head_hash, state_json, updated_at, tape_next, pity_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (player_id) DO UPDATE SET head_seq = excluded.head_seq, head_hash = excluded.head_hash,
-            state_json = excluded.state_json, updated_at = excluded.updated_at`,
-      params: [playerId, commit.head.seq, commit.head.hash, JSON.stringify(commit.state), commit.receivedAt],
+            state_json = excluded.state_json, updated_at = excluded.updated_at, tape_next = excluded.tape_next,
+            pity_json = excluded.pity_json`,
+      params: [playerId, commit.head.seq, commit.head.hash, JSON.stringify(commit.state), commit.receivedAt, commit.tapeNext, JSON.stringify(commit.pity)],
     });
     const score = commit.score;
     statements.push({
@@ -139,6 +152,23 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore {
       }
       throw error;
     }
+  }
+
+  async issuedEnd(playerId: string): Promise<number> {
+    const rows = await this.#db.all<{ last: number | null }>("SELECT MAX(end_idx) AS last FROM tapes WHERE player_id = ?", [playerId]);
+    return rows[0]?.last ?? 0;
+  }
+
+  async tapeNext(playerId: string): Promise<number> {
+    const rows = await this.#db.all<{ tape_next: number }>("SELECT tape_next FROM ledger_state WHERE player_id = ?", [playerId]);
+    return rows[0]?.tape_next ?? 1;
+  }
+
+  async recordIssue(playerId: string, issued: IssuedTape, at: number): Promise<void> {
+    await this.#db.batch([{
+      sql: "INSERT INTO tapes (player_id, start_idx, end_idx, commitment, issued_at) VALUES (?, ?, ?, ?, ?)",
+      params: [playerId, issued.start, issued.end, issued.commitment, at],
+    }]);
   }
 
   async top(limit: number): Promise<BoardEntry[]> {

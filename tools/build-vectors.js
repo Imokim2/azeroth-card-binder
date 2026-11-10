@@ -158,7 +158,7 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
         { kind: "recycle", key: legendary, count: 1, dust: recycleLegendary },
         { kind: "craft", key: commonB, count: 1, dust: -craftCommon },
         { kind: "drop", key: common, count: 1 },
-        { kind: "drop", key: common, count: 2 },
+        { kind: "drop", key: common, count: 2, shiny: 1 }, // the shiny copy can come on any drop while there is none yet
         { kind: "tradeOut", key: common, count: 1, ...trade },
         { kind: "tradeIn", key: epic, count: 1, ...trade },
         { kind: "mode", key: "ranked", count: 0 },
@@ -188,7 +188,6 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
     const kindAt = (kind, from = 0) => history.findIndex((step, index) => index >= from && step.kind === kind);
     breaks("a drop that skips a copy", "count", 1, [{ kind: "drop", key: legendary, count: 3 }]);
     breaks("a second shiny for the same card", "shiny", 2, [{ kind: "drop", key: legendary, count: 3, shiny: 1 }]);
-    breaks("a shiny that is not the first copy", "shiny", 1, [{ kind: "drop", key: legendary, count: 2, shiny: 1 }]);
     breaks("a drop of a card that does not exist", "unknown-card", 0, [{ kind: "drop", key: "npc:999999999", count: 1 }]);
     breaks("a drop that moves dust", "dust", 0, [{ kind: "drop", key: common, count: 1, dust: 5 }]);
     breaks("a craft of a card already owned", "craft", 4, [{ kind: "craft", key: commonB, count: 1, dust: -craftCommon }]);
@@ -204,6 +203,7 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
     breaks("a set code that does not exist", "unknown-set", 0, [{ kind: "set", key: "ZZZZ", count: 0 }]);
     breaks("a mode that does not exist", "mode", 0, [{ kind: "mode", key: "hardcore", count: 0 }]);
     const ranked = kindAt("mode");
+    breaks("a second shiny after a later-copy shiny", "shiny", ranked + 3, [{ kind: "drop", key: common, count: 4, tape: 7, shiny: 1 }]);
     breaks("a ranked drop that reuses a tape entry", "tape", ranked + 3, [{ kind: "drop", key: common, count: 4, tape: 5 }]);
     breaks("a ranked drop with no tape entry", "tape", ranked + 1, [{ kind: "drop", key: common, count: 2, tape: 0 }]);
     breaks("a casual drop that claims a tape entry", "tape", 0, [{ kind: "drop", key: common, count: 1, tape: 1 }]);

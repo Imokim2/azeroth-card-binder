@@ -14,6 +14,7 @@ export type Binder = {
   schema: number;
   mode: string;
   head: { seq: number; hash: string };
+  tapeNext: number; // the next roll-tape position the add-on will use
   events: BinderEvent[];
   snapshot: { counts: Record<string, number>; attempts: Record<string, number>; dust: number; sets: Record<string, boolean>; titles: Record<string, boolean> };
   character: { name: string; realm: string } | null;
@@ -81,6 +82,7 @@ export function readBinder(fileText: string): Binder {
     schema,
     mode: typeof db["mode"] === "string" ? db["mode"] : "casual",
     head: { seq: whole(headSeq) ? headSeq : 0, hash: typeof headHash === "string" ? headHash : "0".repeat(32) },
+    tapeNext: isRecord(db["tape"]) && whole(db["tape"]["next"]) && db["tape"]["next"] >= 1 ? db["tape"]["next"] : 1,
     events,
     snapshot: {
       counts: numberMap(db["counts"], 1), attempts: numberMap(db["attempts"], 1),

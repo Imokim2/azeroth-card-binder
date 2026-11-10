@@ -23,12 +23,16 @@ export interface PlayerStore {
   characters(playerId: string): Promise<{ name: string; realm: string }[]>;
 }
 
-export type StoredLedger = { head: Head; state: LedgerState };
+// pity: how many bad-luck-guarantee drops each card has had (checked against attempts); tapeNext: the tape position
+// the add-on said it will use next, at its last upload.
+export type StoredLedger = { head: Head; state: LedgerState; pity: Record<string, number>; tapeNext: number };
 
 export type Commit = {
   events: LedgerEvent[];
   head: Head;
   state: LedgerState;
+  pity: Record<string, number>;
+  tapeNext: number;
   receivedAt: number;
   character: { name: string; realm: string };
   score: { displayName: string; score: number; uniqueCards: number; setsDone: number; attempts: number; rulesVersion: number };
@@ -43,8 +47,19 @@ export interface IngestStore {
   load(playerId: string): Promise<StoredLedger>;
   // A stored batch with exactly this range, if there is one: lets a retried upload succeed.
   findBatch(playerId: string, firstSeq: number, lastSeq: number): Promise<{ lastHash: string } | null>;
+  // Remember the tape position the add-on says it will use next, when an upload brings no new events.
+  noteTapeNext(playerId: string, tapeNext: number, at: number): Promise<void>;
   // Store a verified batch, the new head and state, the score and any flags, all together or not at all.
   commit(playerId: string, commit: Commit): Promise<void>;
+}
+
+export type IssuedTape = { start: number; end: number; commitment: string };
+
+export interface TapeStore {
+  // The last tape position issued to this player (0 if none), and the position the add-on said it will use next.
+  issuedEnd(playerId: string): Promise<number>;
+  tapeNext(playerId: string): Promise<number>;
+  recordIssue(playerId: string, issued: IssuedTape, at: number): Promise<void>;
 }
 
 export type BoardEntry = {

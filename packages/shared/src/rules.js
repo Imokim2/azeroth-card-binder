@@ -35,7 +35,7 @@ function applyEvent(state, event, catalog) {
     switch (event.kind) {
         case "drop": {
             if (event.count !== before + 1) return "count";
-            if (event.shiny === 1 && (event.count !== 1 || state.shiny[event.key])) return "shiny";
+            if (event.shiny === 1 && state.shiny[event.key]) return "shiny";
             if (state.mode === "ranked") {
                 if (event.tape < 1 || event.tape <= state.lastTape) return "tape";
             } else if (event.tape !== 0) {

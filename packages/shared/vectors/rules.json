@@ -73,7 +73,7 @@
         "seq": 6,
         "t": 1050,
         "dust": 0,
-        "shiny": 0,
+        "shiny": 1,
         "tape": 0,
         "partner": "",
         "trade": "",
@@ -211,7 +211,8 @@
       },
       "dust": 0,
       "shiny": {
-        "npc:639": true
+        "npc:639": true,
+        "npc:589": true
       },
       "sets": {
         "OSL": true
@@ -312,39 +313,6 @@
           "kind": "drop",
           "key": "npc:639",
           "count": 3
-        }
-      ]
-    },
-    {
-      "name": "a shiny that is not the first copy",
-      "rule": "shiny",
-      "index": 1,
-      "events": [
-        {
-          "seq": 1,
-          "t": 1000,
-          "dust": 0,
-          "shiny": 1,
-          "tape": 0,
-          "partner": "",
-          "trade": "",
-          "char": "Alice-RealmName",
-          "kind": "drop",
-          "key": "npc:639",
-          "count": 1
-        },
-        {
-          "seq": 2,
-          "t": 1010,
-          "dust": 0,
-          "shiny": 1,
-          "tape": 0,
-          "partner": "",
-          "trade": "",
-          "char": "Alice-RealmName",
-          "kind": "drop",
-          "key": "npc:639",
-          "count": 2
         }
       ]
     },
@@ -764,7 +732,7 @@
           "seq": 6,
           "t": 1050,
           "dust": 0,
-          "shiny": 0,
+          "shiny": 1,
           "tape": 0,
           "partner": "",
           "trade": "",
@@ -882,7 +850,7 @@
           "seq": 6,
           "t": 1050,
           "dust": 0,
-          "shiny": 0,
+          "shiny": 1,
           "tape": 0,
           "partner": "",
           "trade": "",
@@ -980,7 +948,7 @@
           "seq": 6,
           "t": 1050,
           "dust": 0,
-          "shiny": 0,
+          "shiny": 1,
           "tape": 0,
           "partner": "",
           "trade": "",
@@ -1149,6 +1117,169 @@
       ]
     },
     {
+      "name": "a second shiny after a later-copy shiny",
+      "rule": "shiny",
+      "index": 11,
+      "events": [
+        {
+          "seq": 1,
+          "t": 1000,
+          "dust": 0,
+          "shiny": 1,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "drop",
+          "key": "npc:639",
+          "count": 1
+        },
+        {
+          "seq": 2,
+          "t": 1010,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "drop",
+          "key": "npc:639",
+          "count": 2
+        },
+        {
+          "seq": 3,
+          "t": 1020,
+          "dust": 10,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "recycle",
+          "key": "npc:639",
+          "count": 1
+        },
+        {
+          "seq": 4,
+          "t": 1030,
+          "dust": -10,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "craft",
+          "key": "npc:590",
+          "count": 1
+        },
+        {
+          "seq": 5,
+          "t": 1040,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "drop",
+          "key": "npc:589",
+          "count": 1
+        },
+        {
+          "seq": 6,
+          "t": 1050,
+          "dust": 0,
+          "shiny": 1,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "drop",
+          "key": "npc:589",
+          "count": 2
+        },
+        {
+          "seq": 7,
+          "t": 1060,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "bob-realmname",
+          "trade": "111-482910-1",
+          "char": "Alice-RealmName",
+          "kind": "tradeOut",
+          "key": "npc:589",
+          "count": 1
+        },
+        {
+          "seq": 8,
+          "t": 1070,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "bob-realmname",
+          "trade": "111-482910-1",
+          "char": "Alice-RealmName",
+          "kind": "tradeIn",
+          "key": "npc:573",
+          "count": 1
+        },
+        {
+          "seq": 9,
+          "t": 1080,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "mode",
+          "key": "ranked",
+          "count": 0
+        },
+        {
+          "seq": 10,
+          "t": 1090,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 1,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "drop",
+          "key": "npc:589",
+          "count": 2
+        },
+        {
+          "seq": 11,
+          "t": 1100,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 5,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "drop",
+          "key": "npc:589",
+          "count": 3
+        },
+        {
+          "seq": 12,
+          "t": 1110,
+          "dust": 0,
+          "shiny": 1,
+          "tape": 7,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "drop",
+          "key": "npc:589",
+          "count": 4
+        }
+      ]
+    },
+    {
       "name": "a ranked drop that reuses a tape entry",
       "rule": "tape",
       "index": 11,
@@ -1222,7 +1353,7 @@
           "seq": 6,
           "t": 1050,
           "dust": 0,
-          "shiny": 0,
+          "shiny": 1,
           "tape": 0,
           "partner": "",
           "trade": "",
@@ -1385,7 +1516,7 @@
           "seq": 6,
           "t": 1050,
           "dust": 0,
-          "shiny": 0,
+          "shiny": 1,
           "tape": 0,
           "partner": "",
           "trade": "",

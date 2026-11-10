@@ -50,6 +50,15 @@ function ACB.initSlash(saved, tools)
             report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
         elseif cmd == "dust" then
             report(("Binder Dust: %d. Open a card in the binder to recycle a spare or craft a missing card."):format(saved.dust or 0))
+        elseif cmd == "mode" or cmd:match("^mode%s+%a+$") then
+            local wanted = cmd:match("^mode%s+(%a+)$")
+            if wanted then
+                local ok, why = ACB.setMode(saved, ACB.ledger, wanted)
+                report(ok and ("Mode: " .. saved.mode .. ".") or why)
+            else
+                report(("Mode: %s. Roll tape entries left: %d. Use /acb mode ranked or /acb mode casual."):format(saved.mode, ACB.tapeLeft(saved)))
+            end
+            if ACB.refresh then ACB.refresh() end
         elseif cmd == "verify" then
             ACB.ledger:check()
             report(ACB.ledger:status())

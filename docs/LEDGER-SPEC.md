@@ -40,7 +40,7 @@ It does **not** prove an event really happened in the game. The player's compute
 
 The server replays the events from `seq` 1 and keeps a running count per card and a running dust balance. It rejects a batch that breaks any of these:
 
-- `drop`: `count` is the previous count plus 1. `shiny` may be 1 only when `count` is 1 and no earlier event for that card had `shiny` 1. In ranked mode `tape` must be at least 1 and greater than the `tape` of every earlier event.
+- `drop`: `count` is the previous count plus 1. `shiny` may be 1 only when no earlier event for that card had `shiny` 1: a card has at most one shiny copy, found by whichever drop rolls it first. In ranked mode `tape` must be at least 1 and greater than the `tape` of every earlier event.
 - `craft`: the previous count is 0 and `count` is 1; `dust` equals minus the craft cost of the card's rarity, from the catalog; `shiny` is 0.
 - `recycle`: the previous count is at least 2, `count` is one less, and `dust` equals the recycle yield of the card's rarity.
 - `tradeOut`: the previous count is at least 2 and `count` is one less. `tradeIn`: `count` is the previous count plus 1. Both need `partner` and `trade`.
@@ -121,7 +121,7 @@ For each ranked roll the add-on takes the next unused entry (counting from 1):
 
 - **Roll value** = the first 8 hex characters read as a number, modulo 10000, plus 1 (so 1 to 10000).
 - **Drop** when the roll value is at most the card's rate (in hundredths of a percent: 100 is 1%), or when the bad-luck guarantee applies.
-- **Shiny** (for a first copy only) when the next 8 hex characters read as a number, modulo the shiny odds, plus 1, equals 1.
+- **Shiny** (only while the card has no shiny copy yet) when the next 8 hex characters read as a number, modulo the shiny odds, plus 1, equals 1.
 - A roll uses its entry whether it wins or not, so `tape` in a drop event tells the server how many entries were spent before and including it.
 
 The server knows every entry, so it can recheck each drop. Entries are never reused.

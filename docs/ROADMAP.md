@@ -167,13 +167,13 @@ Done when: a test player installs the app, links a binder, plays, and appears on
 
 ### Phase C: ranked mode and in-game features. About 10 to 15 days.
 
-- [ ] **C1. Tape issuing** on the server (`tapes` table) and `/v1/tape`; app writes it into `Data/Sync.lua`.
-- [ ] **C2. Ranked rolls** in `Collection.lua`: consume tape entries in order; "Ranked rolls paused: refill the tape" message if exhausted; fall back to casual rolls clearly labelled and not ranked.
+- [x] **C1. Tape issuing** on the server (`tapes` table) and `/v1/tape`; app writes it into `Data/Sync.lua`. **Built and tested.** `POST /v1/tape` issues 10,000 entries and tops up when 2,000 or fewer remain (see [API.md](API.md)). Entries are derived from a server secret (HMAC-SHA256 of player and position), so no tape is stored; migration 0002 adds the `tapes` table, `tape_next` and the pity counters. The app fetches the tape (`fetchTape`) and writes it into `Sync.lua`. The secret is a Worker secret, `TAPE_SECRET`, not created yet; generating 10,000 entries per refill is cheap but is CPU time on the Worker, so measure it on the paid plan.
+- [x] **C2. Ranked rolls** in `Collection.lua`: consume tape entries in order; "Ranked rolls paused: refill the tape" message if exhausted; fall back to casual rolls clearly labelled and not ranked. **Built and tested.** `Tape.lua`; in Ranked every attempt uses the next entry, win or lose, and the drop event records the position. The add-on uses the card's listed rate in Ranked so the server can recheck without seeing the creature. **Changed from the plan**: when the tape runs out, rolling pauses (with one message) instead of falling back to Casual rolls, because Casual drops in a Ranked ledger would be refused; the player can switch to Casual themselves with `/acb mode casual` or the Settings button (a `mode` event is written). A binder that holds cards from before the ledger cannot enter Ranked (`saved.legacy`): the server cannot replay them. **Decision needed**: how existing players get a Ranked-eligible binder.
 - [ ] **C3. Score and rank** computed on the server per D7; written back to `Sync.lua`.
 - [ ] **C4. In-game leaderboard tab** (top 100 plus your rank), "verified" badge beside ranked players in inspect and trade.
 - [ ] **C5. Trade matching** on the server: pair `tradeOut` with `tradeIn`; unmatched trades after 7 days are excluded from score and flagged.
 - [ ] **C6. Firsts feed** ("first to complete Blackrock Depths") on the website and in `Sync.lua`.
-- [ ] **C7. Tests**: server verifies a tape-based ledger; add-on rejects a tape out of order.
+- [x] **C7. Tests**: server verifies a tape-based ledger; add-on rejects a tape out of order. Server: honest Ranked histories are accepted and each misuse is refused with its reason (an unissued position, a drop on an entry that lost, a wrong shiny flag, a bad next position, Ranked closed). End to end: `app/test/e2e.test.ts` has the real add-on roll a tape the real server issued and the server accept every drop. Add-on: out-of-order or missing tape entries are not used.
 
 Done when: a ranked player's every drop is reproducible from the tape on the server; a modified drop is rejected.
 

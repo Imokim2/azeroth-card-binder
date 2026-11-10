@@ -16,6 +16,7 @@ local parts = {
     "09-trade-panel-dust-settings",
     "10-art-saved-data-size",
     "11-ledger-sync-and-saved-data",
+    "12-ranked-tape",
 }
 
 local source, ranges, line = {}, {}, 1
