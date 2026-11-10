@@ -18,6 +18,10 @@ local NAME_WIDTH = PORTRAIT.width - 44 -- the same room is kept at both ends, so
 local SUBLINE_TOP = 125
 local LORE = { top = 147, height = 29 } -- three short lines, with the serial number beneath
 local SHINY = { 0.55, 0.92, 1 }
+local LOCKED = { 0.59, 0.60, 0.62 }
+local LOCKED_TEXT = { 0.76, 0.77, 0.79 }
+local FULL_TURN = 2 * math.pi
+local SWAY_ANGLE, SWAY_SPEED = math.rad(8), FULL_TURN / 8
 local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
 local panel, plate = { 0.055, 0.05, 0.045 }, { 0.06, 0.05, 0.04 }
 
@@ -53,12 +57,80 @@ local function safe(fn, ...)
     if ok then return a, b, c, d, e end
 end
 
-local function poseCreature(model, entry)
+local function loadModel(model, entry)
+    if entry.profession then
+        if entry.model then safe(model.SetModel, model, entry.model) end
+    else
+        safe(model.SetCreature, model, entry.id)
+    end
+end
+
+-- Reuse one tiny model behind the parchment. Keeping it shown lets the client load
+-- later portraits without allocating a model frame for every card in the set.
+function ACB.createPortraitLoader(parent, paper)
+    local model = CreateFrame("PlayerModel", nil, parent)
+    model:SetSize(2, 2)
+    model:SetPoint("CENTER", paper)
+    model:SetFrameLevel(parent:GetFrameLevel())
+    model:Hide()
+    if not model.GetModelFileID or not model.ClearModel then return function() end end
+
+    local warmed = {}
+    local cards, pending, nextSlot, remaining
+    local elapsedSinceRequest = 0
+    local function idle()
+        pending = nil
+        model:Hide()
+        safe(model.ClearModel, model)
+    end
+
+    model:SetScript("OnUpdate", function(_, elapsed)
+        elapsedSinceRequest = elapsedSinceRequest + elapsed
+        if elapsedSinceRequest < 0.08 then return end
+        if pending then
+            local file = ACB.read(safe(model.GetModelFileID, model), "number")
+            if file and file > 0 and (not pending.profession or file == pending.model) then
+                warmed[pending.key] = true
+            elseif elapsedSinceRequest < 1 then
+                return
+            end
+        end
+        while remaining > 0 do
+            local entry = cards[nextSlot]
+            nextSlot, remaining = nextSlot % #cards + 1, remaining - 1
+            if not warmed[entry.key] and (not entry.profession or entry.model) then
+                safe(model.ClearModel, model)
+                pending, elapsedSinceRequest = entry, 0
+                loadModel(model, entry)
+                return
+            end
+        end
+        idle()
+    end)
+
+    return function(entries, first, last)
+        if cards == entries then return end
+        idle()
+        cards = entries
+        if not cards then return end
+        remaining = #cards - (last - first + 1)
+        if remaining <= 0 then return end
+        nextSlot, elapsedSinceRequest = last % #cards + 1, 0
+        model:Show()
+    end
+end
+
+local function setModelFinish(model, found)
+    safe(model.SetDesaturation, model, found and 0 or 1)
+    safe(model.SetModelAlpha, model, found and 1 or 0.68)
+end
+
+local function poseCreature(model, entry, facing)
     local preset = portraitPresets[entry.id] or humanoid
     if not pcall(model.SetPortraitZoom, model, preset.zoom) then
         safe(model.SetCamDistanceScale, model, 0.8)
     end
-    safe(model.SetFacing, model, preset.facing)
+    safe(model.SetFacing, model, facing)
     safe(model.SetPosition, model, 0, 0, -0.05)
 
     local supported = ACB.read(safe(model.HasAnimation, model, preset.animation), "boolean")
@@ -201,7 +273,7 @@ local function newArt(parent, width, height)
             self.base:SetDesaturated(desaturate)
             self.base:SetVertexColor(1, 1, 1)
             self.base:Show()
-            self.shade:SetAlpha(found and 0.10 or 0.62)
+            self.shade:SetAlpha(found and 0.10 or 0.42)
             return
         end
         local source = resolveArt(zoneKey)
@@ -237,6 +309,7 @@ local function newArt(parent, width, height)
             local zone = source.gradient
             self.base:SetColorTexture(1, 1, 1, 1)
             local top, bottom = zone.top, zone.bottom
+            if desaturate then top, bottom = { 0.48, 0.48, 0.48 }, { 0.23, 0.23, 0.23 } end
             if CreateColor and self.base.SetGradient then
                 safe(self.base.SetGradient, self.base, "VERTICAL",
                     CreateColor(bottom[1], bottom[2], bottom[3], 1), CreateColor(top[1], top[2], top[3], 1))
@@ -245,7 +318,7 @@ local function newArt(parent, width, height)
             end
             self.base:Show()
         end
-        self.shade:SetAlpha(found and 0.15 or 0.62)
+        self.shade:SetAlpha(found and 0.15 or 0.42)
     end
     return art
 end
@@ -259,7 +332,15 @@ local function diamond(parent, size, color)
     return texture
 end
 
-function ACB.createCard(parent, previewUnowned)
+local function gradient(texture, direction, first, last)
+    if CreateColor and texture.SetGradient then
+        texture:SetColorTexture(1, 1, 1, 1)
+        if pcall(texture.SetGradient, texture, direction, CreateColor(unpack(first)), CreateColor(unpack(last))) then return end
+    end
+    texture:SetColorTexture(unpack(first))
+end
+
+function ACB.createCard(parent, previewUnowned, share)
     local card = { entry = nil, owned = 0 }
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetSize(WIDTH, HEIGHT)
@@ -285,7 +366,7 @@ function ACB.createCard(parent, previewUnowned)
     -- two at the bottom are not hidden by the text box.
     card.studFrame = CreateFrame("Frame", nil, frame)
     card.studFrame:SetAllPoints(frame)
-    card.studFrame:SetFrameLevel(level + 8)
+    card.studFrame:SetFrameLevel(level + 9)
     card.studs = {}
     for _, corner in ipairs({ { "TOPLEFT", 6, -6 }, { "TOPRIGHT", -6, -6 }, { "BOTTOMLEFT", 6, 6 }, { "BOTTOMRIGHT", -6, 6 } }) do
         local bezel = diamond(card.studFrame, 10, { 0.03, 0.025, 0.02 })
@@ -309,15 +390,22 @@ function ACB.createCard(parent, previewUnowned)
     card.model:SetFrameLevel(level + 3)
     safe(card.model.SetKeepModelOnHide, card.model, true)
 
+    local swayPhase, modelReady = 0, false
+    local function portraitFacing()
+        return card.facing + SWAY_ANGLE * math.sin(swayPhase)
+    end
+
     local function updateModel(model)
         local entry = card.entry
         if not entry or entry.key ~= card.modelFor then return end
+        setModelFinish(model, card.owned > 0)
         local loaded = ACB.read(safe(model.GetModelFileID, model), "number")
+        modelReady = loaded and loaded > 0 and (not entry.profession or loaded == entry.model)
         if not loaded or loaded <= 0 then return end
         if entry.profession then
-            card.node:SetShown(loaded ~= entry.model)
+            card.node:SetShown(not modelReady)
         else
-            poseCreature(model, entry)
+            poseCreature(model, entry, portraitFacing())
         end
     end
     safe(card.model.SetScript, card.model, "OnModelLoaded", updateModel)
@@ -328,43 +416,48 @@ function ACB.createCard(parent, previewUnowned)
     card.glow:SetBackdrop({ edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 2 })
     card.glow:SetFrameLevel(level + 4)
 
-    -- Shiny cards get a foil sheen over the portrait and a band of light that sweeps across it.
+    -- Draw the rarity tint and foil above the model, below the count badge.
+    local finish = CreateFrame("Frame", nil, window)
+    finish:SetAllPoints(card.model)
+    finish:SetFrameLevel(level + 5)
+    card.tint = finish:CreateTexture(nil, "ARTWORK")
+    card.tint:SetAllPoints(finish)
+    card.tint:SetBlendMode("ADD")
+    card.veil = finish:CreateTexture(nil, "OVERLAY")
+    card.veil:SetAllPoints(finish)
+    gradient(card.veil, "VERTICAL", { 0.76, 0.77, 0.79, 0.24 }, { 0.76, 0.77, 0.79, 0.09 })
+
     card.foil = CreateFrame("Frame", nil, window)
-    card.foil:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
-    card.foil:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -1, 1)
-    card.foil:SetFrameLevel(level + 4)
-    safe(card.foil.SetClipsChildren, card.foil, true)
-    local sheen = card.foil:CreateTexture(nil, "OVERLAY")
+    card.foil:SetAllPoints(finish)
+    card.foil:SetFrameLevel(level + 6)
+    local sheen = card.foil:CreateTexture(nil, "ARTWORK")
     sheen:SetAllPoints(card.foil)
-    sheen:SetColorTexture(0.6, 0.85, 1, 0.12)
-    safe(sheen.SetBlendMode, sheen, "ADD")
-    if CreateColor and sheen.SetGradient then
-        safe(sheen.SetGradient, sheen, "VERTICAL", CreateColor(0.2, 0.9, 1, 0.20), CreateColor(1, 0.5, 0.9, 0.12))
-    end
+    sheen:SetBlendMode("ADD")
+    gradient(sheen, "VERTICAL", { 0.78, 0.35, 1, 0.32 }, { 0.22, 0.92, 1, 0.28 })
+    local glint = diamond(card.foil, 5, SHINY)
+    glint:SetPoint("TOPLEFT", 5, -5)
+
+    -- Move the highlight inside the portrait so the foil does not depend on animation clipping.
     local bandWidth = inner.width * 0.32
     local band = CreateFrame("Frame", nil, card.foil)
     band:SetSize(bandWidth, inner.height)
-    band:SetPoint("LEFT", card.foil, "LEFT", -bandWidth, 0)
-    for _, side in ipairs({ { "LEFT", 0, 0.45 }, { "RIGHT", 0.45, 0 } }) do
+    band:SetPoint("LEFT")
+    band:SetAlpha(0)
+    for _, side in ipairs({ { "LEFT", 0, 0.75 }, { "RIGHT", 0.75, 0 } }) do
         local half = band:CreateTexture(nil, "OVERLAY")
         half:SetSize(bandWidth / 2, inner.height)
         half:SetPoint(side[1], band, side[1], 0, 0)
-        half:SetColorTexture(1, 1, 1, 0.2)
-        safe(half.SetBlendMode, half, "ADD")
-        if CreateColor and half.SetGradient then
-            safe(half.SetGradient, half, "HORIZONTAL", CreateColor(1, 1, 1, side[2]), CreateColor(1, 1, 1, side[3]))
-        end
+        half:SetBlendMode("ADD")
+        gradient(half, "HORIZONTAL", { 0.76, 0.96, 1, side[2] }, { 0.76, 0.96, 1, side[3] })
     end
-    safe(function()
-        card.shine = band:CreateAnimationGroup()
-        card.shine:SetLooping("REPEAT")
-        local move = card.shine:CreateAnimation("Translation")
-        move:SetOffset(inner.width + bandWidth * 2, 0)
-        move:SetDuration(1.1)
-        move:SetOrder(1)
-        local rest = card.shine:CreateAnimation("Animation")
-        rest:SetDuration(2.8)
-        rest:SetOrder(2)
+    local sweep = 0
+    card.foil:SetScript("OnUpdate", function(self, elapsed)
+        sweep = (sweep + elapsed) % 3.4
+        local progress = math.min(1, sweep / 1.15)
+        band:SetAlpha(math.min(1, progress * 5, (1 - progress) * 5))
+        if progress < 1 then
+            band:SetPoint("LEFT", self, "LEFT", (inner.width - bandWidth) * progress, 0)
+        end
     end)
     card.foil:Hide()
 
@@ -377,7 +470,7 @@ function ACB.createCard(parent, previewUnowned)
     -- The duplicate count sits on the window's top right corner.
     local badges = CreateFrame("Frame", nil, frame)
     badges:SetAllPoints(frame)
-    badges:SetFrameLevel(level + 5)
+    badges:SetFrameLevel(level + 7)
     card.badges = badges
     card.countBadge = strip(badges, WIDTH - PAD - 3 - 24, PAD + 3, 24, 16, { 0.04, 0.035, 0.03 })
     card.count = card.countBadge:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -457,29 +550,77 @@ function ACB.createCard(parent, previewUnowned)
         if GameTooltip then GameTooltip:Hide() end
     end)
 
+    local linkEntry, previousX, radiansPerPixel
+    local function stopInteraction()
+        previousX, linkEntry = nil, nil
+    end
+    if share then
+        frame:SetScript("OnMouseDown", function(self, button)
+            if button ~= "LeftButton" or not card.entry then return end
+            if IsShiftKeyDown() then
+                linkEntry = card.entry
+                return
+            end
+            if card.entry.profession or not modelReady or not card.model:IsMouseOver() then return end
+            previousX = GetCursorPosition()
+            radiansPerPixel = 0.025 / self:GetEffectiveScale()
+        end)
+        frame:SetScript("OnUpdate", function(_, elapsed)
+            if not modelReady then return end
+            if previousX and IsMouseButtonDown("LeftButton") then
+                local x = GetCursorPosition()
+                card.facing = (card.facing + (x - previousX) * radiansPerPixel) % FULL_TURN
+                previousX = x
+            else
+                previousX = nil
+                swayPhase = (swayPhase + elapsed * SWAY_SPEED) % FULL_TURN
+            end
+            safe(card.model.SetFacing, card.model, portraitFacing())
+        end)
+        frame:SetScript("OnMouseUp", function(self, button)
+            if button ~= "LeftButton" then return end
+            local entry = linkEntry
+            stopInteraction()
+            if entry and self:IsMouseOver() then share(entry) end
+        end)
+        frame:SetScript("OnHide", stopInteraction)
+    end
+
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
     function card:set(entry, count, shiny, wanted)
         local found = count > 0
         local showModel = found or previewUnowned
         shiny = found and shiny == true
         wanted = not found and wanted == true
+        if self.entry ~= entry then
+            stopInteraction()
+            swayPhase, modelReady = 0, false
+        end
         self.entry, self.owned, self.shiny = entry, count, shiny
         local rarity = ACB.rarities[entry.rarity]
-        local color = rarity.color
-        local dim = found and 1 or 0.5
+        local color = found and rarity.color or LOCKED
+        local nameColor = found and rarity.color or LOCKED_TEXT
 
-        frame:SetBackdropBorderColor(color[1] * dim, color[2] * dim, color[3] * dim, 1)
-        local trimColor = shiny and { SHINY[1], SHINY[2], SHINY[3], 1 } or { goldDark[1], goldDark[2], goldDark[3], 0.9 }
-        self.trim:SetBackdropBorderColor(unpack(trimColor))
-        self.foil:SetShown(shiny)
-        if self.shine then
-            if shiny then safe(self.shine.Play, self.shine) else safe(self.shine.Stop, self.shine) end
+        if found then
+            frame:SetBackdropColor(0.42, 0.39, 0.36, 1)
+        else
+            frame:SetBackdropColor(0.39, 0.39, 0.40, 1)
         end
-        for _, stud in ipairs(self.studs) do stud:SetVertexColor(color[1] * dim, color[2] * dim, color[3] * dim, 1) end
+        for _, stud in ipairs(self.studs) do stud:SetVertexColor(color[1], color[2], color[3], 1) end
         self.serial:SetText("No. " .. entry.serial)
         self.serial:SetAlpha(found and 1 or 0.6)
+        frame:SetBackdropBorderColor(color[1], color[2], color[3], 1)
+        local trimColor = shiny and SHINY or (found and goldDark or LOCKED)
+        self.trim:SetBackdropBorderColor(trimColor[1], trimColor[2], trimColor[3], shiny and 1 or 0.9)
+        self.tint:SetShown(found)
+        gradient(self.tint, "VERTICAL", { color[1], color[2], color[3], entry.rarity == "common" and 0.09 or 0.24 },
+            { color[1], color[2], color[3], 0 })
+        self.foil:SetShown(shiny)
         self.glow:SetBackdropBorderColor(color[1], color[2], color[3], found and 0.55 or 0.25)
-        self.art:show(entry.zone, showModel)
+        self.art:show(entry.zone, found)
+        self.veil:SetShown(not found)
+        self.node:SetDesaturated(not found)
+        self.node:SetAlpha(found and 1 or 0.68)
 
         -- Creatures use their in-game model by NPC ID, gathering nodes by the model file of the node.
         self.model:SetShown(showModel == true)
@@ -487,32 +628,33 @@ function ACB.createCard(parent, previewUnowned)
             self.modelFor = nil
             safe(self.model.ClearModel, self.model)
             self.modelFor = entry.key
+            self.facing = entry.profession and 0.6 or (portraitPresets[entry.id] or humanoid).facing
             self.node:SetShown(entry.profession ~= nil)
             if entry.profession then self.node:SetTexture(entry.icon) end
             if entry.profession then
                 safe(self.model.SetPaused, self.model, false)
                 safe(self.model.SetPortraitZoom, self.model, 0)
-                safe(self.model.SetFacing, self.model, 0.6)
+                safe(self.model.SetFacing, self.model, self.facing)
                 safe(self.model.SetCamDistanceScale, self.model, 1)
                 safe(self.model.SetPosition, self.model, 0, 0, -0.05)
-                if entry.model then safe(self.model.SetModel, self.model, entry.model) end
             else
                 safe(self.model.SetCamDistanceScale, self.model, 1.05)
-                safe(self.model.SetCreature, self.model, entry.id)
             end
+            loadModel(self.model, entry)
             -- Cached models may already be ready. Newly loaded models also run the hook above.
             updateModel(self.model)
+        elseif showModel then
+            setModelFinish(self.model, found)
         end
 
         local name = entry.name
         self.name:SetFont(FONT, math.max(8, math.min(11, NAME_WIDTH / (0.56 * #name))), "OUTLINE")
         self.name:SetText(name)
-        self.name:SetTextColor(color[1] * dim, color[2] * dim, color[3] * dim)
+        self.name:SetTextColor(unpack(nameColor))
         self.gem:SetVertexColor(color[1], color[2], color[3], 1)
-        self.gem:SetAlpha(dim)
-        self.subline:SetText(("%s%s|r  %s%s|r%s"):format(hex({ color[1] * dim, color[2] * dim, color[3] * dim }),
+        self.subline:SetText(("%s%s|r  %s%s|r%s"):format(hex(nameColor),
             rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry),
-            (shiny and ("  " .. hex(SHINY) .. "Shiny|r") or "") .. (wanted and ("  " .. hex(SHINY) .. "Wanted|r") or "")))
+            (shiny and ("  " .. hex(SHINY) .. "Shiny|r") or "") .. (wanted and ("  " .. hex(LOCKED_TEXT) .. "Wanted|r") or "")))
 
         self.countBadge:SetShown(count > 1)
         self.count:SetText("x" .. count)
@@ -522,7 +664,7 @@ function ACB.createCard(parent, previewUnowned)
         local text = found and entry.lore or missing
         self.lore:SetFont(FONT, #text > 64 and 8 or 9, "") -- longer lines get a touch smaller so three lines hold them
         self.lore:SetText(text)
-        local lore = found and gold or { 0.55, 0.52, 0.46 }
+        local lore = found and gold or LOCKED
         self.lore:SetTextColor(lore[1], lore[2], lore[3])
     end
 

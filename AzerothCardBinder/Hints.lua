@@ -21,21 +21,58 @@ function ACB.hintLines(saved, card)
         lines[1] = { ("Card: in your binder (x%d%s)"):format(count, shiny), 0.54, 0.80, 0.61 }
     else
         lines[1] = { ("Card: not in your binder yet (%g%% chance)"):format(ACB.rates[card.rank] / 100), 1, 0.82, 0 }
-        local misses, limit = ACB.luck(saved, card)
-        if limit and misses > 0 then
-            lines[#lines + 1] = { ("Bad-luck safety net: %d / %d"):format(misses, limit), 0.65, 0.61, 0.54 }
-        end
-        if saved.wanted and saved.wanted[card.key] then
-            lines[#lines + 1] = { "On your wanted list", 0.55, 0.92, 1 }
-        end
+    end
+    local luck = ACB.luckText(saved, card)
+    if luck then lines[#lines + 1] = { luck, 0.65, 0.61, 0.54 } end
+    if count == 0 and saved.wanted and saved.wanted[card.key] then
+        lines[#lines + 1] = { "On your wanted list", 0.55, 0.92, 1 }
     end
     return lines
 end
 
 function ACB.initHints(saved)
+    local watchedPeer, watchedGUID
+    local function tooltipGUID(data)
+        return ACB.read(type(data) == "table" and data.guid or nil, "string")
+    end
+
+    local function addTitle(tooltip, guid)
+        if tooltip ~= GameTooltip or not guid:match("^Player%-") then return end
+        local unit
+        if UnitTokenFromGUID then unit = ACB.read(UnitTokenFromGUID(guid), "string") end
+        if not unit and tooltip.GetUnit then
+            local _, token = tooltip:GetUnit()
+            unit = ACB.read(token, "string")
+        end
+        if not unit or not UnitGUID or ACB.read(UnitGUID(unit), "string") ~= guid then return end
+        watchedPeer, watchedGUID = nil, nil
+        local title
+        if UnitIsUnit and ACB.read(UnitIsUnit(unit, "player"), "boolean") then
+            title = saved.title
+        elseif UnitFullName and ACB.peerTitle then
+            local name, realm = UnitFullName(unit)
+            name, realm = ACB.read(name, "string"), ACB.read(realm, "string")
+            local peer = name and ACB.tradePeer(realm and realm ~= "" and name .. "-" .. realm or name)
+            if peer then
+                watchedPeer, watchedGUID = peer, guid
+                title = ACB.peerTitle(peer)
+            end
+        end
+        if title then tooltip:AddLine("Binder title: " .. title, 0.88, 0.69, 0.40) end
+    end
+
+    function ACB.refreshPeerTitle(peer)
+        if peer ~= watchedPeer or not GameTooltip or not GameTooltip.RefreshDataNextUpdate
+            or not GameTooltip.GetPrimaryTooltipData or not GameTooltip:IsShown() then return end
+        local ok, guid = pcall(function() return tooltipGUID(GameTooltip:GetPrimaryTooltipData()) end)
+        if ok and guid == watchedGUID then GameTooltip:RefreshDataNextUpdate() end
+    end
+
     local function addHints(tooltip, data)
-        if saved.hints == false or not tooltip or not tooltip.AddLine then return end
-        local guid = ACB.read(type(data) == "table" and data.guid or nil, "string")
+        if not tooltip or not tooltip.AddLine then return end
+        local guid = tooltipGUID(data)
+        if guid then addTitle(tooltip, guid) end
+        if saved.hints == false then return end
         local card = ACB.source(guid)
         if not card then return end
         for _, line in ipairs(ACB.hintLines(saved, card)) do
