@@ -1,0 +1,19 @@
+# Dependencies and build output
+node_modules/
+dist/
+build/
+out/
+*.zip
+
+# Local tool state
+.wrangler/
+.dev.vars
+.env
+.env.*
+*.log
+
+# Editors and the operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
