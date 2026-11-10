@@ -1,6 +1,4 @@
--- Tests for the ledger, the saved-data upgrade, attempt counters and roll memory (roadmap Phase A).
--- Loaded by tests/run.lua, which hands over its helpers.
-local test, equal, ACB, guid, ignore, widgets = ...
+-- Tests for the ledger, the saved-data upgrade, attempt counters, roll memory and pruning (roadmap Phase A).
 
 local vectors = assert(loadfile("packages/shared/vectors/vectors.lua"))()
 

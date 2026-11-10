@@ -15,7 +15,7 @@ World of Warcards is meant to be maintained for years, so changes are held to a 
 
    ```
    node tools/release.js check          syntax-check every Lua and JavaScript file
-   luajit tests/run.lua                 the add-on tests
+   luajit tests/run.lua                 the add-on tests (the files are in tests/parts; list a new one in tests/run.lua)
    node --test tests/vectors.test.js    the shared-contract tests
    ```
 

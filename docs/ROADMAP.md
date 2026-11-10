@@ -124,7 +124,7 @@ These make every later phase cheaper. Skipping them is how projects like this be
 - [ ] **G2b. Linters.** luacheck and StyLua were left out on purpose (see [ADR 0006](adr/0006-ci-checks-in-phase-0.md)). Add them with a baseline: record the current warnings, fail only on new ones, and do the one-time formatting pass in its own commit.
 - [x] **G3. `docs/LEDGER-SPEC.md` and test vectors** in `packages/shared/vectors/`: SHA-256 vectors, a valid ledger covering every kind of event, ten kinds of invalid ledger, canonical JSON, a signed batch with a published test key, and ranked tape values, as JSON and as a Lua table. The JavaScript reference implementation is `packages/shared/src/ledger.js`; `node --test tests/vectors.test.js` checks it against the vectors and the vectors against the generator (`tools/build-vectors.js`). The spec added a `dust` field to the hashed event text.
 - [x] **G4. Split the big Lua files.** `Forever.lua` 494 to 376 lines (saved-data cleanup in `SavedData.lua`, slash commands in `Slash.lua`); `Cards.lua` 672 to 407 (`CardModels.lua`, `CardArt.lua`); `Folio.lua` 544 to 322 (`FolioUi.lua`, `FolioIndex.lua`); `Binder.lua` 453 to 332 (`UiKit.lua`, `SettingsView.lua`). Behaviour is unchanged (all earlier tests still pass). A test now fails if any add-on code file passes 450 lines.
-- [ ] **G4b. Split `tests/run.lua`** (about 1,900 lines) into one file per area, loaded by a small runner. It is exempt from the size rule until then.
+- [x] **G4b. Split `tests/run.lua`** (was about 1,900 lines) into eleven parts in `tests/parts/`, one per area, run in order by a 50-line runner. The parts are joined into one chunk because later parts share the fake game that earlier parts set up; an error names the part file and line. A new part must be added to the list in `tests/run.lua`.
 - [x] **G5. `CONTRIBUTING.md`, PR template and ADR folder** (`docs/adr/`), with six decision records: the ledger rule, Casual and Ranked modes, hosting, the app stack, keeping internal names, and the Phase 0 CI scope. `docs/runbooks/` holds the list of runbooks still to write.
 - [x] **G6. Release script** (`tools/release.js`): `check`, `test`, `build` (ZIP into `dist/`, developer notes left out) and `bump <version>` (updates the `.toc` and `CHANGELOG.md`). `CHANGELOG.md` started.
 
@@ -141,7 +141,7 @@ Done when: a new contributor can clone the repo, run the tests and build a relea
 - [ ] **A7. Settings tab**: status line done ("Binder verified: N changes on record" or "Binder unverified: reason"). The mode switch and the link code wait for Phase C and B7, because Ranked cannot do anything before the tape exists; "Last synced" waits for `Sync.lua`.
 - [x] **A8. `/acb verify`** prints the chain status and counts to chat.
 - [x] **A9. Trade receipts**: each trade carries a shared trade id and both partners record `tradeIn` / `tradeOut` with the partner name.
-- [x] **A10. Tests** for all of the above in `tests/run.lua`, including a tampered ledger and a migrated file.
+- [x] **A10. Tests** for all of the above in `tests/parts/11-ledger-sync-and-saved-data.lua`, including a tampered ledger and a migrated file.
 
 Done when: all tests pass; editing any count by hand marks the binder unverified; reloading mid-loot cannot re-roll; in-game check passes (Section 6).
 
@@ -234,7 +234,7 @@ Launch checklist: policy checks done; privacy page live; data-deletion route wor
 
 ## 6. Testing
 
-- **Lua**: `luajit tests/run.lua` on every change (currently 54 checks), plus `node --test tests/vectors.test.js` for the shared contract (7 checks). New code needs tests before merge.
+- **Lua**: `luajit tests/run.lua` on every change (currently 63 checks), plus `node --test tests/vectors.test.js` for the shared contract (7 checks). New code needs tests before merge.
 - **Server**: unit tests with recorded ledgers, including tampered and replayed ones.
 - **End to end**: a recorded real saved file replayed through the app against staging.
 - **In game** (manual, before every release): load with no errors; find a card; recycle and craft; trade between two real accounts; reload and confirm the ledger verifies; open the Settings tab; open the leaderboard tab.
