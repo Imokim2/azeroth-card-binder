@@ -124,8 +124,9 @@ export async function acceptUpload(
   const played = replay(events, deps.catalog, stored.state);
   if (!played.ok) throw new ApiError("rule_broken", { rule: played.rule, index: played.index });
 
-  // Ranked drops must match the tape entries the server issued. The bad-luck guarantee is allowed once per
-  // "limit" attempts a card has had; the snapshot's attempts are signed by the player but are not proof by themselves.
+  // Ranked drops must match the tape entries the server issued, and each must be affordable in attempts: a drop
+  // on a high roll needs the earlier misses that stacked up its chance. The snapshot's attempts are signed by the
+  // player but are not proof by themselves.
   let pity = stored.pity;
   if (events.some((event) => event["kind"] === "drop" && Number(event["tape"]) > 0)) {
     if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");

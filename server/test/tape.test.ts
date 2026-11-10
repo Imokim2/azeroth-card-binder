@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { canonicalJson } from "../../packages/shared/src/crypto.ts";
+import { attemptsNeeded, chanceAfter } from "../src/stack.ts";
 import { REFILL_BELOW, TAPE_SIZE, rollValue, shinyValue, tapeCommitment, tapeEntry, tapeKey } from "../src/tape.ts";
 import { NOW, TAPE_SECRET, catalog, chain, newPlayer, registration, setup, signedUpload } from "./harness.ts";
 import type { Player } from "./harness.ts";
@@ -102,10 +103,15 @@ async function rankedHistory(playerId: string, wins: number, cardKey = "npc:589"
   let count = 0;
   let shinyOwned = false;
   let used = 0;
+  let misses = 0; // the add-on's own stacking rule: every miss raises the chance of the next attempt
   for (let index = 1; partials.length <= wins; index++) {
     used = index;
     const entry = await tapeEntry(key, playerId, index);
-    if (rollValue(entry) > rate) continue;
+    if (rollValue(entry) > chanceAfter(rate, misses, catalog.stackFactor)) {
+      misses += 1;
+      continue;
+    }
+    misses = 0;
     count += 1;
     const shiny = !shinyOwned && shinyValue(entry, catalog.shinyOdds) === 1;
     if (shiny) shinyOwned = true;
@@ -126,15 +132,17 @@ test("an honest Ranked history that matches the tape is accepted and scored", as
   assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM flags").get()?.["n"], 0);
 });
 
-test("a drop on an entry that did not win is refused, unless it is a bad-luck guarantee the attempts can account for", async () => {
+test("a drop on a roll above the card's rate is refused, unless the attempts can account for the stack that allows it", async () => {
   const env = setup();
   const { player, id } = await registered(env);
   await env.call("/v1/tape", { body: tapeRequest(player) });
   const key = await tapeKey(TAPE_SIZE ? TAPE_SECRET : "");
-  // Find an entry that loses for a 1% card.
+  // Find an entry that loses for a 1% card, and needs a stack of at least five attempts (a roll above 4%).
   let losing = 1;
-  while (rollValue(await tapeEntry(key, id, losing)) <= 100) losing++;
+  while (rollValue(await tapeEntry(key, id, losing)) <= 400) losing++;
   const lossEntry = await tapeEntry(key, id, losing);
+  const needed = attemptsNeeded(rollValue(lossEntry), 100, catalog.stackFactor);
+  assert.ok(needed >= 5);
   const base = { dust: 0, partner: "", trade: "", char: "Alice-RealmName", count: 1 };
   const forged = chain([
     { seq: 1, t: 1000, kind: "mode", key: "ranked", ...base, count: 0, shiny: 0, tape: 0 },
@@ -143,12 +151,36 @@ test("a drop on an entry that did not win is refused, unless it is a bad-luck gu
   const send = (events: Record<string, unknown>[], attempts: number) => env.call("/v1/ledger", {
     body: signedUpload(player, events, { tapeIndex: losing + 1, snapshot: { counts: { "npc:589": 1 }, dust: 0, sets: {}, attempts: { "npc:589": attempts }, titles: {} } }),
   });
-  // Claiming a drop on a losing entry with no attempts to explain a guarantee: refused.
-  const refused = await read(await send(forged, 3));
+  // One attempt short of the stack that roll needs: refused.
+  const refused = await read(await send(forged, needed - 1));
   assert.equal(refused.error?.code, "tape_invalid");
-  assert.equal(refused.error?.detail?.["reason"], "pity");
-  // With 100 attempts recorded (the guarantee for a 1% card) the same drop is allowed once.
-  assert.equal((await send(forged, 100)).status, 200);
+  assert.equal(refused.error?.detail?.["reason"], "stack");
+  // With exactly the attempts the stack needs, the same drop is allowed.
+  assert.equal((await send(forged, needed)).status, 200);
+});
+
+test("the stack arithmetic: what a roll needs, and what an attempt's chance is", () => {
+  assert.equal(chanceAfter(100, 0, 1), 100);
+  assert.equal(chanceAfter(100, 2, 1), 300);
+  assert.equal(chanceAfter(100, 500, 1), 10000, "never above certain");
+  assert.equal(chanceAfter(100, 4, 0), 100, "a factor of 0 is a flat chance");
+  assert.equal(attemptsNeeded(1, 100, 1), 1);
+  assert.equal(attemptsNeeded(100, 100, 1), 1);
+  assert.equal(attemptsNeeded(101, 100, 1), 2);
+  assert.equal(attemptsNeeded(300, 100, 1), 3);
+  assert.equal(attemptsNeeded(10000, 100, 1), 100);
+  assert.equal(attemptsNeeded(10000, 1000, 1), 10);
+  assert.equal(attemptsNeeded(101, 100, 0), Infinity);
+  // It agrees with the chance for every roll, including with a fractional factor.
+  for (const factor of [1, 0.5, 0.3, 2]) {
+    for (const rate of [100, 200, 1000]) {
+      for (let roll = 1; roll <= 10000; roll += 37) {
+        const n = attemptsNeeded(roll, rate, factor);
+        assert.ok(chanceAfter(rate, n - 1, factor) >= roll, `${roll} at ${rate}/${factor}`);
+        assert.ok(n === 1 || chanceAfter(rate, n - 2, factor) < roll, `${roll} at ${rate}/${factor} is not the fewest`);
+      }
+    }
+  }
 });
 
 test("every other way of misusing the tape is refused", async () => {

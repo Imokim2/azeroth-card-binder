@@ -14,7 +14,7 @@ local STONE = "Interface\\FrameGeneral\\UI-Background-Rock"
 local PAD = 7
 local PORTRAIT = { width = WIDTH - PAD * 2, height = 92 }
 local PLATE = { top = 104, height = 20 }
-local NAME_WIDTH = PORTRAIT.width - 44 -- the same room is kept at both ends, so the name sits dead centre
+local NAME_WIDTH = PORTRAIT.width - 38 -- the same room is kept at both ends (the gem sits at one), so the name sits dead centre
 local SUBLINE_TOP = 125
 local LORE = { top = 147, height = 29 } -- three short lines, with the serial number beneath
 local SHINY = { 0.55, 0.92, 1 }
@@ -24,6 +24,30 @@ local FULL_TURN = 2 * math.pi
 local SWAY_ANGLE, SWAY_SPEED = math.rad(8), FULL_TURN / 8
 local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
 local panel, plate = { 0.055, 0.05, 0.045 }, { 0.06, 0.05, 0.04 }
+
+-- Put `value` in `line` so that all of it shows: the largest size from `maxSize` down to `minSize` at which the real
+-- width of the text fits `width`. A name too long even at the smallest size is broken over two lines instead of being
+-- cut short with "...". Returns the size used.
+function ACB.fitText(line, font, value, width, maxSize, minSize, flags)
+    flags = flags or ""
+    line:SetWordWrap(false)
+    line:SetWidth(width)
+    local size = maxSize
+    for _ = 1, 8 do
+        line:SetFont(font, size, flags)
+        line:SetText(value)
+        local used = ACB.read(line:GetStringWidth(), "number")
+        if not used or used <= width then return size end
+        if size <= minSize then break end
+        -- Shrink in proportion, with a little to spare, and look again: the real width is not exactly linear in size.
+        size = math.max(minSize, math.floor(size * width / used * 4 - 0.5) / 4)
+    end
+    line:SetWordWrap(true)
+    ACB.safe(line.SetMaxLines, line, 2)
+    line:SetFont(font, size, flags)
+    line:SetText(value)
+    return size
+end
 
 local typeNames = { mining = "Mining", herbalism = "Herbalism" }
 local function typeName(entry)
@@ -383,8 +407,7 @@ function ACB.createCard(parent, previewUnowned, share)
         end
 
         local name = entry.name
-        self.name:SetFont(FONT, math.max(8, math.min(11, NAME_WIDTH / (0.56 * #name))), "OUTLINE")
-        self.name:SetText(name)
+        ACB.fitText(self.name, FONT, name, NAME_WIDTH, 11, 6.5, "OUTLINE")
         self.name:SetTextColor(unpack(nameColor))
         self.gem:SetVertexColor(color[1], color[2], color[3], 1)
         self.subline:SetText(("%s%s|r  %s%s|r%s"):format(hex(nameColor),

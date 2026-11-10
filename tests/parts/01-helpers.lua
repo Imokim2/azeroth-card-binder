@@ -23,6 +23,7 @@ end
 local function ignore() end
 loadAddon("Catalog.lua")
 loadAddon("CatalogForever.lua")
+loadAddon("CatalogExtra.lua")
 loadAddon("CatalogNodes.lua")
 loadAddon("Lore.lua")
 loadAddon("Achievements.lua")

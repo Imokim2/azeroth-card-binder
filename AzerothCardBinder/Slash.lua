@@ -48,6 +48,22 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "hints" then
             saved.hints = saved.hints == false
             report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
+        elseif cmd == "bar" or cmd == "bar reset" or cmd == "bar debug" then
+            if cmd == "bar debug" then
+                local honour, name = ACB.honourBar()
+                report(honour and ("Honour bar found: " .. tostring(name)) or "No honour bar found; the zone bar sits above the experience bar.")
+                for _, frame in ipairs({ "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer",
+                    "MainMenuExpBar", "ReputationWatchBar", "HonorWatchBar" }) do
+                    report(frame .. ": " .. (_G[frame] and "exists" or "missing"))
+                end
+            elseif cmd == "bar reset" then
+                saved.zoneBarSpot = nil
+                report("The zone card bar is back in the honour bar's place.")
+            else
+                ACB.setSetting(saved, "zoneBar", not ACB.settingOn(saved, "zoneBar"))
+                report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))
+            end
+            if ACB.refreshZoneBar then ACB.refreshZoneBar() end
         elseif cmd == "dust" then
             report(("Binder Dust: %d. Open a card in the binder to recycle a spare or craft a missing card."):format(saved.dust or 0))
         elseif cmd == "mode" or cmd:match("^mode%s+%a+$") then
@@ -92,7 +108,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, privacy, title, popup, popup test, hints, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, privacy, title, popup, popup test, hints, bar, diag, log, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

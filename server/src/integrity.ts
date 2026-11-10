@@ -2,6 +2,7 @@
 // person to review, and the worst one holds a player off the public ladder until reviewed. Starting thresholds,
 // to be tuned in the beta. Rules version 1.
 import type { Catalog, LedgerState } from "./shared.ts";
+import { chanceAfter } from "./stack.ts";
 
 export const LUCK_REVIEW = 4; // -log10(p) at which a flag opens for review
 export const LUCK_HOLD = 6; // -log10(p) at which the player is held off the ladder until reviewed
@@ -9,22 +10,19 @@ export const MAX_ATTEMPTS_PER_HOUR = 1200;
 export const FAST_START_CARDS = 200; // more unique cards than this within the first hour of an account
 const MIN_WINDOW_SECONDS = 600; // a rate is judged only over uploads at least this far apart
 
-// The drops a card should give per attempt, and how much that varies, with the bad-luck guarantee in force. Without it
-// a card would drop with probability `rate` each attempt; with it, the wait for a drop is capped at `limit` attempts.
-// The wait T has mean m and variance v, and over n attempts the drop count is about normal with mean n/m and
-// variance n*v/m^3 (renewal theory).
-export function dropModel(rate: number, pityFactor: number): { perAttempt: number; variancePerAttempt: number } {
-  const p = rate / 10000;
-  if (p <= 0) return { perAttempt: 0, variancePerAttempt: 0 };
-  const limit = pityFactor > 0 ? Math.ceil((pityFactor * 10000) / rate) : Infinity;
-  const cap = Number.isFinite(limit) ? limit : 100_000; // without a guarantee the wait is effectively unbounded
+// The drops a card should give per attempt, and how much that varies, with the stacking chance in force: attempt k
+// after a drop wins with probability chanceAfter(rate, k - 1). Without a stack a card would drop with probability
+// `rate` each attempt. The wait T for a drop has mean m and variance v, and over n attempts the drop count is about
+// normal with mean n/m and variance n*v/m^3 (renewal theory).
+export function dropModel(rate: number, stackFactor: number): { perAttempt: number; variancePerAttempt: number } {
+  if (rate <= 0) return { perAttempt: 0, variancePerAttempt: 0 };
   let mean = 0;
   let second = 0;
-  let survive = 1;
-  for (let k = 0; k < cap; k++) {
+  let survive = 1; // the chance that the wait is longer than k attempts
+  for (let k = 0; k < 1_000_000; k++) {
     mean += survive;
     second += (2 * k + 1) * survive;
-    survive *= 1 - p;
+    survive *= 1 - chanceAfter(rate, k, stackFactor) / 10000;
     if (survive < 1e-15) break;
   }
   const variance = Math.max(second - mean * mean, 0);
@@ -51,7 +49,7 @@ export function luckScore(catalog: Catalog, attempts: Record<string, number>, dr
   for (const [key, count] of Object.entries(attempts)) {
     const card = catalog.cards[key];
     if (!card || count < 1) continue;
-    const model = dropModel(catalog.rates[card.rank] ?? 0, catalog.pityFactor);
+    const model = dropModel(catalog.rates[card.rank] ?? 0, catalog.stackFactor);
     mean += count * model.perAttempt;
     variance += count * model.variancePerAttempt;
   }

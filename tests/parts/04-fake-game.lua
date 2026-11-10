@@ -28,7 +28,8 @@ local methods = {
     SetFrameLevel = function(self, level) self.level = level end,
     GetFrameLevel = function(self) return self.level or 1 end, SetMaxLines = ignore,
     SetChecked = function(self, value) self.checked = value end, GetChecked = function(self) return self.checked end,
-    SetWordWrap = ignore, SetRotation = ignore, SetShadowOffset = ignore, SetSpacing = ignore, SetShadowColor = ignore, GetStringWidth = function() return 6 end, SetJustifyV = ignore, ClearAllPoints = ignore,
+    SetWordWrap = ignore, SetStatusBarTexture = ignore, SetMinMaxValues = function(self, low, high) self.low, self.high = low, high end,
+    SetValue = function(self, value) self.value = value end, SetStatusBarColor = ignore, StartMoving = ignore, StopMovingOrSizing = ignore, GetCenter = function() return 600, 20 end, GetBottom = function() return 20 end, SetRotation = ignore, SetShadowOffset = ignore, SetSpacing = ignore, SetShadowColor = ignore, GetStringWidth = function() return 6 end, SetJustifyV = ignore, ClearAllPoints = ignore,
     SetKeepModelOnHide = function(self, keep) self.keepModel = keep end,
     ClearModel = function(self) self.creature, self.fileID, self.frozen = nil, nil, nil end,
     SetCreature = function(self, creature) self.creature = creature end,
@@ -143,6 +144,7 @@ loadAddon("CardArt.lua")
 loadAddon("Cards.lua")
 loadAddon("Toast.lua")
 loadAddon("Hints.lua")
+loadAddon("ZoneBar.lua")
 loadAddon("Settings.lua")
 loadAddon("Social.lua")
 loadAddon("FolioUi.lua")

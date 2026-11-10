@@ -109,8 +109,8 @@ The game reads it only at login or `/reload`, so in-game rankings are as fresh a
 ### 2.5 Ranked random numbers (the roll tape)
 
 - The server issues a tape: 10,000 random 64-bit values per refill, stored as a hash commitment on the server.
-- In ranked mode, roll *n* uses tape entry *n*, in order. A drop requires `entry mod 10000 + 1 <= rate` (or the bad-luck guarantee). Each drop event records its tape index.
-- The server knows every tape value, so it can check each recorded drop against its entry and check the pity counter.
+- In ranked mode, roll *n* uses tape entry *n*, in order. A drop requires `entry mod 10000 + 1 <=` the stacked chance (the rate plus the rate again for every earlier miss; see the ledger spec). Each drop event records its tape index.
+- The server knows every tape value, so it can check each recorded drop against its entry and check that each drop's stacked chance is affordable in the card's attempts.
 - A player who modifies the add-on can still read ahead and skip unlucky entries, but skipped entries must still be explained by attempts, and attempts are rate-limited. Their advantage is bounded, not zero. This is stated openly on the fair-play page.
 
 ## 3. Phases

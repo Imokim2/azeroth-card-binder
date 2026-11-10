@@ -23,7 +23,7 @@ export interface PlayerStore {
   characters(playerId: string): Promise<{ name: string; realm: string }[]>;
 }
 
-// pity: how many bad-luck-guarantee drops each card has had (checked against attempts); tapeNext: the tape position
+// pity (kept under its old column name): the attempts that each card's ranked drops have needed so far, checked against its counted attempts; tapeNext: the tape position
 // the add-on said it will use next, at its last upload.
 // drops: drop events per card so far; lastUpload: when the last upload was stored (null if never); openFlags: kinds of
 // flags still open for this player.

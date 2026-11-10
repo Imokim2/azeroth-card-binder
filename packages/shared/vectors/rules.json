@@ -1,6 +1,6 @@
 {
   "note": "Events here are not chained. catalogVersion is the catalog these were made against.",
-  "catalogVersion": "810cef7a8fe4",
+  "catalogVersion": "bd97bb5a5854",
   "set": "OSL",
   "valid": {
     "events": [

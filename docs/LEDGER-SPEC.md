@@ -120,7 +120,7 @@ A tape is a list of entries issued by the server, 16 hex characters each. The se
 For each ranked roll the add-on takes the next unused entry (counting from 1):
 
 - **Roll value** = the first 8 hex characters read as a number, modulo 10000, plus 1 (so 1 to 10000).
-- **Drop** when the roll value is at most the card's rate (in hundredths of a percent: 100 is 1%), or when the bad-luck guarantee applies.
+- **Drop** when the roll value is at most the chance of that attempt. The chance is the card's rate (in hundredths of a percent: 100 is 1%) plus `stackFactor` times the rate for each earlier attempt on that card since its last drop, up to 10000 (certain). A certain attempt needs no roll but still uses its entry. A drop starts the stack over. The server cannot see misses between two drops, so it checks that a drop whose roll is above the rate follows at least as many attempts as that roll needs (`attemptsNeeded`), and that the needs of all a card's ranked drops together never exceed its counted attempts.
 - **Shiny** (only while the card has no shiny copy yet) when the next 8 hex characters read as a number, modulo the shiny odds, plus 1, equals 1.
 - A roll uses its entry whether it wins or not, so `tape` in a drop event tells the server how many entries were spent before and including it.
 
