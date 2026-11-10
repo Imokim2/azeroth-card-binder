@@ -192,7 +192,7 @@ function ACB.initSocial(saved, send, now, after, report)
     inspectText:SetSpacing(3)
 
     function ACB.showInspect(peer, counts, shiny)
-        inspector.title:SetText(peer .. "'s binder")
+        inspector.title:SetText(peer .. "'s binder" .. (ACB.isVerified(peer) and " (verified)" or ""))
         local lines = ACB.inspectLines(counts, shiny)
         inspectText:SetText(table.concat(lines, "\n"))
         inspectBody:SetHeight(math.max(100, #lines * 15))

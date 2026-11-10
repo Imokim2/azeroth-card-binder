@@ -3,9 +3,31 @@
 // a saved file can ever put code into a file the game will run.
 
 export type Ack = { seq: number; hash: string };
-export type SyncData = { syncedAt: number; acks: Ack[]; tape?: { start: number; entries: string[] } };
+export type Standing = { rank: number; name: string; score: number; cards: number; sets: number };
+export type SyncData = {
+  syncedAt: number; acks: Ack[]; tape?: { start: number; entries: string[] };
+  // Roadmap C3, C4 and C6: what the add-on's leaderboard tab shows. Scores are in tenths of a point.
+  leaderboard?: Standing[]; you?: Omit<Standing, "name"> | null; verified?: string[];
+  firsts?: { setCode: string; title: string; by: string; at: number }[];
+};
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
+
+// A Lua string with nothing in it that can end the string or run: every byte except letters, digits and a few safe
+// marks is written as a three-digit decimal escape, so a name from the network can only ever be text.
+function luaString(value: string, field: string): string {
+  if (typeof value !== "string" || value.length > 80) throw new Error(`${field} is not a short text`);
+  let out = "";
+  for (const byte of new TextEncoder().encode(value)) {
+    const char = String.fromCharCode(byte);
+    out += /[A-Za-z0-9 _.-]/.test(char) ? char : "\\" + String(byte).padStart(3, "0");
+  }
+  return '"' + out + '"';
+}
+const whole = (value: number, field: string): number => {
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${field} must be a whole number`);
+  return value;
+};
 
 export function syncFileText(data: SyncData): string {
   if (!Number.isSafeInteger(data.syncedAt) || data.syncedAt < 0) throw new Error("syncedAt must be a whole number of seconds");
@@ -23,6 +45,22 @@ export function syncFileText(data: SyncData): string {
     }
     tapeLines.push("        },", "    },");
   }
+  const standing = (entry: Standing, index: number) =>
+    `        { rank = ${whole(entry.rank, "rank")}, name = ${luaString(entry.name, "name")}, score = ${whole(entry.score, "score")}, cards = ${whole(entry.cards, "cards")}, sets = ${whole(entry.sets, "sets")} }, -- ${index + 1}`;
+  const extra: string[] = [];
+  if (data.leaderboard) {
+    if (data.leaderboard.length > 100) throw new Error("the leaderboard has at most 100 places");
+    extra.push("    leaderboard = {", ...data.leaderboard.map(standing), "    },");
+  }
+  if (data.you) extra.push(`    you = { rank = ${whole(data.you.rank, "rank")}, score = ${whole(data.you.score, "score")}, cards = ${whole(data.you.cards, "cards")}, sets = ${whole(data.you.sets, "sets")} },`);
+  if (data.verified) {
+    if (data.verified.length > 600) throw new Error("too many verified names");
+    extra.push("    verified = {", ...data.verified.map((name) => `        [${luaString(name, "verified name")}] = true,`), "    },");
+  }
+  if (data.firsts) {
+    if (data.firsts.length > 300) throw new Error("too many firsts");
+    extra.push("    firsts = {", ...data.firsts.map((row) => `        { set = ${luaString(row.setCode, "set")}, title = ${luaString(row.title, "title")}, by = ${luaString(row.by, "name")}, at = ${whole(row.at, "at")} },`), "    },");
+  }
   return [
     "local _, ACB = ...",
     "",
@@ -34,6 +72,7 @@ export function syncFileText(data: SyncData): string {
     ...rows,
     "    },",
     ...tapeLines,
+    ...extra,
     "}",
     "",
   ].join("\n");

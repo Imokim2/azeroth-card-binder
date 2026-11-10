@@ -8,7 +8,8 @@ import { replay, snapshotDifferences } from "./shared.ts";
 import type { Catalog } from "./shared.ts";
 import { RULES_VERSION, scoreOf } from "./score.ts";
 import { StoreConflict } from "./store.ts";
-import type { IngestStore, Player, TapeStore } from "./store.ts";
+import { completionsOf, dropCountsOf, tradeRowsOf } from "./derive.ts";
+import type { IngestStore, Player, TapeStore, TradeStore } from "./store.ts";
 import { checkTape, tapeKey } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
 
@@ -81,7 +82,7 @@ const CHAIN_ERRORS: Record<string, ErrorCode> = {
 // Verify a signed upload from a registered player and store it. Uploading the same batch twice is safe: the
 // second time nothing is written and the answer is the same.
 export async function acceptUpload(
-  deps: { ingest: IngestStore; tapes: TapeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined },
+  deps: { ingest: IngestStore; tapes: TapeStore; trades: TradeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined },
   player: Player,
   upload: Upload,
 ): Promise<Ack> {
@@ -142,21 +143,24 @@ export async function acceptUpload(
   const flags: { id: string; kind: string; notes: string }[] = [];
   const differences = snapshotDifferences(upload.snapshot, played.state);
   if (differences.length > 0) flags.push({ id: newId(deps.now() * 1000), kind: "snapshot-mismatch", notes: differences.join(",") });
-  const drops = { ...stored.drops };
-  for (const event of events) if (event["kind"] === "drop") drops[String(event["key"])] = (drops[String(event["key"])] ?? 0) + 1;
+  const drops = dropCountsOf(events, stored.drops);
   const tapeNext = Math.max(stored.tapeNext, upload.tapeIndex);
   for (const flag of integrityFlags({
     catalog: deps.catalog, state: played.state, attempts: upload.snapshot.attempts, drops, tapeNextBefore: stored.tapeNext, tapeNextNow: tapeNext,
-    lastUploadAt: stored.lastUpload, now: deps.now(), playerCreatedAt: player.createdAt, openKinds: stored.openFlags,
+    lastUploadAt: stored.lastUpload, now: deps.now(), playerCreatedAt: player.createdAt, openKinds: stored.openFlags, clearedLuck: stored.clearedLuck,
   })) flags.push({ id: newId(deps.now() * 1000), ...flag });
   const attempts = Object.values(upload.snapshot.attempts).reduce((sum, value) => sum + value, 0);
-  const score = scoreOf(deps.catalog, played.state);
+  // Copies that came from trades the other player never confirmed do not count (roadmap C5).
+  const score = scoreOf(deps.catalog, played.state, await deps.trades.excluded(player.id));
+  // The trade halves and finished sets in this batch, for matching and the firsts feed.
+  const trades = tradeRowsOf(events);
+  const completions = completionsOf(events);
   try {
     await deps.ingest.commit(player.id, {
       events: events as unknown as LedgerEvent[], head: chain.head, state: played.state, pity, drops, tapeNext, receivedAt: deps.now(),
       character: { name: upload.character, realm: upload.realm },
       score: { displayName: `${upload.character}-${upload.realm}`, ...score, attempts, rulesVersion: RULES_VERSION },
-      flags,
+      flags, trades, completions,
     });
   } catch (error) {
     if (error instanceof StoreConflict) throw new ApiError("conflict", undefined, 1);

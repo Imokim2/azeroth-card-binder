@@ -7,10 +7,11 @@ The Windows desktop app that watches the add-on's saved-data file, uploads new l
 ```
 src/luaTable.ts    reads the game's SavedVariables text without running it (strict, size and depth limits)
 src/binderFile.ts  the add-on's saved data as the app needs it: unacknowledged events and the snapshot
-src/client.ts      register a key; upload in batches with retries, backoff and Retry-After; resync with the server
+src/client.ts      register a key; upload in batches with retries, backoff and Retry-After; resync; fetch the tape and the standings
 src/identity.ts    the Ed25519 key pair, made once, kept through a SecretStore (the keychain, in the finished app)
 src/syncFile.ts    writes Data/Sync.lua: numbers and hashes only, validated before writing
 src/files.ts       finds the game folder, writes files atomically, waits for the game to finish writing
+src/engine.ts      the sync loop: upload, tape, standings, Sync.lua; runs on every change of the game's file
 test/              the parser, and the whole loop with the real Lua add-on and the real server
 ```
 

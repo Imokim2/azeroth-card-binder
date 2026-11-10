@@ -31,6 +31,7 @@ FolioIndex.lua
 Folio.lua
 UiKit.lua
 SettingsView.lua
+LeaderboardView.lua
 Binder.lua
 Minimap.lua
 SavedData.lua

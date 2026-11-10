@@ -32,10 +32,10 @@ test("a published migration is never edited: its checksum is on record", () => {
 test("applying every migration gives the tables and indexes the code relies on", () => {
   const { raw } = openTestDb();
   const names = (type: string) => (raw.prepare("SELECT name FROM sqlite_master WHERE type = ? AND name NOT LIKE 'sqlite_%'").all(type) as { name: string }[]).map((row) => row.name).sort();
-  assert.deepEqual(names("table"), ["batches", "characters", "drops", "flags", "keys", "ledger_state", "players", "scores", "tapes"]);
+  assert.deepEqual(names("table"), ["batches", "characters", "drops", "flags", "keys", "ledger_state", "players", "scores", "set_completions", "tapes", "trades"]);
   assert.ok(names("index").includes("scores_by_score"));
   // Every table is keyed by player, as the scalability plan requires.
-  for (const table of ["batches", "characters", "drops", "flags", "keys", "ledger_state", "scores", "tapes"]) {
+  for (const table of ["batches", "characters", "drops", "flags", "keys", "ledger_state", "scores", "set_completions", "tapes", "trades"]) {
     const columns = (raw.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((column) => column.name);
     assert.ok(columns.includes("player_id"), `${table} has no player_id`);
   }
