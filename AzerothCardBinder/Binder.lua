@@ -1,101 +1,19 @@
 local _, ACB = ...
-local brass = { 0.88, 0.69, 0.40 }
-local parchment = { 0.94, 0.88, 0.75 }
-local muted = { 0.65, 0.61, 0.54 }
+local kit = ACB.uiKit
+local brass = kit.brass
+local parchment = kit.parchment
+local muted = kit.muted
+local gold = kit.gold
+local goldDark = kit.goldDark
+local green = kit.green
+local label = kit.label
+local button = kit.button
+local backdrop = kit.backdrop
+local window = kit.window
+local tab = kit.tab
+local centered = kit.centered
+
 local BINDER_WIDTH, BINDER_HEIGHT = 940, 644
-
-local function label(parent, font, x, y, color, value)
-    local line = parent:CreateFontString(nil, "OVERLAY", font)
-    line:SetPoint("TOPLEFT", x, -y)
-    line:SetJustifyH("LEFT")
-    line:SetTextColor(unpack(color))
-    line:SetText(value or "")
-    return line
-end
-
-local function button(parent, text, x, y, width, click)
-    local control = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    control:SetPoint("TOPLEFT", x, -y)
-    control:SetSize(width, 26)
-    control:SetText(text)
-    control:SetScript("OnClick", click)
-    return control
-end
-
-local function backdrop(frame, edge, size)
-    frame:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = edge, edgeSize = size })
-end
-
-local function window(name, width, height, title, folio)
-    local frame = CreateFrame("Frame", name, UIParent, "BackdropTemplate")
-    frame:SetSize(width, height)
-    frame:SetPoint("CENTER")
-    frame:SetFrameStrata("DIALOG")
-    frame:SetClampedToScreen(true)
-    frame:SetMovable(true)
-    frame:EnableMouse(true)
-    if folio then
-        frame:SetBackdrop({ bgFile = ACB.folioArt .. "Leather.tga" })
-        frame:SetBackdropColor(1, 1, 1, 1)
-    else
-        backdrop(frame, "Interface\\DialogFrame\\UI-DialogBox-Border", 24)
-        frame:SetBackdropColor(0.072, 0.057, 0.049, 0.99)
-        frame:SetBackdropBorderColor(0.78, 0.63, 0.42)
-    end
-    local header = CreateFrame("Frame", nil, frame)
-    header:SetPoint("TOPLEFT", 18, -14)
-    header:SetPoint("TOPRIGHT", -42, -14)
-    header:SetHeight(folio and 52 or 32)
-    header:EnableMouse(true)
-    header:RegisterForDrag("LeftButton")
-    header:SetScript("OnDragStart", function() frame:StartMoving() end)
-    header:SetScript("OnDragStop", function() frame:StopMovingOrSizing() end)
-    if folio then
-        local seal = header:CreateTexture(nil, "ARTWORK")
-        seal:SetTexture(ACB.folioArt .. "Launcher.tga")
-        seal:SetSize(36, 36)
-        seal:SetPoint("TOPLEFT", 8, -6)
-        local heading = label(header, "GameFontNormalLarge", 55, 9, parchment, title)
-        heading:SetFont("Fonts\\MORPHEUS.ttf", 33, "")
-        local edition = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        edition:SetPoint("TOPRIGHT", -14, -20)
-        edition:SetTextColor(unpack(brass))
-        edition:SetText("F I R S T   E D I T I O N")
-    else
-        label(header, "GameFontNormalLarge", 2, 3, brass, title)
-    end
-    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", folio and -16 or -6, folio and -14 or -6)
-    table.insert(UISpecialFrames, name)
-    frame:Hide()
-    return frame
-end
-
-local function tab(parent, caption, index, open)
-    local frame = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    frame:SetPoint("TOPLEFT", 30 + (index - 1) * 127, -76)
-    frame:SetSize(116, 31)
-    backdrop(frame, "Interface\\Buttons\\WHITE8X8", 1)
-    frame:SetBackdropBorderColor(0.63, 0.46, 0.29, 1)
-    local title = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    title:SetPoint("CENTER")
-    frame:SetFontString(title)
-    frame:SetText(caption)
-    frame:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-    frame:SetScript("OnClick", open)
-    return { frame = frame, title = title }
-end
-
-local gold, goldDark, green = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }, { 0.2, 1, 0.3 }
-
-local function centered(parent, font, y, color, width)
-    local line = parent:CreateFontString(nil, "OVERLAY", font)
-    line:SetPoint("TOP", parent, "TOP", 0, -y)
-    line:SetWidth(width)
-    line:SetJustifyH("CENTER")
-    line:SetTextColor(unpack(color))
-    return line
-end
 
 -- One side of the trade window: a header with the player's name, the offered card and an accepted line.
 local function offerPanel(parent, x, y)
@@ -135,45 +53,7 @@ function ACB.initUI(saved, trade)
     backdrop(tradeView, "Interface\\Buttons\\WHITE8X8", 1)
     tradeView:SetBackdropColor(0.13, 0.09, 0.07, 1)
     tradeView:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
-    -- Settings: tick boxes for the switches that used to be slash commands only, and the title shown beside your name.
-    local settingsView = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    settingsView:SetPoint("TOPLEFT", 20, -109)
-    settingsView:SetSize(900, 500)
-    backdrop(settingsView, "Interface\\Buttons\\WHITE8X8", 1)
-    settingsView:SetBackdropColor(0.13, 0.09, 0.07, 1)
-    settingsView:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
-    label(settingsView, "GameFontNormalLarge", 32, 20, brass, "Settings")
-    local checks = {}
-    for index, setting in ipairs(ACB.settings) do
-        local y = 62 + (index - 1) * 56
-        local check = CreateFrame("CheckButton", nil, settingsView, "UICheckButtonTemplate")
-        check:SetPoint("TOPLEFT", 30, -y)
-        check:SetSize(30, 30)
-        check:SetScript("OnClick", function(self)
-            ACB.setSetting(saved, setting.key, self:GetChecked() == true)
-            ACB.refresh()
-        end)
-        label(settingsView, "GameFontNormal", 70, y + 2, parchment, setting.name)
-        label(settingsView, "GameFontHighlightSmall", 70, y + 20, muted, setting.note)
-        checks[setting.key] = check
-    end
-    local titleY = 62 + #ACB.settings * 56 + 6
-    label(settingsView, "GameFontNormal", 32, titleY + 6, parchment, "Title shown in player tooltips")
-    button(settingsView, "Previous title", 290, titleY, 110, function()
-        ACB.cycleTitle(saved, -1)
-        ACB.refresh()
-    end)
-    local titleName = label(settingsView, "GameFontHighlight", 406, titleY + 6, gold, "")
-    titleName:SetWidth(170)
-    titleName:SetJustifyH("CENTER")
-    button(settingsView, "Next title", 582, titleY, 110, function()
-        ACB.cycleTitle(saved, 1)
-        ACB.refresh()
-    end)
-    button(settingsView, "Test pop-up", 32, titleY + 48, 130, function() SlashCmdList.AZEROTHCARDBINDER("popup test") end)
-    button(settingsView, "Open diagnostics log", 172, titleY + 48, 170, function() SlashCmdList.AZEROTHCARDBINDER("log") end)
-    label(settingsView, "GameFontHighlightSmall", 32, titleY + 90, muted,
-        "Everything here is also a slash command: /acb popup, hints, privacy, diag, boss and title.")
+    local settingsView = ACB.createSettingsView(frame, saved)
 
     local tabs = {}
     for index, destination in ipairs({ "index", "collection", "trade", "achievements", "settings" }) do
@@ -304,8 +184,7 @@ function ACB.initUI(saved, trade)
         achievementView:SetShown(inAchievements)
         if inSettings then
             regionMark:SetText("BINDER  /  SETTINGS")
-            for _, setting in ipairs(ACB.settings) do checks[setting.key]:SetChecked(ACB.settingOn(saved, setting)) end
-            titleName:SetText(saved.title or "No title shown")
+            settingsView:refresh()
             return
         elseif inAchievements then
             regionMark:SetText("BINDER  /  ACHIEVEMENTS")

@@ -87,7 +87,7 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
         session.applied = true
         session.expires = now() + 120
         local give, take = ACB.cards[session.give], ACB.cards[session.take]
-        if apply(session.give, session.take, session.peer) then
+        if apply(session.give, session.take, session.peer, session.id) then
             self.status = ("Trade complete. You gave %s and received %s."):format(give.name, take.name)
         else
             self.status = "The trade could not finish because your duplicate is no longer available."

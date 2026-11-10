@@ -1,0 +1,43 @@
+name: CI
+
+# Runs on every pull request and on every push to main. A pull request should not be merged while this is red.
+# It runs exactly what a developer runs locally: node tools/release.js build
+#   1. syntax-checks every Lua and JavaScript file and the add-on's file list
+#   2. runs the offline Lua tests and the shared-contract tests
+#   3. builds the install ZIP
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install LuaJIT and zip
+        run: sudo apt-get update && sudo apt-get install -y luajit zip
+
+      - name: Type-check the server and the app
+        run: cd server && npm ci && npm run typecheck && cd ../app && npm ci && npm run typecheck
+
+      - name: Check, test and build
+        run: node tools/release.js build
+
+      - name: Keep the install ZIP from this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: install-zip
+          path: dist/AzerothCardBinder-*.zip
+          if-no-files-found: error
+          retention-days: 14

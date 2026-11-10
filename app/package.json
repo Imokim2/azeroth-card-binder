@@ -1,0 +1,15 @@
+{
+  "name": "warcards-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "World of Warcards companion app: core logic (reads the add-on's saved data, uploads, writes Sync.lua). The Electron shell comes later.",
+  "scripts": {
+    "test": "node --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}
