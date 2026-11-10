@@ -6,6 +6,12 @@ function ACB.read(value, expectedType)
     if type(value) == expectedType then return value end
 end
 
+-- Call a game API that may be missing or may refuse; returns nothing instead of raising an error.
+function ACB.safe(fn, ...)
+    local ok, a, b, c, d, e = pcall(fn, ...)
+    if ok then return a, b, c, d, e end
+end
+
 function ACB.source(guid)
     guid = ACB.read(guid, "string")
     if not guid then return end

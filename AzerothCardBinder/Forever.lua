@@ -278,53 +278,10 @@ function ACB.tradePeer(text)
     if own and peer and peer ~= own then return peer end
 end
 
-local function tableOrEmpty(value)
-    return type(value) == "table" and value or {}
-end
-
 local function initialize()
-    saved = tableOrEmpty(AzerothCardBinderDB)
+    saved = ACB.tableOrEmpty(AzerothCardBinderDB)
     AzerothCardBinderDB = saved
-    saved.counts, saved.achievements = tableOrEmpty(saved.counts), tableOrEmpty(saved.achievements)
-    saved.levels = nil -- levels were shown on cards in an earlier build and are no longer kept
-    for key, count in pairs(saved.counts) do
-        if type(count) ~= "number" or count < 1 or count > 1000000000 or count ~= math.floor(count) then
-            saved.counts[key] = nil
-        end
-    end
-    saved.misses = tableOrEmpty(saved.misses)
-    for key, value in pairs(saved.misses) do
-        if type(value) ~= "number" or value < 1 or value ~= math.floor(value) or not ACB.cards[key] then
-            saved.misses[key] = nil
-        end
-    end
-    saved.shiny = tableOrEmpty(saved.shiny)
-    for key, value in pairs(saved.shiny) do
-        if value ~= true or not ACB.cards[key] then saved.shiny[key] = nil end
-    end
-    saved.wanted, saved.history = tableOrEmpty(saved.wanted), tableOrEmpty(saved.history)
-    for key, value in pairs(saved.wanted) do
-        if value ~= true or not ACB.cards[key] then saved.wanted[key] = nil end
-    end
-    for index = #saved.history, 1, -1 do
-        local entry = saved.history[index]
-        if type(entry) ~= "table" or not ACB.cards[entry.give] or not ACB.cards[entry.take] then
-            table.remove(saved.history, index)
-        end
-    end
-    if type(saved.dust) ~= "number" or saved.dust < 0 or saved.dust ~= math.floor(saved.dust) then saved.dust = 0 end
-    local tradeCount = saved.tradeCount
-    if type(tradeCount) ~= "number" or tradeCount < #saved.history or tradeCount > 1000000000
-        or tradeCount ~= math.floor(tradeCount) then
-        saved.tradeCount = #saved.history
-    end
-    saved.sets, saved.titles = tableOrEmpty(saved.sets), tableOrEmpty(saved.titles)
-    for key, value in pairs(saved.sets) do
-        if value ~= true then saved.sets[key] = nil end
-    end
-    for key, value in pairs(saved.titles) do
-        if value ~= true or type(key) ~= "string" then saved.titles[key] = nil end
-    end
+    ACB.cleanSavedData(saved)
     collection = ACB.newCollection(saved, math.random, report, log, function(card, info)
         if ACB.showToast then ACB.showToast(card, info) end
     end, function(page, reward)
@@ -359,82 +316,7 @@ local function initialize()
     ACB.initSocial(saved, sendView, GetTime, function(delay, action)
         if delay <= 0 or not C_Timer then action() else C_Timer.After(delay, action) end
     end)
-    SLASH_AZEROTHCARDBINDER1, SLASH_AZEROTHCARDBINDER2 = "/acb", "/cardbinder"
-    SlashCmdList.AZEROTHCARDBINDER = function(message)
-        local cmd = message:lower():match("^%s*(.-)%s*$")
-        if cmd == "diag" then
-            saved.diagnostics = not saved.diagnostics
-            log("Diagnostics on. Client " .. (GetBuildInfo()))
-            report("Diagnostics " .. (saved.diagnostics and "on. Use /acb log to copy." or "off."))
-        elseif cmd == "log" then
-            ACB.showLog(table.concat(diagnostics, "\n"), saved.diagnostics)
-        elseif cmd == "boss" then
-            saved.bossTrial = not saved.bossTrial
-            report("VanCleef completion trial " .. (saved.bossTrial and "on." or "off."))
-        elseif cmd == "title" or cmd:match("^title ") then
-            local choice = cmd:match("^title%s+(.+)$")
-            local earned = ACB.earnedTitles(saved)
-            if choice == "off" then
-                ACB.selectTitle(saved)
-                report("Title cleared.")
-            elseif choice and earned[tonumber(choice) or 0] then
-                ACB.selectTitle(saved, earned[tonumber(choice)])
-                report("Title set to " .. saved.title .. ".")
-            elseif #earned == 0 then
-                report("Earn an achievement or finish a set to unlock a title.")
-            else
-                for number, title in ipairs(earned) do
-                    report(("%d. %s%s"):format(number, title, title == saved.title and " (shown)" or ""))
-                end
-                report("Use /acb title <number> to show one, or /acb title off.")
-            end
-            if ACB.refresh then ACB.refresh() end
-        elseif cmd:match("^link%s+%S") then
-            local card = ACB.findCard(saved, message:match("^%s*%S+%s+(.-)%s*$"))
-            if card then ACB.linkCard(saved, card) else report("You do not own a card with that name.") end
-        elseif cmd:match("^view%s+%S") then
-            local peer = ACB.tradePeer(message:match("^%s*%S+%s+(%S+)"))
-            local ok, reason = ACB.requestBinder(peer)
-            report(ok and "Asked for their binder. It opens when they answer." or (reason or "Enter another player's name."))
-        elseif cmd == "privacy" then
-            saved.inspectable = saved.inspectable == false
-            report("Other players " .. (saved.inspectable == false and "can no longer" or "can now") .. " view your binder.")
-        elseif cmd == "hints" then
-            saved.hints = saved.hints == false
-            report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
-        elseif cmd == "dust" then
-            report(("Binder Dust: %d. Open a card in the binder to recycle a spare or craft a missing card."):format(saved.dust or 0))
-        elseif cmd == "settings" or cmd == "options" then
-            ACB.open("settings")
-        elseif cmd == "popup" then
-            saved.popups = saved.popups == false
-            report("Card pop-ups " .. (saved.popups == false and "off." or "on."))
-        elseif cmd == "popup test" then
-            local demo = ACB.cards["npc:639"]
-            if saved.popups == false then
-                report("Card pop-ups are off. Use /acb popup to turn them on.")
-            else
-                ACB.showToast(demo, { count = 1, first = true, shiny = true })
-            end
-        elseif cmd == "trade" or cmd == "index" or cmd == "achievements" then
-            local unit = cmd == "trade" and apiValue("boolean", UnitIsPlayer, "target") == true
-            local name, realm
-            if unit then name, realm = UnitFullName("target") end
-            name, realm = read(name, "string"), read(realm, "string")
-            if name and ACB.prepareTrade then
-                ACB.prepareTrade(realm and realm ~= "" and (name .. "-" .. realm) or name)
-            else
-                ACB.open(cmd)
-            end
-        elseif cmd:match("^trade%s+%S") then
-            ACB.prepareTrade(message:match("^%s*%S+%s+(%S+)"))
-        elseif cmd == "" then
-            ACB.open()
-        else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, privacy, title, popup, popup test, hints, diag, log, boss.")
-        end
-        if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
-    end
+    ACB.initSlash(saved, { report = report, log = log, diagnostics = diagnostics, apiValue = apiValue })
 end
 
 local handlers = {
