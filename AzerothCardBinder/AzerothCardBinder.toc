@@ -8,6 +8,7 @@
 
 Catalog.lua
 CatalogForever.lua
+CatalogExtra.lua
 CatalogNodes.lua
 Lore.lua
 Achievements.lua
@@ -22,6 +23,7 @@ CardArt.lua
 Cards.lua
 Toast.lua
 Hints.lua
+ZoneBar.lua
 Settings.lua
 Social.lua
 FolioUi.lua

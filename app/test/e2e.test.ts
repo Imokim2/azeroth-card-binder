@@ -280,7 +280,7 @@ test("Ranked, end to end: the server issues a tape, the real add-on rolls it, an
     const binder = readBinder(await readText(game.saved));
     assert.equal(binder.tapeNext, 61);
     const drops = binder.events.filter((event) => event.kind === "drop");
-    assert.ok(drops.length >= 6, "the bad-luck guarantee alone gives six drops in sixty attempts");
+    assert.ok(drops.length >= 6, "a 10% card with a stacking chance gives at least six drops in sixty attempts");
     assert.ok(drops.every((event) => event.tape >= 1 && event.tape <= 60));
     assert.deepEqual(binder.events.map((event) => event.tape).filter((tape) => tape > 0), drops.map((event) => event.tape).sort((a, b) => a - b));
 

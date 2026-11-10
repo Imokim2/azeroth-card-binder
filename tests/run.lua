@@ -17,6 +17,7 @@ local parts = {
     "10-art-saved-data-size",
     "11-ledger-sync-and-saved-data",
     "12-ranked-tape",
+    "13-zone-bar",
 }
 
 local source, ranges, line = {}, {}, 1

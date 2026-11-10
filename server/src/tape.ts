@@ -4,6 +4,7 @@
 import { sha256Hex, toHex } from "../../packages/shared/src/crypto.ts";
 import type { LedgerEvent } from "./ledger.ts";
 import type { Catalog, LedgerState } from "./shared.ts";
+import { attemptsNeeded } from "./stack.ts";
 
 export const TAPE_SIZE = 10_000; // entries added at each refill
 export const REFILL_BELOW = 2_000; // a refill happens when this few unused entries remain
@@ -26,10 +27,10 @@ export const rollValue = (entry: string): number => (parseInt(entry.slice(0, 8),
 export const shinyValue = (entry: string, odds: number): number => (parseInt(entry.slice(8, 16), 16) % odds) + 1;
 export const tapeCommitment = (entries: string[]): Promise<string> => sha256Hex(entries.join("\n"));
 
-export type TapeFailure = { reason: "not-issued" | "roll" | "pity" | "shiny" | "next"; index: number };
+export type TapeFailure = { reason: "not-issued" | "roll" | "stack" | "shiny" | "next"; index: number };
 
 // Check every ranked drop in a batch against the entry the server would have issued for it. `claims` are the
-// bad-luck guarantee drops each card has had so far; `attempts` is the snapshot's lifetime attempts per card.
+// attempts each card's ranked drops have needed so far; `attempts` is the snapshot's lifetime attempts per card.
 // Returns the failure, or null and the updated claims.
 export async function checkTape(args: {
   key: TapeKey; playerId: string; events: LedgerEvent[]; stateBefore: LedgerState; catalog: Catalog;
@@ -45,13 +46,11 @@ export async function checkTape(args: {
     if (!card) continue; // the rules have already refused unknown cards
     const entry = await tapeEntry(args.key, args.playerId, event.tape);
     const rate = args.catalog.rates[card.rank] ?? 0;
-    if (rollValue(entry) > rate) {
-      // Not a lucky roll, so it must be the bad-luck guarantee, which a card earns once per `limit` attempts.
-      const limit = args.catalog.pityFactor > 0 && rate > 0 ? Math.ceil((args.catalog.pityFactor * 10000) / rate) : Infinity;
-      const used = (claims[event.key] ?? 0) + 1;
-      claims[event.key] = used;
-      if (used > Math.floor((args.attempts[event.key] ?? 0) / limit)) return { failure: { reason: "pity", index } };
-    }
+    // The server cannot see the misses between two drops, but a drop with this roll needed at least this many
+    // attempts since the card's last one. Added up, those can never exceed the attempts the add-on has counted.
+    const used = (claims[event.key] ?? 0) + attemptsNeeded(rollValue(entry), rate, args.catalog.stackFactor);
+    claims[event.key] = used;
+    if (used > (args.attempts[event.key] ?? 0)) return { failure: { reason: "stack", index } };
     // While a card has no shiny copy, a drop is shiny exactly when its entry says so. Once it has one, the rules
     // already refuse any further shiny.
     if (!owned.has(event.key) && (shinyValue(entry, args.catalog.shinyOdds) === 1) !== (event.shiny === 1)) return { failure: { reason: "shiny", index } };

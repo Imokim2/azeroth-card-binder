@@ -173,8 +173,8 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     checks[1].checked = false
     checks[1]:OnClick()
     equal(saved.popups, false)
-    checks[4].checked = true
-    checks[4]:OnClick()
+    checks[5].checked = true
+    checks[5]:OnClick()
     equal(saved.diagnostics, true)
     -- The slash command flips the same switch and the open tab follows.
     SlashCmdList.AZEROTHCARDBINDER("hints")

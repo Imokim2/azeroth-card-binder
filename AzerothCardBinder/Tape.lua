@@ -5,7 +5,8 @@ local _, ACB = ...
 -- in order, win or lose, so the server can recompute every drop. An entry is 16 hex characters: the first 8 decide
 -- the drop, the next 8 decide whether a first copy is shiny.
 
--- The roll, 1 to 10000. A drop needs a roll at or below the card's rate (100 is 1%) or the bad-luck guarantee.
+-- The roll, 1 to 10000. A drop needs a roll at or below the chance of the attempt: the card's rate (100 is 1%)
+-- plus the stack from earlier misses.
 function ACB.tapeRoll(entry)
     return tonumber(entry:sub(1, 8), 16) % 10000 + 1
 end

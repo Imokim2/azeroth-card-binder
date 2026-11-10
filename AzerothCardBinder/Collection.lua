@@ -56,10 +56,16 @@ function ACB.wantedCards(saved)
     return marked
 end
 
--- Attempts without a drop so far, and the attempt that is guaranteed, for a catalog card.
+-- The chance of an attempt (10000 is 100%) after `misses` attempts without a drop, for a card whose listed rate is `rate`.
+function ACB.chanceAfter(rate, misses)
+    return math.min(10000, rate + rate * (ACB.stackFactor or 0) * misses)
+end
+
+-- Attempts without a drop so far, and the attempt that is certain to drop, for a catalog card.
 function ACB.luck(saved, card)
     local rate = ACB.rates[card.rank]
-    local limit = (ACB.pityFactor or 0) > 0 and math.ceil(ACB.pityFactor * 10000 / rate) or nil
+    local factor = ACB.stackFactor or 0
+    local limit = factor > 0 and 1 + math.ceil((10000 - rate) / (rate * factor)) or nil
     return (saved.misses and saved.misses[card.key]) or 0, limit
 end
 
@@ -69,10 +75,11 @@ function ACB.dustFor(card)
 end
 
 function ACB.luckText(saved, card, showEmpty)
-    local misses, limit = ACB.luck(saved, card)
-    if not limit or (misses == 0 and not showEmpty) then return end
-    if misses + 1 >= limit then return "Next attempt guaranteed" end
-    return ("Bad luck: %g%%"):format(misses * 100 / limit)
+    local misses = ACB.luck(saved, card)
+    if misses == 0 and not showEmpty then return end
+    local chance = ACB.chanceAfter(ACB.rates[card.rank], misses)
+    if chance >= 10000 then return "Next attempt guaranteed" end
+    return ("Next attempt: %g%%"):format(chance / 100)
 end
 
 function ACB.progress(counts, page, bossesOnly)
@@ -168,14 +175,15 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         -- Ranked uses the card's listed rate, so the server can recheck every drop without seeing the creature.
         local threshold = ranked and ACB.rates[card.rank] or ACB.rates[observedRank] or ACB.rates[card.rank]
         saved.misses = saved.misses or {}
-        -- The card's listed rate keeps the guarantee stable when the source's rank is unreadable.
-        local misses, limit = ACB.luck(saved, card)
-        local guaranteed = limit ~= nil and misses + 1 >= limit
-        -- The guarantee needs no roll; a Casual roll is drawn only when it is needed.
-        local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= threshold
+        -- Every miss raises the chance of the next attempt, and a drop starts it over.
+        local misses = ACB.luck(saved, card)
+        local chance = ACB.chanceAfter(threshold, misses)
+        local guaranteed = chance >= 10000
+        -- A certain drop needs no roll; a Casual roll is drawn only when it is needed.
+        local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= chance
         if saved.attempts then saved.attempts[card.key] = (saved.attempts[card.key] or 0) + 1 end
-        log(("%s: %s at %g%% (%s)"):format(origin, card.name, threshold / 100,
-            guaranteed and "card, bad-luck safety net" or dropped and "card" or "miss"))
+        log(("%s: %s at %g%% (%s)"):format(origin, card.name, chance / 100,
+            guaranteed and "card, certain by now" or dropped and "card" or "miss"))
         if not dropped then
             saved.misses[card.key] = misses + 1
             return false

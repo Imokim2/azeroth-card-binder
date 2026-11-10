@@ -56,40 +56,67 @@ test("a lost confirmation is healed by re-sending, and nobody applies twice", fu
     equal(bCards["npc:639"], 1)
 end)
 
-test("the bad-luck safety net guarantees a card after enough misses and then resets", function()
+test("every miss stacks the chance of the next attempt up to a certain drop, and a drop starts it over", function()
     local saved = { counts = {}, achievements = {} }
     local draws = 0
     local collection = ACB.newCollection(saved, function(min, max)
         if max == ACB.shinyOdds then return 2 end
         draws = draws + 1
-        return 10000 -- always a miss unless the safety net steps in
+        return 150 -- beats nothing at 1% but wins once the chance has stacked to 2%
     end, ignore, ignore)
     local misses, limit = ACB.luck(saved, ACB.cards["npc:589"])
     equal(misses, 0)
-    equal(limit, 100) -- a 1% card
+    equal(limit, 100) -- a 1% card is certain on its 100th attempt
     equal(select(2, ACB.luck(saved, ACB.cards["npc:639"])), 50) -- a 2% card
     equal(select(2, ACB.luck(saved, ACB.cards["npc:573"])), 10) -- a 10% card
     equal(select(2, ACB.luck(saved, ACB.cards["node:1731"])), 100)
+    -- The chances, as numbers.
+    equal(ACB.chanceAfter(100, 0), 100)
+    equal(ACB.chanceAfter(100, 1), 200)
+    equal(ACB.chanceAfter(100, 9), 1000)
+    equal(ACB.chanceAfter(100, 99), 10000)
+    equal(ACB.chanceAfter(100, 5000), 10000) -- never above certain
+    equal(ACB.luckText(saved, ACB.cards["npc:589"], true), "Next attempt: 1%")
+    equal(ACB.luckText(saved, ACB.cards["npc:589"]), nil) -- nothing to say before the first miss
+    -- The first attempt faces 1% and misses; the second faces 2% against a roll of 150, and wins.
+    equal(collection:roll(guid(589, "first"), "loot"), false)
+    equal(saved.misses["npc:589"], 1)
+    equal(ACB.luckText(saved, ACB.cards["npc:589"]), "Next attempt: 2%")
+    equal(collection:roll(guid(589, "second"), "loot"), true)
+    equal(saved.counts["npc:589"], 1)
+    equal(saved.misses["npc:589"], nil)
+    equal(ACB.luckText(saved, ACB.cards["npc:589"]), nil)
+    -- A roll nothing can beat: a miss until the stack reaches certain, which needs no roll.
+    collection = ACB.newCollection(saved, function(min, max)
+        if max == ACB.shinyOdds then return 2 end
+        draws = draws + 1
+        return 10000
+    end, ignore, ignore)
     for attempt = 1, limit - 1 do
         equal(collection:roll(guid(589, "miss" .. attempt), "loot"), false)
     end
-    equal(saved.counts["npc:589"], nil)
     equal(ACB.luck(saved, ACB.cards["npc:589"]), limit - 1)
     equal(ACB.luckText(saved, ACB.cards["npc:589"]), "Next attempt guaranteed")
     local before = draws
     equal(collection:roll(guid(589, "lucky"), "loot"), true)
-    equal(draws, before) -- the guaranteed drop needs no roll
-    equal(saved.counts["npc:589"], 1)
+    equal(draws, before) -- a certain drop needs no roll
+    equal(saved.counts["npc:589"], 2)
     equal(ACB.luck(saved, ACB.cards["npc:589"]), 0)
-    equal(collection:roll(guid(589, "after"), "loot"), false)
-    equal(ACB.luckText(saved, ACB.cards["npc:589"]), "Bad luck: 1%")
-    saved.misses["npc:639"] = 51 -- misses banked before the new cap
-    equal(collection:roll(guid(639, "legacy"), "loot", "normal"), true)
+    saved.misses["npc:639"] = 51 -- misses banked before the stack was introduced
+    equal(collection:roll(guid(639, "legacy"), "loot"), true)
     equal(ACB.luck(saved, ACB.cards["npc:639"]), 0)
-    ACB.pityFactor = 0 -- switched off
+    -- A factor of 0 is a flat chance with no stack.
+    ACB.stackFactor = 0
+    equal(ACB.chanceAfter(100, 99), 100)
+    equal(select(2, ACB.luck(saved, ACB.cards["npc:589"])), nil)
     for attempt = 1, 300 do collection:roll(guid(589, "off" .. attempt), "loot") end
-    equal(saved.counts["npc:589"], 1)
-    ACB.pityFactor = 1
+    equal(saved.counts["npc:589"], 2)
+    ACB.stackFactor = 1
+    -- Half the step makes the stack twice as slow.
+    ACB.stackFactor = 0.5
+    equal(ACB.chanceAfter(100, 4), 300)
+    equal(select(2, ACB.luck(saved, ACB.cards["npc:589"])), 199)
+    ACB.stackFactor = 1
 end)
 
 test("finishing a set earns its title once and announces it", function()

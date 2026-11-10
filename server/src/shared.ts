@@ -8,7 +8,7 @@ export type Catalog = {
   sets: { code: string; title: string; group: string; reward: string; cards: string[] }[];
   dust: { recycle: Record<string, number>; craft: Record<string, number> };
   rates: Record<string, number>;
-  pityFactor: number;
+  stackFactor: number;
   shinyOdds: number;
 };
 

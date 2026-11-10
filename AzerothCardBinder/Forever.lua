@@ -289,6 +289,7 @@ local function initialize()
     ACB.ledger = ledger
     collection = ACB.newCollection(saved, math.random, report, log, function(card, info)
         if ACB.showToast then ACB.showToast(card, info) end
+        if ACB.refreshZoneBar then ACB.refreshZoneBar() end
     end, function(page, reward)
         if ACB.showSetToast then ACB.showSetToast(page, reward) end
         if ACB.refresh then ACB.refresh() end
@@ -318,6 +319,7 @@ local function initialize()
     ACB.initLauncher(saved)
     ACB.initToast(saved)
     ACB.initHints(saved)
+    ACB.initZoneBar(saved)
     ACB.initSocial(saved, sendView, GetTime, function(delay, action)
         if delay <= 0 or not C_Timer then action() else C_Timer.After(delay, action) end
     end)

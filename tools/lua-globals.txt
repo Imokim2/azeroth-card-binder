@@ -26,7 +26,9 @@ GGET GetInstanceInfo
 GGET GetLootSourceInfo
 GGET GetNormalizedRealmName
 GGET GetNumLootItems
+GGET GetRealZoneText
 GGET GetTime
+GGET GetZoneText
 GGET InCombatLockdown
 GGET IsInInstance
 GGET IsMouseButtonDown
@@ -48,6 +50,7 @@ GGET UnitIsPlayer
 GGET UnitIsUnit
 GGET UnitName
 GGET UnitTokenFromGUID
+GGET _G
 GGET bit
 GGET date
 GGET hooksecurefunc

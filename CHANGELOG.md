@@ -4,6 +4,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- **Zone card bar.** A thin bar takes the honour bar's place above the experience bar (or sits above the experience bar if there is no honour bar) and shows how many cards you own in the zone, dungeon, raid or battleground you are in, and changes by itself as you travel. Hover for the detail and click to open the binder; Shift-drag moves it. Turn it off in Settings or with `/acb bar` and the honour bar returns; `/acb bar reset` clears a dragged position; `/acb bar debug` says which bars it found.
+
+- **Stacking drop chance.** Every miss now raises a card's chance for the next attempt by its listed rate (a 1% card goes 1%, 2%, 3% and so on, up to certain), and a drop starts it over. This replaces the old bad-luck guarantee and makes cards drop far more often: a 1% card now takes about 13 kills on average instead of about 63. The step is one setting (`ACB.stackFactor` in `Catalog.lua`) if it proves too generous.
+- Card names are never cut off with "..." any more: the text shrinks to fit the card, the binder grid and the card page, and breaks onto two lines only for the very longest names.
+- Zephras Isle, the Skyborne starting zone, is in the binder with its eight rare creatures. Its ordinary creatures follow when their ids are published.
+
 - The binder keeps a tamper-evident ledger of every card found, crafted, recycled and traded, and checks it each time you log in. If a card count is edited by hand, the Settings tab and `/acb verify` say "Binder unverified". Nothing about playing changes. Saved data moves to version 2 on first load; cards, dust, titles and trade history are kept.
 - Ranked mode (needs the companion app): `/acb mode ranked` or the Settings button. Ranked rolls use random numbers the server issues, so every drop can be rechecked. If the supply runs out, Ranked rolling pauses with a message until the app refills it; `/acb mode casual` returns to normal play. Binders that hold cards from before the ledger cannot enter Ranked yet.
 - Every roll is now counted, kept apart from the bad-luck counter, and the add-on remembers recently rolled corpses across a reload so the same corpse cannot be rolled twice.

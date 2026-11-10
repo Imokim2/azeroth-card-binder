@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { LUCK_HOLD, LUCK_REVIEW, dropModel, luckScore } from "../src/integrity.ts";
+import { chanceAfter } from "../src/stack.ts";
 import { NOW, catalog, chain, newPlayer, registration, setup, signedUpload } from "./harness.ts";
 
 type Body = Record<string, unknown> & { error?: { code: string } };
@@ -18,13 +19,12 @@ function generator(seed: number): () => number {
   };
 }
 
-// Play `attempts` kills of a card with the add-on's rules: a drop at `rate`, guaranteed after `limit` attempts.
+// Play `attempts` kills of a card with the add-on's rules: a chance of `rate` that rises by `rate` after every miss.
 function play(random: () => number, rate: number, attempts: number): number {
-  const limit = Math.ceil(10000 / rate);
   let misses = 0;
   let drops = 0;
   for (let attempt = 0; attempt < attempts; attempt++) {
-    if (misses + 1 >= limit || random() * 10000 < rate) {
+    if (random() * 10000 < chanceAfter(rate, misses, 1)) {
       drops += 1;
       misses = 0;
     } else {
@@ -34,12 +34,12 @@ function play(random: () => number, rate: number, attempts: number): number {
   return drops;
 }
 
-test("the drop model matches what the guarantee really does", () => {
+test("the drop model matches what the stacking chance really does", () => {
   const plain = dropModel(100, 0);
   assert.ok(Math.abs(plain.perAttempt - 0.01) < 0.0005);
-  const guarded = dropModel(100, 1);
-  assert.ok(guarded.perAttempt > 0.0155 && guarded.perAttempt < 0.016, String(guarded.perAttempt)); // one drop per about 63 attempts
-  assert.ok(guarded.variancePerAttempt > 0 && guarded.variancePerAttempt < guarded.perAttempt);
+  const stacked = dropModel(100, 1);
+  assert.ok(stacked.perAttempt > 0.07 && stacked.perAttempt < 0.085, String(stacked.perAttempt)); // one drop per about 13 attempts
+  assert.ok(stacked.variancePerAttempt > 0 && stacked.variancePerAttempt < stacked.perAttempt);
   assert.deepEqual(dropModel(0, 1), { perAttempt: 0, variancePerAttempt: 0 });
   // The model agrees with a simulation of the add-on's own rules.
   const random = generator(7);

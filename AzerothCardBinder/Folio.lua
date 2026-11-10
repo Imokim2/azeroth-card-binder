@@ -182,7 +182,7 @@ function ACB.createFolio(parent, saved, selectSet)
                 pocket.frame:SetBackdropColor(unpack(active and SELECTED or POCKET))
                 pocket.frame:SetBackdropBorderColor(unpack(active and INK or EDGE))
                 pocket.number:SetText(("%02d"):format(slot))
-                pocket.name:SetText(entry.name)
+                ACB.fitText(pocket.name, DISPLAY_FONT, entry.name, 189, 15, 9, "")
                 pocket.name:SetTextColor(unpack(count > 0 and INK or MISSING_INK))
                 local shiny = saved.shiny and saved.shiny[entry.key] == true
                 local wanted = saved.wanted and saved.wanted[entry.key] == true
@@ -197,7 +197,7 @@ function ACB.createFolio(parent, saved, selectSet)
         local tier = ACB.rarities[entry.rarity]
         local code = page.code or ("SET %02d"):format(index)
         selected:SetText(("SELECTED CARD  /  %s %02d"):format(code, state.slot))
-        name:SetText(entry.name)
+        ACB.fitText(name, DISPLAY_FONT, entry.name, 405, 34, 20, "")
         rarity:SetText(tier.name:upper())
         rarity:SetTextColor(unpack(count == 0 and MISSING_INK or RARITY_INK[entry.rarity] or INK))
         chance:SetText(("%g%%"):format(ACB.rates[entry.rank] / 100))

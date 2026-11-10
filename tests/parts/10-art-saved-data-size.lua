@@ -83,7 +83,7 @@ end)
 
 test("no add-on code file grows past the size rule, and every listed file exists", function()
     -- Generated catalogs and the lore tables are data, not code, and are exempt.
-    local data = { ["CatalogForever.lua"] = true, ["CatalogNodes.lua"] = true, ["Lore.lua"] = true }
+    local data = { ["CatalogForever.lua"] = true, ["CatalogExtra.lua"] = true, ["CatalogNodes.lua"] = true, ["Lore.lua"] = true }
     local limit, listed = 450, 0
     for name in io.lines(addon .. "/" .. addon .. ".toc") do
         name = name:gsub("%s+$", "")
@@ -95,4 +95,50 @@ test("no add-on code file grows past the size rule, and every listed file exists
         end
     end
     assert(listed >= 20, "the .toc should list the add-on's files")
+end)
+
+test("a name is always shown whole: it shrinks to fit, and only then breaks over two lines", function()
+    -- A stand-in text line whose width grows with the size and the number of letters, like the real one.
+    local function newLine()
+        local line = { wrap = false, size = 0 }
+        function line:SetWordWrap(on) self.wrap = on end
+        function line:SetMaxLines(count) self.lines = count end
+        function line:SetWidth(width) self.width = width end
+        function line:SetFont(_, size) self.size = size end
+        function line:SetText(value) self.text = value end
+        function line:GetStringWidth() return #self.text * self.size * 0.62 end
+        return line
+    end
+    local function fit(name, maxSize, minSize)
+        local line = newLine()
+        local size = ACB.fitText(line, "font", name, 86, maxSize, minSize)
+        return line, size
+    end
+    -- A short name keeps the full size and stays on one line.
+    local line, size = fit("Hogger", 11, 6.5)
+    equal(size, 11)
+    equal(line.wrap, false)
+    -- A longer one gets smaller, but no smaller than it must, and still fits.
+    line, size = fit("Edwin VanCleef", 11, 6.5)
+    assert(size < 11 and size >= 6.5)
+    assert(#line.text * size * 0.62 <= 86, "the text must fit the width")
+    equal(line.text, "Edwin VanCleef")
+    equal(line.wrap, false)
+    -- The longest names in the catalog all show whole: on one line, or on two when the smallest size is not enough.
+    for _, card in pairs(ACB.cards) do
+        line, size = fit(card.name, 11, 6.5)
+        equal(line.text, card.name)
+        assert(size >= 6.5 and size <= 11)
+        if not line.wrap then assert(#card.name * size * 0.62 <= 86, card.name .. " " .. size) end
+    end
+    line, size = fit("Corrupt Minor Manifestation of Water", 11, 6.5)
+    equal(size, 6.5)
+    equal(line.wrap, true)
+    equal(line.lines, 2)
+    -- A reused line goes back to one line when the next name is short.
+    local reused = newLine()
+    ACB.fitText(reused, "font", "Corrupt Minor Manifestation of Water", 86, 11, 6.5)
+    equal(reused.wrap, true)
+    ACB.fitText(reused, "font", "Hogger", 86, 11, 6.5)
+    equal(reused.wrap, false)
 end)

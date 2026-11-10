@@ -83,7 +83,18 @@ test("with the tape used up, Ranked rolling pauses once with a message, loses no
     equal(ACB.tapeLeft(saved), 0)
 end)
 
-test("Ranked uses the card's listed rate and still honours the bad-luck guarantee", function()
+test("Ranked stacks the chance after misses: a roll that lost at 1% wins once four misses have built it to 5%", function()
+    local roll = "000001f300000001" -- a roll of 500
+    local saved, ledger, collection = rankedBinder({ roll, roll, roll, roll, roll })
+    for attempt = 1, 4 do equal(collection:roll(guid(589, "s" .. attempt), "loot"), false) end -- 1%, 2%, 3%, 4%
+    equal(saved.misses["npc:589"], 4)
+    equal(collection:roll(guid(589, "s5"), "loot"), true) -- 5% reaches the roll of 500
+    equal(saved.ledger[#saved.ledger].tape, 5)
+    equal(saved.misses["npc:589"], nil) -- and a drop starts the stack over
+    equal(ledger:verify(), true)
+end)
+
+test("Ranked uses the card's listed rate and still honours the certain drop at the top of the stack", function()
     local saved, ledger, collection = rankedBinder({ "000001f300000001", "000001f300000001", "000001f300000001" })
     -- A roll of 500 beats a rare's 10% but not a normal card's 1%. The live creature's rank is ignored in Ranked.
     equal(ACB.tapeRoll("000001f300000001"), 500)

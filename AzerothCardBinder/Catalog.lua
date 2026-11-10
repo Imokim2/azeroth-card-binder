@@ -2,8 +2,10 @@ local _, ACB = ...
 
 -- A card you find for the first time has a 1 in `shinyOdds` chance to be a shiny copy.
 ACB.shinyOdds = 20
--- Each eligible attempt contributes the card's listed rate towards the guarantee. Set to 0 to disable it.
-ACB.pityFactor = 1
+-- Every attempt that does not drop a card adds to the chance of the next one: the chance of an attempt is the
+-- card's listed rate plus `stackFactor` times the listed rate for each earlier miss, up to 100%. At 1, a 1% card
+-- goes 1%, 2%, 3% and so on, and a drop starts it over. Set to 0 for a flat chance.
+ACB.stackFactor = 1
 ACB.rates = { normal = 100, elite = 200, rare = 1000, rareelite = 1000, gathering = 100 }
 -- Binder Dust: recycling a spare copy gives dust, and dust crafts a card you do not own yet.
 -- Ten spares of one rarity pay for a card of that rarity. Crafted cards are never shiny.

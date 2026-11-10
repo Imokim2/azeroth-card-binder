@@ -34,7 +34,7 @@ Owned cards get a subtle tint in their rarity colour. The first copy of each car
 
 ## The full catalog
 
-The binder has 3,415 cards in 69 sets, including gathering nodes and creatures from Forever's dungeons, raids, battlegrounds and zones. The creature catalog keeps entries that are neutral or hostile to both factions. Rarity follows rank (bosses legendary, other rares and elites epic, normal creatures common). Zone art comes from the game's map and dungeon journal where available, with a colour wash for other zones. Use the mouse wheel over the left page to turn one page at a time. Hold Shift to turn ten. Check that a large set such as The Barrens scrolls smoothly and that the index search finds sets by name.
+The binder has 3,423 cards in 70 sets, including gathering nodes and creatures from Forever's dungeons, raids, battlegrounds and zones. The creature catalog keeps entries that are neutral or hostile to both factions. Rarity follows rank (bosses legendary, other rares and elites epic, normal creatures common). Zone art comes from the game's map and dungeon journal where available, with a colour wash for other zones. Use the mouse wheel over the left page to turn one page at a time. Hold Shift to turn ten. Check that a large set such as The Barrens scrolls smoothly and that the index search finds sets by name.
 
 Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each recognised by every object id the game uses for it. 31 have a 3D model; Earthroot, Mageroyal, Briarthorn, Kingsblood, Ghost Mushroom, Silver Vein, Indurium and Dark Iron show an icon until a matching mesh is found. Mine and pick a few node types, including a high-level one, and check the card appears in the Gathering set with the right skill in its text.
 
@@ -42,13 +42,17 @@ Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each reco
 
 Every card has a description of at most 80 characters so it fits the card face. The original hand-made cards keep their lines. All raid and dungeon bosses and about a hundred well-known rares and elites have a line written for them. Most other creatures get a line built from their name: a named group ("the Scarlet Crusade"), a kind of creature (boar, murloc, ghoul), a title or job (guard, captain, miner) or, failing that, their rank. About a third of the creatures fall back to a rank line. The 39 nodes have their own lines. Read a few cards from a big set such as The Barrens for anything that sounds wrong.
 
-## Bad-luck safety net
+## Zone card bar
 
-Each eligible miss fills the card's protection meter by its listed base rate. The attempt that would reach 100% guarantees a drop. Normal and gathering cards are guaranteed by attempt 100, elite cards by attempt 50, and rare and rare elite cards by attempt 10. Random rolls use the base rate until the guarantee. Any drop resets that card's meter. Existing misses count at the new rate. The binder and tooltip show progress and flag a guaranteed next attempt.
+A bar in the honour bar's place above the experience bar shows the cards you own in the place you are in, such as "Westfall   12 / 87". Walk between two zones and through a dungeon door and check it changes by itself, and that it moves when you find a card. In a city with no set it hides. Check it sits exactly over where the honour bar was and the honour bar is gone while it shows, that switching it off (Settings or `/acb bar`) brings the honour bar back, and that it does not overlap the action bars or the reputation bar. If it does not find the honour bar, `/acb bar debug` lists the bars it looked for; send me that. Otherwise, Shift-drag it into place (the position is kept) and tell me where it sat. `/acb bar` switches it off and on, `/acb bar reset` clears a dragged position.
+
+## Stacking drop chance
+
+Every miss raises the card's chance for the next attempt by its listed base rate: a 1% normal card goes 1%, 2%, 3% and so on, an elite 2%, 4%, 6%, a rare 10%, 20%, 30%. At 100% the drop is certain: by attempt 100 for normal and gathering cards, 50 for elite and 10 for rare and rare elite cards. Any drop starts the card over at its base rate. The card page and the tooltip show the chance of the next attempt ("Next attempt: 3%"). Existing miss counts carry over and now count towards the stack, so some cards may be certain on their next attempt. Check the chance rises by one step each miss and falls back after a drop.
 
 ## Hints
 
-Mob and node tooltips add a line saying whether the card is in your binder, its chance, and the safety-net progress. In the binder, a missing card's page says where to find it. `/acb hints` turns the tooltip lines off. Check that the line appears on a Westfall Defias Pillager, a Foe Reaper 4000 and a Copper Vein.
+Mob and node tooltips add a line saying whether the card is in your binder, its chance, and the stacked chance of the next attempt. In the binder, a missing card's page says where to find it. `/acb hints` turns the tooltip lines off. Check that the line appears on a Westfall Defias Pillager, a Foe Reaper 4000 and a Copper Vein.
 
 ## Achievements, sets and titles
 
