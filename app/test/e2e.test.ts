@@ -100,11 +100,10 @@ test("a first-time player: key made once, registered, uploaded, acknowledged bac
     assert.equal(outcome.uploaded, binder.events.length);
     assert.deepEqual(outcome.ack, { seq: binder.head.seq, hash: binder.head.hash });
 
-    // The server now lists the player with a real score.
-    const board = (await (await env.call("/v1/leaderboard")).json()) as { entries: { displayName: string; scoreTenths: number }[] };
-    assert.equal(board.entries[0]?.displayName, "Alice-RealmName");
-    assert.ok((board.entries[0]?.scoreTenths ?? 0) > 0);
-    assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM flags").get()?.["n"], 0); // the add-on's snapshot matched the replay
+    // The add-on's snapshot matched the replay. This scripted binder wins every single roll, which no honest player
+    // does, so the luck check rightly holds it off the ladder: the only flag is that one.
+    const flags = env.raw.prepare("SELECT kind FROM flags").all() as { kind: string }[];
+    assert.deepEqual(flags.map((flag) => flag.kind), ["luck-hold"]);
 
     // The app writes Sync.lua and the real add-on code understands it: the stored events are dropped, the chain still verifies.
     await writeFileAtomic(install.syncPath, syncFileText({ syncedAt: NOW, acks: [outcome.ack as { seq: number; hash: string }] }));
@@ -290,7 +289,12 @@ test("Ranked, end to end: the server issues a tape, the real add-on rolls it, an
     assert.equal(outcome.status, "synced", JSON.stringify(outcome));
     assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM drops").get()?.["n"], drops.length);
     assert.equal(env.raw.prepare("SELECT tape_next FROM ledger_state").get()?.["tape_next"], 61);
-    assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM flags").get()?.["n"], 0);
+    assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM flags").get()?.["n"], 0); // real luck, real tape: nothing to flag
+
+    // The player is on the public ladder with a real score.
+    const board = (await (await env.call("/v1/leaderboard")).json()) as { entries: { displayName: string; scoreTenths: number }[] };
+    assert.equal(board.entries[0]?.displayName, "Alice-RealmName");
+    assert.ok((board.entries[0]?.scoreTenths ?? 0) > 0);
 
     // The next tape request starts at the position the add-on will use next.
     const next = await fetchTape(client.options);
