@@ -35,7 +35,7 @@ jobs:
         run: node tools/release.js build
 
       - name: Keep the install ZIP from this run
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: install-zip
           path: dist/AzerothCardBinder-*.zip
