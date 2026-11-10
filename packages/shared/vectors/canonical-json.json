@@ -1,0 +1,45 @@
+[
+  {
+    "input": {
+      "b": 1,
+      "a": 2
+    },
+    "expected": "{\"a\":2,\"b\":1}"
+  },
+  {
+    "input": {
+      "list": [
+        3,
+        1,
+        2
+      ],
+      "text": "say \"hi\"",
+      "flag": true
+    },
+    "expected": "{\"flag\":true,\"list\":[3,1,2],\"text\":\"say \\\"hi\\\"\"}"
+  },
+  {
+    "input": {
+      "nested": {
+        "z": 1,
+        "y": {
+          "x": 0
+        }
+      }
+    },
+    "expected": "{\"nested\":{\"y\":{\"x\":0},\"z\":1}}"
+  },
+  {
+    "input": {
+      "name": "Zul'Gurub – Ünïcöde"
+    },
+    "expected": "{\"name\":\"Zul'Gurub – Ünïcöde\"}"
+  },
+  {
+    "input": {
+      "negative": -10,
+      "zero": 0
+    },
+    "expected": "{\"negative\":-10,\"zero\":0}"
+  }
+]

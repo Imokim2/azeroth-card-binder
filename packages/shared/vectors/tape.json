@@ -1,0 +1,128 @@
+{
+  "shinyOdds": 20,
+  "entries": [
+    "2215302c33b2aa7c",
+    "e9f2046f7860e543",
+    "c46c138046e67d21",
+    "d2387554dd7d4395",
+    "4515e26ec44e51b7",
+    "859476669e7b9e90",
+    "de90236ab5cf93c6",
+    "d71dc9698f2cd5b6",
+    "809caa67ea0223c8",
+    "887a514925e3ba3d",
+    "d16fe20ce7395099",
+    "5083e6e1cc0a8675"
+  ],
+  "commitment": "715b88bd4f95bb9695d97b745f05731d5ee2bc5b0d92f04c62e983b77b6f6370",
+  "cases": [
+    {
+      "entry": "2215302c33b2aa7c",
+      "roll": 3933,
+      "shiny": 9,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "e9f2046f7860e543",
+      "roll": 2176,
+      "shiny": 8,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "c46c138046e67d21",
+      "roll": 7217,
+      "shiny": 14,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "d2387554dd7d4395",
+      "roll": 5413,
+      "shiny": 18,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "4515e26ec44e51b7",
+      "roll": 2127,
+      "shiny": 4,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "859476669e7b9e90",
+      "roll": 9367,
+      "shiny": 9,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "de90236ab5cf93c6",
+      "roll": 8203,
+      "shiny": 19,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "d71dc9698f2cd5b6",
+      "roll": 3546,
+      "shiny": 3,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "809caa67ea0223c8",
+      "roll": 888,
+      "shiny": 17,
+      "dropsAt100": false,
+      "dropsAt1000": true,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "887a514925e3ba3d",
+      "roll": 7578,
+      "shiny": 2,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "d16fe20ce7395099",
+      "roll": 509,
+      "shiny": 2,
+      "dropsAt100": false,
+      "dropsAt1000": true,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    },
+    {
+      "entry": "5083e6e1cc0a8675",
+      "roll": 1602,
+      "shiny": 6,
+      "dropsAt100": false,
+      "dropsAt1000": false,
+      "dropsWhenGuaranteed": true,
+      "firstCopyShiny": false
+    }
+  ]
+}

@@ -1,0 +1,526 @@
+[
+  {
+    "name": "a count was edited after the event was written",
+    "events": [
+      {
+        "seq": 1,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1000,
+        "kind": "mode",
+        "key": "ranked",
+        "count": 0,
+        "prev": "00000000000000000000000000000000",
+        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      },
+      {
+        "seq": 2,
+        "dust": 0,
+        "shiny": 1,
+        "tape": 1,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1010,
+        "kind": "drop",
+        "key": "npc:639",
+        "count": 1,
+        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
+        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+      },
+      {
+        "seq": 3,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 2,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1020,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 9,
+        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
+        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+      },
+      {
+        "seq": 4,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 3,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1030,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 2,
+        "prev": "23d48c05d9aa9cf29c87f5074b9ca133",
+        "h": "ecc150ad1995e70bb033d2d6b3b81700"
+      }
+    ],
+    "head": null,
+    "error": "bad-hash",
+    "index": 2
+  },
+  {
+    "name": "a timestamp was edited",
+    "events": [
+      {
+        "seq": 1,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1000,
+        "kind": "mode",
+        "key": "ranked",
+        "count": 0,
+        "prev": "00000000000000000000000000000000",
+        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      },
+      {
+        "seq": 2,
+        "dust": 0,
+        "shiny": 1,
+        "tape": 1,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 5,
+        "kind": "drop",
+        "key": "npc:639",
+        "count": 1,
+        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
+        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+      },
+      {
+        "seq": 3,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 2,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1020,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
+        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+      }
+    ],
+    "head": null,
+    "error": "bad-hash",
+    "index": 1
+  },
+  {
+    "name": "an event is missing from the middle",
+    "events": [
+      {
+        "seq": 1,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1000,
+        "kind": "mode",
+        "key": "ranked",
+        "count": 0,
+        "prev": "00000000000000000000000000000000",
+        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      },
+      {
+        "seq": 2,
+        "dust": 0,
+        "shiny": 1,
+        "tape": 1,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1010,
+        "kind": "drop",
+        "key": "npc:639",
+        "count": 1,
+        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
+        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+      },
+      {
+        "seq": 4,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 3,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1030,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 2,
+        "prev": "23d48c05d9aa9cf29c87f5074b9ca133",
+        "h": "ecc150ad1995e70bb033d2d6b3b81700"
+      }
+    ],
+    "head": null,
+    "error": "gap",
+    "index": 2
+  },
+  {
+    "name": "the batch starts after the stored head with a gap",
+    "events": [
+      {
+        "seq": 4,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 3,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1030,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 2,
+        "prev": "23d48c05d9aa9cf29c87f5074b9ca133",
+        "h": "ecc150ad1995e70bb033d2d6b3b81700"
+      },
+      {
+        "seq": 5,
+        "dust": 1,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1040,
+        "kind": "recycle",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "ecc150ad1995e70bb033d2d6b3b81700",
+        "h": "326c7310f761672a2702db74f90acd10"
+      },
+      {
+        "seq": 6,
+        "dust": -10,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1050,
+        "kind": "craft",
+        "key": "npc:590",
+        "count": 1,
+        "prev": "326c7310f761672a2702db74f90acd10",
+        "h": "82fb76f01614a4e098c1efdbc4be29fb"
+      }
+    ],
+    "head": {
+      "seq": 1,
+      "hash": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+    },
+    "error": "gap",
+    "index": 0
+  },
+  {
+    "name": "the batch was already stored",
+    "events": [
+      {
+        "seq": 1,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1000,
+        "kind": "mode",
+        "key": "ranked",
+        "count": 0,
+        "prev": "00000000000000000000000000000000",
+        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      },
+      {
+        "seq": 2,
+        "dust": 0,
+        "shiny": 1,
+        "tape": 1,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1010,
+        "kind": "drop",
+        "key": "npc:639",
+        "count": 1,
+        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
+        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+      },
+      {
+        "seq": 3,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 2,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1020,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
+        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+      }
+    ],
+    "head": {
+      "seq": 3,
+      "hash": "23d48c05d9aa9cf29c87f5074b9ca133"
+    },
+    "error": "replay",
+    "index": 0
+  },
+  {
+    "name": "two events swapped places",
+    "events": [
+      {
+        "seq": 1,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1000,
+        "kind": "mode",
+        "key": "ranked",
+        "count": 0,
+        "prev": "00000000000000000000000000000000",
+        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      },
+      {
+        "seq": 3,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 2,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1020,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
+        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+      },
+      {
+        "seq": 2,
+        "dust": 0,
+        "shiny": 1,
+        "tape": 1,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1010,
+        "kind": "drop",
+        "key": "npc:639",
+        "count": 1,
+        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
+        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+      }
+    ],
+    "head": null,
+    "error": "gap",
+    "index": 1
+  },
+  {
+    "name": "an event points at the wrong previous event",
+    "events": [
+      {
+        "seq": 1,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1000,
+        "kind": "mode",
+        "key": "ranked",
+        "count": 0,
+        "prev": "00000000000000000000000000000000",
+        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      },
+      {
+        "seq": 2,
+        "dust": 0,
+        "shiny": 1,
+        "tape": 1,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1010,
+        "kind": "drop",
+        "key": "npc:639",
+        "count": 1,
+        "prev": "ffffffffffffffffffffffffffffffff",
+        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+      },
+      {
+        "seq": 3,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 2,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1020,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
+        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+      }
+    ],
+    "head": null,
+    "error": "bad-prev",
+    "index": 1
+  },
+  {
+    "name": "an unknown kind of event",
+    "events": [
+      {
+        "seq": 1,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1000,
+        "kind": "mode",
+        "key": "ranked",
+        "count": 0,
+        "prev": "00000000000000000000000000000000",
+        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      },
+      {
+        "seq": 2,
+        "dust": 0,
+        "shiny": 1,
+        "tape": 1,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1010,
+        "kind": "gift",
+        "key": "npc:639",
+        "count": 1,
+        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
+        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+      }
+    ],
+    "head": null,
+    "error": "bad-field",
+    "index": 1
+  },
+  {
+    "name": "a field holds the separator",
+    "events": [
+      {
+        "seq": 1,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1000,
+        "kind": "mode",
+        "key": "ranked",
+        "count": 0,
+        "prev": "00000000000000000000000000000000",
+        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      },
+      {
+        "seq": 2,
+        "dust": 0,
+        "shiny": 1,
+        "tape": 1,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1010,
+        "kind": "drop",
+        "key": "npc:639|npc:1",
+        "count": 1,
+        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
+        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+      }
+    ],
+    "head": null,
+    "error": "bad-field",
+    "index": 1
+  },
+  {
+    "name": "the chain does not continue from the stored head",
+    "events": [
+      {
+        "seq": 3,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 2,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1020,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
+        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+      },
+      {
+        "seq": 4,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 3,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1030,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 2,
+        "prev": "23d48c05d9aa9cf29c87f5074b9ca133",
+        "h": "ecc150ad1995e70bb033d2d6b3b81700"
+      },
+      {
+        "seq": 5,
+        "dust": 1,
+        "shiny": 0,
+        "tape": 0,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
+        "t": 1040,
+        "kind": "recycle",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "ecc150ad1995e70bb033d2d6b3b81700",
+        "h": "326c7310f761672a2702db74f90acd10"
+      }
+    ],
+    "head": {
+      "seq": 2,
+      "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "error": "bad-prev",
+    "index": 0
+  }
+]
