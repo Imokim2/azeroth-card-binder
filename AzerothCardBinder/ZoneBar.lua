@@ -2,10 +2,10 @@ local _, ACB = ...
 
 -- A thin bar that shows how many cards of the place you are in are in your binder. It follows you: walking into a
 -- new zone, or through a dungeon door, changes the place, and finding a card moves the bar.
--- It takes the honour bar's place above the experience bar: while it shows, the honour bar is made invisible (its
--- transparency only, so the game's own bar logic is never touched) and the bar sits exactly where it was. With the bar
--- switched off, or in a place with no set, the honour bar is back. With no honour bar to be found, it sits above the
--- experience bar. Shift-drag moves it somewhere else.
+-- It takes the reputation bar's place, the green bar stacked above the experience bar: while it shows, that bar is
+-- made invisible (its transparency only, so the game's own bar logic is never touched) and this one, in the same
+-- green, sits exactly where it was. With the bar switched off, or in a place with no set, the reputation bar is back.
+-- With no bar to replace it sits above the experience bar. Shift-drag moves it somewhere else.
 
 -- Names the game uses that differ from the set's title (the sets use the plain name; both sides lose a leading "The").
 local aliases = {
@@ -55,25 +55,50 @@ function ACB.zoneProgress(saved, name)
     return index, owned, total
 end
 
-local BAR_FILL, BAR_DONE = { 0.20, 0.52, 0.58 }, { 1, 0.82, 0 }
+-- The green of the reputation bar.
+local BAR_FILL = { 0.10, 0.62, 0.12 }
 local TRACKING_FRAMES = { "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "MainMenuExpBar", "MainMenuBar" }
--- The names the game's honour bar goes by in its different interface versions.
-local HONOUR_FRAMES = { "HonorWatchBar", "HonorStatusBar", "HonorStatusTrackingBar", "StatusTrackingBarManagerHonorBar" }
+-- The names the game's reputation bar goes by in its different interface versions, and the two stacked containers
+-- that hold the tracking bars in the newer one.
+local REPUTATION_FRAMES = { "ReputationWatchBar", "ReputationStatusBar", "StatusTrackingBarManagerReputationBar" }
+local CONTAINERS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
 
--- The game's honour bar, if it can be found: by name, or in the tracking-bar manager's list of bars.
-function ACB.honourBar()
-    for _, name in ipairs(HONOUR_FRAMES) do
-        local found = _G[name]
-        if type(found) == "table" and found.SetAlpha then return found, name end
+local function sized(frame)
+    if type(frame) ~= "table" or not frame.GetWidth or not frame.SetAlpha then return false end
+    local wide, tall = ACB.read(frame:GetWidth(), "number"), ACB.read(frame:GetHeight(), "number")
+    local shown = not frame.IsShown or ACB.read(frame:IsShown(), "boolean") ~= false
+    return shown and wide ~= nil and tall ~= nil and wide > 100 and tall > 2
+end
+
+-- The kinds of tracking bar the manager knows, whichever table the interface keeps them in.
+local function barKinds()
+    local info = _G.StatusTrackingBarInfo
+    return info and info.BarsEnum or (Enum and Enum.StatusBarType)
+end
+
+-- The bar this one stands in for: the reputation bar, the one stacked above the experience bar. Found by name, then
+-- by kind among the tracking-bar manager's bars, then as the upper of the two tracking containers when both are in
+-- use. Nothing when only one bar is showing (there is no reputation bar to replace, and the experience bar stays).
+function ACB.replacedBar()
+    for _, name in ipairs(REPUTATION_FRAMES) do
+        if sized(_G[name]) then return _G[name], name end
     end
-    local manager, kinds = _G.StatusTrackingBarManager, Enum and Enum.StatusBarType
-    if type(manager) == "table" and type(manager.bars) == "table" and kinds and kinds.Honor then
+    local manager, kinds = _G.StatusTrackingBarManager, barKinds()
+    if type(manager) == "table" and type(manager.bars) == "table" and kinds and kinds.Reputation then
         for _, found in pairs(manager.bars) do
-            if type(found) == "table" and found.SetAlpha and ACB.read(found.barIndex, "number") == kinds.Honor then
-                return found, "a tracking bar"
-            end
+            if sized(found) and ACB.read(found.barIndex, "number") == kinds.Reputation then return found, "a tracking bar" end
         end
     end
+    local upper, upperName, count = nil, nil, 0
+    for _, name in ipairs(CONTAINERS) do
+        local container = _G[name]
+        if sized(container) then
+            count = count + 1
+            local top = ACB.read(container:GetTop(), "number") or 0
+            if not upper or top > (ACB.read(upper:GetTop(), "number") or 0) then upper, upperName = container, name end
+        end
+    end
+    if count >= 2 then return upper, upperName end
 end
 
 function ACB.initZoneBar(saved)
@@ -90,20 +115,18 @@ function ACB.initZoneBar(saved)
     local label = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     label:SetPoint("CENTER")
 
-    -- Sit above the experience bar. A position the player has dragged to is kept instead.
-    local function place(honour)
+    -- Sit over the reputation bar, or above the experience bar. A position the player has dragged to is kept instead.
+    local function place(slot)
         bar:ClearAllPoints()
         local spot = saved.zoneBarSpot
         if type(spot) == "table" and type(spot.x) == "number" and type(spot.y) == "number" then
             bar:SetPoint("BOTTOM", UIParent, "BOTTOM", spot.x, spot.y)
             return
         end
-        -- Exactly over the honour bar, when it has a size to copy.
-        local wide = honour and ACB.read(honour:GetWidth(), "number")
-        local tall = honour and ACB.read(honour:GetHeight(), "number")
-        if wide and tall and wide > 100 and tall > 2 then
-            bar:SetPoint("TOPLEFT", honour, "TOPLEFT", 0, 0)
-            bar:SetPoint("BOTTOMRIGHT", honour, "BOTTOMRIGHT", 0, 0)
+        -- Exactly over the reputation bar's place.
+        if slot then
+            bar:SetPoint("TOPLEFT", slot, "TOPLEFT", 0, 0)
+            bar:SetPoint("BOTTOMRIGHT", slot, "BOTTOMRIGHT", 0, 0)
             return
         end
         for _, name in ipairs(TRACKING_FRAMES) do
@@ -147,14 +170,14 @@ function ACB.initZoneBar(saved)
         if GameTooltip then GameTooltip:Hide() end
     end)
 
-    -- The honour bar is only made see-through while this bar is up, and given back otherwise.
+    -- The bar being replaced is only made see-through while this bar is up, and given back otherwise.
     local taken
-    local function takeHonour(honour)
-        if taken and taken ~= honour then taken:SetAlpha(1) end
-        taken = honour
-        if honour then honour:SetAlpha(0) end
+    local function takeSlot(slot)
+        if taken and taken ~= slot then taken:SetAlpha(1) end
+        taken = slot
+        if slot then slot:SetAlpha(0) end
     end
-    local function giveBackHonour()
+    local function giveBackSlot()
         if taken then taken:SetAlpha(1) end
         taken = nil
     end
@@ -164,17 +187,16 @@ function ACB.initZoneBar(saved)
         local index, owned, total = ACB.zoneProgress(saved)
         if not index or not ACB.settingOn(saved, "zoneBar") then
             bar:Hide()
-            giveBackHonour()
+            giveBackSlot()
             return
         end
-        local honour = ACB.honourBar()
-        takeHonour(honour)
-        place(honour)
+        local slot = ACB.replacedBar()
+        takeSlot(slot)
+        place(slot)
         bar:SetMinMaxValues(0, total)
         bar:SetValue(owned)
-        local color = owned >= total and BAR_DONE or BAR_FILL
-        bar:SetStatusBarColor(color[1], color[2], color[3])
-        label:SetText(("%s   %d / %d"):format(ACB.pages[index].title, owned, total))
+        bar:SetStatusBarColor(BAR_FILL[1], BAR_FILL[2], BAR_FILL[3])
+        label:SetText(("%s %d / %d"):format(ACB.pages[index].title, owned, total))
         bar:Show()
     end
 

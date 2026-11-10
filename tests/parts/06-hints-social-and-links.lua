@@ -224,15 +224,19 @@ test("a binder can be viewed read-only, only when asked for, and can be made pri
 
     -- Bob's side.
     local bSaved = { counts = {} }
-    ACB.initSocial(bSaved, bobSend, function() return clock end, after)
+    local reports = {}
+    ACB.initSocial(bSaved, bobSend, function() return clock end, after, function(message) reports[#reports + 1] = message end)
     ACB.showInspect = function(peer, counts, shiny) shown[#shown + 1] = { peer = peer, counts = counts, shiny = shiny } end
+    -- Alice told Bob to wait when he asked again, and told Carol her binder is private.
+    equal(sentToB[#messages + 1], "N|wait")
+    equal(sentToB[#messages + 2], "N|private")
     ACB.receiveView("alice-realm", sentToB[1]) -- nobody asked, so it is ignored
     equal(#shown, 0)
     equal(ACB.requestBinder("alice-realm"), true)
     equal(sentToA[#sentToA], "Q")
     ACB.receiveView("mallory-realm", sentToB[1])
     equal(#shown, 0) -- only the player asked answers
-    equal(#sentToB, 2)
+    equal(#sentToB, #messages + 2)
     ACB.receiveView("alice-realm", sentToB[1])
     ACB.receiveView("alice-realm", sentToB[1]) -- a repeated part changes nothing
     equal(#shown, 0)
@@ -253,6 +257,45 @@ test("a binder can be viewed read-only, only when asked for, and can be made pri
     ACB.receiveView("alice-realm", "B|1/2|<script>")
     ACB.receiveView("alice-realm", string.rep("x", 300))
     equal(#shown, 1)
+
+    -- Being refused or ignored is explained to the player, not left silent.
+    equal(ACB.requestBinder("alice-realm"), true)
+    ACB.receiveView("alice-realm", "N|wait")
+    assert(reports[#reports]:find("still on its way"), reports[#reports])
+    ACB.receiveView("alice-realm", "N|private")
+    assert(reports[#reports]:find("keeps their binder private"), reports[#reports])
+    local spoken = #reports
+    ACB.receiveView("alice-realm", "N|private") -- nothing was asked, so nothing is said
+    equal(#reports, spoken)
+    equal(ACB.requestBinder("dave-realm"), true)
+    timers[#timers - 1]() -- the check for no answer at all
+    assert(reports[#reports]:find("No answer from dave%-realm"), reports[#reports])
+end)
+
+test("binder parts go out at a pace the game accepts, and a part the game refuses is sent again", function()
+    local full = { counts = {} }
+    for key in pairs(ACB.cards) do full.counts[key] = 1 end
+    local timers, delivered, refuse = {}, {}, 2
+    ACB.initSocial(full, function(_, message)
+        if refuse > 0 then refuse = refuse - 1 return false, "Too many addon whispers. Try again in a moment." end
+        delivered[#delivered + 1] = message
+        return true
+    end, function() return 100 end, function(delay, action) timers[#timers + 1] = { delay = delay, run = action } end)
+    ACB.receiveView("bob-realm", "Q")
+    assert(#timers > 100)
+    -- A quick start, then no faster than about one a second.
+    equal(timers[1].delay, 0)
+    assert(timers[8].delay < 3)
+    for index = 9, #timers do assert(timers[index].delay - timers[index - 1].delay >= 1, "parts " .. index .. " are too close together") end
+    -- The first part is refused twice; each time it is scheduled again, and the third try gets through.
+    local first = timers[1]
+    first.run()
+    equal(#delivered, 0)
+    equal(timers[#timers].delay, 1.3)
+    timers[#timers].run()
+    timers[#timers].run()
+    equal(#delivered, 1)
+    equal(delivered[1]:sub(1, 4), "B|1/")
 end)
 
 test("a fully collected binder fits the message limit and arrives within the request window", function()

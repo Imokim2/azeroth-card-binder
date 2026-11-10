@@ -149,6 +149,8 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
     const craftCommon = catalog.dust.craft[catalog.cards[commonB].rarity];
     if (recycleLegendary < craftCommon) throw new Error("the sample history needs a legendary recycle to pay for a common craft");
     const trade = { partner: "bob-realmname", trade: "111-482910-1" };
+    const trade2 = { partner: "carol-realmname", trade: "111-482910-2" };
+    const outside = Object.keys(catalog.cards).filter((key) => key.startsWith("npc:") && !set.cards.includes(key) && ![common, commonB, epic, legendary].includes(key)).sort()[0];
     // Each step is { kind, key, count, ...extras }. seq and t are filled in; every other field defaults to 0 or "".
     const finished = [];
     let n = 0;
@@ -161,6 +163,9 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
         { kind: "drop", key: common, count: 2, shiny: 1 }, // the shiny copy can come on any drop while there is none yet
         { kind: "tradeOut", key: common, count: 1, ...trade },
         { kind: "tradeIn", key: epic, count: 1, ...trade },
+        // Any card can be traded, a last copy included: a card from outside the finished set, in and straight out again.
+        { kind: "tradeIn", key: outside, count: 1, ...trade2 },
+        { kind: "tradeOut", key: outside, count: 0, ...trade2 },
         { kind: "mode", key: "ranked", count: 0 },
         { kind: "drop", key: common, count: 2, tape: 1 },
         { kind: "drop", key: common, count: 3, tape: 5 },
@@ -195,7 +200,7 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
     breaks("a craft with too little dust", "dust", 0, [{ kind: "craft", key: commonB, count: 1, dust: -craftCommon }]);
     breaks("a recycle of the last copy", "recycle", 1, [{ kind: "recycle", key: legendary, count: 0, dust: recycleLegendary }]);
     breaks("a recycle that earns the wrong dust", "dust", 2, [{ kind: "recycle", key: legendary, count: 1, dust: recycleLegendary + 1 }]);
-    breaks("a trade away of the last copy", "trade", 4, [{ kind: "tradeOut", key: commonB, count: 0, ...trade }]);
+    breaks("a trade away of a card not owned", "trade", 4, [{ kind: "tradeOut", key: epic, count: 0, ...trade }]);
     breaks("a trade in with no trade id", "trade", 6, [{ kind: "tradeIn", key: epic, count: 1, partner: "bob-realmname", trade: "" }]);
     breaks("a trade partner on a plain drop", "trade", 0, [{ kind: "drop", key: common, count: 1, partner: "bob-realmname" }]);
     breaks("a set that is not complete", "set", 6, [{ kind: "set", key: set.code, count: 0 }]);

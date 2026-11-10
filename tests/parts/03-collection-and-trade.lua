@@ -1,17 +1,23 @@
-test("a swap moves one spare copy and can finish a set", function()
+test("a swap moves one copy of any card, a last copy included, and can finish a set", function()
     local saved = { counts = {}, achievements = {} }
     for _, card in ipairs(ACB.pages[1].cards) do saved.counts[card.key] = 1 end
     saved.counts["npc:639"] = nil
     saved.counts["npc:598"] = 2
     local collection = ACB.newCollection(saved, function() return 1 end, ignore, ignore)
     equal(collection:swap("npc:639", "npc:598"), false)
-    equal(collection:swap("npc:589", "npc:639"), false)
-    equal(collection:swap("npc:598", "npc:639"), true)
+    equal(collection:swap("npc:598", "npc:639"), true) -- a spare for a missing card
     equal(saved.counts["npc:598"], 1)
     equal(saved.counts["npc:639"], 1)
     equal(saved.achievements.crew, true)
     equal(saved.achievements.deadmines, true)
-    equal(collection:swap("npc:598", "npc:639"), false)
+    -- A last copy can be traded away too: it leaves the binder, and a set already finished stays finished.
+    local other = ACB.pages[1].cards[1].key
+    assert(other ~= "npc:598" and other ~= "npc:639")
+    equal(collection:swap("npc:598", other), true)
+    equal(saved.counts["npc:598"], nil)
+    equal(saved.counts[other], 2)
+    equal(saved.achievements.deadmines, true)
+    equal(collection:swap("npc:598", "npc:639"), false) -- no longer owned
 end)
 
 test("a lost confirmation is healed by re-sending, and nobody applies twice", function()
@@ -256,7 +262,7 @@ test("two peers confirm the exact pair and each applies the swap once", function
     local now, allow = 1, true
     local function swapper(counts)
         return function(give, take)
-            if (counts[give] or 0) < 2 then return false end
+            if (counts[give] or 0) < 1 then return false end
             counts[give] = counts[give] - 1
             counts[take] = (counts[take] or 0) + 1
             return true
@@ -294,7 +300,7 @@ test("two peers confirm the exact pair and each applies the swap once", function
     b:confirm()
     equal(a.session.peerConfirmed, true)
     equal(a.session.sentConfirm, nil)
-    aCards["npc:589"] = 1
+    aCards["npc:589"] = 0 -- gone from the binder
     a:confirm()
     equal(b.session.peerConfirmed, nil)
     aCards["npc:589"] = 2
@@ -314,4 +320,33 @@ test("two peers confirm the exact pair and each applies the swap once", function
     b:listen("alice-realm")
     b:receive("alice-realm", "O|first-1|npc:589")
     equal(b.session.take, nil)
+end)
+
+test("a trade can offer any card in the binder, a single copy included, but not one that is not owned", function()
+    local aCards, bCards = { ["npc:589"] = 1 }, { ["npc:639"] = 1 }
+    local a, b
+    local function swapper(counts)
+        return function(give, take)
+            if (counts[give] or 0) < 1 then return false end
+            counts[give] = counts[give] - 1
+            if counts[give] == 0 then counts[give] = nil end
+            counts[take] = (counts[take] or 0) + 1
+            return true
+        end
+    end
+    a = ACB.newTrade(aCards, function() return 1 end, function() return "one-1" end, function(_, msg) b:receive("alice-realm", msg) return true end, swapper(aCards))
+    b = ACB.newTrade(bCards, function() return 1 end, function() return "two-1" end, function(_, msg) a:receive("bob-realm", msg) return true end, swapper(bCards))
+    b:listen("alice-realm")
+    a:offer("bob-realm", "npc:590") -- not owned
+    equal(a.session, nil)
+    equal(a.status, "Choose a card from your binder.")
+    a:offer("bob-realm", "npc:589") -- the only copy
+    equal(b.session.take, "npc:589")
+    b:reply("npc:639")
+    a:confirm()
+    b:confirm()
+    equal(aCards["npc:589"], nil)
+    equal(aCards["npc:639"], 1)
+    equal(bCards["npc:639"], nil)
+    equal(bCards["npc:589"], 1)
 end)

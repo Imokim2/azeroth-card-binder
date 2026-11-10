@@ -2,12 +2,12 @@ local _, ACB = ...
 
 ACB.tradePrefix = "AzerothBinder1"
 
--- A swap runs over addon whispers: the sender offers a spare card (O), the partner replies with one
+-- A swap runs over addon whispers: the sender offers a card they own (O), the partner replies with one
 -- of their own (R), and each side confirms the exact pair (C). When a side has sent its confirmation
 -- and received the partner's, it applies the swap once through `apply`.
 -- `wanted` returns the cards the player is looking for, as a list of catalog keys.
 function ACB.newTrade(counts, now, makeID, send, apply, wanted)
-    local trade = { seen = {}, status = "Choose a partner and a duplicate to offer." }
+    local trade = { seen = {}, status = "Choose a partner and a card to offer." }
     apply = apply or function() return true end
 
     function trade:reset(status)
@@ -30,8 +30,9 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
         return session and not session.applied
     end
 
-    local function hasDuplicate(key)
-        return ACB.cards[key] and (counts[key] or 0) >= 2
+    -- Any card in the binder can be traded, including a last copy.
+    local function owns(key)
+        return ACB.cards[key] and (counts[key] or 0) >= 1
     end
 
     local function confirmation(session)
@@ -59,8 +60,8 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
 
     function trade:offer(peer, key)
         if busy(self) or not peer then return end
-        if not hasDuplicate(key) then
-            self.status = "Choose a card with at least two copies."
+        if not owns(key) then
+            self.status = "Choose a card from your binder."
             return
         end
         local id = makeID()
@@ -72,8 +73,8 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
     function trade:reply(key)
         local session = self:active()
         if not session or not session.take or session.give then return end
-        if not hasDuplicate(key) or key == session.take then
-            self.status = "Choose a different card with at least two copies."
+        if not owns(key) or key == session.take then
+            self.status = "Choose a different card from your binder."
             return
         end
         session.give = key
@@ -90,11 +91,11 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
         if apply(session.give, session.take, session.peer, session.id) then
             self.status = ("Trade complete. You gave %s and received %s."):format(give.name, take.name)
         else
-            self.status = "The trade could not finish because your duplicate is no longer available."
+            self.status = "The trade could not finish because the card you offered is no longer in your binder."
         end
     end
 
-    -- Tell the partner which spare cards you have (S) and which cards you are looking for (W).
+    -- Tell the partner which spare cards (second copies) you have (S) and which cards you are looking for (W).
     function trade:shareLists()
         local session = self:active()
         if not session then
@@ -123,8 +124,8 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
     function trade:confirm()
         local session = self:active()
         if not session or session.sentConfirm or not session.take or not session.give then return end
-        if not hasDuplicate(session.give) then
-            self.status = "The offered duplicate is no longer available."
+        if not owns(session.give) then
+            self.status = "The card you offered is no longer in your binder."
             return
         end
         local sent, reason = send(session.peer, confirmation(session))
@@ -158,7 +159,7 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
             if self.seen[seenKey] then return end
             self.seen[seenKey] = true
             session.id, session.take = id, give
-            self.status = "Offer received. Choose your duplicate and send a reply."
+            self.status = "Offer received. Choose your card and send a reply."
         elseif command == "R" and take == "" and id == session.id and session.initiator
             and not session.take and session.give ~= give then
             session.take = give

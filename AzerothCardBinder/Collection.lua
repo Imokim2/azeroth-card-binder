@@ -207,15 +207,16 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         return true
     end
 
-    -- Hand over one spare copy of `give` in return for one copy of `take`. Returns false when the
-    -- player no longer has a spare copy to give.
+    -- Hand over one copy of `give` in return for one copy of `take`: any card in the binder, a last copy included.
+    -- Returns false when the player no longer has the card to give.
     -- `partner` and `tradeId` identify the trade in the ledger; both players hold the same trade id.
     function collection:swap(give, take, partner, tradeId)
         local counts = saved.counts
         local out, into = ACB.cards[give], ACB.cards[take]
-        if not out or not into or (counts[give] or 0) < 2 then return false end
+        if not out or not into or (counts[give] or 0) < 1 then return false end
         counts[give] = counts[give] - 1
         record("tradeOut", give, { before = counts[give] + 1, partner = partner, trade = tradeId })
+        if counts[give] == 0 then counts[give] = nil end -- a card that is gone is simply not in the binder
         local before = counts[take] or 0
         counts[take] = before + 1
         record("tradeIn", take, { before = before, partner = partner, trade = tradeId })

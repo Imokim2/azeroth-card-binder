@@ -322,7 +322,7 @@ local function initialize()
     ACB.initZoneBar(saved)
     ACB.initSocial(saved, sendView, GetTime, function(delay, action)
         if delay <= 0 or not C_Timer then action() else C_Timer.After(delay, action) end
-    end)
+    end, report)
     ACB.initSlash(saved, { report = report, log = log, diagnostics = diagnostics, apiValue = apiValue })
 end
 

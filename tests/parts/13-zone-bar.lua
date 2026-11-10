@@ -29,7 +29,7 @@ test("the bar shows the cards owned in the place you are in and follows you from
     local keep = { saved.counts["npc:589"], saved.zoneBar, GetRealZoneText, GetInstanceInfo, instance }
     local function label()
         for _, widget in ipairs(widgets) do
-            if widget.text and widget.text:find("^Westfall   ") then return widget.text end
+            if widget.text and widget.text:find("^Westfall ") then return widget.text end
         end
     end
     saved.zoneBar = nil
@@ -43,7 +43,7 @@ test("the bar shows the cards owned in the place you are in and follows you from
     equal(bar.shown, true)
     equal(bar.high, total)
     equal(bar.value, owned)
-    equal(label(), ("Westfall   %d / %d"):format(owned, total))
+    equal(label(), ("Westfall %d / %d"):format(owned, total))
 
     -- Finding a card moves the bar.
     saved.counts["npc:589"] = (saved.counts["npc:589"] or 0) + 1
@@ -89,53 +89,75 @@ test("the bar shows the cards owned in the place you are in and follows you from
     ACB.refreshZoneBar()
 end)
 
-test("the bar takes the honour bar's place, gives it back when it is off or has nothing to show, and works without one", function()
+test("the bar takes the reputation bar's place, gives it back when it is off or has nothing to show, and works without one", function()
     local saved = AzerothCardBinderDB
     local bar = AzerothCardBinderZoneBar
     local keep = { saved.zoneBar, saved.zoneBarSpot, GetRealZoneText }
     saved.zoneBar, saved.zoneBarSpot = nil, nil
     GetRealZoneText = function() return "Westfall" end
 
-    -- No honour bar: the bar sits above the experience bar, as before.
+    -- No bar to replace: the bar sits above the experience bar.
     ACB.refreshZoneBar()
-    equal(ACB.honourBar(), nil)
+    equal(ACB.replacedBar(), nil)
     equal(bar.shown, true)
 
-    -- The game's honour bar appears: the zone bar sits exactly over it and the honour bar goes see-through.
-    local honour = CreateFrame("StatusBar", "HonorWatchBar", UIParent)
-    honour:SetSize(570, 12)
-    equal(ACB.honourBar(), honour)
+    -- The game's reputation bar appears: the zone bar sits exactly over it and the reputation bar goes see-through.
+    local reputation = CreateFrame("StatusBar", "ReputationWatchBar", UIParent)
+    reputation:SetSize(570, 12)
+    equal(ACB.replacedBar(), reputation)
     ACB.refreshZoneBar()
-    equal(honour.alpha, 0)
-    equal(bar.point[2], honour)
+    equal(reputation.alpha, 0)
+    equal(bar.point[2], reputation)
     equal(bar.shown, true)
 
-    -- A place with no set: the honour bar is back, and returns to see-through when there is a set again.
+    -- A place with no set: the reputation bar is back, and returns to see-through when there is a set again.
     GetRealZoneText = function() return "Stormwind City" end
     bar.OnEvent(bar, "ZONE_CHANGED_NEW_AREA")
     equal(bar.shown, false)
-    equal(honour.alpha, 1)
+    equal(reputation.alpha, 1)
     GetRealZoneText = function() return "Westfall" end
     bar.OnEvent(bar, "ZONE_CHANGED_NEW_AREA")
-    equal(honour.alpha, 0)
+    equal(reputation.alpha, 0)
 
-    -- Switched off, the honour bar is given back; switched on, it is taken again.
+    -- Switched off, the reputation bar is given back; switched on, it is taken again.
     SlashCmdList.AZEROTHCARDBINDER("bar")
     equal(bar.shown, false)
-    equal(honour.alpha, 1)
+    equal(reputation.alpha, 1)
     SlashCmdList.AZEROTHCARDBINDER("bar")
     equal(bar.shown, true)
-    equal(honour.alpha, 0)
+    equal(reputation.alpha, 0)
 
     -- A bar the player dragged elsewhere stays where they put it.
     saved.zoneBarSpot = { x = 5, y = 60 }
     ACB.refreshZoneBar()
     equal(bar.point[1], "BOTTOM")
     equal(bar.point[2], UIParent)
-
+    saved.zoneBarSpot = nil
     SlashCmdList.AZEROTHCARDBINDER("bar debug")
-    saved.zoneBar, saved.zoneBarSpot, GetRealZoneText = unpack(keep, 1, 3)
-    _G.HonorWatchBar = nil
+
+    -- With no bar by that name, the upper of two stacked tracking containers is the one: the lower is the experience bar.
+    _G.ReputationWatchBar = nil
     ACB.refreshZoneBar()
-    equal(honour.alpha, 1)
+    equal(reputation.alpha, 1)
+    local main = CreateFrame("Frame", "MainStatusTrackingBarContainer", UIParent)
+    main:SetSize(570, 14)
+    main.top = 40
+    equal(ACB.replacedBar(), nil) -- a single bar is the experience bar: nothing to replace
+    local second = CreateFrame("Frame", "SecondaryStatusTrackingBarContainer", UIParent)
+    second:SetSize(570, 14)
+    second.top = 56
+    equal(ACB.replacedBar(), second)
+    ACB.refreshZoneBar()
+    equal(second.alpha, 0)
+    equal(main.alpha, nil)
+    equal(bar.point[2], second)
+    second.top, main.top = 40, 56 -- the other way up
+    equal(ACB.replacedBar(), main)
+    main.shown = false -- a hidden container is not a bar in use
+    equal(ACB.replacedBar(), nil)
+
+    saved.zoneBar, saved.zoneBarSpot, GetRealZoneText = unpack(keep, 1, 3)
+    _G.MainStatusTrackingBarContainer, _G.SecondaryStatusTrackingBarContainer = nil, nil
+    ACB.refreshZoneBar()
+    equal(second.alpha, 1)
 end)

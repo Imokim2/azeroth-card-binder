@@ -7,11 +7,20 @@ local _, ACB = ...
 --                /acb privacy stops your binder from being viewable.
 ACB.viewPrefix = "AzerothBinderV1"
 
-local ENTRIES_PER_MESSAGE, PART_INTERVAL = 19, 0.3
+local ENTRIES_PER_MESSAGE = 19
 local catalogSize = 0
 for _, page in ipairs(ACB.pages) do catalogSize = catalogSize + #page.cards end
 local MAX_PARTS = math.ceil(catalogSize / ENTRIES_PER_MESSAGE)
-local REQUEST_WINDOW, SERVE_GAP = 30 + MAX_PARTS * PART_INTERVAL, 10
+-- The game limits how fast addon messages can go out (a short burst, then about one a second), and a message over
+-- the limit is refused, not queued. The first parts go quickly, the rest at a steady pace, and a refused part is
+-- sent again a moment later.
+local BURST_PARTS, BURST_INTERVAL, STEADY_INTERVAL, RETRY_DELAY, RETRIES = 8, 0.3, 1.1, 1.3, 10
+local function partDelay(index)
+    if index <= BURST_PARTS then return BURST_INTERVAL * (index - 1) end
+    return BURST_INTERVAL * (BURST_PARTS - 1) + STEADY_INTERVAL * (index - BURST_PARTS)
+end
+local REQUEST_WINDOW, SERVE_GAP = 30 + partDelay(MAX_PARTS) + RETRY_DELAY * 3, 10
+local NO_ANSWER_AFTER = 8
 local TITLE_REPLY_WINDOW, TITLE_RETRY, TITLE_CACHE = 5, 20, 45
 local MENUS = { "MENU_UNIT_PLAYER", "MENU_UNIT_PARTY", "MENU_UNIT_RAID_PLAYER", "MENU_UNIT_FRIEND" }
 local PORTRAIT_MENUS = { "MENU_UNIT_TARGET", "MENU_UNIT_FOCUS", "MENU_UNIT_BOSS" }
@@ -123,8 +132,10 @@ function ACB.inspectLines(counts, shiny)
     return lines
 end
 
-function ACB.initSocial(saved, send, now, after)
-    local pending, served, inbox = {}, {}, {}
+-- `report` tells the player what is happening with a request they made (it prints to chat).
+function ACB.initSocial(saved, send, now, after, report)
+    report = report or function() end
+    local pending, served, inbox, heard = {}, {}, {}, {}
     local titleChecks, titleServed = {}, {}
 
     function ACB.peerTitle(peer)
@@ -193,8 +204,19 @@ function ACB.initSocial(saved, send, now, after)
         if not peer then return false, "Enter a player's name first." end
         local sent, reason = send(peer, "Q")
         if sent then
-            pending[peer] = now() + REQUEST_WINDOW
-            inbox[peer] = nil
+            local window = now() + REQUEST_WINDOW
+            pending[peer], inbox[peer], heard[peer] = window, nil, nil
+            -- Say something if nothing comes back, instead of leaving the player looking at nothing.
+            after(NO_ANSWER_AFTER, function()
+                if pending[peer] == window and not heard[peer] then
+                    report(("No answer from %s yet. They need this add-on, to be online, outdoors and out of combat, and to allow viewing (Settings)."):format(peer))
+                end
+            end)
+            after(REQUEST_WINDOW + 1, function()
+                if pending[peer] == window and inbox[peer] then
+                    report(("Only part of %s's binder arrived. Ask again."):format(peer))
+                end
+            end)
             return true
         end
         return false, reason
@@ -222,13 +244,37 @@ function ACB.initSocial(saved, send, now, after)
             return
         end
         if message == "Q" then
-            if saved.inspectable == false then return end
+            -- Always answer, so the other player is told why nothing is coming rather than left waiting.
+            if saved.inspectable == false then
+                send(peer, "N|private")
+                return
+            end
             local started = now()
-            if served[peer] and started < served[peer] then return end
+            if served[peer] and started < served[peer] then
+                send(peer, "N|wait")
+                return
+            end
             local parts = ACB.encodeBinder(saved)
-            served[peer] = started + math.max(SERVE_GAP, #parts * PART_INTERVAL)
+            served[peer] = started + math.max(SERVE_GAP, partDelay(#parts) + RETRY_DELAY)
+            local function sendPart(part, attempt)
+                if not send(peer, part) and attempt < RETRIES then
+                    after(RETRY_DELAY, function() sendPart(part, attempt + 1) end)
+                end
+            end
             for index, part in ipairs(parts) do
-                after(PART_INTERVAL * (index - 1), function() send(peer, part) end)
+                after(partDelay(index), function() sendPart(part, 1) end)
+            end
+            return
+        end
+        local refusal = message:match("^N|(%a+)$")
+        if refusal then
+            if not pending[peer] or now() > pending[peer] then return end
+            heard[peer] = true
+            if refusal == "private" then
+                pending[peer], inbox[peer] = nil, nil
+                report(peer .. " keeps their binder private.")
+            elseif refusal == "wait" then
+                report(peer .. "'s binder is still on its way. Give it a few seconds.")
             end
             return
         end
@@ -241,6 +287,7 @@ function ACB.initSocial(saved, send, now, after)
             book = { total = total, got = {}, counts = {}, shiny = {} }
             inbox[peer] = book
         end
+        heard[peer] = true
         if book.got[index] then return end
         book.got[index] = true
         for short, count, star in list:gmatch("([co]%d+)=(%d+)(%*?)") do
@@ -279,7 +326,11 @@ function ACB.initSocial(saved, send, now, after)
                 root:CreateButton("Offer a card trade", function() ACB.prepareTrade(peer) end)
                 root:CreateButton("View their binder", function()
                     local ok, reason = ACB.requestBinder(peer)
-                    if not ok then print("World of Warcards  " .. (reason or "Could not ask for their binder.")) end
+                    if ok then
+                        report("Asked " .. peer .. " for their binder. It opens when they answer.")
+                    else
+                        report(reason or "Could not ask for their binder.")
+                    end
                 end)
             end)
         end
