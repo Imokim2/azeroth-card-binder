@@ -31,7 +31,7 @@ Links a public key to a Discord account. Body: `{ key, visibility, sentAt, ident
 - `key`: Ed25519 public key, 64 lowercase hex characters.
 - `visibility`: `"public"` (shown on the leaderboard and profile pages) or `"private"` (stored, never listed).
 - `sentAt`: when the app built the request; refused if more than a day from the server's clock.
-- `identityToken`: the Discord sign-in the app obtained; the server turns it into a Discord account id.
+- `identityToken`: the one-time authorisation code Discord sent to the player's browser (letters, digits, `.`, `_`, `-`, 8 to 200 characters). The server exchanges it, with the Discord application's secret, for a short-lived token that can read only the player's own Discord id (scope `identify`), reads the id and revokes the token. A bad, used or expired code answers `bad_identity`.
 - `proof`: Ed25519 signature, by `key`, of the canonical JSON of every other field plus `"purpose": "register"`. It proves the sender holds the private key.
 
 `200 { playerId, visibility, minClient }`. Registering the same key twice returns the same player. A Discord account that signs in again with a **new** key keeps its player and ledger; its older keys are revoked, so a lost or leaked key is replaced by signing in again. Until the sign-in provider is connected the server answers `registration_closed`.

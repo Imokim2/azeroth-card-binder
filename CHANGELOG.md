@@ -4,6 +4,8 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- Discord sign-in for the companion app and server: the player signs in with Discord in their own browser; the app never sees a Discord password or secret, and the server keeps only the Discord id. Registration opens once the Discord application's secret is set on the server.
+
 - Companion app core: the sync engine joins everything into one loop (upload, roll tape, standings, `Data/Sync.lua`) that runs whenever the game finishes writing its saved file. Still no window around it.
 - Server: a flag review API (clear, confirm, ban) behind an admin token, luck that a reviewer has cleared is not flagged again, and a rebuild job that recomputes everything derived from the stored batches (a page of players at a time, with a dry run).
 
