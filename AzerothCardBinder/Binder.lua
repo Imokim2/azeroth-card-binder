@@ -85,7 +85,7 @@ function ACB.initUI(saved, trade)
         local options, current = {}, 0
         for _, entry in ipairs(ACB.pages) do
             for _, card in ipairs(entry.cards) do
-                if (saved.counts[card.key] or 0) >= 2 then
+                if (saved.counts[card.key] or 0) >= 1 then
                     options[#options + 1] = card.key
                     if selected == card.key then current = #options end
                 end
@@ -223,7 +223,7 @@ function ACB.initUI(saved, trade)
 
         mine.header:SetText(name)
         theirs.header:SetText(partnerName ~= "" and partnerName or "Partner")
-        chooseText:SetText(offering and offering.name or "Choose a duplicate")
+        chooseText:SetText(offering and offering.name or "Choose a card")
         local function fill(side, card, owned, shiny)
             side.card.frame:SetShown(card ~= nil)
             if card then side.card:set(card, owned, shiny) end
@@ -251,15 +251,16 @@ function ACB.initUI(saved, trade)
             theirs.note:SetText(live and "Press Share lists to see their spares." or "")
             theirs.note:SetTextColor(unpack(muted))
         end
-        local wantsFromMe = names(sharedWants, function(key) return (saved.counts[key] or 0) >= 2 end)
+        local wantsFromMe = names(sharedWants, function(key) return (saved.counts[key] or 0) >= 1 end)
         if wantsFromMe ~= "" then
             mine.note:SetText("They want from you: " .. wantsFromMe)
             mine.note:SetTextColor(unpack(green))
         else
-            mine.note:SetText(sharedWants and "They are not looking for your spares." or "")
+            mine.note:SetText(sharedWants and "They are not looking for any card you own." or "")
             mine.note:SetTextColor(unpack(muted))
         end
-        mine.hint:SetText(offering and "" or "Use < and > to pick one of your spare cards.")
+        mine.hint:SetText(offering and ((saved.counts[offering.key] or 0) == 1 and "Your only copy: it leaves your binder." or "")
+            or "Use < and > to pick one of your cards.")
         theirs.hint:SetText(take and "" or (session and "Waiting for their card." or "Their offer will appear here."))
         local function accepted(side, yes)
             side.accepted:SetText(yes and "Accepted" or "Not accepted")
@@ -275,7 +276,7 @@ function ACB.initUI(saved, trade)
     function ACB.prepareTrade(name)
         if type(name) == "string" and name ~= "" then
             partner:SetText(name)
-            trade.status = "Trading with " .. name .. ". Pick a spare card and Send offer, or Listen for theirs."
+            trade.status = "Trading with " .. name .. ". Pick a card and Send offer, or Listen for theirs."
         end
         ACB.open("trade")
     end

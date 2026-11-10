@@ -50,15 +50,27 @@ function ACB.initSlash(saved, tools)
             report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
         elseif cmd == "bar" or cmd == "bar reset" or cmd == "bar debug" then
             if cmd == "bar debug" then
-                local honour, name = ACB.honourBar()
-                report(honour and ("Honour bar found: " .. tostring(name)) or "No honour bar found; the zone bar sits above the experience bar.")
+                local slot, name = ACB.replacedBar()
+                report(slot and ("Replacing the bar: " .. tostring(name)) or "No bar to replace; the zone bar sits above the experience bar.")
                 for _, frame in ipairs({ "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer",
-                    "MainMenuExpBar", "ReputationWatchBar", "HonorWatchBar" }) do
-                    report(frame .. ": " .. (_G[frame] and "exists" or "missing"))
+                    "MainMenuExpBar", "ReputationWatchBar", "ReputationStatusBar" }) do
+                    local found = _G[frame]
+                    local wide = found and found.GetWidth and ACB.read(found:GetWidth(), "number")
+                    local tall = found and found.GetHeight and ACB.read(found:GetHeight(), "number")
+                    local shown = found and found.IsShown and ACB.read(found:IsShown(), "boolean")
+                    report(("%s: %s%s"):format(frame, found and "exists" or "missing", found and (" %sx%s %s"):format(
+                        wide and math.floor(wide) or "?", tall and math.floor(tall) or "?", shown and "shown" or "hidden") or ""))
+                end
+                local manager = _G.StatusTrackingBarManager
+                if type(manager) == "table" and type(manager.bars) == "table" then
+                    for index, found in pairs(manager.bars) do
+                        report(("manager bar %s: kind %s, %s"):format(tostring(index), tostring(type(found) == "table" and ACB.read(found.barIndex, "number")),
+                            type(found) == "table" and found.IsShown and ACB.read(found:IsShown(), "boolean") and "shown" or "hidden"))
+                    end
                 end
             elseif cmd == "bar reset" then
                 saved.zoneBarSpot = nil
-                report("The zone card bar is back in the honour bar's place.")
+                report("The zone card bar is back in the reputation bar's place.")
             else
                 ACB.setSetting(saved, "zoneBar", not ACB.settingOn(saved, "zoneBar"))
                 report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))

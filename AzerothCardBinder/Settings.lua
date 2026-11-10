@@ -8,7 +8,7 @@ ACB.settings = {
     { key = "hints", name = "Tooltip hints", default = true,
         note = "Add your card status to creature and node tooltips." },
     { key = "zoneBar", name = "Zone card bar", default = true,
-        note = "Takes the honour bar's place to show the cards you own in the zone or dungeon you are in." },
+        note = "Takes the reputation bar's place (in green) to show the cards you own in the zone or dungeon you are in." },
     { key = "inspectable", name = "Let others view my binder", default = true,
         note = "Other players using the add-on can ask to see which cards you own." },
     { key = "diagnostics", name = "Record diagnostics", default = false,

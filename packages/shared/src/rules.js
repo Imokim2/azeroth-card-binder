@@ -56,7 +56,7 @@ function applyEvent(state, event, catalog) {
             break;
         }
         case "tradeOut": {
-            if (before < 2 || event.count !== before - 1) return "trade";
+            if (before < 1 || event.count !== before - 1) return "trade";
             if (event.partner === "" || event.trade === "") return "trade";
             break;
         }

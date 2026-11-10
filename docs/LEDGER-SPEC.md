@@ -43,7 +43,7 @@ The server replays the events from `seq` 1 and keeps a running count per card an
 - `drop`: `count` is the previous count plus 1. `shiny` may be 1 only when no earlier event for that card had `shiny` 1: a card has at most one shiny copy, found by whichever drop rolls it first. In ranked mode `tape` must be at least 1 and greater than the `tape` of every earlier event.
 - `craft`: the previous count is 0 and `count` is 1; `dust` equals minus the craft cost of the card's rarity, from the catalog; `shiny` is 0.
 - `recycle`: the previous count is at least 2, `count` is one less, and `dust` equals the recycle yield of the card's rarity.
-- `tradeOut`: the previous count is at least 2 and `count` is one less. `tradeIn`: `count` is the previous count plus 1. Both need `partner` and `trade`.
+- `tradeOut`: the previous count is at least 1 (any card in the binder can be traded, a last copy included) and `count` is one less. `tradeIn`: `count` is the previous count plus 1. Both need `partner` and `trade`.
 - `set`: `key` is a set code and every card of that set is owned at that point.
 - `mode`: `key` is `casual` or `ranked`.
 - The running dust balance never goes below 0.

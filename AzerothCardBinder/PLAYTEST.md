@@ -44,7 +44,7 @@ Every card has a description of at most 80 characters so it fits the card face. 
 
 ## Zone card bar
 
-A bar in the honour bar's place above the experience bar shows the cards you own in the place you are in, such as "Westfall   12 / 87". Walk between two zones and through a dungeon door and check it changes by itself, and that it moves when you find a card. In a city with no set it hides. Check it sits exactly over where the honour bar was and the honour bar is gone while it shows, that switching it off (Settings or `/acb bar`) brings the honour bar back, and that it does not overlap the action bars or the reputation bar. If it does not find the honour bar, `/acb bar debug` lists the bars it looked for; send me that. Otherwise, Shift-drag it into place (the position is kept) and tell me where it sat. `/acb bar` switches it off and on, `/acb bar reset` clears a dragged position.
+A green bar in the reputation bar's place, above the experience bar, shows the cards you own in the place you are in, such as "Westfall 12 / 87". Check it sits exactly over where the reputation bar was and that bar is gone while it shows. Walk between two zones and through a dungeon door and check it changes by itself, and that it moves when you find a card. In a city with no set it hides and the reputation bar returns. Switching it off (Settings or `/acb bar`) also brings the reputation bar back. If it does not take the right bar's place, `/acb bar debug` lists the bars it looked for; send me that. Shift-drag moves it (the position is kept); `/acb bar reset` clears that.
 
 ## Stacking drop chance
 
@@ -71,7 +71,7 @@ Mob and node tooltips add a line saying whether the card is in your binder, its 
 
 ## Trading
 
-Both players need this version and at least one duplicate each. Meet outdoors and out of combat, open `/acb trade`, then enter each other's character name. Use `Name-Realm` if needed.
+Both players need this version and at least one card each. Any card can be traded, including a last copy (the panel says "Your only copy"). Meet outdoors and out of combat, open `/acb trade`, then enter each other's character name. Use `Name-Realm` if needed.
 
 1. One player clicks **Listen**. The other chooses a duplicate with **<** or **>** and clicks **Send offer**.
 2. The listener chooses a different duplicate and clicks **Send reply**.
