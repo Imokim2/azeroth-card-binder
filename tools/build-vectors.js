@@ -8,6 +8,8 @@
 const fs = require("fs");
 const path = require("path");
 const ledger = require("../packages/shared/src/ledger.js");
+const rules = require("../packages/shared/src/rules.js");
+const catalog = require("../packages/shared/catalog.json");
 
 const out = process.env.VECTORS_OUT || path.join(__dirname, "..", "packages", "shared", "vectors");
 fs.mkdirSync(out, { recursive: true });
@@ -134,6 +136,95 @@ for (const entry of entries) {
     });
 }
 write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(entries), cases });
+
+// ---- What events must mean (section 3.1 of the spec): one valid binder history and many that break a rule ----
+// These events are not chained (no prev or h); the rules look only at what each event says.
+{
+    const owned = (key) => { if (!catalog.cards[key]) throw new Error("not a card: " + key); return key; };
+    const common = owned("npc:589"), commonB = owned("npc:590"), epic = owned("npc:573"), legendary = owned("npc:639");
+    // The smallest set whose cards are all creatures, to finish in the valid history.
+    const set = catalog.sets.filter((entry) => entry.cards.every((key) => key.startsWith("npc:")))
+        .sort((a, b) => a.cards.length - b.cards.length || a.code.localeCompare(b.code))[0];
+    const recycleLegendary = catalog.dust.recycle[catalog.cards[legendary].rarity];
+    const craftCommon = catalog.dust.craft[catalog.cards[commonB].rarity];
+    if (recycleLegendary < craftCommon) throw new Error("the sample history needs a legendary recycle to pay for a common craft");
+    const trade = { partner: "bob-realmname", trade: "111-482910-1" };
+    // Each step is { kind, key, count, ...extras }. seq and t are filled in; every other field defaults to 0 or "".
+    const finished = [];
+    let n = 0;
+    const history = [
+        { kind: "drop", key: legendary, count: 1, shiny: 1 },
+        { kind: "drop", key: legendary, count: 2 },
+        { kind: "recycle", key: legendary, count: 1, dust: recycleLegendary },
+        { kind: "craft", key: commonB, count: 1, dust: -craftCommon },
+        { kind: "drop", key: common, count: 1 },
+        { kind: "drop", key: common, count: 2 },
+        { kind: "tradeOut", key: common, count: 1, ...trade },
+        { kind: "tradeIn", key: epic, count: 1, ...trade },
+        { kind: "mode", key: "ranked", count: 0 },
+        { kind: "drop", key: common, count: 2, tape: 1 },
+        { kind: "drop", key: common, count: 3, tape: 5 },
+    ];
+    for (const key of set.cards) {
+        const have = history.filter((step) => step.key === key && step.kind !== "tradeOut" && step.kind !== "recycle").length;
+        if (have === 0) history.push({ kind: "drop", key, count: 1, tape: 6 + history.length });
+    }
+    history.push({ kind: "set", key: set.code, count: 0 });
+    history.push({ kind: "mode", key: "casual", count: 0 });
+    const build = (steps) => steps.map((step, index) => ({
+        seq: index + 1, t: 1000 + index * 10, dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char, ...step,
+    }));
+    // Counts in the steps above are the counts after each event; a drop of an owned card after trading must follow on.
+    const validEvents = build(history);
+    const checked = rules.replay(validEvents, catalog);
+    if (!checked.ok) throw new Error("the sample history breaks a rule: " + JSON.stringify(checked));
+
+    const bad = [];
+    // Start from the first `upTo` events of the valid history, then add one event that breaks a rule.
+    const breaks = (name, rule, upTo, extra) => {
+        const steps = history.slice(0, upTo).concat(extra);
+        bad.push({ name, rule, index: upTo, events: build(steps) });
+    };
+    const kindAt = (kind, from = 0) => history.findIndex((step, index) => index >= from && step.kind === kind);
+    breaks("a drop that skips a copy", "count", 1, [{ kind: "drop", key: legendary, count: 3 }]);
+    breaks("a second shiny for the same card", "shiny", 2, [{ kind: "drop", key: legendary, count: 3, shiny: 1 }]);
+    breaks("a shiny that is not the first copy", "shiny", 1, [{ kind: "drop", key: legendary, count: 2, shiny: 1 }]);
+    breaks("a drop of a card that does not exist", "unknown-card", 0, [{ kind: "drop", key: "npc:999999999", count: 1 }]);
+    breaks("a drop that moves dust", "dust", 0, [{ kind: "drop", key: common, count: 1, dust: 5 }]);
+    breaks("a craft of a card already owned", "craft", 4, [{ kind: "craft", key: commonB, count: 1, dust: -craftCommon }]);
+    breaks("a craft that pays the wrong dust", "dust", 3, [{ kind: "craft", key: commonB, count: 1, dust: -(craftCommon - 1) }]);
+    breaks("a craft with too little dust", "dust", 0, [{ kind: "craft", key: commonB, count: 1, dust: -craftCommon }]);
+    breaks("a recycle of the last copy", "recycle", 1, [{ kind: "recycle", key: legendary, count: 0, dust: recycleLegendary }]);
+    breaks("a recycle that earns the wrong dust", "dust", 2, [{ kind: "recycle", key: legendary, count: 1, dust: recycleLegendary + 1 }]);
+    breaks("a trade away of the last copy", "trade", 4, [{ kind: "tradeOut", key: commonB, count: 0, ...trade }]);
+    breaks("a trade in with no trade id", "trade", 6, [{ kind: "tradeIn", key: epic, count: 1, partner: "bob-realmname", trade: "" }]);
+    breaks("a trade partner on a plain drop", "trade", 0, [{ kind: "drop", key: common, count: 1, partner: "bob-realmname" }]);
+    breaks("a set that is not complete", "set", 6, [{ kind: "set", key: set.code, count: 0 }]);
+    breaks("a set finished twice", "set", history.length - 1, [{ kind: "set", key: set.code, count: 0 }]);
+    breaks("a set code that does not exist", "unknown-set", 0, [{ kind: "set", key: "ZZZZ", count: 0 }]);
+    breaks("a mode that does not exist", "mode", 0, [{ kind: "mode", key: "hardcore", count: 0 }]);
+    const ranked = kindAt("mode");
+    breaks("a ranked drop that reuses a tape entry", "tape", ranked + 3, [{ kind: "drop", key: common, count: 4, tape: 5 }]);
+    breaks("a ranked drop with no tape entry", "tape", ranked + 1, [{ kind: "drop", key: common, count: 2, tape: 0 }]);
+    breaks("a casual drop that claims a tape entry", "tape", 0, [{ kind: "drop", key: common, count: 1, tape: 1 }]);
+    const clock = build(history.slice(0, 2));
+    clock[1].t = clock[0].t - 1;
+    bad.push({ name: "time that goes backwards", rule: "time", index: 1, events: clock });
+    for (const item of bad) {
+        const result = rules.replay(item.events, catalog);
+        if (result.ok || result.rule !== item.rule || result.index !== item.index) {
+            throw new Error(`rules vector "${item.name}" does not behave as stated: ${JSON.stringify(result)}`);
+        }
+    }
+    const snapshot = { counts: checked.state.counts, dust: checked.state.dust, sets: checked.state.sets };
+    write("rules.json", {
+        note: "Events here are not chained. catalogVersion is the catalog these were made against.",
+        catalogVersion: catalog.catalogVersion, set: set.code,
+        valid: { events: validEvents, finalState: checked.state, snapshot },
+        invalid: bad,
+    });
+    console.log(`rules vectors written: ${validEvents.length} valid events, ${bad.length} rule breaks`);
+}
 
 // ---- The same vectors as Lua, for tests that have no JSON parser ----
 const lua = (value, indent = "") => {
