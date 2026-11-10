@@ -50,10 +50,16 @@ function ACB.createSettingsView(frame, saved)
     button(settingsView, "Open diagnostics log", 172, titleY + 48, 170, function() SlashCmdList.AZEROTHCARDBINDER("log") end)
     label(settingsView, "GameFontHighlightSmall", 32, titleY + 90, muted,
         "Everything here is also a slash command: /acb popup, hints, privacy, diag, boss and title.")
+    local verification = label(settingsView, "GameFontHighlightSmall", 32, titleY + 118, muted, "")
 
     function settingsView:refresh()
         for _, setting in ipairs(ACB.settings) do checks[setting.key]:SetChecked(ACB.settingOn(saved, setting)) end
         titleName:SetText(saved.title or "No title shown")
+        if ACB.ledger then
+            local verified = ACB.ledger:check()
+            verification:SetText(ACB.ledger:status() .. "  /acb verify checks again.")
+            verification:SetTextColor(unpack(verified and muted or { 0.9, 0.45, 0.35 }))
+        end
     end
     return settingsView
 end

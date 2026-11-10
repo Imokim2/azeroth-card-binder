@@ -50,6 +50,12 @@ function ACB.initSlash(saved, tools)
             report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
         elseif cmd == "dust" then
             report(("Binder Dust: %d. Open a card in the binder to recycle a spare or craft a missing card."):format(saved.dust or 0))
+        elseif cmd == "verify" then
+            ACB.ledger:check()
+            report(ACB.ledger:status())
+            report(("Mode: %s. Cards owned: %d. Attempts counted: %d."):format(saved.mode, ACB.countKeys(saved.counts),
+                ACB.sumValues(saved.attempts)))
+            if ACB.refresh then ACB.refresh() end
         elseif cmd == "settings" or cmd == "options" then
             ACB.open("settings")
         elseif cmd == "popup" then

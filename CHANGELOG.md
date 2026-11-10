@@ -4,6 +4,9 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- The binder keeps a tamper-evident ledger of every card found, crafted, recycled and traded, and checks it each time you log in. If a card count is edited by hand, the Settings tab and `/acb verify` say "Binder unverified". Nothing about playing changes. Saved data moves to version 2 on first load; cards, dust, titles and trade history are kept.
+- Every roll is now counted, kept apart from the bad-luck counter, and the add-on remembers recently rolled corpses across a reload so the same corpse cannot be rolled twice.
+
 - Engineering foundations (Phase 0 of the [roadmap](docs/ROADMAP.md)): repository layout, continuous integration, the written ledger specification with shared test vectors, contributing guide, decision records, and a release script. Nothing changes for players.
 
 ## 0.2.9

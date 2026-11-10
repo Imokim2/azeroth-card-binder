@@ -1,5 +1,8 @@
 local _, ACB = ...
 
+-- How many recently rolled sources are remembered in the saved file.
+ACB.rolledMemory = 2000
+
 -- Sanitize every value from a game API before inspecting it.
 function ACB.read(value, expectedType)
     if issecretvalue and issecretvalue(value) then return nil end
@@ -84,11 +87,26 @@ function ACB.progress(counts, page, bossesOnly)
 end
 
 -- `found` is called with the card and what happened whenever a card is added to the binder, and
--- `completed` with the set and its reward title the first time a set is finished.
-function ACB.newCollection(saved, random, report, log, found, completed)
+-- `completed` with the set and its reward title the first time a set is finished. `ledger` (optional)
+-- receives an event for every change to the binder.
+function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     found = found or function() end
     completed = completed or function() end
     local collection = { saved = saved, rolled = {} }
+    local function record(...)
+        if ledger then return ledger:record(...) end
+    end
+
+    -- Sources already rolled stay rolled across a reload: the newest ones are kept in a ring in the saved file.
+    local ring = saved.rolledGuids
+    for _, guid in ipairs(ring or {}) do collection.rolled[guid] = true end
+    local function remember(guid)
+        collection.rolled[guid] = true
+        if not ring then return end
+        local slot = saved.rolledNext or 1
+        ring[slot] = guid
+        saved.rolledNext = slot % ACB.rolledMemory + 1
+    end
 
     -- The first time every card of a set is owned, record it and hand out the set's title.
     local function checkSet(index, announce)
@@ -107,6 +125,7 @@ function ACB.newCollection(saved, random, report, log, found, completed)
             if announce and not alreadyFinished and not saved.titleHidden then saved.title = saved.title or page.reward end
         end
         if announce and not alreadyFinished then
+            record("set", page.code)
             report(("Set complete: %s%s"):format(page.title, page.reward and (". Title earned: " .. page.reward) or ""))
             completed(page, page.reward)
         end
@@ -131,13 +150,14 @@ function ACB.newCollection(saved, random, report, log, found, completed)
             return
         end
 
-        self.rolled[guid] = true
+        remember(guid)
         local threshold = ACB.rates[observedRank] or ACB.rates[card.rank]
         saved.misses = saved.misses or {}
         -- The card's listed rate keeps the guarantee stable when the source's rank is unreadable.
         local misses, limit = ACB.luck(saved, card)
         local guaranteed = limit ~= nil and misses + 1 >= limit
         local dropped = guaranteed or random(1, 10000) <= threshold
+        if saved.attempts then saved.attempts[card.key] = (saved.attempts[card.key] or 0) + 1 end
         log(("%s: %s at %g%% (%s)"):format(origin, card.name, threshold / 100,
             guaranteed and "card, bad-luck safety net" or dropped and "card" or "miss"))
         if not dropped then
@@ -147,11 +167,13 @@ function ACB.newCollection(saved, random, report, log, found, completed)
         saved.misses[card.key] = nil
 
         local counts = saved.counts
-        counts[card.key] = (counts[card.key] or 0) + 1
+        local before = counts[card.key] or 0
+        counts[card.key] = before + 1
         -- The shiny copy is a one-time bonus per card: once you own it, later finds are plain duplicates.
         saved.shiny = saved.shiny or {}
         local shiny = not saved.shiny[card.key] and random(1, ACB.shinyOdds) == 1
         if shiny then saved.shiny[card.key] = true end
+        record("drop", card.key, { before = before, shiny = shiny })
         report(("%s: %s (x%d)"):format(shiny and "Shiny card found" or "Card found", card.name, counts[card.key]))
         checkAchievements(card)
         found(card, { count = counts[card.key], first = counts[card.key] == 1, shiny = shiny })
@@ -160,12 +182,16 @@ function ACB.newCollection(saved, random, report, log, found, completed)
 
     -- Hand over one spare copy of `give` in return for one copy of `take`. Returns false when the
     -- player no longer has a spare copy to give.
-    function collection:swap(give, take)
+    -- `partner` and `tradeId` identify the trade in the ledger; both players hold the same trade id.
+    function collection:swap(give, take, partner, tradeId)
         local counts = saved.counts
         local out, into = ACB.cards[give], ACB.cards[take]
         if not out or not into or (counts[give] or 0) < 2 then return false end
         counts[give] = counts[give] - 1
-        counts[take] = (counts[take] or 0) + 1
+        record("tradeOut", give, { before = counts[give] + 1, partner = partner, trade = tradeId })
+        local before = counts[take] or 0
+        counts[take] = before + 1
+        record("tradeIn", take, { before = before, partner = partner, trade = tradeId })
         report(("Traded %s for %s (x%d)"):format(out.name, into.name, counts[take]))
         checkAchievements(into)
         found(into, { count = counts[take], first = counts[take] == 1, trade = true })
@@ -180,6 +206,7 @@ function ACB.newCollection(saved, random, report, log, found, completed)
         local yield = ACB.dustFor(card)
         saved.counts[key] = count - 1
         saved.dust = (saved.dust or 0) + yield
+        record("recycle", key, { before = count, dust = yield })
         report(("Recycled a spare %s: +%d Binder Dust (%d in all)"):format(card.name, yield, saved.dust))
         return true
     end
@@ -192,6 +219,7 @@ function ACB.newCollection(saved, random, report, log, found, completed)
         if (saved.dust or 0) < cost then return false end
         saved.dust = saved.dust - cost
         saved.counts[key] = 1
+        record("craft", key, { before = 0, dust = -cost })
         if saved.misses then saved.misses[key] = nil end
         report(("Crafted %s for %d Binder Dust (%d left)"):format(card.name, cost, saved.dust))
         checkAchievements(card)

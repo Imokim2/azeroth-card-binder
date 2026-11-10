@@ -27,6 +27,8 @@ loadAddon("CatalogForever.lua")
 loadAddon("CatalogNodes.lua")
 loadAddon("Lore.lua")
 loadAddon("Achievements.lua")
+loadAddon("Hash.lua")
+loadAddon("Ledger.lua")
 loadAddon("Collection.lua")
 loadAddon("Trade.lua")
 
@@ -1858,5 +1860,7 @@ test("no add-on code file grows past the size rule, and every listed file exists
     end
     assert(listed >= 20, "the .toc should list the add-on's files")
 end)
+
+assert(loadfile("tests/ledger.lua"))(test, equal, ACB, guid, ignore, widgets)
 
 print(("%d checks passed under %s"):format(passed, _VERSION))

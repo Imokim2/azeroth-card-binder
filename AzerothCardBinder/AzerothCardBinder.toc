@@ -11,6 +11,8 @@ CatalogForever.lua
 CatalogNodes.lua
 Lore.lua
 Achievements.lua
+Hash.lua
+Ledger.lua
 Collection.lua
 Trade.lua
 CardModels.lua

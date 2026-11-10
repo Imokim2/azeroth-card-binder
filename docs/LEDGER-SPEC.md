@@ -140,8 +140,17 @@ The server knows every entry, so it can recheck each drop. Entries are never reu
 - Every implementation's tests load the shared vectors and compare results exactly. The Lua vectors are in `packages/shared/vectors/vectors.lua`; the JSON ones are in the same folder.
 - To change a vector, change [tools/build-vectors.js](../tools/build-vectors.js) and run it. `node --test tests/vectors.test.js` fails if the committed files differ from what the generator writes.
 
-## 11. Known limits
+## 11. The add-on's local check value
+
+The add-on keeps one more value that is not part of an event and is never uploaded: `stateSum`, 12 hex characters, which stands for the card counts and the dust balance as the ledger last left them. It is two 24-bit sums, each adding the first half of SHA-256 of `<card key>=<count>` for every owned card and `dust=<balance>` when the balance is above zero. Adding or removing a copy changes the sum by two small hashes instead of rehashing the whole binder.
+
+On load the add-on recomputes the sum from the saved counts and compares it. A mismatch, a broken chain, a head that does not match the last event, or a missing sum on a binder that has a history all mean the binder is **unverified**: the add-on switches to Casual mode and says so. A missing sum on a brand new binder, or one just upgraded from schema 1, is instead filled in from the counts at that moment, so a binder that existed before the ledger starts its history from the cards it already owns.
+
+This is a local check for accidents and casual edits. Anyone who reads the add-on can recompute the sum, so only the server's replay of the events is a real check.
+
+## 12. Known limits
 
 - The ledger cannot show that a kill happened. See the roadmap's plausibility checks and evidence process.
 - A player who edits the add-on can still choose which tape entries to spend. The server bounds this by rate limits and by comparing attempts with drops.
+- A binder upgraded from schema 1 has cards the ledger never saw drop, so its events cannot account for them. Phase B must decide how the server treats such a binder (play Casual, or ranked from a fresh binder). Until then it is verified locally only.
 - The 32-character hash is a truncation of SHA-256. It is plenty to catch edits and accidents; it is not meant to resist someone who controls both ends of the chain, which this design never claims to stop.

@@ -132,16 +132,16 @@ Done when: a new contributor can clone the repo, run the tests and build a relea
 
 ### Phase A: add-on foundation (no server). About 5 to 8 days.
 
-- [ ] **A1. SHA-256 in pure Lua** (`AzerothCardBinder/Hash.lua`) using the `bit` library WoW provides. Test against the standard vectors under LuaJIT.
-- [ ] **A2. Saved-data schema 2** with a migration from the current format. Never lose a player's cards: migration test with a real saved file from this version.
-- [ ] **A3. Attempts counters**: `saved.attempts[key]` incremented on every roll in `Collection.lua`. Keep `misses` (pity) separate.
-- [ ] **A4. Persistent roll memory**: `saved.rolledGuids` so the same corpse cannot be re-rolled after a reload.
-- [ ] **A5. Ledger and hash chain** in a new `Ledger.lua`. Every drop, craft, recycle and trade appends an event. Verify the chain on load; if it fails, set `saved.mode = "casual"` and show "binder unverified" on the Settings tab.
-- [ ] **A6. Ledger pruning** after the app acknowledges (`ackSeq` from `Sync.lua`), keeping `head`.
-- [ ] **A7. Settings tab**: mode switch (Casual / Ranked), link code shown, status line ("Last synced", "Unverified").
-- [ ] **A8. `/acb verify`** prints the chain status and counts to chat.
-- [ ] **A9. Trade receipts**: each trade carries a shared trade id and both partners record `tradeIn` / `tradeOut` with the partner name.
-- [ ] **A10. Tests** for all of the above in `tests/run.lua`, including a tampered ledger and a migrated file.
+- [x] **A1. SHA-256 in pure Lua** (`AzerothCardBinder/Hash.lua`) using the `bit` library WoW provides, with two-argument calls only. It passes all ten shared vectors under LuaJIT. Not yet run inside the game.
+- [x] **A2. Saved-data schema 2** with a migration from the current format (`SavedData.lua`). The test loads `tests/fixtures/saved-v1.lua`, a hand-written stand-in shaped like a version 1 file, not a copy of a real one. Still to do: add a real player's file as a second fixture.
+- [x] **A3. Attempts counters**: `saved.attempts[key]` incremented on every roll in `Collection.lua`. Keep `misses` (pity) separate.
+- [x] **A4. Persistent roll memory**: `saved.rolledGuids` so the same corpse cannot be re-rolled after a reload.
+- [x] **A5. Ledger and hash chain** in a new `Ledger.lua`. Every drop, craft, recycle and trade appends an event. Verify the chain on load; if it fails, set `saved.mode = "casual"` and show "binder unverified" on the Settings tab.
+- [ ] **A6. Ledger pruning** after the app acknowledges (`ackSeq` from `Sync.lua`), keeping `head`. Until it ships the ledger only grows, at about 250 bytes an event, and a player who never installs the app never prunes it. Measured on a desktop with LuaJIT's JIT switched off (the game's own Lua may be slower), 5,000 events take about 0.4 s to verify at login and about 0.15 ms each to write. Decide a cap for never-synced binders when this item is built.
+- [ ] **A7. Settings tab**: status line done ("Binder verified: N changes on record" or "Binder unverified: reason"). The mode switch and the link code wait for Phase C and B7, because Ranked cannot do anything before the tape exists; "Last synced" waits for `Sync.lua`.
+- [x] **A8. `/acb verify`** prints the chain status and counts to chat.
+- [x] **A9. Trade receipts**: each trade carries a shared trade id and both partners record `tradeIn` / `tradeOut` with the partner name.
+- [x] **A10. Tests** for all of the above in `tests/run.lua`, including a tampered ledger and a migrated file.
 
 Done when: all tests pass; editing any count by hand marks the binder unverified; reloading mid-loot cannot re-roll; in-game check passes (Section 6).
 

@@ -281,13 +281,17 @@ end
 local function initialize()
     saved = ACB.tableOrEmpty(AzerothCardBinderDB)
     AzerothCardBinderDB = saved
-    ACB.cleanSavedData(saved)
+    local _, upgraded = ACB.cleanSavedData(saved)
+    local ledger = ACB.newLedger(saved, time, ACB.characterName)
+    ledger:begin(upgraded)
+    ledger:check()
+    ACB.ledger = ledger
     collection = ACB.newCollection(saved, math.random, report, log, function(card, info)
         if ACB.showToast then ACB.showToast(card, info) end
     end, function(page, reward)
         if ACB.showSetToast then ACB.showSetToast(page, reward) end
         if ACB.refresh then ACB.refresh() end
-    end)
+    end, ledger)
     ACB.collection = collection
     collection:restoreAchievements()
     if not ACB.isBinderTitle(saved.title) or not saved.titles[saved.title] then saved.title = nil end
@@ -295,8 +299,8 @@ local function initialize()
     trade = ACB.newTrade(saved.counts, GetTime, function()
         sequence = sequence + 1
         return ("%d-%d-%d"):format(time(), math.random(1, 999999), sequence)
-    end, sendTrade, function(give, take, peer)
-        local done = collection:swap(give, take)
+    end, sendTrade, function(give, take, peer, tradeId)
+        local done = collection:swap(give, take, peer, tradeId)
         if done then ACB.logTrade(saved, give, take, peer, time(), report) end
         ACB.refresh()
         return done
