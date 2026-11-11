@@ -6,7 +6,7 @@
 local addon = "AzerothCardBinder"
 local ACB = {}
 for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "Achievements.lua",
-    "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Tape.lua", "Collection.lua", "SavedData.lua" }) do
+    "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Tape.lua", "Collection.lua", "SavedData.lua", "Reports.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 local clock = 1700000000
@@ -40,6 +40,11 @@ else
 end
 -- Cards on the wanted list, for tests: WARCARDS_WANTED=npc:589,npc:639
 for key in (os.getenv("WARCARDS_WANTED") or ""):gmatch("[^,]+") do saved.wanted = saved.wanted or {}; saved.wanted[key] = true end
+-- Reports waiting to be sent, for tests: WARCARDS_REPORTS=bob-realmname:trading:a note,carl-realmname:cheating:
+for entry in (os.getenv("WARCARDS_REPORTS") or ""):gmatch("[^,]+") do
+    local peer, reason, note = entry:match("^([^:]+):([^:]+):(.*)$")
+    assert(ACB.addReport(saved, peer, reason, note, time()))
+end
 saved.title = "Zul'Gurub \226\128\147 Ünïcöde" -- raw and escaped non-ASCII text, as a player's title could be
 
 -- The game's serializer layout.

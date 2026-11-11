@@ -196,6 +196,30 @@ test("start: a pass runs at once, again when the game rewrites its file, and sto
   }
 });
 
+test("reports made in the game go to the server once, and the settled ones come back in Sync.lua for the add-on to forget", async () => {
+  const folder = await mkdtemp(join(tmpdir(), "warcards-reports-"));
+  const saved = join(folder, "WTF", "Account", "ACCOUNT1", "SavedVariables", "AzerothCardBinder.lua");
+  await mkdir(join(saved, ".."), { recursive: true });
+  process.env["WARCARDS_REPORTS"] = "bob-realmname:trading:never gave the card,carl-realmname:cheating:";
+  try { lua("tests/tools/write-saved.lua", saved, "0"); } finally { delete process.env["WARCARDS_REPORTS"]; }
+  try {
+    const w = await world();
+    const install = await describeInstall(folder);
+    const engine = new Engine({ install, client: w.client, playerId: w.playerId, standingsEveryMs: 0 });
+    await engine.syncOnce();
+    const rows = w.env.raw.prepare("SELECT token, target_name, reason, note FROM reports ORDER BY target_name").all() as { token: string; target_name: string; reason: string; note: string }[];
+    assert.deepEqual(rows.map((row) => [row.target_name, row.reason, row.note]), [["bob-realmname", "trading", "never gave the card"], ["carl-realmname", "cheating", ""]]);
+    assert.equal(w.calls.filter((call) => call === "POST /v1/report").length, 1);
+    // The tokens the server settled are written for the add-on; a second pass does not send them again.
+    const text = await readFile(install.syncPath, "utf8");
+    for (const row of rows) assert.ok(text.includes(`["${row.token}"] = true,`), text);
+    await engine.syncOnce();
+    assert.equal(w.calls.filter((call) => call === "POST /v1/report").length, 1);
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
 test("the player's wanted cards go to the board once, again only when they change, and the board comes back in Sync.lua", async () => {
   const folder = await mkdtemp(join(tmpdir(), "warcards-wanted-"));
   const saved = join(folder, "WTF", "Account", "ACCOUNT1", "SavedVariables", "AzerothCardBinder.lua");

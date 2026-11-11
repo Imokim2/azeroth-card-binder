@@ -8,7 +8,7 @@ import type { LedgerState } from "./shared.ts";
 import { StoreConflict } from "./store.ts";
 import { peerName } from "./names.ts";
 import type { BoardEntry, Commit, IngestStore, IssuedTape, LeaderboardStore, Player, PlayerStore, StoredLedger, TapeStore, TradeStore, Visibility } from "./store.ts";
-import type { Derived, FlagRecord, ModerationStore, RebuildStore, WantedEntry, WantedStore } from "./store.ts";
+import type { Derived, FlagRecord, ModerationStore, RebuildStore, ReportRecord, ReportStore, WantedEntry, WantedStore } from "./store.ts";
 import type { LedgerEvent } from "./ledger.ts";
 import { gunzip } from "./gzip.ts";
 
@@ -23,7 +23,7 @@ export class KeyUnavailable extends Error {}
 
 const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at, p.epoch, p.reset_at";
 
-export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore, WantedStore {
+export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore, WantedStore, ReportStore {
   readonly #db: Db;
   constructor(db: Db) {
     this.#db = db;
@@ -98,6 +98,8 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     // Children before parents, so nothing is left pointing at a player that is gone.
     const tables = ["wanted", "trade_taint", "trades", "set_completions", "flags", "drops", "batches", "tapes", "characters", "scores", "ledger_state", "keys"];
     await this.#db.batch([
+      // Reports the player sent and reports about them, before the player they point at goes.
+      { sql: `DELETE FROM reports WHERE reporter_id IN (${marks}) OR target_id IN (${marks})`, params: [...ids, ...ids] },
       ...tables.map((table) => ({ sql: `DELETE FROM ${table} WHERE player_id IN (${marks})`, params: ids })),
       { sql: `DELETE FROM players WHERE id IN (${marks})`, params: ids },
     ]);
@@ -283,6 +285,47 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       });
     }
     return entries;
+  }
+
+  async playerOfCharacter(peer: string): Promise<string | null> {
+    const rows = await this.#db.all<{ player_id: string }>(
+      `SELECT c.player_id FROM characters c JOIN players p ON p.id = c.player_id
+       WHERE p.archived_from IS NULL AND lower(c.name) || '-' || lower(replace(replace(replace(c.realm, ' ', ''), '''', ''), '-', '')) = ?
+       ORDER BY c.last_seen DESC LIMIT 1`, [peer]);
+    return rows[0]?.player_id ?? null;
+  }
+
+  async add(report: ReportRecord, since: number): Promise<"stored" | "duplicate"> {
+    const repeated = await this.#db.all<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM reports WHERE reporter_id = ? AND (token = ? OR (target_name = ? AND created_at > ?))`,
+      [report.reporterId, report.token, report.targetName, since]);
+    if ((repeated[0]?.n ?? 0) > 0) return "duplicate";
+    await this.#db.batch([{
+      sql: "INSERT INTO reports (id, reporter_id, token, target_name, target_id, reason, note, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+      params: [report.id, report.reporterId, report.token, report.targetName, report.targetId, report.reason, report.note, report.createdAt],
+    }]);
+    return "stored";
+  }
+
+  async countSince(reporterId: string, since: number): Promise<number> {
+    const rows = await this.#db.all<{ n: number }>("SELECT COUNT(*) AS n FROM reports WHERE reporter_id = ? AND created_at > ?", [reporterId, since]);
+    return rows[0]?.n ?? 0;
+  }
+
+  async reportersOf(targetId: string, since: number): Promise<number> {
+    const rows = await this.#db.all<{ n: number }>("SELECT COUNT(DISTINCT reporter_id) AS n FROM reports WHERE target_id = ? AND created_at > ?", [targetId, since]);
+    return rows[0]?.n ?? 0;
+  }
+
+  async hasOpenFlag(playerId: string, kind: string): Promise<boolean> {
+    const rows = await this.#db.all<{ n: number }>("SELECT COUNT(*) AS n FROM flags WHERE player_id = ? AND kind = ? AND state = 'open'", [playerId, kind]);
+    return (rows[0]?.n ?? 0) > 0;
+  }
+
+  async about(targetId: string, limit: number): Promise<ReportRecord[]> {
+    const rows = await this.#db.all<{ id: string; reporter_id: string; token: string; target_name: string; target_id: string | null; reason: string; note: string; created_at: number }>(
+      "SELECT id, reporter_id, token, target_name, target_id, reason, note, created_at FROM reports WHERE target_id = ? ORDER BY created_at DESC LIMIT ?", [targetId, limit]);
+    return rows.map((row) => ({ id: row.id, reporterId: row.reporter_id, token: row.token, targetName: row.target_name, targetId: row.target_id, reason: row.reason, note: row.note, createdAt: row.created_at }));
   }
 
   async playerIds(after: string | null, limit: number): Promise<string[]> {

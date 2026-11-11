@@ -231,6 +231,21 @@ export async function deleteAccount(options: ClientOptions): Promise<{ status: "
   return { status: "deleted" };
 }
 
+// Send reports about other players. Signed by the player's key. Returns the tokens the server has settled (stored, repeated,
+// or about the player themselves); the rest are kept by the add-on and sent again. At most 10 go in one request.
+export async function sendReports(options: ClientOptions, reports: { token: string; target: string; reason: string; note: string }[]): Promise<{ status: "reported"; done: string[] } | Outcome> {
+  const done: string[] = [];
+  for (let from = 0; from < reports.length; from += 10) {
+    const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now(), reports: reports.slice(from, from + 10) };
+    const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "report" }));
+    const reply = await sendWithRetries(options, "/v1/report", { ...body, sig });
+    if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+    if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+    if (Array.isArray(reply.body["done"])) for (const token of reply.body["done"]) if (typeof token === "string") done.push(token);
+  }
+  return { status: "reported", done };
+}
+
 // Tell the server which cards this player is looking for, so other players can see them (the wanted board). Signed by the
 // player's key. The server lists only public players and drops the list of a private one; an empty list clears it.
 export async function uploadWanted(options: ClientOptions, cards: string[]): Promise<{ status: "stored"; listed: boolean } | Outcome> {

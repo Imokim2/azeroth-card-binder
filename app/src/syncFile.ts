@@ -11,6 +11,8 @@ export type SyncData = {
   firsts?: { setCode: string; title: string; by: string; at: number }[];
   // The wanted board: what public players are looking for (roadmap: wanted tab).
   wanted?: { name: string; characters: string[]; cards: string[] }[];
+  // Tokens of the reports the server has taken, so the add-on can forget them.
+  reportsDone?: string[];
 };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
@@ -72,6 +74,11 @@ export function syncFileText(data: SyncData): string {
       extra.push(`        { name = ${luaString(entry.name, "name")}, characters = { ${entry.characters.map((name) => luaString(name, "character")).join(", ")} }, cards = { ${entry.cards.map((card) => `"${card}"`).join(", ")} } },`);
     }
     extra.push("    },");
+  }
+  if (data.reportsDone) {
+    if (data.reportsDone.length > 200) throw new Error("too many report tokens");
+    for (const token of data.reportsDone) if (!/^[0-9a-z]{6,40}$/.test(token)) throw new Error("a report token is not a token");
+    extra.push("    reportsDone = {", ...data.reportsDone.map((token) => `        ["${token}"] = true,`), "    },");
   }
   return [
     "local _, ACB = ...",

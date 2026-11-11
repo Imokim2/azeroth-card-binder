@@ -138,6 +138,23 @@ export interface WantedStore {
   board(limit: number): Promise<WantedEntry[]>;
 }
 
+// Reports from one player about another.
+export type ReportRecord = {
+  id: string; reporterId: string; token: string; targetName: string; targetId: string | null; reason: string; note: string; createdAt: number;
+};
+export interface ReportStore {
+  // The player who has played a character with this name ("name-realmname"), leaving out archived binders.
+  playerOfCharacter(peer: string): Promise<string | null>;
+  // Store a report. "duplicate" (nothing stored) when this player already sent this token, or reported this character since `since`.
+  add(report: ReportRecord, since: number): Promise<"stored" | "duplicate">;
+  // How many reports this player has sent since `since`, and how many different players have reported this one.
+  countSince(reporterId: string, since: number): Promise<number>;
+  reportersOf(targetId: string, since: number): Promise<number>;
+  hasOpenFlag(playerId: string, kind: string): Promise<boolean>;
+  // The newest reports about a player, for the people who review them.
+  about(targetId: string, limit: number): Promise<ReportRecord[]>;
+}
+
 export type IssuedTape = { start: number; end: number; commitment: string };
 
 export interface TapeStore {

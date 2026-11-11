@@ -186,6 +186,28 @@ function ACB.initSocial(saved, send, now, after, report)
         end
     end)
 
+    -- Report this player for cheating. The second click, within a few seconds, is the one that counts, so one slip sends
+    -- nothing; for another reason, or to add a note, use /acb report.
+    local reportButton = CreateFrame("Button", nil, inspector, "UIPanelButtonTemplate")
+    reportButton:SetSize(120, 24)
+    reportButton:SetPoint("BOTTOMRIGHT", -28, 24)
+    reportButton:SetText("Report")
+    local confirmUntil = 0
+    reportButton:SetScript("OnClick", function()
+        if not inspector.peer then return end
+        if now() > confirmUntil then
+            confirmUntil = now() + 6
+            reportButton:SetText("Click to confirm")
+            after(6, function() if now() >= confirmUntil then reportButton:SetText("Report") end end)
+            report(("Report %s for cheating? Click Report again within a few seconds. For another reason, type /acb report."):format(inspector.peer))
+            return
+        end
+        confirmUntil = 0
+        reportButton:SetText("Report")
+        local ok, problem = ACB.addReport(saved, inspector.peer, "cheating", "", time())
+        report(ok and ("Report about %s saved. The companion app sends it the next time it syncs."):format(inspector.peer) or problem)
+    end)
+
     function ACB.showInspect(peer, counts, shiny)
         inspector.peer, inspector.counts, inspector.shiny = peer, counts, shiny
         inspector.title:SetText(peer .. "'s binder" .. (ACB.isVerified(peer) and " (verified)" or ""))

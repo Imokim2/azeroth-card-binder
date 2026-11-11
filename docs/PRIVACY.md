@@ -10,6 +10,7 @@ Written for the website's privacy page and the app's About window. It describes 
 - **Your ledger**: every card found, crafted, recycled and traded, with times, the partner's character name and the trade id.
 - **Your score** and when it last changed.
 - **The cards you are looking for** (your wanted list), only if you are public. A private player's list is not kept.
+- **Reports** you send about other players (the character's name, a reason and a short note you wrote) and reports other players sent about you. Only the people who run the service read them; they are not shown to anyone else, and they are erased with the rest when you delete your data.
 - **Counts the server needs to check play**: attempts per card, roll-tape positions used, and flags raised by the fair-play checks (with a reviewer's note if a person looked).
 
 ## What is shown to others

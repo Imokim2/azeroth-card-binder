@@ -82,6 +82,8 @@ function ACB.initSlash(saved, tools)
                 report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))
             end
             if ACB.refreshZoneBar then ACB.refreshZoneBar() end
+        elseif cmd == "report" or cmd:match("^report%s") then
+            ACB.reportCommand(saved, message:match("^%s*%S+%s*(.-)%s*$"), report, time())
         elseif cmd == "newbinder" or cmd == "newbinder confirm" then
             if cmd == "newbinder" then
                 report("This erases your binder on this account and starts a new one. Do it to join the Ranked ladder, which only counts a binder that was Ranked from its first drop.")

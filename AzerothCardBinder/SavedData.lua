@@ -39,6 +39,34 @@ function ACB.startNewBinder(saved)
     return backup
 end
 
+-- Reports waiting to be sent (see Reports.lua): kept only when exactly the expected shape.
+ACB.reportReason = { cheating = true, trading = true, other = true }
+ACB.maxPendingReports, ACB.maxReportNote = 20, 120
+
+function ACB.cleanReports(saved)
+    local function validToken(value)
+        return type(value) == "string" and #value >= 6 and #value <= 40 and not value:find("[^0-9a-z]")
+    end
+    local kept = {}
+    for _, report in ipairs(type(saved.reports) == "table" and saved.reports or {}) do
+        if type(report) == "table" and validToken(report.token) and type(report.target) == "string" and #report.target <= 80
+            and ACB.reportReason[report.reason] and type(report.note) == "string" and #report.note <= ACB.maxReportNote
+            and not report.note:find("%c") and type(report.at) == "number" and #kept < ACB.maxPendingReports then
+            kept[#kept + 1] = { token = report.token, target = report.target, reason = report.reason, note = report.note, at = report.at }
+        end
+    end
+    saved.reports = kept
+    local seen = type(saved.reportedAt) == "table" and saved.reportedAt or {}
+    saved.reportedAt = {}
+    local count = 0
+    for peer, at in pairs(seen) do
+        if type(peer) == "string" and #peer <= 80 and type(at) == "number" and count < 200 then
+            saved.reportedAt[peer] = at
+            count = count + 1
+        end
+    end
+end
+
 -- The saved-data version this build writes. Version 1 files (before the ledger) are upgraded in place:
 -- nothing in them is removed, and the ledger and the new counters start empty.
 ACB.schema = 2
@@ -84,6 +112,7 @@ local function cleanLedgerFields(saved)
         saved.run = nil
     end
     saved.exactMode = saved.exactMode == true or nil
+    ACB.cleanReports(saved)
     saved.ledger = tableOrEmpty(saved.ledger)
     local head = saved.head
     if type(head) ~= "table" or type(head.seq) ~= "number" or head.seq < 0 or head.seq ~= math.floor(head.seq)

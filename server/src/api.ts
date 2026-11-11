@@ -8,7 +8,8 @@ import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
 import { binderSets, fairPlayPage, homePage, notFoundPage, playerPage, privacyPage, wantedPage } from "./site.ts";
 import { rebuild } from "./rebuild.ts";
-import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, TapeStore, TradeStore, Visibility, WantedStore } from "./store.ts";
+import { acceptReports, parseReports } from "./reports.ts";
+import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, ReportStore, TapeStore, TradeStore, Visibility, WantedStore } from "./store.ts";
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
 
@@ -30,6 +31,7 @@ export type Deps = {
   limits?: { general: Limiter; strict: Limiter } | undefined;
   rebuild: RebuildStore;
   wanted: WantedStore;
+  reports: ReportStore;
   adminToken?: string | undefined; // the secret that opens /v1/admin/*; without it those routes do not exist
   catalog: Catalog;
   tapeSecret?: string | undefined; // derives the roll tape; Ranked is closed (ranked_unavailable) without it
@@ -326,6 +328,32 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return json(200, { stored: listed ? cards.length : 0, listed }, { "cache-control": "no-store" });
   }
 
+  // Reports about other players. Signed by the reporter's key. Stored as notes for a person to read.
+  async function report(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    const { key, sentAt, sig } = body ?? {};
+    if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string") throw new ApiError("bad_request");
+    const reports = parseReports(body?.["reports"]); // checked and tidied; the signature covers what was sent
+    if (Math.abs(deps.now() - (sentAt as number)) > 86_400) throw new ApiError("bad_request", { field: "sentAt" });
+    const holder = await deps.players.findByActiveKey(key);
+    if (!holder) throw new ApiError("unknown_key");
+    if (holder.status !== "active") throw new ApiError("banned");
+    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, reports: body?.["reports"], purpose: "report" })))) throw new ApiError("bad_signature");
+    return json(200, await acceptReports(deps, holder, reports), { "cache-control": "no-store" });
+  }
+
+  // For the people who review: what was reported about one player.
+  async function adminReports(request: Request, url: URL): Promise<Response> {
+    await requireAdmin(request);
+    const player = url.searchParams.get("player") ?? "";
+    if (!/^[0-9A-Z]{26}$/.test(player)) throw new ApiError("bad_request", { field: "player" });
+    const asked = Number(url.searchParams.get("limit") ?? 50);
+    const limit = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, 200) : 50;
+    const reports = (await deps.reports.about(player, limit)).map(({ token, ...rest }) => { void token; return rest; });
+    return json(200, { reports }, { "cache-control": "no-store" });
+  }
+
   async function wantedBoard(): Promise<Response> {
     const entries = await deps.wanted.board(100);
     return json(200, { generatedAt: deps.now(), players: entries.map((entry) => ({ playerId: entry.playerId, displayName: entry.displayName, characters: entry.characters, cards: entry.cards, updatedAt: entry.updatedAt })) }, { "cache-control": `public, max-age=${PUBLIC_CACHE_SECONDS}` });
@@ -346,7 +374,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
   }
 
   // The routes that make or remove things, or take secrets, get the tighter limit.
-  const STRICT = /^\/v1\/(register|reset|delete|admin\/.*)$/;
+  const STRICT = /^\/v1\/(register|reset|delete|report|admin\/.*)$/;
   async function enforceLimits(request: Request, pathname: string): Promise<void> {
     if (!deps.limits || pathname === "/v1/health") return;
     const client = request.headers.get("cf-connecting-ip") ?? "unknown";
@@ -403,6 +431,8 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))
       : url.pathname === "/v1/firsts" ? allow("firsts", ["GET"], firsts)
       : url.pathname === "/v1/wanted" ? allow("wanted", ["GET", "POST"], () => (method === "POST" ? setWanted(request) : wantedBoard()))
+      : url.pathname === "/v1/report" ? allow("report", ["POST"], () => report(request))
+      : url.pathname === "/v1/admin/reports" ? allow("admin-reports", ["GET"], () => adminReports(request, url))
       : url.pathname === "/v1/admin/flags" ? allow("admin-flags", ["GET"], () => adminFlags(request, url))
       : reviewMatch ? allow("admin-review", ["POST"], () => adminReview(request, reviewMatch[1] as string))
       : url.pathname === "/v1/admin/rebuild" ? allow("admin-rebuild", ["POST"], () => adminRebuild(request))

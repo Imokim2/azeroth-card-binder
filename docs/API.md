@@ -66,7 +66,7 @@ Each client address has a general limit (120 requests a minute) and a stricter o
 
 ### Checks that flag instead of reject
 
-After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour), `trade-unmatched` (a trade half the partner never confirmed within seven days; see below) and `trade-half-missing` (raised against a player who uploaded after a trade and never recorded their half of it). Flags carry no public detail and are not part of any response.
+After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour), `trade-unmatched` (a trade half the partner never confirmed within seven days; see below) and `trade-half-missing` (raised against a player who uploaded after a trade and never recorded their half of it) and `reported` (three different players reported the player within a week; see `POST /v1/report`). Flags carry no public detail and are not part of any response.
 
 ### `GET /v1/leaderboard?limit=N`
 
@@ -79,6 +79,14 @@ Who finished each set first, among the players who may appear on the ladder (pub
 ### `POST /v1/wanted` and `GET /v1/wanted`
 
 The cards a player is looking for, so other players can see them at once. `POST` body: `{ key, sentAt, cards, sig }`, where `cards` is a list of up to 60 distinct catalog keys (`npc:589`, `obj:1731`) and `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt, cards }` plus `"purpose": "wanted"`. `sentAt` must be within a day of the server's clock. It replaces the player's whole list. `200 { stored, listed }`: only a **public** player's list is kept (`listed: true`); a private player's is stored as empty. `GET` answers `200 { generatedAt, players: [{ playerId, displayName, characters, cards, updatedAt }] }` for up to 100 public, non-banned players with at least one character, most recently changed first. Cached for 60 seconds. The same list is the website's `/wanted` page. The companion app uploads the list whenever it changes and brings the board into `Data/Sync.lua` for the add-on's Wanted tab.
+
+### `POST /v1/report`
+
+A player tells us about another player: a suspected cheat or a trade that went wrong. Body: `{ key, sentAt, reports, sig }`, where `reports` is 1 to 10 of `{ token, target, reason, note }` and `sig` is the Ed25519 signature, by the reporter's key, of the canonical JSON of `{ key, sentAt, reports }` plus `"purpose": "report"`. `token` is 6 to 40 characters of `0-9a-z` that the add-on makes up, so a lost reply can be sent again safely. `target` is the character as players name each other (`name-realmname`, lower case). `reason` is `cheating`, `trading` or `other`; `note` is up to 120 characters with no control characters (it may be empty). `200 { done, stored }`: `done` lists the tokens that are settled (stored, repeated, or about the reporter's own character), so the companion app can tell the add-on to forget them; `stored` is how many were new. A reporter can store 20 reports a day (the rest are left out of `done` and sent again later) and one about the same character a day; a name no known player has played is stored with no player attached. Nothing is hidden or changed for the reported player: when three different players have reported them within a week the server opens one `reported` flag for a person to review, which does not hide them from the ladder. A banned reporter gets `banned`. This route has the stricter rate limit.
+
+### `GET /v1/admin/reports?player=<id>&limit=N`
+
+For reviewers, behind the admin token (see Admin routes below): the newest reports about one player, `{ reports: [{ id, reporterId, targetName, targetId, reason, note, createdAt }] }` (`limit` 1 to 200, default 50).
 
 ### Only Ranked counts
 

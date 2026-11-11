@@ -288,6 +288,7 @@ local function initialize()
     if ledger:check() then
         ledger:prune(ACB.sync and ACB.sync.acks)
         ACB.resumeRanked(saved, ledger)
+        ACB.pruneReports(saved, ACB.sync and ACB.sync.reportsDone)
     end
     ACB.ledger = ledger
     collection = ACB.newCollection(saved, math.random, report, log, function(card, info)

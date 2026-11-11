@@ -32,7 +32,7 @@ export default {
     const db = fromD1(env.DB);
     const store = new SqlStore(db);
     const handle = createApi({
-      players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, rebuild: store, wanted: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
+      players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, rebuild: store, wanted: store, reports: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },
       minClient: env.MIN_CLIENT, version: env.VERSION,

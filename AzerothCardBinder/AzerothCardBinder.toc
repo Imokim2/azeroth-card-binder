@@ -29,6 +29,7 @@ Settings.lua
 Social.lua
 Swaps.lua
 Requests.lua
+Reports.lua
 FolioUi.lua
 FolioIndex.lua
 Folio.lua

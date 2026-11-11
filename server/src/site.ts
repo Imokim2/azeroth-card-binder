@@ -172,6 +172,7 @@ export function privacyPage(): string {
 <li><strong>Your history</strong>: every card found, crafted, recycled and traded, with times, the trade partner's character name and the trade id.</li>
 <li><strong>Your score</strong> and when it last changed.</li>
 <li><strong>The cards you are looking for</strong> (your wanted list), only if you are public. A private player's list is not kept.</li>
+<li><strong>Reports</strong> you send about other players (the character's name, a reason and a short note you wrote) and reports other players sent about you. Only the people who run the service read them; they are not shown to anyone else, and they are erased with the rest when you delete your data.</li>
 <li><strong>Counts the server needs to check play</strong>: attempts per card, random-number positions used, and any fair-play flags with a reviewer's note.</li>
 </ul>
 

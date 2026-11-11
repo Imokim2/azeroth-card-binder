@@ -21,6 +21,7 @@ local parts = {
     "14-ladder",
     "15-trading-social",
     "16-wanted-tab",
+    "17-reports",
 }
 
 local source, ranges, line = {}, {}, 1

@@ -59,3 +59,13 @@ test("deleting the account removes the player on the server, and the same key ca
   const refused = await fetchStandings({ ...client, attempts: 1 }, null);
   assert.equal(refused.status, "retry-later");
 });
+
+test("only well-formed report tokens are ever written into Sync.lua, which the game runs", async () => {
+  const { syncFileText } = await import("../src/syncFile.ts");
+  const text = syncFileText({ syncedAt: NOW, acks: [], reportsDone: ["abc123", "0123456789abcdefghij"] });
+  assert.ok(text.includes('["abc123"] = true,'));
+  for (const bad of ['a"] = true, os.exit() --', "ABCDEF", "short", "x".repeat(41), "has space", ""]) {
+    assert.throws(() => syncFileText({ syncedAt: NOW, acks: [], reportsDone: [bad] }), /not a token/, JSON.stringify(bad));
+  }
+  assert.throws(() => syncFileText({ syncedAt: NOW, acks: [], reportsDone: Array.from({ length: 201 }, (_, i) => "tok" + String(100000 + i)) }), /too many/);
+});
