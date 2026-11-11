@@ -53,9 +53,9 @@ test("deleting the account removes the player on the server, and the same key ca
   assert.notEqual(first.status === "registered" && second.status === "registered" ? first.playerId : "", second.status === "registered" ? second.playerId : "x");
 
   // A limited server tells the client to wait rather than failing.
-  env.deps.limits = { general: memoryLimiter({ limit: 2, periodSeconds: 60, now: () => env.clock.now }), strict: memoryLimiter({ limit: 100, periodSeconds: 60, now: () => env.clock.now }) };
+  env.deps.limits = { general: memoryLimiter({ limit: 3, periodSeconds: 60, now: () => env.clock.now }), strict: memoryLimiter({ limit: 100, periodSeconds: 60, now: () => env.clock.now }) };
   const limited = await fetchStandings({ ...client, attempts: 1 }, null);
-  assert.equal(limited.status, "standings", "the first call (two requests) is within the limit");
+  assert.equal(limited.status, "standings", "the first call (three requests) is within the limit");
   const refused = await fetchStandings({ ...client, attempts: 1 }, null);
   assert.equal(refused.status, "retry-later");
 });

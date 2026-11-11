@@ -76,6 +76,10 @@ The best **public** players **with no Casual drops** (see below), highest score 
 
 Who finished each set first, among the players who may appear on the ladder (public, not banned, not held): `200 { generatedAt, firsts: [{ setCode, title, playerId, displayName, at }] }`, earliest first. `at` is when the server received the upload with the finishing event, not the player's own clock. If the first player is later held back or banned, the next one is first. Cached for 60 seconds.
 
+### `POST /v1/wanted` and `GET /v1/wanted`
+
+The cards a player is looking for, so other players can see them at once. `POST` body: `{ key, sentAt, cards, sig }`, where `cards` is a list of up to 60 distinct catalog keys (`npc:589`, `obj:1731`) and `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt, cards }` plus `"purpose": "wanted"`. `sentAt` must be within a day of the server's clock. It replaces the player's whole list. `200 { stored, listed }`: only a **public** player's list is kept (`listed: true`); a private player's is stored as empty. `GET` answers `200 { generatedAt, players: [{ playerId, displayName, characters, cards, updatedAt }] }` for up to 100 public, non-banned players with at least one character, most recently changed first. Cached for 60 seconds. The same list is the website's `/wanted` page. The companion app uploads the list whenever it changes and brings the board into `Data/Sync.lua` for the add-on's Wanted tab.
+
 ### Only Ranked counts
 
 A drop rolled in Casual mode (tape position 0) uses the player's own random numbers, which the server cannot recheck. Such uploads are stored and scored as before, but a player with **any** Casual drop is not listed on `/v1/leaderboard`, `/v1/player/:id` or `/v1/firsts`. Cards received in a trade from a player with Casual drops do not count towards the receiver's score either (the hourly job puts scores right after the fact). The count is `ledger_state.casual_drops`, and a rebuild recomputes it from the stored events.

@@ -6,9 +6,9 @@ import { canonicalJson, newId, verifySignature } from "../../packages/shared/src
 import type { Catalog } from "./shared.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
-import { binderSets, fairPlayPage, homePage, notFoundPage, playerPage, privacyPage } from "./site.ts";
+import { binderSets, fairPlayPage, homePage, notFoundPage, playerPage, privacyPage, wantedPage } from "./site.ts";
 import { rebuild } from "./rebuild.ts";
-import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, TapeStore, TradeStore, Visibility } from "./store.ts";
+import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, TapeStore, TradeStore, Visibility, WantedStore } from "./store.ts";
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
 
@@ -29,6 +29,7 @@ export type Deps = {
   // Absent means no limiting.
   limits?: { general: Limiter; strict: Limiter } | undefined;
   rebuild: RebuildStore;
+  wanted: WantedStore;
   adminToken?: string | undefined; // the secret that opens /v1/admin/*; without it those routes do not exist
   catalog: Catalog;
   tapeSecret?: string | undefined; // derives the roll tape; Ranked is closed (ranked_unavailable) without it
@@ -303,6 +304,38 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return html(200, playerPage({ displayName: entry.displayName, rank, scoreTenths: entry.score, uniqueCards: entry.uniqueCards, setsDone: entry.setsDone, updatedAt: entry.updatedAt }, binderSets(deps.catalog, binder.counts, binder.shiny)));
   }
 
+  // ---- The wanted board ----
+  const MAX_WANTED = 60;
+
+  // A player uploads the cards they are looking for. Signed by their key. Only public players are listed; a private player's
+  // list is not kept.
+  async function setWanted(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    const { key, sentAt, cards, sig } = body ?? {};
+    if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string") throw new ApiError("bad_request");
+    if (!Array.isArray(cards) || cards.length > MAX_WANTED || new Set(cards).size !== cards.length) throw new ApiError("bad_request", { field: "cards" });
+    for (const card of cards) if (typeof card !== "string" || !deps.catalog.cards[card]) throw new ApiError("bad_request", { field: "cards" });
+    if (Math.abs(deps.now() - (sentAt as number)) > 86_400) throw new ApiError("bad_request", { field: "sentAt" });
+    const holder = await deps.players.findByActiveKey(key);
+    if (!holder) throw new ApiError("unknown_key");
+    if (holder.status !== "active") throw new ApiError("banned");
+    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, cards, purpose: "wanted" })))) throw new ApiError("bad_signature");
+    const listed = holder.visibility === "public";
+    await deps.wanted.setWanted(holder.id, listed ? (cards as string[]) : [], deps.now());
+    return json(200, { stored: listed ? cards.length : 0, listed }, { "cache-control": "no-store" });
+  }
+
+  async function wantedBoard(): Promise<Response> {
+    const entries = await deps.wanted.board(100);
+    return json(200, { generatedAt: deps.now(), players: entries.map((entry) => ({ playerId: entry.playerId, displayName: entry.displayName, characters: entry.characters, cards: entry.cards, updatedAt: entry.updatedAt })) }, { "cache-control": `public, max-age=${PUBLIC_CACHE_SECONDS}` });
+  }
+
+  async function siteWanted(): Promise<Response> {
+    const entries = await deps.wanted.board(100);
+    return html(200, wantedPage(entries, deps.catalog));
+  }
+
   async function health(): Promise<Response> {
     try {
       await deps.health();
@@ -357,6 +390,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const banMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/ban$/.exec(url.pathname);
     const chosen =
       url.pathname === "/" ? allow("site-home", ["GET"], siteHome)
+      : url.pathname === "/wanted" ? allow("site-wanted", ["GET"], siteWanted)
       : url.pathname === "/fair-play" ? allow("site-fair-play", ["GET"], async () => html(200, fairPlayPage()))
       : url.pathname === "/privacy" ? allow("site-privacy", ["GET"], async () => html(200, privacyPage()))
       : pageMatch ? allow("site-player", ["GET"], () => sitePlayer(pageMatch[1] as string))
@@ -368,6 +402,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/delete" ? allow("delete", ["POST"], () => deleteAccount(request))
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))
       : url.pathname === "/v1/firsts" ? allow("firsts", ["GET"], firsts)
+      : url.pathname === "/v1/wanted" ? allow("wanted", ["GET", "POST"], () => (method === "POST" ? setWanted(request) : wantedBoard()))
       : url.pathname === "/v1/admin/flags" ? allow("admin-flags", ["GET"], () => adminFlags(request, url))
       : reviewMatch ? allow("admin-review", ["POST"], () => adminReview(request, reviewMatch[1] as string))
       : url.pathname === "/v1/admin/rebuild" ? allow("admin-rebuild", ["POST"], () => adminRebuild(request))

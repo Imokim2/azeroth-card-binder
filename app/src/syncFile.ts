@@ -9,6 +9,8 @@ export type SyncData = {
   // Roadmap C3, C4 and C6: what the add-on's leaderboard tab shows. Scores are in tenths of a point.
   leaderboard?: Standing[]; you?: Omit<Standing, "name"> | null; verified?: string[];
   firsts?: { setCode: string; title: string; by: string; at: number }[];
+  // The wanted board: what public players are looking for (roadmap: wanted tab).
+  wanted?: { name: string; characters: string[]; cards: string[] }[];
 };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
@@ -60,6 +62,16 @@ export function syncFileText(data: SyncData): string {
   if (data.firsts) {
     if (data.firsts.length > 300) throw new Error("too many firsts");
     extra.push("    firsts = {", ...data.firsts.map((row) => `        { set = ${luaString(row.setCode, "set")}, title = ${luaString(row.title, "title")}, by = ${luaString(row.by, "name")}, at = ${whole(row.at, "at")} },`), "    },");
+  }
+  if (data.wanted) {
+    if (data.wanted.length > 100) throw new Error("too many wanted lists");
+    extra.push("    wanted = {");
+    for (const entry of data.wanted) {
+      if (entry.cards.length > 60 || entry.characters.length > 20) throw new Error("a wanted list is too long");
+      for (const card of entry.cards) if (!/^(?:npc|node):\d{1,9}$/.test(card)) throw new Error("a wanted card is not a card key");
+      extra.push(`        { name = ${luaString(entry.name, "name")}, characters = { ${entry.characters.map((name) => luaString(name, "character")).join(", ")} }, cards = { ${entry.cards.map((card) => `"${card}"`).join(", ")} } },`);
+    }
+    extra.push("    },");
   }
   return [
     "local _, ACB = ...",

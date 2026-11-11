@@ -8,7 +8,7 @@ import type { LedgerState } from "./shared.ts";
 import { StoreConflict } from "./store.ts";
 import { peerName } from "./names.ts";
 import type { BoardEntry, Commit, IngestStore, IssuedTape, LeaderboardStore, Player, PlayerStore, StoredLedger, TapeStore, TradeStore, Visibility } from "./store.ts";
-import type { Derived, FlagRecord, ModerationStore, RebuildStore } from "./store.ts";
+import type { Derived, FlagRecord, ModerationStore, RebuildStore, WantedEntry, WantedStore } from "./store.ts";
 import type { LedgerEvent } from "./ledger.ts";
 import { gunzip } from "./gzip.ts";
 
@@ -23,7 +23,7 @@ export class KeyUnavailable extends Error {}
 
 const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at, p.epoch, p.reset_at";
 
-export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore {
+export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore, WantedStore {
   readonly #db: Db;
   constructor(db: Db) {
     this.#db = db;
@@ -96,7 +96,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     const ids = [playerId, ...archives.map((row) => row.id)];
     const marks = ids.map(() => "?").join(", ");
     // Children before parents, so nothing is left pointing at a player that is gone.
-    const tables = ["trade_taint", "trades", "set_completions", "flags", "drops", "batches", "tapes", "characters", "scores", "ledger_state", "keys"];
+    const tables = ["wanted", "trade_taint", "trades", "set_completions", "flags", "drops", "batches", "tapes", "characters", "scores", "ledger_state", "keys"];
     await this.#db.batch([
       ...tables.map((table) => ({ sql: `DELETE FROM ${table} WHERE player_id IN (${marks})`, params: ids })),
       { sql: `DELETE FROM players WHERE id IN (${marks})`, params: ids },
@@ -252,6 +252,37 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     if (!found[0]) return false;
     await this.#db.batch([{ sql: "UPDATE players SET status = ? WHERE id = ?", params: [banned ? "banned" : "active", playerId] }]);
     return true;
+  }
+
+  async setWanted(playerId: string, cards: string[], at: number): Promise<void> {
+    const statements: Statement[] = [{ sql: "DELETE FROM wanted WHERE player_id = ?", params: [playerId] }];
+    for (let from = 0; from < cards.length; from += 30) {
+      const group = cards.slice(from, from + 30);
+      statements.push({ sql: "INSERT INTO wanted (player_id, card_key, added_at) VALUES " + group.map(() => "(?, ?, ?)").join(", "), params: group.flatMap((key) => [playerId, key, at]) });
+    }
+    await this.#db.batch(statements);
+  }
+
+  async board(limit: number): Promise<WantedEntry[]> {
+    const players = await this.#db.all<{ id: string; updated: number }>(
+      `SELECT p.id AS id, MAX(w.added_at) AS updated FROM players p JOIN wanted w ON w.player_id = p.id
+       WHERE p.visibility = 'public' AND p.status = 'active' GROUP BY p.id ORDER BY updated DESC, p.id ASC LIMIT ?`, [limit]);
+    if (players.length === 0) return [];
+    const ids = players.map((row) => row.id);
+    const marks = ids.map(() => "?").join(", ");
+    const cards = await this.#db.all<{ player_id: string; card_key: string }>(`SELECT player_id, card_key FROM wanted WHERE player_id IN (${marks}) ORDER BY card_key`, ids);
+    const names = await this.#db.all<{ player_id: string; name: string; realm: string }>(`SELECT player_id, name, realm FROM characters WHERE player_id IN (${marks}) ORDER BY last_seen DESC, name`, ids);
+    const entries: WantedEntry[] = [];
+    for (const row of players) {
+      const own = names.filter((name) => name.player_id === row.id);
+      const first = own[0];
+      if (!first) continue; // nobody to trade with by name yet
+      entries.push({
+        playerId: row.id, displayName: `${first.name}-${first.realm}`, characters: own.map((name) => peerName(name.name, name.realm)),
+        cards: cards.filter((card) => card.player_id === row.id).map((card) => card.card_key), updatedAt: row.updated,
+      });
+    }
+    return entries;
   }
 
   async playerIds(after: string | null, limit: number): Promise<string[]> {

@@ -6,7 +6,7 @@
 // whole on every pass, so a crash, a restart or a failed request cannot leave the two out of step.
 import { readBinder, BinderFileError } from "./binderFile.ts";
 import type { Binder } from "./binderFile.ts";
-import { fetchStandings, fetchTape, syncBinder } from "./client.ts";
+import { fetchStandings, fetchTape, syncBinder, uploadWanted } from "./client.ts";
 import type { ClientOptions, Outcome, Standings } from "./client.ts";
 import { readText, watchSettled, writeFileAtomic } from "./files.ts";
 import type { Install } from "./files.ts";
@@ -47,6 +47,7 @@ export class Engine {
   #tape: { start: number; entries: string[] } | undefined;
   #standings: Standings | undefined;
   #standingsAt = 0;
+  #wantedSent: string | null = null; // the wanted list the server last accepted, so it is only sent when it changes
 
   constructor(options: EngineOptions) {
     this.#options = options;
@@ -71,6 +72,7 @@ export class Engine {
     const { install, client } = this.#options;
     const accounts: AccountReport[] = [];
     let anyRanked = false;
+    const wanted = new Set<string>();
     for (const file of install.savedFiles) {
       let binder: Binder;
       try {
@@ -81,12 +83,21 @@ export class Engine {
         continue;
       }
       if (binder.mode === "ranked") anyRanked = true;
+      for (const key of binder.wanted) wanted.add(key);
       const result = await syncBinder(client, binder, this.#acks.get(file.account) ?? null);
       if (result.status === "synced" && result.ack) this.#acks.set(file.account, result.ack);
       accounts.push({
         account: file.account, mode: binder.mode,
         result: result.status === "rejected" && result.code === "unknown_key" ? { status: "not-registered" } : result,
       });
+    }
+
+    // The player's wanted list goes up when it has changed since the server last took it.
+    const list = [...wanted].sort().slice(0, 60);
+    const fingerprint = JSON.stringify(list);
+    if (accounts.length > 0 && fingerprint !== this.#wantedSent) {
+      const sent = await uploadWanted(client, list);
+      if (sent.status === "stored") this.#wantedSent = fingerprint;
     }
 
     // The tape is asked for after the uploads, so the server knows how far the add-on has got.
@@ -124,7 +135,7 @@ export class Engine {
     const text = syncFileText({
       syncedAt, acks: [...this.#acks.values()],
       ...(this.#tape ? { tape: this.#tape } : {}),
-      ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts } : {}),
+      ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts, wanted: this.#standings.wanted } : {}),
     });
     try {
       await writeFileAtomic(this.#options.install.syncPath, text);

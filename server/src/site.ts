@@ -55,7 +55,7 @@ export function layout(title: string, body: string): string {
 <body>
 <header>
 <a class="brand" href="/">World of Warcards</a>
-<nav aria-label="Main"><a href="/">Ladder</a><a href="/fair-play">Fair play</a><a href="/privacy">Privacy</a></nav>
+<nav aria-label="Main"><a href="/">Ladder</a><a href="/wanted">Wanted</a><a href="/fair-play">Fair play</a><a href="/privacy">Privacy</a></nav>
 </header>
 <main>
 ${body}
@@ -171,11 +171,12 @@ export function privacyPage(): string {
 <li><strong>Your characters' names and realms</strong>, taken from your history.</li>
 <li><strong>Your history</strong>: every card found, crafted, recycled and traded, with times, the trade partner's character name and the trade id.</li>
 <li><strong>Your score</strong> and when it last changed.</li>
+<li><strong>The cards you are looking for</strong> (your wanted list), only if you are public. A private player's list is not kept.</li>
 <li><strong>Counts the server needs to check play</strong>: attempts per card, random-number positions used, and any fair-play flags with a reviewer's note.</li>
 </ul>
 
 <h2>What is shown to others</h2>
-<p>Only if you chose <strong>public</strong> when you signed up: your character name and realm, your rank and score, your sets finished and the cards in your binder, on this site and with a "verified" mark beside your name in the game. A <strong>private</strong> player is stored but never listed.</p>
+<p>Only if you chose <strong>public</strong> when you signed up: your character name and realm, your rank and score, your sets finished, the cards in your binder and the cards you are looking for, on this site and with a "verified" mark beside your name in the game. A <strong>private</strong> player is stored but never listed.</p>
 
 <h2>What is not collected</h2>
 <p>Nothing about what is on your screen, in the game's memory or in your chat. The companion app reads one file the game writes and writes one file the add-on reads. It does not touch the game process or its network traffic.</p>
@@ -192,6 +193,29 @@ export function privacyPage(): string {
 
 <h2>Where it lives</h2>
 <p>On Cloudflare (Workers and D1). Secrets are kept as Worker secrets, never in the project's code.</p>
+`);
+}
+
+// What public players are looking for: the most wanted cards first, then each player's list. Names and card names only.
+export function wantedPage(entries: { playerId: string; displayName: string; cards: string[]; updatedAt: number }[], catalog: Catalog): string {
+  const wantedBy = new Map<string, string[]>();
+  for (const entry of entries) for (const key of entry.cards) wantedBy.set(key, [...(wantedBy.get(key) ?? []), entry.displayName]);
+  const ranked = [...wantedBy.entries()].filter(([key]) => catalog.cards[key]).sort((a, b) => b[1].length - a[1].length || (catalog.cards[a[0]]?.name ?? "").localeCompare(catalog.cards[b[0]]?.name ?? ""));
+  const cardRows = ranked.map(([key, names]) => {
+    const card = catalog.cards[key]!;
+    const rarity = ["common", "rare", "epic", "legendary"].includes(card.rarity) ? card.rarity : "common";
+    return `<tr><td class="${rarity}">${escapeHtml(card.name)}</td><td class="num">${names.length}</td><td>${names.map(escapeHtml).join(", ")}</td></tr>`;
+  }).join("\n");
+  const cards = ranked.length > 0
+    ? `<table><caption class="empty">Cards players are looking for</caption>\n<thead><tr><th>Card</th><th class="num">Wanted by</th><th>Who</th></tr></thead>\n<tbody>\n${cardRows}\n</tbody></table>`
+    : `<p class="panel empty">Nobody has listed a card they are looking for yet.</p>`;
+  const people = entries.map((entry) => `<details><summary>${escapeHtml(entry.displayName)}: ${entry.cards.length} card${entry.cards.length === 1 ? "" : "s"}</summary><ul>${entry.cards.flatMap((key) => (catalog.cards[key] ? [`<li>${escapeHtml(catalog.cards[key]!.name)}</li>`] : [])).join("")}</ul></details>`).join("\n");
+  return layout("Wanted: World of Warcards", `
+<h1>Wanted cards</h1>
+<p class="lede">What public players are looking for. Find someone with a spare and offer a swap in the game: target them and use the Trade tab. Players choose to be listed here when they sign up, and can clear their list at any time.</p>
+${cards}
+<h2>By player</h2>
+${people || '<p class="empty">No lists yet.</p>'}
 `);
 }
 

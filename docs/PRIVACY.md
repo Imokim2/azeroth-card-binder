@@ -9,11 +9,12 @@ Written for the website's privacy page and the app's About window. It describes 
 - **Your characters' names and realms**, taken from your ledger.
 - **Your ledger**: every card found, crafted, recycled and traded, with times, the partner's character name and the trade id.
 - **Your score** and when it last changed.
+- **The cards you are looking for** (your wanted list), only if you are public. A private player's list is not kept.
 - **Counts the server needs to check play**: attempts per card, roll-tape positions used, and flags raised by the fair-play checks (with a reviewer's note if a person looked).
 
 ## What is shown to others
 
-Only if you choose **public** when you register: your character name and realm, your rank and score, your sets finished, and a "verified" mark beside your name in the game. A **private** player is stored but never listed.
+Only if you choose **public** when you register: your character name and realm, your rank and score, your sets finished, the cards you are looking for, and a "verified" mark beside your name in the game. A **private** player is stored but never listed.
 
 ## What is not collected
 

@@ -16,5 +16,10 @@ out[#out + 1] = "verified " .. table.concat(names, ",")
 for index, row in ipairs(sync.firsts or {}) do
     out[#out + 1] = ("first %d %s %s %s %d"):format(index, hex(row.set), hex(row.title), hex(row.by), row.at)
 end
+for index, row in ipairs(sync.wanted or {}) do
+    local characters = {}
+    for _, name in ipairs(row.characters) do characters[#characters + 1] = hex(name) end
+    out[#out + 1] = ("wanted %d %s %s %s"):format(index, hex(row.name), table.concat(characters, ","), table.concat(row.cards, ","))
+end
 out[#out + 1] = "globals " .. tostring(rawget(_G, "os") ~= nil and "os-present" or "none")
 io.write(table.concat(out, "\n"))

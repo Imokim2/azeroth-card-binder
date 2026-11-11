@@ -195,3 +195,34 @@ test("start: a pass runs at once, again when the game rewrites its file, and sto
     await game.cleanup();
   }
 });
+
+test("the player's wanted cards go to the board once, again only when they change, and the board comes back in Sync.lua", async () => {
+  const folder = await mkdtemp(join(tmpdir(), "warcards-wanted-"));
+  const saved = join(folder, "WTF", "Account", "ACCOUNT1", "SavedVariables", "AzerothCardBinder.lua");
+  await mkdir(join(saved, ".."), { recursive: true });
+  process.env["WARCARDS_WANTED"] = "npc:639,npc:589";
+  try { lua("tests/tools/write-saved.lua", saved, "0"); } finally { delete process.env["WARCARDS_WANTED"]; }
+  try {
+    const w = await world();
+    const install = await describeInstall(folder);
+    const engine = new Engine({ install, client: w.client, playerId: w.playerId, standingsEveryMs: 0 });
+    await engine.syncOnce();
+    const board = (await (await w.env.call("/v1/wanted")).json()) as { players: { displayName: string; cards: string[] }[] };
+    assert.deepEqual(board.players.map((entry) => [entry.displayName, entry.cards]), [["Alice-RealmName", ["npc:589", "npc:639"]]]);
+    assert.equal(w.calls.filter((call) => call === "POST /v1/wanted").length, 1);
+    // Nothing changed: it is not sent again. The board is on its way back into the file the add-on reads.
+    await engine.syncOnce();
+    assert.equal(w.calls.filter((call) => call === "POST /v1/wanted").length, 1);
+    const text = await readFile(install.syncPath, "utf8");
+    assert.ok(text.includes('{ name = "Alice-RealmName", characters = { "alice-realmname" }, cards = { "npc:589", "npc:639" } },'), text);
+    // The player changes their list in the game: the new one goes up.
+    process.env["WARCARDS_WANTED"] = "npc:573";
+    try { lua("tests/tools/write-saved.lua", saved, "0"); } finally { delete process.env["WARCARDS_WANTED"]; }
+    await engine.syncOnce();
+    assert.equal(w.calls.filter((call) => call === "POST /v1/wanted").length, 2);
+    const again = (await (await w.env.call("/v1/wanted")).json()) as { players: { cards: string[] }[] };
+    assert.deepEqual(again.players[0]?.cards, ["npc:573"]);
+  } finally {
+    await rm(folder, { recursive: true, force: true });
+  }
+});

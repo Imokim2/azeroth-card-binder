@@ -41,7 +41,7 @@ function ACB.swapSuggestions(mine, theirs, wanted)
     return theyHave, iHave
 end
 
-local function nameList(keys)
+function ACB.nameList(keys)
     local names = {}
     for index = 1, math.min(#keys, 12) do names[index] = ACB.cards[keys[index]].name end
     local text = table.concat(names, ", ")
@@ -51,7 +51,7 @@ end
 
 -- Printable lines for someone's binder: totals, then one line for every set they have started, and, when your own
 -- cards are given, what you could swap.
-function ACB.inspectLines(counts, shiny, mine, wanted)
+function ACB.inspectLines(counts, shiny, mine, wanted, theirWanted)
     local lines, owned, total, shinies = {}, 0, 0, 0
     local sets = {}
     for _, page in ipairs(ACB.pages) do
@@ -72,8 +72,17 @@ function ACB.inspectLines(counts, shiny, mine, wanted)
     if mine then
         local theyHave, iHave = ACB.swapSuggestions(mine, counts, wanted)
         lines[#lines + 1] = ""
-        lines[#lines + 1] = #theyHave > 0 and ("They have spares you need: " .. nameList(theyHave)) or "They have no spares you need."
-        lines[#lines + 1] = #iHave > 0 and ("You have spares they need: " .. nameList(iHave)) or "You have no spares they need."
+        lines[#lines + 1] = #theyHave > 0 and ("They have spares you need: " .. ACB.nameList(theyHave)) or "They have no spares you need."
+        lines[#lines + 1] = #iHave > 0 and ("You have spares they need: " .. ACB.nameList(iHave)) or "You have no spares they need."
+        -- What they said they are looking for, and which of those you could give.
+        if theirWanted and #theirWanted > 0 then
+            local give = {}
+            for _, key in ipairs(theirWanted) do
+                if (mine[key] or 0) >= 2 then give[#give + 1] = key end
+            end
+            lines[#lines + 1] = "They are looking for: " .. ACB.nameList(theirWanted)
+            if #give > 0 then lines[#lines + 1] = "You have a spare of: " .. ACB.nameList(give) end
+        end
     end
     return lines
 end

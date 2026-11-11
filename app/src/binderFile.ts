@@ -18,6 +18,8 @@ export type Binder = {
   events: BinderEvent[];
   snapshot: { counts: Record<string, number>; attempts: Record<string, number>; dust: number; sets: Record<string, boolean>; titles: Record<string, boolean> };
   character: { name: string; realm: string } | null;
+  // The cards the player marked as wanted, as card keys, sorted, at most 60 (what the server's wanted board takes).
+  wanted: string[];
 };
 
 export class BinderFileError extends Error {}
@@ -60,6 +62,12 @@ function toEvent(value: LuaValue, position: number): BinderEvent {
   };
 }
 
+const CARD_KEY = /^(?:npc|node):\d{1,9}$/;
+function wantedKeys(value: LuaValue | undefined): string[] {
+  if (!isRecord(value)) return [];
+  return Object.entries(value).filter(([key, flag]) => flag === true && CARD_KEY.test(key)).map(([key]) => key).sort().slice(0, 60);
+}
+
 // "Name-Realm" as the add-on writes it. A character name never contains a hyphen; a realm may.
 export function splitCharacter(char: string): { name: string; realm: string } | null {
   const at = char.indexOf("-");
@@ -89,5 +97,6 @@ export function readBinder(fileText: string): Binder {
       dust: whole(db["dust"]) ? db["dust"] : 0, sets: flagMap(db["sets"]), titles: flagMap(db["titles"]),
     },
     character: last ? splitCharacter(last.char) : null,
+    wanted: wantedKeys(db["wanted"]),
   };
 }

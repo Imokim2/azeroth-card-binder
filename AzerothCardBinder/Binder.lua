@@ -55,9 +55,10 @@ function ACB.initUI(saved, trade)
     tradeView:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
     local settingsView = ACB.createSettingsView(frame, saved)
     local ladderView = ACB.createLadderView(frame, saved)
+    local wantedView = ACB.createWantedView(frame, saved)
 
     local tabs = {}
-    for index, destination in ipairs({ "index", "collection", "trade", "achievements", "ladder", "settings" }) do
+    for index, destination in ipairs({ "index", "collection", "trade", "achievements", "ladder", "wanted", "settings" }) do
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
@@ -188,8 +189,14 @@ function ACB.initUI(saved, trade)
         end
         titleMark:SetText(saved.title and ("Title: " .. saved.title) or "")
         local inTrade, inSettings = mode == "trade", mode == "settings"
-        local inAchievements, inLadder = mode == "achievements", mode == "ladder"
-        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder)
+        local inAchievements, inLadder, inWanted = mode == "achievements", mode == "ladder", mode == "wanted"
+        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder and not inWanted)
+        wantedView:SetShown(inWanted)
+        if inWanted then
+            regionMark:SetText("BINDER  /  WANTED")
+            wantedView:refresh()
+            return
+        end
         tradeView:SetShown(inTrade)
         settingsView:SetShown(inSettings)
         achievementView:SetShown(inAchievements)

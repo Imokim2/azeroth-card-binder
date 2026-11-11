@@ -38,6 +38,8 @@ else
     assert(collection:swap("npc:589", "npc:573", "bob-realmname", "111-482910-1"))
     for number = 1, tonumber(arg[2] or 0) do find(589, "extra" .. number) end
 end
+-- Cards on the wanted list, for tests: WARCARDS_WANTED=npc:589,npc:639
+for key in (os.getenv("WARCARDS_WANTED") or ""):gmatch("[^,]+") do saved.wanted = saved.wanted or {}; saved.wanted[key] = true end
 saved.title = "Zul'Gurub \226\128\147 Ünïcöde" -- raw and escaped non-ASCII text, as a player's title could be
 
 -- The game's serializer layout.

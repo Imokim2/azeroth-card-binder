@@ -21,9 +21,6 @@ local function partDelay(index)
 end
 local REQUEST_WINDOW, SERVE_GAP = 30 + partDelay(MAX_PARTS) + RETRY_DELAY * 3, 10
 local NO_ANSWER_AFTER = 8
--- Asking for a card: at most one ask every few seconds, the same card to the same player not for half a minute, and a player
--- hears from one other player only every ten seconds.
-local ASK_ANY_GAP, ASK_SAME_GAP, ASK_HEARD_GAP = 3, 30, 10
 local TITLE_REPLY_WINDOW, TITLE_RETRY, TITLE_CACHE = 5, 20, 45
 local MENUS = { "MENU_UNIT_PLAYER", "MENU_UNIT_PARTY", "MENU_UNIT_RAID_PLAYER", "MENU_UNIT_FRIEND" }
 local PORTRAIT_MENUS = { "MENU_UNIT_TARGET", "MENU_UNIT_FOCUS", "MENU_UNIT_BOSS" }
@@ -85,10 +82,12 @@ end
 
 -- Cards go over the wire as "c589" (a creature) or "o1731" (a node), then =count and * for a shiny.
 local function shortKey(card) return (card.profession and "o" or "c") .. card.id end
+function ACB.shortKey(card) return shortKey(card) end
 local function longKey(short)
     local kind, id = short:match("^([co])(%d+)$")
     return kind and ((kind == "o" and "node:" or "npc:") .. id)
 end
+ACB.longKey = longKey
 
 -- The messages that describe a binder: "B|part/parts|key=count[*],..." where * marks a shiny.
 function ACB.encodeBinder(saved)
@@ -117,7 +116,9 @@ end
 function ACB.initSocial(saved, send, now, after, report)
     report = report or function() end
     local pending, served, inbox, heard = {}, {}, {}, {}
-    local askedAt, askedBy, lastAsk = {}, {}, 0
+    local requests = ACB.newRequests(saved, send, now, after, report)
+    function ACB.requestWanted(peer) return requests:requestWanted(peer) end
+    function ACB.askForCard(peer, card) return requests:ask(peer, card) end
     local titleChecks, titleServed = {}, {}
 
     function ACB.peerTitle(peer)
@@ -186,12 +187,18 @@ function ACB.initSocial(saved, send, now, after, report)
     end)
 
     function ACB.showInspect(peer, counts, shiny)
-        inspector.peer = peer
+        inspector.peer, inspector.counts, inspector.shiny = peer, counts, shiny
         inspector.title:SetText(peer .. "'s binder" .. (ACB.isVerified(peer) and " (verified)" or ""))
-        local lines = ACB.inspectLines(counts, shiny, saved.counts, saved.wanted)
+        local heard = ACB.heardWanted and ACB.heardWanted[peer]
+        local lines = ACB.inspectLines(counts, shiny, saved.counts, saved.wanted, heard and heard.cards)
         inspectText:SetText(table.concat(lines, "\n"))
         inspectBody:SetHeight(math.max(100, #lines * 15))
         inspector:Show()
+    end
+
+    -- Draw the binder window again, if it is open for this player (their wanted list has just arrived).
+    function ACB.refreshInspect(peer)
+        if inspector:IsShown() and inspector.peer == peer and inspector.counts then ACB.showInspect(peer, inspector.counts, inspector.shiny) end
     end
 
     -- ---- Asking for and answering binder views ----
@@ -201,6 +208,7 @@ function ACB.initSocial(saved, send, now, after, report)
         if sent then
             local window = now() + REQUEST_WINDOW
             pending[peer], inbox[peer], heard[peer] = window, nil, nil
+            requests:expectList(peer, window + 10) -- their wanted list follows the binder
             -- Say something if nothing comes back, instead of leaving the player looking at nothing.
             after(NO_ANSWER_AFTER, function()
                 if pending[peer] == window and not heard[peer] then
@@ -217,36 +225,9 @@ function ACB.initSocial(saved, send, now, after, report)
         return false, reason
     end
 
-    -- Ask a player for a card you are looking for. They are told, if they have it, and can start a trade from there.
-    function ACB.askForCard(peer, card)
-        if not peer then return false, "Target a player or enter a player's name first." end
-        if not card then return false, "There is no card with that name." end
-        local at = now()
-        if at < lastAsk + ASK_ANY_GAP then return false, "Wait a moment before asking again." end
-        local gate = peer .. "|" .. card.key
-        if askedAt[gate] and at < askedAt[gate] then return false, "You asked them for that card a moment ago." end
-        local sent, reason = send(peer, "A|" .. card.key)
-        if not sent then return false, reason end
-        askedAt[gate], lastAsk = at + ASK_SAME_GAP, at
-        report(("Asked %s for %s."):format(peer, ACB.cardLink(card, false)))
-        return true
-    end
-
     function ACB.receiveView(peer, message)
         if not peer or type(message) ~= "string" or #message > 250 then return end
-        local askKey = message:match("^A|(%a+:%d+)$")
-        if askKey then
-            -- Someone is looking for a card. Only said if you have it, and not more than once in a while per player.
-            if saved.inspectable == false then return end
-            local card, at = ACB.cards[askKey], now()
-            if not card or (askedBy[peer] and at < askedBy[peer]) then return end
-            local owned = saved.counts[askKey] or 0
-            if owned < 1 then return end
-            askedBy[peer] = at + ASK_HEARD_GAP
-            report(("%s is looking for %s. You have %d (%d spare). Type /acb trade %s to offer a swap."):format(
-                peer, ACB.cardLink(card, saved.shiny and saved.shiny[askKey] == true), owned, owned - 1, peer))
-            return
-        end
+        if requests:handle(peer, message) then return end
         if message == "T?" then
             local at = now()
             if titleServed[peer] and at < titleServed[peer] then return end
@@ -287,6 +268,8 @@ function ACB.initSocial(saved, send, now, after, report)
             for index, part in ipairs(parts) do
                 after(partDelay(index), function() sendPart(part, 1) end)
             end
+            -- Then what this player is looking for, so the binder window can show it.
+            after(partDelay(#parts + 1), function() sendPart(requests:listMessage(), 1) end)
             return
         end
         local refusal = message:match("^N|(%a+)$")

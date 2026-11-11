@@ -129,6 +129,15 @@ export interface RebuildStore {
   writeDerived(playerId: string, derived: Derived): Promise<void>;
 }
 
+// The wanted board: what public players are looking for.
+export type WantedEntry = { playerId: string; displayName: string; characters: string[]; cards: string[]; updatedAt: number };
+export interface WantedStore {
+  // Replace the player's list (an empty list clears it).
+  setWanted(playerId: string, cards: string[], at: number): Promise<void>;
+  // The most recently updated lists of public, active players who have a character, at most `limit` players.
+  board(limit: number): Promise<WantedEntry[]>;
+}
+
 export type IssuedTape = { start: number; end: number; commitment: string };
 
 export interface TapeStore {
