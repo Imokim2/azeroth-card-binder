@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self' data:">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>World of Warcards</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="gem" aria-hidden="true"></div>
+    <div>
+      <h1>World of Warcards</h1>
+      <p class="sub">Companion app</p>
+    </div>
+    <div id="pill" class="pill" role="status">Starting</div>
+  </header>
+
+  <div id="problem" class="banner" role="alert" hidden></div>
+
+  <main>
+    <section id="discord" aria-labelledby="discord-title">
+      <h2 id="discord-title">1. Discord</h2>
+      <p id="discord-text">Sign in so your cards and rank belong to you.</p>
+      <fieldset id="visibility">
+        <legend>Show me on the ladder?</legend>
+        <label><input type="radio" name="visibility" value="public" checked> Yes, list my character and rank</label>
+        <label><input type="radio" name="visibility" value="private"> No, keep me private</label>
+      </fieldset>
+      <div class="buttons">
+        <button id="sign-in" class="primary">Sign in with Discord</button>
+        <button id="sign-out" hidden>Sign out</button>
+      </div>
+      <p id="discord-note" class="note">Your browser opens Discord's own page. This app never sees your Discord password.</p>
+    </section>
+
+    <section id="folder" aria-labelledby="folder-title">
+      <h2 id="folder-title">2. Game folder</h2>
+      <p id="folder-path" class="path">Not chosen yet</p>
+      <div class="buttons">
+        <button id="find-game">Find it for me</button>
+        <button id="choose-folder">Choose folder…</button>
+      </div>
+      <p class="note">The folder that contains <code>WTF</code> and <code>Interface</code>.</p>
+    </section>
+
+    <section id="sync" aria-labelledby="sync-title">
+      <h2 id="sync-title">3. Syncing</h2>
+      <ul id="accounts" class="accounts"></ul>
+      <p id="sync-empty" class="note">Nothing yet. Once you have signed in and chosen the folder, your cards are uploaded each time you reload or leave the game.</p>
+      <dl id="facts" class="facts" hidden>
+        <div><dt>Last sync</dt><dd id="last-sync">–</dd></div>
+        <div><dt>Ladder data</dt><dd id="standings">–</dd></div>
+        <div><dt>Ranked roll tape</dt><dd id="tape">–</dd></div>
+      </dl>
+      <div class="buttons"><button id="sync-now">Sync now</button></div>
+      <p class="note">After a sync, type <code>/reload</code> in the game to bring the new ladder and roll tape in.</p>
+    </section>
+  </main>
+
+  <p id="message" class="message" role="status" hidden></p>
+
+  <footer>
+    <label><input type="checkbox" id="start-at-login"> Start with Windows</label>
+    <span id="version" class="version"></span>
+  </footer>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

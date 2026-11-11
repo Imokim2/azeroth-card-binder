@@ -18,5 +18,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "../server/test/harness.ts", "../server/test/sqliteDb.ts"]
+  "include": ["src/**/*.ts", "electron/**/*.ts", "test/**/*.ts", "../server/test/harness.ts", "../server/test/sqliteDb.ts"]
 }

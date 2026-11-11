@@ -4,6 +4,8 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- Companion app window: an Electron window and tray icon with the three steps (sign in with Discord, choose the game folder, watch the sync). The key is kept encrypted by Windows. Run it with `npm start` in `app/`; there is no installer yet.
+
 - Discord sign-in for the companion app and server: the player signs in with Discord in their own browser; the app never sees a Discord password or secret, and the server keeps only the Discord id. Registration opens once the Discord application's secret is set on the server.
 
 - Companion app core: the sync engine joins everything into one loop (upload, roll tape, standings, `Data/Sync.lua`) that runs whenever the game finishes writing its saved file. Still no window around it.

@@ -23,6 +23,7 @@ export type EngineOptions = {
   quietMs?: number; // how long the game's file must stay unchanged before it is read (default 1.5 seconds)
   everyMs?: number; // a pass on a timer even with no change, to refill the tape and refresh standings (default ten minutes)
   log?: (message: string) => void;
+  onReport?: (report: PassReport) => void; // told after every pass, whoever asked for it
 };
 
 export type AccountReport = {
@@ -109,7 +110,9 @@ export class Engine {
 
     // Sync.lua is always written whole from what is known now.
     const written = await this.#writeSync(client.now());
-    return { accounts, tape, standings, wroteSync: written };
+    const report: PassReport = { accounts, tape, standings, wroteSync: written };
+    this.#options.onReport?.(report);
+    return report;
   }
 
   async #writeSync(syncedAt: number): Promise<boolean> {
