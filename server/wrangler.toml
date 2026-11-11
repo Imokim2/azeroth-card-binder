@@ -23,6 +23,22 @@ d1_databases = [
 [env.staging.triggers]
 crons = ["17 * * * *"]
 
+# Rate limits per client address (src/limit.ts): a general one for everything and a strict one for register, reset,
+# delete and the admin routes. Counted by Cloudflare, so they cost no database writes.
+[[env.staging.ratelimits]]
+name = "RATE_GENERAL"
+namespace_id = "1001"
+simple = { limit = 120, period = 60 }
+
+[[env.staging.ratelimits]]
+name = "RATE_STRICT"
+namespace_id = "1002"
+simple = { limit = 10, period = 60 }
+
+# Keep the structured request log, so errors can be searched afterwards (docs/runbooks/ALERTS.md).
+[env.staging.observability]
+enabled = true
+
 [env.production]
 name = "warcards-api"
 vars = { MIN_CLIENT = "0.1.0", VERSION = "0.1.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
@@ -32,3 +48,16 @@ d1_databases = [
 
 [env.production.triggers]
 crons = ["17 * * * *"]
+
+[[env.production.ratelimits]]
+name = "RATE_GENERAL"
+namespace_id = "2001"
+simple = { limit = 120, period = 60 }
+
+[[env.production.ratelimits]]
+name = "RATE_STRICT"
+namespace_id = "2002"
+simple = { limit = 10, period = 60 }
+
+[env.production.observability]
+enabled = true

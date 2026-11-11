@@ -83,11 +83,23 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     const moved = ["batches", "drops", "ledger_state", "scores", "characters", "tapes", "flags", "trades", "set_completions"];
     await this.#db.batch([
       {
-        sql: "INSERT INTO players (id, discord_id, created_at, status, visibility, epoch, reset_at) VALUES (?, NULL, ?, 'active', 'private', ?, NULL)",
-        params: [archivedId, found.createdAt, found.epoch],
+        sql: "INSERT INTO players (id, discord_id, created_at, status, visibility, epoch, reset_at, archived_from) VALUES (?, NULL, ?, 'active', 'private', ?, NULL, ?)",
+        params: [archivedId, found.createdAt, found.epoch, playerId],
       },
       ...moved.map((table) => ({ sql: `UPDATE ${table} SET player_id = ? WHERE player_id = ?`, params: [archivedId, playerId] })),
       { sql: "UPDATE players SET epoch = epoch + 1, reset_at = ? WHERE id = ?", params: [at, playerId] },
+    ]);
+  }
+
+  async deletePlayer(playerId: string): Promise<void> {
+    const archives = await this.#db.all<{ id: string }>("SELECT id FROM players WHERE archived_from = ?", [playerId]);
+    const ids = [playerId, ...archives.map((row) => row.id)];
+    const marks = ids.map(() => "?").join(", ");
+    // Children before parents, so nothing is left pointing at a player that is gone.
+    const tables = ["trades", "set_completions", "flags", "drops", "batches", "tapes", "characters", "scores", "ledger_state", "keys"];
+    await this.#db.batch([
+      ...tables.map((table) => ({ sql: `DELETE FROM ${table} WHERE player_id IN (${marks})`, params: ids })),
+      { sql: `DELETE FROM players WHERE id IN (${marks})`, params: ids },
     ]);
   }
 

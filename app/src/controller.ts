@@ -2,7 +2,7 @@
 // game folder, runs the sync engine and keeps a plain description of how things stand (`status()`) for whatever draws the
 // window. The Electron shell only supplies the parts that need Electron (opening the browser, a folder dialog, the
 // system's key protection), so all of this is tested without a screen.
-import { resetBinder } from "./client.ts";
+import { deleteAccount, resetBinder } from "./client.ts";
 import type { ClientOptions, FetchLike } from "./client.ts";
 import { Engine } from "./engine.ts";
 import type { PassReport } from "./engine.ts";
@@ -25,7 +25,7 @@ export type Deps = {
   catalogVersion: string;
   open: SignInOptions["open"]; // opens a page in the player's browser
   chooseFolder: () => Promise<string | null>; // asks the player to pick a folder
-  confirm: (message: string) => Promise<boolean>; // asks the player to agree to something that cannot be undone
+  confirm: (message: string, button: string) => Promise<boolean>; // asks the player to agree to something that cannot be undone
   fetch: FetchLike;
   now: () => number; // seconds
   sleep: (milliseconds: number) => Promise<void>;
@@ -266,6 +266,7 @@ export class Controller {
     if (!options || !this.#settings.playerId) return this.#say("Sign in with Discord first.");
     const agreed = await this.#deps.confirm(
       "Start a new binder on the server?\n\nYour old binder stays on record but stops counting, and your ranked score starts again from nothing. Do this only if you started over in the game. It can be done once a day.",
+      "Start a new binder",
     );
     if (!agreed) return this.#say("Nothing was changed.");
     this.#busy = true;
@@ -283,6 +284,29 @@ export class Controller {
       return this.#say(`You started a new binder recently. Try again in about ${Math.max(1, Math.ceil(wait / 3600))} hour(s).`);
     }
     this.#say(result.status === "rejected" ? `The server refused it (${result.code}).` : "The server could not be reached. Try again.");
+  }
+
+  // Delete everything the server holds about the player. Their cards in the game and on this computer are not touched.
+  async deleteMyData(): Promise<void> {
+    const options = this.#options();
+    if (!options || !this.#settings.playerId) return this.#say("You are not signed in, so the server holds nothing about you from this computer.");
+    const agreed = await this.#deps.confirm(
+      "Delete all your data from the server?\n\nYour record, your ladder place, your Discord link and any archived binders are erased for good. Your cards in the game and the files on this computer are not touched. You can sign up again later, from nothing.",
+      "Delete my data",
+    );
+    if (!agreed) return this.#say("Nothing was changed.");
+    this.#busy = true;
+    this.#say("Deleting your data...");
+    const result = await deleteAccount(options);
+    this.#busy = false;
+    if (result.status === "deleted") {
+      this.#settings = { ...this.#settings, playerId: null };
+      await this.#save();
+      this.#lastReport = null;
+      await this.#restartEngine();
+      return this.#say("Your data was deleted from the server. You are signed out.");
+    }
+    this.#say(result.status === "rejected" && result.code === "banned" ? "A banned account's record is kept, so it cannot be deleted." : result.status === "rejected" ? `The server refused it (${result.code}).` : "The server could not be reached. Try again.");
   }
 
   async setStartAtLogin(on: boolean): Promise<void> {

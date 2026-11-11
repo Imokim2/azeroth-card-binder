@@ -283,3 +283,38 @@ test("a new binder in the game is noticed, and starting it on the server archive
     await a.cleanup();
   }
 });
+
+test("deleting your data asks first, erases the server's record and leaves you signed out and able to start again", async () => {
+  const a = await app();
+  try {
+    await a.controller.start();
+    await a.controller.chooseGameFolder();
+    await a.controller.signIn("public");
+    await a.waitFor("the first sync", (s) => s.lastSyncAt !== null);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM players").get() as { n: number }).n, 1);
+
+    a.picks.agree = false;
+    await a.controller.deleteMyData();
+    assert.equal(a.controller.status().message, "Nothing was changed.");
+    assert.equal(a.controller.status().signedIn, true);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM players").get() as { n: number }).n, 1);
+
+    a.picks.agree = true;
+    await a.controller.deleteMyData();
+    const status = a.controller.status();
+    assert.deepEqual([status.signedIn, status.accounts], [false, []]);
+    assert.match(status.message ?? "", /deleted from the server/);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM players").get() as { n: number }).n, 0);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM batches").get() as { n: number }).n, 0);
+    assert.equal(JSON.parse(await readFile(join(a.dataFolder, "settings.json"), "utf8")).playerId, null);
+
+    // Not signed in: nothing to delete, and it says so.
+    await a.controller.deleteMyData();
+    assert.match(a.controller.status().message ?? "", /not signed in/);
+    // And signing in again starts from nothing.
+    await a.controller.signIn("public");
+    assert.equal(a.controller.status().signedIn, true);
+  } finally {
+    await a.cleanup();
+  }
+});

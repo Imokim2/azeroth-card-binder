@@ -14,6 +14,7 @@ export const ERRORS = {
   gap: { status: 409, message: "Events are missing before this batch." },
   conflict: { status: 409, message: "Another upload for this player was in progress. Try again." },
   too_soon: { status: 429, message: "A binder was started recently. Try again later." },
+  rate_limited: { status: 429, message: "Too many requests. Slow down and try again." },
   too_large: { status: 413, message: "The upload is too large." },
   unsupported_media: { status: 415, message: "Send JSON." },
   bad_field: { status: 422, message: "An event field is not valid." },

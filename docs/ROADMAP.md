@@ -195,7 +195,7 @@ Done when: a simulated cheater (edited counts, skipped tape entries, replayed ba
 
 - [ ] **E1. Closed beta**, 20 to 50 players for two weeks. Collect: upload failures, parse failures, in-game errors, leaderboard disputes.
 - [ ] **E2. Load test**: replay 5,000 simulated players' batches against staging; check the database write count against the plan limit.
-- [ ] **E3. Launch checklist** (below), then a public beta labelled as such for one season before prizes.
+- [ ] **E3. Launch checklist** (rate limits, a data-deletion route and a log/alert runbook are built, 11 Nov 2026; backups, a privacy page on the website and a production environment are not) (below), then a public beta labelled as such for one season before prizes.
 - [ ] **E4. Announce** with the fair-play page and the honest limits from Section 0.
 
 Launch checklist: policy checks done; privacy page live; data-deletion route works; backups restore tested; monitoring and alert to a Discord webhook; app installs on a clean Windows machine; paid Cloudflare plan on; minimum client version enforced; moderation rota agreed.

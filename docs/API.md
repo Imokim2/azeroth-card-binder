@@ -56,6 +56,14 @@ Start a new binder. Body: `{ key, sentAt, sig }`, where `sig` is the Ed25519 sig
 
 The roll tape of a new binder is derived under `<playerId>.<epoch>` instead of `<playerId>`, so the old binder's roll values are never replayed. A history rolled on the old tape is refused with `tape_invalid`. At most once a day: `too_soon` (`429`) carries `Retry-After` and `detail.retryAfter`. A banned player gets `banned`, so a reset cannot be used to wipe a record. An unknown key, a wrong signature or one made for another purpose are refused as for `/v1/tape`.
 
+### `POST /v1/delete`
+
+Delete everything held about the player: their record, ledger, scores, characters, flags, trade halves, roll tapes, keys, Discord link and any archived binders from earlier resets. Body: `{ key, sentAt, confirm: "delete my data", sig }`, where `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt, confirm }` plus `"purpose": "delete"`. `200 { deleted: true }`. It cannot be undone. The same Discord account can sign up again and starts from nothing. Trade halves other players recorded against this player stay with those players. A **banned** player is refused (`banned`): their record, and the ban, is kept so that deleting the account cannot undo it. Cards in the game and files on the player's computer are not touched.
+
+### Rate limits
+
+Each client address has a general limit (120 requests a minute) and a stricter one for `POST` to `/v1/register`, `/v1/reset`, `/v1/delete` and `/v1/admin/*` (10 a minute). Over the limit the answer is `429 rate_limited` with `Retry-After: 60`; the companion app waits as long as it is told and tries again. `/v1/health` is never limited. The limits are Cloudflare rate-limit bindings (`server/wrangler.toml`); with no binding configured nothing is limited. Cloudflare counts them per location and approximately: on staging, 60 requests a minute against the strict limit of 10 let about 35 through before the first refusal. They stop floods, not exact counts, so do not rely on them for fine control.
+
 ### Checks that flag instead of reject
 
 After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour) and `trade-unmatched` (a trade half the partner never confirmed within seven days; see below). Flags carry no public detail and are not part of any response.
@@ -111,6 +119,7 @@ Every error is `{ "error": { "code", "message", "detail"?, "retryAfter"? } }` wi
 | `gap` | 409 | Events are missing before this batch. |
 | `conflict` | 409 | Another upload for this player was in progress. Try again. |
 | `too_soon` | 429 | A binder was started recently. Try again later. |
+| `rate_limited` | 429 | Too many requests. Slow down and try again. |
 | `too_large` | 413 | The upload is too large. |
 | `unsupported_media` | 415 | Send JSON. |
 | `bad_field` | 422 | An event field is not valid. |

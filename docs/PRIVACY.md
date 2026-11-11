@@ -22,8 +22,12 @@ Nothing about what is on your screen, in the game's memory or in your chat. The 
 ## Your choices
 
 - Choose public or private when you register, and change it by signing in again.
-- Ask for your data to be deleted. (**Not built yet**: a deletion route is a launch requirement, roadmap E3.)
+- Delete your data from the server at any time with **Delete my data…** in the companion app: your record, ledger, characters, Discord link and any archived binders are erased and cannot be recovered. Your cards in the game and the files on your computer are not touched. You can sign up again later, from nothing. (A banned account's record is kept, so a ban cannot be undone by deleting the account.)
 - A banned player is hidden, not deleted, so that a ban cannot be dodged by starting again.
+
+## Technical logs
+
+The server keeps a log of each request (the route, the result and how long it took, with a request id) so that problems can be found. It does not log your Discord id, your cards or what you uploaded. Cloudflare, which runs the server, also keeps its own technical logs, which include the address a request came from, for a limited time.
 
 ## Where it lives
 

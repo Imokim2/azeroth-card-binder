@@ -26,6 +26,9 @@ export interface PlayerStore {
   // Start over: everything stored for the player is kept, under a new private id that nothing lists, and the player
   // begins again with nothing (and a new epoch). Their keys, Discord link and visibility stay.
   resetBinder(playerId: string, archivedId: string, at: number): Promise<void>;
+  // Delete everything held about the player: their record, their keys and Discord link, and any archives from earlier
+  // binders. Trade halves other players recorded with them stay with those players.
+  deletePlayer(playerId: string): Promise<void>;
 }
 
 // pity (kept under its old column name): the attempts that each card's ranked drops have needed so far, checked against its counted attempts; tapeNext: the tape position

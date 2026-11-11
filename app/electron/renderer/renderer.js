@@ -40,6 +40,8 @@ function render(status) {
   $("problem").hidden = !status.problem;
   $("problem").textContent = status.problem || "";
 
+  $("delete-data").hidden = !status.signedIn;
+  $("delete-data").disabled = status.busy;
   $("new-binder").hidden = !status.needsNewBinder;
   $("new-binder-button").disabled = status.busy;
 
@@ -103,6 +105,7 @@ if (demo && demos[demo[1]]) {
   $("choose-folder").addEventListener("click", () => api.chooseGameFolder());
   $("sync-now").addEventListener("click", () => api.syncNow());
   $("new-binder-button").addEventListener("click", () => api.startNewBinder());
+  $("delete-data").addEventListener("click", () => api.deleteMyData());
   $("start-at-login").addEventListener("change", (event) => api.setStartAtLogin(event.target.checked));
   api.onStatus(render);
   api.status().then(render);

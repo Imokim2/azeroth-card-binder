@@ -56,7 +56,7 @@ const errorOf = (reply: Reply): { code: string; detail?: Record<string, unknown>
 };
 
 // Failures that a later attempt can fix: nothing to do with the contents of the upload.
-const worthRetrying = (reply: Reply): boolean => reply.status >= 500 || errorOf(reply).code === "conflict";
+const worthRetrying = (reply: Reply): boolean => reply.status >= 500 || errorOf(reply).code === "conflict" || errorOf(reply).code === "rate_limited";
 
 // Send with a few retries and growing pauses; honours the server's Retry-After. Returns the reply, or why to wait.
 async function sendWithRetries(options: ClientOptions, path: string, body?: Record<string, unknown>): Promise<Reply | { later: number; reason: string }> {
@@ -208,4 +208,15 @@ export async function resetBinder(options: ClientOptions): Promise<{ status: "re
   if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
   if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
   return { status: "reset", epoch: Number(reply.body["epoch"] ?? 0) };
+}
+
+// Delete everything the server holds about this player (their record, key link, Discord id and any archived binders). Signed by
+// the player's key and confirmed by the exact words. It cannot be undone.
+export async function deleteAccount(options: ClientOptions): Promise<{ status: "deleted" } | Outcome> {
+  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now(), confirm: "delete my data" };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "delete" }));
+  const reply = await sendWithRetries(options, "/v1/delete", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  return { status: "deleted" };
 }

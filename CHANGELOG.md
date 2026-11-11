@@ -4,6 +4,8 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- Server hardening: per-address rate limits (a general one and a strict one for registration, reset, deletion and admin routes), and a data-deletion route with a **Delete my data…** button in the companion app. Deleting erases the player's record and archived binders; a banned player's record is kept.
+
 - **Start a new binder.** `/acb newbinder` (then `/acb newbinder confirm`) erases the binder on that account, keeps a copy of the old collection in the saved file and starts an empty one. The companion app notices that the saved data is not the binder the server holds and offers to start a new binder on the server, which archives the old record and gives the new one a fresh roll tape. Needed to join the Ranked ladder from a binder that already has Casual drops. Once a day at most.
 
 - **Only Ranked counts for the ladder.** A drop rolled in Casual mode cannot be checked by the server, so a player with any Casual drop is no longer listed on the ladder or in the firsts feed, and cards traded in from such a player stop counting for the receiver. The Ladder tab says plainly why a binder cannot join, and `/acb mode casual` warns before you leave Ranked. To join the ladder, switch to Ranked before your first drop.

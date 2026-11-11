@@ -5,6 +5,7 @@ import type { ErrorCode } from "./errors.ts";
 import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import type { Catalog } from "./shared.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
+import type { Limiter } from "./limit.ts";
 import { rebuild } from "./rebuild.ts";
 import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, TapeStore, TradeStore, Visibility } from "./store.ts";
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
@@ -23,6 +24,9 @@ export type Deps = {
   tapes: TapeStore;
   trades: TradeStore;
   moderation: ModerationStore;
+  // Rate limits per client address: `general` for everything, `strict` for the routes that create or destroy things.
+  // Absent means no limiting.
+  limits?: { general: Limiter; strict: Limiter } | undefined;
   rebuild: RebuildStore;
   adminToken?: string | undefined; // the secret that opens /v1/admin/*; without it those routes do not exist
   catalog: Catalog;
@@ -280,9 +284,37 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     }
   }
 
+  // The routes that make or remove things, or take secrets, get the tighter limit.
+  const STRICT = /^\/v1\/(register|reset|delete|admin\/.*)$/;
+  async function enforceLimits(request: Request, pathname: string): Promise<void> {
+    if (!deps.limits || pathname === "/v1/health") return;
+    const client = request.headers.get("cf-connecting-ip") ?? "unknown";
+    const limiter = request.method === "POST" && STRICT.test(pathname) ? deps.limits.strict : deps.limits.general;
+    const key = (limiter === deps.limits.strict ? "strict:" : "general:") + client;
+    if (!(await limiter.allow(key))) throw new ApiError("rate_limited", undefined, 60);
+  }
+
+  // Delete everything held about the player. Signed by their key and confirmed by the exact words, because it cannot be undone.
+  async function deleteAccount(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    const { key, sentAt, confirm, sig } = body ?? {};
+    if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string") throw new ApiError("bad_request");
+    if (confirm !== "delete my data") throw new ApiError("bad_request", { field: "confirm" });
+    if (Math.abs(deps.now() - (sentAt as number)) > 86_400) throw new ApiError("bad_request", { field: "sentAt" });
+    const holder = await deps.players.findByActiveKey(key);
+    if (!holder) throw new ApiError("unknown_key");
+    // A banned player's record is kept, so a ban cannot be wiped by deleting the account and signing up again.
+    if (holder.status !== "active") throw new ApiError("banned");
+    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, confirm, purpose: "delete" })))) throw new ApiError("bad_signature");
+    await deps.players.deletePlayer(holder.id);
+    return json(200, { deleted: true }, { "cache-control": "no-store" });
+  }
+
   async function route(request: Request): Promise<{ route: string; response: Response }> {
     const url = new URL(request.url);
     const method = request.method;
+    await enforceLimits(request, url.pathname);
     const allow = (name: string, methods: string[], run: () => Promise<Response>) => {
       if (!methods.includes(method)) {
         const response = errorResponse("method_not_allowed");
@@ -300,6 +332,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
       : url.pathname === "/v1/reset" ? allow("reset", ["POST"], () => reset(request))
+      : url.pathname === "/v1/delete" ? allow("delete", ["POST"], () => deleteAccount(request))
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))
       : url.pathname === "/v1/firsts" ? allow("firsts", ["GET"], firsts)
       : url.pathname === "/v1/admin/flags" ? allow("admin-flags", ["GET"], () => adminFlags(request, url))

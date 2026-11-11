@@ -109,8 +109,8 @@ async function main(): Promise<void> {
       const result = await dialog.showOpenDialog(window as BrowserWindow, { title: "Choose your World of Warcraft folder", properties: ["openDirectory"] });
       return result.canceled ? null : (result.filePaths[0] ?? null);
     },
-    confirm: async (message) => {
-      const answer = await dialog.showMessageBox(window as BrowserWindow, { type: "warning", buttons: ["Start a new binder", "Cancel"], defaultId: 1, cancelId: 1, title: "World of Warcards", message });
+    confirm: async (message, button) => {
+      const answer = await dialog.showMessageBox(window as BrowserWindow, { type: "warning", buttons: [button, "Cancel"], defaultId: 1, cancelId: 1, title: "World of Warcards", message });
       return answer.response === 0;
     },
     fetch: (url, init) => fetch(url, init as RequestInit),
@@ -131,6 +131,7 @@ async function main(): Promise<void> {
   ipcMain.handle("findGame", () => controller.findGame());
   ipcMain.handle("syncNow", () => controller.syncNow());
   ipcMain.handle("startNewBinder", () => controller.startNewBinder());
+  ipcMain.handle("deleteMyData", () => controller.deleteMyData());
   ipcMain.handle("setStartAtLogin", (_event, on: unknown) => controller.setStartAtLogin(on === true));
 
   window = createWindow();

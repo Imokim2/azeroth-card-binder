@@ -56,4 +56,6 @@ code { padding: 0 4px; background: #120d09; border-radius: 2px; color: var(--bra
 .message { margin: 12px 0 0; padding: 8px 12px; background: #1b2b1e; border: 1px solid #3c6a44; color: var(--green); border-radius: 3px; }
 footer { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--panel-edge); color: var(--muted); font-size: 12px; }
 footer label { cursor: pointer; }
+button.link { padding: 0; background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 12px; }
+button.link:hover:not(:disabled) { background: none; color: var(--red); }
 [hidden] { display: none !important; }
