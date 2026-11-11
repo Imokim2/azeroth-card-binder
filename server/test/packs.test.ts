@@ -120,15 +120,21 @@ test("the cards of a pack cannot be chosen: a different card, or a different shi
   const env = setup();
   const { player, id, position } = await playerWithPack(env);
   const play = await packPlay(id, position);
-  const firstCard = play.partials.findIndex((event) => event["kind"] === "packCard");
-  const other = catalog.sets.find((set) => set.code === ZONE)!.cards.find((key) => key !== play.partials[firstCard]!["key"] && !play.counts[key])!;
-  const change = (mutate: (event: Record<string, unknown>) => Record<string, unknown>) => chain(play.partials.map((event, index) => (index === firstCard ? mutate(strip(event)) : strip(event))));
-  const swapped = await read(await upload(env, player, change((event) => ({ ...event, key: other, count: 1, shiny: 0 })), { ...play.counts, [other]: 1 }, play.attempts, play.tapeNext));
+  // Change the last card of the pack, so no later card's count depends on it.
+  const lastCard = play.partials.map((event) => event["kind"]).lastIndexOf("packCard");
+  const original = play.partials[lastCard]!;
+  const other = catalog.sets.find((set) => set.code === ZONE)!.cards.find((key) => key !== original["key"] && !play.counts[key])!;
+  const change = (mutate: (event: Record<string, unknown>) => Record<string, unknown>) => chain(play.partials.map((event, index) => (index === lastCard ? mutate(strip(event)) : strip(event))));
+  const swapped = await read(await upload(env, player, change((event) => ({ ...event, key: other, count: 1, shiny: 0 })), { ...play.counts, [original["key"] as string]: (play.counts[original["key"] as string] ?? 1) - 1, [other]: 1 }, play.attempts, play.tapeNext));
   assert.equal(swapped.error?.code, "tape_invalid", JSON.stringify(swapped));
   assert.equal(swapped.error?.detail?.["reason"], "pack");
-  const flipped = await read(await upload(env, player, change((event) => ({ ...event, shiny: event["shiny"] === 1 ? 0 : 1 })), play.counts, play.attempts, play.tapeNext));
-  assert.equal(flipped.error?.code, "tape_invalid", JSON.stringify(flipped));
-  assert.equal(flipped.error?.detail?.["reason"], "shiny");
+  // A flipped shiny flag that the rules alone would allow: turning a shiny off, or turning one on for a card with no shiny copy yet.
+  const shinyBefore = play.partials.slice(0, lastCard).some((event) => event["key"] === original["key"] && event["shiny"] === 1);
+  if (original["shiny"] === 1 || !shinyBefore) {
+    const flipped = await read(await upload(env, player, change((event) => ({ ...event, shiny: event["shiny"] === 1 ? 0 : 1 })), play.counts, play.attempts, play.tapeNext));
+    assert.equal(flipped.error?.code, "tape_invalid", JSON.stringify(flipped));
+    assert.equal(flipped.error?.detail?.["reason"], "shiny");
+  }
   // Nothing was stored, and the honest version still goes through.
   assert.equal((env.raw.prepare("SELECT COUNT(*) AS n FROM batches").get() as { n: number }).n, 0);
   assert.equal((await upload(env, player, play.events, play.counts, play.attempts, play.tapeNext)).status, 200);
@@ -168,7 +174,7 @@ test("a pack can be opened across two uploads, and the cards are still checked i
   const env2 = setup();
   const again = await playerWithPack(env2);
   const play2 = await packPlay(again.id, again.position);
-  const cardAt = play2.partials.findIndex((event) => event["kind"] === "packCard") + 3;
+  const cardAt = play2.partials.map((event) => event["kind"]).lastIndexOf("packCard"); // the last card: no later card depends on its count
   const other = catalog.sets.find((set) => set.code === ZONE)!.cards.find((key) => key !== play2.partials[cardAt]!["key"] && !play2.counts[key])!;
   const bad = chain(play2.partials.map((event, index) => (index === cardAt ? { ...strip(event), key: other, count: 1, shiny: 0 } : strip(event))));
   const cut = play2.partials.findIndex((event) => event["kind"] === "packCard") + 2;
