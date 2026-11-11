@@ -69,6 +69,7 @@ end
 local function mountCard(parent, x, y, scale, share)
     local holder = place(CreateFrame("Frame", nil, parent), x, y, ACB.cardWidth * scale, ACB.cardHeight * scale)
     local card = ACB.createCard(holder, true, share)
+    card.holder = holder
     card.frame:SetScale(scale)
     card.frame:SetPoint("CENTER", holder, "CENTER")
     card.frame:EnableMouse(share ~= nil)

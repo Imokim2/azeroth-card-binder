@@ -19,7 +19,7 @@ const output = process.env.CATALOG_OUT || path.join(root, "packages", "shared", 
 const dump = String.raw`
 local addon = "AzerothCardBinder"
 local ACB = {}
-for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua" }) do
+for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Editions.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 
@@ -66,9 +66,21 @@ for _, page in ipairs(ACB.pages) do
     sets[#sets + 1] = { code = page.code, title = page.title, group = page.group, reward = page.reward, cards = keys }
 end
 table.sort(sets, function(a, b) return a.code < b.code end)
+local editions = {}
+for baseKey, family in pairs(ACB.editions) do
+    local list = {}
+    for index = 2, #family do
+        local card = family[index]
+        cards[card.key] = { name = card.name, rarity = card.rarity, rank = card.rank, set = ACB.pages[card.page].code,
+            baseKey = baseKey, editionTitle = card.editionTitle, boss = card.boss }
+        list[#list + 1] = { key = card.key, weight = card.editionWeight }
+    end
+    editions[baseKey] = list
+end
 
 io.write(encode({
     cards = cards,
+    editions = editions,
     dust = ACB.dust,
     stackFactor = ACB.stackFactor,
     rates = ACB.rates,

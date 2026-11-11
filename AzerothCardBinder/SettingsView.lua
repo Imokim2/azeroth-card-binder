@@ -48,6 +48,7 @@ function ACB.createSettingsView(frame, saved)
     end)
     button(settingsView, "Test pop-up", 32, titleY + 48, 130, function() SlashCmdList.AZEROTHCARDBINDER("popup test") end)
     button(settingsView, "Open diagnostics log", 172, titleY + 48, 170, function() SlashCmdList.AZEROTHCARDBINDER("log") end)
+    button(settingsView, "Card design studio", 512, titleY + 48, 170, function() ACB.openCardStudio() end)
     -- Casual uses this computer's random numbers and does not count for the ladder; Ranked uses the server's tape.
     local modeButton = button(settingsView, "Switch to Ranked", 352, titleY + 48, 150, function()
         SlashCmdList.AZEROTHCARDBINDER("mode " .. (saved.mode == "ranked" and "casual" or "ranked"))

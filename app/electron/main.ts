@@ -40,7 +40,7 @@ function showWindow(): void {
 
 function createWindow(): BrowserWindow {
   const created = new BrowserWindow({
-    width: 780, height: 820, minWidth: 640, minHeight: 600, show: false, backgroundColor: "#16110d", title: "World of Warcards",
+    width: 1120, height: 860, minWidth: 640, minHeight: 600, show: false, backgroundColor: "#141416", title: "World of Warcards",
     icon: join(appRoot, "assets", "icon.png"),
     webPreferences: { preload: join(appRoot, "electron", "preload.cjs"), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
   });

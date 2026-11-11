@@ -81,7 +81,7 @@ function pendingReports(value: LuaValue | undefined): PendingReport[] {
   return out;
 }
 
-const CARD_KEY = /^(?:npc|node):\d{1,9}$/;
+const CARD_KEY = /^(?:npc|node|edition):\d{1,9}$/;
 function wantedKeys(value: LuaValue | undefined): string[] {
   if (!isRecord(value)) return [];
   return Object.entries(value).filter(([key, flag]) => flag === true && CARD_KEY.test(key)).map(([key]) => key).sort().slice(0, 60);

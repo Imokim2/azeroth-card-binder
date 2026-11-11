@@ -95,7 +95,7 @@ function ACB.initUI(saved, trade)
     local selected
     local function choose(step)
         local options, current = {}, 0
-        for _, entry in ipairs(ACB.pages) do
+        for _, entry in ipairs(ACB.inventoryPages()) do
             for _, card in ipairs(entry.cards) do
                 if (saved.counts[card.key] or 0) >= 1 then
                     options[#options + 1] = card.key

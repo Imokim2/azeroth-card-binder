@@ -3,7 +3,7 @@
 // an entry they have not been given. Roll and shiny values follow the spec and the shared vectors exactly.
 import { sha256Hex, toHex } from "../../packages/shared/src/crypto.ts";
 import type { LedgerEvent } from "./ledger.ts";
-import { packPick, packValue } from "./shared.ts";
+import { packPick, packValue, baseCardKey, pickEdition } from "./shared.ts";
 import type { Catalog, LedgerState } from "./shared.ts";
 import { chanceAfter } from "./stack.ts";
 
@@ -33,8 +33,9 @@ export async function tapeEntry(key: TapeKey, playerId: string, index: number): 
 export const rollValue = (entry: string): number => (parseInt(entry.slice(0, 8), 16) % 10000) + 1;
 export const shinyValue = (entry: string, odds: number): number => (parseInt(entry.slice(8, 16), 16) % odds) + 1;
 export const tapeCommitment = (entries: string[]): Promise<string> => sha256Hex(entries.join("\n"));
+export const editionValue = async (entry: string): Promise<number> => (parseInt((await sha256Hex("edition-v1|" + entry)).slice(0, 8), 16) % 1000) + 1;
 
-export type TapeFailure = { reason: "not-issued" | "roll" | "shiny" | "pack" | "next"; index: number };
+export type TapeFailure = { reason: "not-issued" | "roll" | "shiny" | "pack" | "next" | "edition"; index: number };
 
 // Replay every ranked attempt in a batch against the entry the server issued for it (spec section 8). In ranked2 every
 // attempt is written down, as a drop or inside a run of misses, so each one can be checked exactly: a miss needs a roll
@@ -47,9 +48,11 @@ export async function checkTape(args: {
   let stack = { ...args.stack };
   const owned = new Set(Object.keys(args.stateBefore.shiny));
   let lastTape = args.stateBefore.lastTape;
+  let editions = args.stateBefore.editions === true;
   let zone = args.stateBefore.packZone ?? ""; // the zone of the pack being opened (it can span two uploads)
   const entryAt = (position: number): Promise<string> => tapeEntry(args.key, args.playerId, position);
   for (const [index, event] of args.events.entries()) {
+    if (event.kind === "mode" && event.key === "editions1") { editions = true; continue; }
     if (event.kind === "mode" && event.key === "ranked2") {
       stack = {};
       lastTape = event.tape;
@@ -70,7 +73,9 @@ export async function checkTape(args: {
       if (event.tape === 0) continue;
       if (event.tape > args.issuedEnd) return { failure: { reason: "not-issued", index } };
       const entry = await entryAt(event.tape);
-      if (packPick(args.catalog, zone, entry, args.catalog.shinyOdds) !== event.key) return { failure: { reason: "pack", index } };
+      const base = packPick(args.catalog, zone, entry, args.catalog.shinyOdds);
+      const expected = editions && base ? pickEdition(args.catalog, base, await editionValue(entry)) : base;
+      if (expected !== event.key) return { failure: { reason: "pack", index } };
       if (!owned.has(event.key) && (shinyValue(entry, args.catalog.shinyOdds) === 1) !== (event.shiny === 1)) return { failure: { reason: "shiny", index } };
       if (event.shiny === 1) owned.add(event.key);
       lastTape = event.tape;
@@ -80,20 +85,22 @@ export async function checkTape(args: {
     if (event.tape > args.issuedEnd) return { failure: { reason: "not-issued", index } };
     const card = args.catalog.cards[event.key];
     if (!card) continue; // the rules have already refused unknown cards
+    const source = baseCardKey(args.catalog, event.key);
     const rate = args.catalog.rates[card.rank] ?? 0;
     if (event.kind === "miss") {
       for (let position = event.tape - event.count + 1; position <= event.tape; position++) {
-        const misses = stack[event.key] ?? 0;
+        const misses = stack[source] ?? 0;
         // A miss that the roll would have won is a drop the player left out.
         if (rollValue(await entryAt(position)) <= chanceAfter(rate, misses, args.catalog.stackFactor)) return { failure: { reason: "roll", index } };
-        stack[event.key] = misses + 1;
+        stack[source] = misses + 1;
       }
       lastTape = event.tape;
       continue;
     }
     const entry = await entryAt(event.tape);
-    if (rollValue(entry) > chanceAfter(rate, stack[event.key] ?? 0, args.catalog.stackFactor)) return { failure: { reason: "roll", index } };
-    delete stack[event.key];
+    if (rollValue(entry) > chanceAfter(rate, stack[source] ?? 0, args.catalog.stackFactor)) return { failure: { reason: "roll", index } };
+    if (editions && pickEdition(args.catalog, source, await editionValue(entry)) !== event.key) return { failure: { reason: "edition", index } };
+    delete stack[source];
     // While a card has no shiny copy, a drop is shiny exactly when its entry says so. Once it has one, the rules
     // already refuse any further shiny.
     if (!owned.has(event.key) && (shinyValue(entry, args.catalog.shinyOdds) === 1) !== (event.shiny === 1)) return { failure: { reason: "shiny", index } };

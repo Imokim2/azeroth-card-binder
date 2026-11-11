@@ -11,6 +11,8 @@ release/
 .dev.vars
 .env
 .env.*
+.local-tools/
+outputs/
 *.log
 
 # Editors and the operating system

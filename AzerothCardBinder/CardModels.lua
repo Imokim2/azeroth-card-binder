@@ -87,8 +87,9 @@ local function setModelFinish(model, found)
     safe(model.SetModelAlpha, model, found and 1 or 0.68)
 end
 
-local function poseCreature(model, entry, facing)
-    local preset = portraitPresets[entry.id] or humanoid
+local function poseCreature(model, entry, facing, presentation, animate)
+    presentation = presentation or ACB.cardPresentation(entry)
+    local preset = presentation.pose
     if not pcall(model.SetPortraitZoom, model, preset.zoom) then
         safe(model.SetCamDistanceScale, model, 0.8)
     end
@@ -96,13 +97,18 @@ local function poseCreature(model, entry, facing)
     safe(model.SetPosition, model, 0, 0, -0.05)
 
     local supported = ACB.read(safe(model.HasAnimation, model, preset.animation), "boolean")
-    if supported and pcall(model.FreezeAnimation, model, preset.animation, 0, preset.frame) then return end
+    if supported and animate and presentation.animated and type(model.SetAnimation) == "function" then
+        safe(model.SetPaused, model, false)
+        if pcall(model.SetAnimation, model, preset.animation, 0) then return true end
+    end
+    if supported and pcall(model.FreezeAnimation, model, preset.animation, 0, preset.frame) then return false end
     if not pcall(model.FreezeAnimation, model, STAND, 0, 0) then safe(model.SetPaused, model, true) end
+    return false
 end
 
 ACB.loadCardModel, ACB.setModelFinish, ACB.poseCreature = loadModel, setModelFinish, poseCreature
 
 -- The pose chosen for a creature (a few have their own).
 function ACB.portraitPreset(entry)
-    return portraitPresets[entry.id] or humanoid
+    return portraitPresets[entry.id] or ACB.signaturePresentation(entry) or humanoid
 end

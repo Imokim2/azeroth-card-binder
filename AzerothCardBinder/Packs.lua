@@ -123,6 +123,7 @@ function ACB.addPackMethods(collection, ctx)
             return nil, ("A Ranked pack needs %d roll tape entries. Type /reload so the companion app can bring more, or switch to Casual."):format(ACB.packSize)
         end
         if ledger then ledger:flushRun() end
+        ACB.activateEditions(saved, ledger)
         saved.packs[zone] = held > 1 and held - 1 or nil
         record("packOpen", zone, { count = held - 1, tape = ranked and ACB.tapeUsed(saved) or 0 })
         saved.shiny = saved.shiny or {}
@@ -131,6 +132,7 @@ function ACB.addPackMethods(collection, ctx)
             local entry, tapeIndex
             if ranked then entry, tapeIndex = ACB.takeTape(saved) else entry = ACB.randomEntry(random) end
             local key = ACB.packPick(zone, entry)
+            if saved.editionDrops then key = ACB.pickEdition(ACB.cards[key], ACB.editionRoll(entry)).key end
             local before = saved.counts[key] or 0
             saved.counts[key] = before + 1
             local shiny = not saved.shiny[key] and ACB.tapeShiny(entry, ACB.shinyOdds) == 1

@@ -56,7 +56,7 @@ function ACB.createFolio(parent, saved, selectSet)
             local slot = (state.leaf - 1) * CARDS_PER_LEAF + index
             local entry = ACB.pages[region].cards[slot]
             if IsShiftKeyDown() then
-                share(entry)
+                share(ACB.firstOwnedEdition(saved.counts, entry))
                 return
             end
             state.slot = slot
@@ -92,7 +92,7 @@ function ACB.createFolio(parent, saved, selectSet)
     text(askButton, 0, 4, "Ask target", 10, INK, 76, "CENTER")
     askButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     askButton:SetScript("OnClick", function()
-        local entry = ACB.pages[region].cards[state.slot]
+        local entry = ACB.cards[state.edition] or ACB.pages[region].cards[state.slot]
         local peer, why = ACB.targetPeer()
         if peer then why = select(2, ACB.askForCard(peer, entry)) end
         if why then ACB.say(why) end
@@ -101,6 +101,10 @@ function ACB.createFolio(parent, saved, selectSet)
     name:SetWordWrap(false)
     rule(right, 23, 96, 402)
     local detail = mountCard(right, 28, 117, 1.48, share)
+    local editionStrip = ACB.createEditionStrip(right, saved, function(key)
+        state.edition = key
+        view:showRegion(region, indexPage:IsShown())
+    end)
     local stats = panel(right, "Frame", 247, 117, 174, 281, { 0.83, 0.72, 0.54 }, EDGE)
     local emblem = place(stats:CreateTexture(nil, "ARTWORK"), 66, 12, 42, 42)
     emblem:SetTexture(ACB.folioArt .. "Seal.tga")
@@ -120,7 +124,7 @@ function ACB.createFolio(parent, saved, selectSet)
     local dustText = text(dustButton, 0, 4, "", 10, INK, 142, "CENTER")
     dustButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     dustButton:SetScript("OnClick", function()
-        local entry = ACB.pages[region].cards[state.slot]
+        local entry = ACB.cards[state.edition] or ACB.pages[region].cards[state.slot]
         local collection = ACB.collection
         if not collection then return end
         local count = saved.counts[entry.key] or 0
@@ -129,7 +133,7 @@ function ACB.createFolio(parent, saved, selectSet)
     end)
     wantButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
     wantButton:SetScript("OnClick", function()
-        local entry = ACB.pages[region].cards[state.slot]
+        local entry = ACB.cards[state.edition] or ACB.pages[region].cards[state.slot]
         if (saved.counts[entry.key] or 0) > 0 then
             share(entry)
             return
@@ -148,9 +152,10 @@ function ACB.createFolio(parent, saved, selectSet)
 
     -- Turn to the page that holds a card and select it.
     function view:selectCard(index, key)
+        local base = ACB.cards[key] and ACB.baseCard(ACB.cards[key]).key or key
         for slot, card in ipairs(ACB.pages[index].cards) do
-            if card.key == key then
-                byRegion[index] = { leaf = math.ceil(slot / CARDS_PER_LEAF), slot = slot }
+            if card.key == base then
+                byRegion[index] = { leaf = math.ceil(slot / CARDS_PER_LEAF), slot = slot, edition = key }
                 return true
             end
         end
@@ -186,7 +191,7 @@ function ACB.createFolio(parent, saved, selectSet)
             local entry = page.cards[slot]
             pocket.frame:SetShown(entry ~= nil)
             if entry and not showIndex then
-                local count = saved.counts[entry.key] or 0
+                local count = ACB.familyCount(saved.counts, entry)
                 local active = slot == state.slot
                 pocket.frame:SetBackdropColor(unpack(active and SELECTED or POCKET))
                 pocket.frame:SetBackdropBorderColor(unpack(active and INK or EDGE))
@@ -195,13 +200,18 @@ function ACB.createFolio(parent, saved, selectSet)
                 pocket.name:SetTextColor(unpack(count > 0 and INK or MISSING_INK))
                 local shiny = saved.shiny and saved.shiny[entry.key] == true
                 local wanted = saved.wanted and saved.wanted[entry.key] == true
-                pocket.status:SetText(count > 0 and ("%d owned / %d spare%s"):format(count, count - 1, shiny and " / Shiny" or "")
+                pocket.status:SetText(count > 0 and ("%d owned / %d spare%s"):format(count, ACB.familySpares(saved.counts, entry), shiny and " / Shiny" or "")
                     or (wanted and "Missing / Wanted" or "Missing"))
-                setCard(pocket.miniature, entry, count, shiny, wanted)
+                local picture = ACB.firstOwnedEdition(saved.counts, entry)
+                setCard(pocket.miniature, picture, saved.counts[picture.key] or 0, saved.shiny and saved.shiny[picture.key], wanted)
             end
         end
 
-        local entry = page.cards[state.slot]
+        local entry, hasEditions = editionStrip:select(page.cards[state.slot], state.edition)
+        state.edition = entry.key
+        local scale = hasEditions and 1.32 or 1.48
+        detail.holder:SetSize(ACB.cardWidth * scale, ACB.cardHeight * scale)
+        detail.frame:SetScale(scale)
         local count = saved.counts[entry.key] or 0
         local tier = ACB.rarities[entry.rarity]
         local code = page.code or ("SET %02d"):format(index)
@@ -218,7 +228,9 @@ function ACB.createFolio(parent, saved, selectSet)
         local dust = saved.dust or 0
         local yield, cost = ACB.dustFor(entry)
         dustMark:SetText(("Binder Dust: %d"):format(dust))
-        if count >= 2 then
+        if entry.baseKey and count == 0 then
+            dustText:SetText("Find or trade this edition")
+        elseif count >= 2 then
             dustText:SetText(("Recycle a spare: +%d dust"):format(yield))
         elseif count == 0 then
             dustText:SetText(dust >= cost and ("Craft this card: %d dust"):format(cost)
@@ -226,7 +238,7 @@ function ACB.createFolio(parent, saved, selectSet)
         else
             dustText:SetText("No spare to recycle")
         end
-        local usable = count >= 2 or (count == 0 and dust >= cost)
+        local usable = count >= 2 or (not entry.baseKey and count == 0 and dust >= cost)
         dustButton:SetEnabled(usable)
         dustButton:SetAlpha(usable and 1 or 0.55)
         owned:SetText(tostring(count))

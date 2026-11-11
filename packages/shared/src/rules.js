@@ -21,6 +21,7 @@ const PACK_SIZE = 5;
 // The first time a binder enters ranked2 it may name a tape position this far past the last one it recorded, for the
 // misses a binder kept before attempts were written down. Afterwards no gap is allowed at all.
 const BASELINE_GAP = 2000;
+const { familyCount } = require("./editions.js");
 
 function newState() {
     return {
@@ -34,6 +35,7 @@ const copyState = (state) => ({
     mode: state.mode, lastTape: state.lastTape, lastT: state.lastT, exact: state.exact === true,
     packs: { ...(state.packs || {}) }, packZone: state.packZone || "", packLeft: state.packLeft || 0, packFound: state.packFound || 0,
     lastAttempt: { key: (state.lastAttempt && state.lastAttempt.key) || "", tape: (state.lastAttempt && state.lastAttempt.tape) || 0 },
+    ...(state.editions === true ? { editions: true } : {}),
 });
 
 // Returns the name of the rule an event breaks, or null. Mutates `state` only when the event is fine.
@@ -43,6 +45,8 @@ function applyEvent(state, event, catalog, strict = false) {
     const before = state.counts[event.key] || 0;
     const isCardEvent = event.kind !== "set" && event.kind !== "mode" && event.kind !== "packFind" && event.kind !== "packOpen";
     if (isCardEvent && !card) return "unknown-card";
+    if (card && card.baseKey && (event.kind === "miss" || event.kind === "craft")) return "edition";
+    if (card && card.baseKey && !state.editions && (event.kind === "drop" || event.kind === "packCard")) return "edition";
     // Only a drop may be shiny; only a drop, a miss or the switch into ranked2 may use the tape; only a recycle or a craft moves dust.
     const usesTape = event.kind === "drop" || event.kind === "miss" || event.kind === "packFind" || event.kind === "packOpen" || event.kind === "packCard"
         || (event.kind === "mode" && event.key === "ranked2");
@@ -146,11 +150,16 @@ function applyEvent(state, event, catalog, strict = false) {
             const set = catalog.sets.find((entry) => entry.code === event.key);
             if (!set) return "unknown-set";
             if (event.count !== 0 || state.sets[set.code]) return "set";
-            if (!set.cards.every((key) => (counts[key] || 0) > 0)) return "set";
+            if (!set.cards.every((key) => familyCount(catalog, counts, key) > 0)) return "set";
             state.sets[set.code] = true;
             break;
         }
         case "mode": {
+            if (event.key === "editions1") {
+                if (event.count !== 0) return "mode";
+                state.editions = true;
+                break;
+            }
             if (!SET_MODES.includes(event.key) || event.count !== 0) return "mode";
             if (event.key === "ranked" && strict) return "mode";
             if (event.key === "ranked2") {

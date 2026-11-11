@@ -6,7 +6,8 @@ import { canonicalJson, newId, verifySignature } from "../../packages/shared/src
 import type { Catalog } from "./shared.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
-import { binderSets, fairPlayPage, homePage, notFoundPage, playerPage, privacyPage, wantedPage } from "./site.ts";
+import { binderSets, fairPlayPage, ladderPage, notFoundPage, playerPage, privacyPage, wantedPage } from "./site.ts";
+import { downloadPage, faqPage, helpPage, landingPage, statusBadge, statusPage } from "./sitePages.ts";
 import { rebuild } from "./rebuild.ts";
 import { acceptReports, parseReports } from "./reports.ts";
 import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, ReportStore, TapeStore, TradeStore, Visibility, WantedStore } from "./store.ts";
@@ -285,16 +286,28 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": status === 200 ? `public, max-age=${PUBLIC_CACHE_SECONDS}` : "no-store",
-      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
       "x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "no-referrer",
     },
   });
 
-  async function siteHome(): Promise<Response> {
+  async function siteLadder(): Promise<Response> {
     const entries = await deps.board.top(100);
     const titles = new Map(deps.catalog.sets.map((set) => [set.code, set.title]));
     const firsts = (await deps.board.firsts()).flatMap((row) => (titles.has(row.setCode) ? [{ title: titles.get(row.setCode) as string, displayName: row.displayName, playerId: row.playerId, at: row.receivedAt }] : []));
-    return html(200, homePage(entries.map((entry, index) => ({ rank: index + 1, playerId: entry.playerId, displayName: entry.displayName, scoreTenths: entry.score, uniqueCards: entry.uniqueCards, setsDone: entry.setsDone })), firsts));
+    return html(200, ladderPage(entries.map((entry, index) => ({ rank: index + 1, playerId: entry.playerId, displayName: entry.displayName, scoreTenths: entry.score, uniqueCards: entry.uniqueCards, setsDone: entry.setsDone })), firsts));
+  }
+
+  async function siteStatus(badge = false): Promise<Response> {
+    let healthy = true;
+    try { await deps.health(); } catch { healthy = false; }
+    if (badge) return new Response(statusBadge(healthy), {
+      // A red badge is still a successfully rendered image, not a broken-image error.
+      headers: { "content-type": "image/svg+xml; charset=utf-8", "cache-control": "no-store", "x-content-type-options": "nosniff", "content-security-policy": "default-src 'none'; sandbox", "referrer-policy": "no-referrer" },
+    });
+    const response = html(healthy ? 200 : 503, statusPage(healthy, deps.now(), deps.version));
+    response.headers.set("cache-control", "no-store");
+    return response;
   }
 
   async function sitePlayer(id: string): Promise<Response> {
@@ -417,7 +430,13 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const reviewMatch = /^\/v1\/admin\/flags\/([0-9A-Za-z]{1,40})$/.exec(url.pathname);
     const banMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/ban$/.exec(url.pathname);
     const chosen =
-      url.pathname === "/" ? allow("site-home", ["GET"], siteHome)
+      url.pathname === "/" ? allow("site-home", ["GET"], async () => html(200, landingPage()))
+      : url.pathname === "/ladder" ? allow("site-ladder", ["GET"], siteLadder)
+      : url.pathname === "/download" ? allow("site-download", ["GET"], async () => html(200, downloadPage()))
+      : url.pathname === "/help" ? allow("site-help", ["GET"], async () => html(200, helpPage()))
+      : url.pathname === "/faq" ? allow("site-faq", ["GET"], async () => html(200, faqPage()))
+      : url.pathname === "/status" ? allow("site-status", ["GET"], () => siteStatus())
+      : url.pathname === "/status/badge.svg" ? allow("site-status-badge", ["GET"], () => siteStatus(true))
       : url.pathname === "/wanted" ? allow("site-wanted", ["GET"], siteWanted)
       : url.pathname === "/fair-play" ? allow("site-fair-play", ["GET"], async () => html(200, fairPlayPage()))
       : url.pathname === "/privacy" ? allow("site-privacy", ["GET"], async () => html(200, privacyPage()))

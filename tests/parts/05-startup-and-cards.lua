@@ -85,9 +85,9 @@ test("missing models appear in the pocket and detail and regain colour when coll
     for _, widget in ipairs(widgets) do
         if widget.creature == edwin.id then
             local frame = widget.parent.parent
-            if frame.scale == 0.60 or frame.scale == 1.48 then
+            if frame.scale == 0.60 or frame.scale == 1.32 then
                 assert(frame.parent.parent:IsShown() ~= false)
-                equal(frame.OnUpdate ~= nil, frame.scale == 1.48)
+                equal(frame.OnUpdate ~= nil, frame.scale == 1.32)
                 models[frame.scale] = widget
                 equal(widget:IsShown(), true)
                 equal(widget.desaturation, 1)
@@ -95,7 +95,7 @@ test("missing models appear in the pocket and detail and regain colour when coll
             end
         end
     end
-    assert(models[0.60] and models[1.48])
+    assert(models[0.60] and models[1.32])
     saved.counts[edwin.key] = 1
     ACB.refresh()
     for _, model in pairs(models) do
