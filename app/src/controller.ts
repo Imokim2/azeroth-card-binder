@@ -2,6 +2,7 @@
 // game folder, runs the sync engine and keeps a plain description of how things stand (`status()`) for whatever draws the
 // window. The Electron shell only supplies the parts that need Electron (opening the browser, a folder dialog, the
 // system's key protection), so all of this is tested without a screen.
+import { resetBinder } from "./client.ts";
 import type { ClientOptions, FetchLike } from "./client.ts";
 import { Engine } from "./engine.ts";
 import type { PassReport } from "./engine.ts";
@@ -24,6 +25,7 @@ export type Deps = {
   catalogVersion: string;
   open: SignInOptions["open"]; // opens a page in the player's browser
   chooseFolder: () => Promise<string | null>; // asks the player to pick a folder
+  confirm: (message: string) => Promise<boolean>; // asks the player to agree to something that cannot be undone
   fetch: FetchLike;
   now: () => number; // seconds
   sleep: (milliseconds: number) => Promise<void>;
@@ -45,6 +47,7 @@ export type Status = {
   lastSyncAt: number | null;
   tapeEntries: number | null; // roll-tape entries ready for the add-on, when any account plays Ranked
   standings: "fresh" | "kept" | "unavailable" | null;
+  needsNewBinder: boolean; // the saved data is a different binder from the one the server holds
   message: string | null; // the latest thing worth telling the player
   busy: boolean;
 };
@@ -65,6 +68,7 @@ const accountState = (result: PassReport["accounts"][number]["result"]): string 
     case "retry-later": return "The server could not be reached; trying again soon";
     case "rejected": return `The server refused it (${result.code})`;
     case "history-missing": return "Older events are missing from the saved data";
+    case "diverged": return "This is a new binder: it does not continue the one the server has";
   }
 };
 
@@ -106,6 +110,7 @@ export class Controller {
       lastSyncAt: this.#lastSyncAt,
       tapeEntries: report?.tape && "count" in report.tape ? report.tape.count : null,
       standings: report?.standings ?? null,
+      needsNewBinder: report?.accounts.some((entry) => entry.result.status === "diverged") ?? false,
       message: this.#message, busy: this.#busy,
     };
   }
@@ -252,6 +257,32 @@ export class Controller {
     this.#busy = true;
     this.#changed();
     await this.#engine?.syncOnce();
+  }
+
+  // The saved data is a new binder (the player started over in the game). After they agree, the server archives the old
+  // binder and takes the new one from its first event; the old roll tape is dropped, as it belonged to the old binder.
+  async startNewBinder(): Promise<void> {
+    const options = this.#options();
+    if (!options || !this.#settings.playerId) return this.#say("Sign in with Discord first.");
+    const agreed = await this.#deps.confirm(
+      "Start a new binder on the server?\n\nYour old binder stays on record but stops counting, and your ranked score starts again from nothing. Do this only if you started over in the game. It can be done once a day.",
+    );
+    if (!agreed) return this.#say("Nothing was changed.");
+    this.#busy = true;
+    this.#say("Starting a new binder...");
+    const result = await resetBinder(options);
+    this.#busy = false;
+    if (result.status === "reset") {
+      this.#engine?.forgetTape();
+      this.#say("A new binder was started. Syncing it now.");
+      await this.syncNow();
+      return;
+    }
+    if (result.status === "rejected" && result.code === "too_soon") {
+      const wait = Number(result.detail?.["retryAfter"] ?? 0);
+      return this.#say(`You started a new binder recently. Try again in about ${Math.max(1, Math.ceil(wait / 3600))} hour(s).`);
+    }
+    this.#say(result.status === "rejected" ? `The server refused it (${result.code}).` : "The server could not be reached. Try again.");
   }
 
   async setStartAtLogin(on: boolean): Promise<void> {

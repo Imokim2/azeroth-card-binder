@@ -8,9 +8,9 @@ import { replay, snapshotDifferences } from "./shared.ts";
 import type { Catalog } from "./shared.ts";
 import { RULES_VERSION, scoreOf } from "./score.ts";
 import { StoreConflict } from "./store.ts";
-import { completionsOf, dropCountsOf, tradeRowsOf } from "./derive.ts";
+import { casualDropsOf, completionsOf, dropCountsOf, tradeRowsOf } from "./derive.ts";
 import type { IngestStore, Player, TapeStore, TradeStore } from "./store.ts";
-import { checkTape, tapeKey } from "./tape.ts";
+import { checkTape, tapeKey, tapeOwner } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
 
 export const SUPPORTED_SPEC_VERSIONS = [1];
@@ -132,7 +132,7 @@ export async function acceptUpload(
   if (events.some((event) => event["kind"] === "drop" && Number(event["tape"]) > 0)) {
     if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
     const checked = await checkTape({
-      key: await tapeKey(deps.tapeSecret), playerId: player.id, events: events as unknown as LedgerEvent[], stateBefore: stored.state,
+      key: await tapeKey(deps.tapeSecret), playerId: tapeOwner(player), events: events as unknown as LedgerEvent[], stateBefore: stored.state,
       catalog: deps.catalog, issuedEnd: await deps.tapes.issuedEnd(player.id), claims: stored.pity,
       attempts: upload.snapshot.attempts, tapeNext: upload.tapeIndex,
     });
@@ -160,7 +160,7 @@ export async function acceptUpload(
       events: events as unknown as LedgerEvent[], head: chain.head, state: played.state, pity, drops, tapeNext, receivedAt: deps.now(),
       character: { name: upload.character, realm: upload.realm },
       score: { displayName: `${upload.character}-${upload.realm}`, ...score, attempts, rulesVersion: RULES_VERSION },
-      flags, trades, completions,
+      flags, trades, completions, casualDrops: casualDropsOf(events),
     });
   } catch (error) {
     if (error instanceof StoreConflict) throw new ApiError("conflict", undefined, 1);

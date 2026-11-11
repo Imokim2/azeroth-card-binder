@@ -22,6 +22,23 @@ function ACB.sumValues(values)
     return total
 end
 
+-- Start a new binder (for the Ranked ladder, which only counts a binder that was Ranked from its first drop). Everything
+-- in the saved data is erased except a copy of the old collection, kept as `lastBinder` in case it is wanted again, and
+-- an empty binder with a new ledger takes its place; the add-on then reloads. Returns the copy.
+function ACB.startNewBinder(saved)
+    local backup = {
+        at = time and time() or 0, counts = saved.counts, shiny = saved.shiny, dust = saved.dust, sets = saved.sets,
+        titles = saved.titles, achievements = saved.achievements,
+    }
+    for key in pairs(saved) do saved[key] = nil end
+    saved.lastBinder = backup
+    -- An empty, valid binder straight away, so the open window never meets missing data before the reload.
+    ACB.cleanSavedData(saved)
+    -- A roll tape held in memory belonged to the old binder.
+    if ACB.sync then ACB.sync.tape = nil end
+    return backup
+end
+
 -- The saved-data version this build writes. Version 1 files (before the ledger) are upgraded in place:
 -- nothing in them is removed, and the ledger and the new counters start empty.
 ACB.schema = 2
@@ -33,6 +50,9 @@ end
 -- The ledger fields (schema 2). Events are left alone: any damage shows up when the chain is checked.
 local function cleanLedgerFields(saved)
     saved.attempts = tableOrEmpty(saved.attempts)
+    -- Drops rolled in Casual mode, which the server cannot recheck: any keeps this binder off the Ranked ladder.
+    local casual = saved.casualDrops
+    if type(casual) ~= "number" or casual < 0 or casual ~= math.floor(casual) then saved.casualDrops = 0 end
     for key, value in pairs(saved.attempts) do
         if type(value) ~= "number" or value < 1 or value ~= math.floor(value) or not ACB.cards[key] then
             saved.attempts[key] = nil

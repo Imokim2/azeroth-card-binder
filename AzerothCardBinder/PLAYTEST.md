@@ -42,6 +42,14 @@ Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each reco
 
 Every card has a description of at most 80 characters so it fits the card face. The original hand-made cards keep their lines. All raid and dungeon bosses and about a hundred well-known rares and elites have a line written for them. Most other creatures get a line built from their name: a named group ("the Scarlet Crusade"), a kind of creature (boar, murloc, ghoul), a title or job (guard, captain, miner) or, failing that, their rank. About a third of the creatures fall back to a rank line. The 39 nodes have their own lines. Read a few cards from a big set such as The Barrens for anything that sounds wrong.
 
+## Starting a new binder
+
+To join the Ranked ladder from a binder that has Casual drops or old cards: (1) type `/acb newbinder`, read the message, then `/acb newbinder confirm`; the interface reloads into an empty binder. (2) Open the companion app; it should say **This looks like a new binder** with a button. Click **Start a new binder** and agree. (3) Wait until the app shows the account as synced. (4) In the game type `/acb mode ranked` **before your first drop**, then `/reload` so the app can bring the new roll tape, and `/reload` again once it has synced. Check that a kill then rolls without a pause message. The old collection is kept in the saved file as `lastBinder`.
+
+## Only Ranked counts
+
+The ladder only lists players whose every drop was rolled in Ranked mode. In Casual, or on a binder that already has Casual drops or cards from before the ledger, the Ladder tab says why it cannot join. `/acb mode casual` warns that one Casual drop keeps the binder off the ladder for good. Check those messages, and that a drop rolled in Ranked does not change them.
+
 ## Ladder tab
 
 Open the binder and click **Ladder**. Without the companion app it says you are not on the ladder (or to switch to Ranked) and the list is empty, with "Nobody yet." under "First to finish a set". Check the tab opens without an error and the columns line up. With the app and a server running it should list up to 100 players, show your own place and mark your row in gold. The "(verified)" mark in the trade window and binder view only appears for characters on the ladder.

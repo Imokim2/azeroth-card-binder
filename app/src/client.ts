@@ -30,7 +30,9 @@ export type Outcome =
   | { status: "synced"; ack: Ack | null; uploaded: number }
   | { status: "retry-later"; afterMs: number; reason: string }
   | { status: "rejected"; code: string; detail?: Record<string, unknown> }
-  | { status: "history-missing"; haveFrom: number; needFrom: number };
+  | { status: "history-missing"; haveFrom: number; needFrom: number }
+  // The saved data is a different binder from the one the server holds (the player started over in the game).
+  | { status: "diverged"; serverSeq: number };
 
 type Reply = { status: number; body: Record<string, unknown>; retryAfter: number | null };
 
@@ -80,6 +82,16 @@ async function uploadBody(options: ClientOptions, binder: Binder, events: Binder
   return { ...body, sig: await options.identity.sign(canonicalJson(body)) };
 }
 
+// Does the saved data continue the chain the server says it holds? The server's newest event is (seq, hash): the saved
+// data must either have that very event, or not have reached it yet (which a new binder with a short history shows).
+// An older event that has been pruned from the file cannot be checked and is given the benefit of the doubt.
+function continues(binder: Binder, ack: Ack | null): boolean {
+  if (!ack || ack.seq === 0) return true;
+  if (binder.head.seq < ack.seq) return false;
+  const event = binder.events.find((entry) => entry.seq === ack.seq);
+  return event ? event.h === ack.hash : true;
+}
+
 // Upload what the server has not stored yet. `known` is the last acknowledgement we saw (or null).
 export async function syncBinder(options: ClientOptions, binder: Binder, known: Ack | null): Promise<Outcome> {
   const batchSize = options.batchSize ?? 500;
@@ -100,6 +112,7 @@ export async function syncBinder(options: ClientOptions, binder: Binder, known: 
       const seq = probe.body["ackSeq"];
       const hash = probe.body["ackHash"];
       ack = typeof seq === "number" && typeof hash === "string" && seq > 0 ? { seq, hash } : null;
+      if (!continues(binder, ack)) return { status: "diverged", serverSeq: ack?.seq ?? 0 };
       continue;
     }
     const reply = await sendWithRetries(options, "/v1/ledger", await uploadBody(options, binder, pending.slice(0, batchSize)));
@@ -116,8 +129,12 @@ export async function syncBinder(options: ClientOptions, binder: Binder, known: 
     // Told where the server stands (events already stored, or missing): take that and carry on, a couple of times.
     if ((code === "replay" || code === "gap") && resyncs++ < 2 && typeof detail?.["ackSeq"] === "number" && typeof detail["ackHash"] === "string") {
       ack = detail["ackSeq"] > 0 ? { seq: detail["ackSeq"], hash: detail["ackHash"] } : null;
+      // Told the server already has events up to here: are they ours? If not, this is a different binder.
+      if (!continues(binder, ack)) return { status: "diverged", serverSeq: ack?.seq ?? 0 };
       continue;
     }
+    // The same range stored with different contents: also a different binder, not an attempt to be repaired here.
+    if (code === "duplicate_batch") return { status: "diverged", serverSeq: typeof detail?.["ackSeq"] === "number" ? detail["ackSeq"] : 0 };
     return { status: "rejected", code, ...(detail ? { detail } : {}) };
   }
 }
@@ -180,4 +197,15 @@ export async function fetchStandings(options: ClientOptions, playerId: string | 
     if (!("later" in page) && page.status === 200) you = { rank: whole(page.body["rank"]), score: whole(page.body["scoreTenths"]), cards: whole(page.body["uniqueCards"]), sets: whole(page.body["setsDone"]) };
   }
   return { status: "standings", standings: { leaderboard, verified: [...verified], firsts, you } };
+}
+
+// Start a new binder: the server archives the old record and the player begins again with an empty chain and a new roll
+// tape. Signed by the player's key. At most once a day; `too_soon` says how long to wait.
+export async function resetBinder(options: ClientOptions): Promise<{ status: "reset"; epoch: number } | Outcome> {
+  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now() };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "reset" }));
+  const reply = await sendWithRetries(options, "/v1/reset", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  return { status: "reset", epoch: Number(reply.body["epoch"] ?? 0) };
 }

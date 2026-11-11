@@ -13,6 +13,7 @@ export const ERRORS = {
   replay: { status: 409, message: "These events were already stored." },
   gap: { status: 409, message: "Events are missing before this batch." },
   conflict: { status: 409, message: "Another upload for this player was in progress. Try again." },
+  too_soon: { status: 429, message: "A binder was started recently. Try again later." },
   too_large: { status: 413, message: "The upload is too large." },
   unsupported_media: { status: 415, message: "Send JSON." },
   bad_field: { status: 422, message: "An event field is not valid." },

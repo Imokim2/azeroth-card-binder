@@ -36,6 +36,7 @@ GGET IsShiftKeyDown
 GGET Menu
 GGET Minimap
 GGET PlaySound
+GGET ReloadUI
 GGET SELECTED_CHAT_FRAME
 GGET SOUNDKIT
 GGET SlashCmdList

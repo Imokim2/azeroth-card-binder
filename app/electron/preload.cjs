@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("warcards", {
   chooseGameFolder: () => ipcRenderer.invoke("chooseGameFolder"),
   findGame: () => ipcRenderer.invoke("findGame"),
   syncNow: () => ipcRenderer.invoke("syncNow"),
+  startNewBinder: () => ipcRenderer.invoke("startNewBinder"),
   setStartAtLogin: (on) => ipcRenderer.invoke("setStartAtLogin", on === true),
   onStatus: (listener) => {
     const handler = (_event, status) => listener(status);

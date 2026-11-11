@@ -10,6 +10,8 @@ export const TRADE_GRACE_SECONDS = 7 * 24 * 3600;
 export async function runMaintenance(deps: { ingest: IngestStore; trades: TradeStore; catalog: Catalog; now: () => number }): Promise<{ matchedBack: number; unmatched: number }> {
   const now = deps.now();
   const affected = new Set<string>(await deps.trades.matchOpen());
+  // Copies received from a player with Casual drops do not count, and that can change after the trade was recorded.
+  for (const playerId of await deps.trades.receivedFromCasual()) affected.add(playerId);
   const matchedBack = affected.size;
   const expired = await deps.trades.expire(now - TRADE_GRACE_SECONDS);
   const counts = new Map<string, { in: number; out: number }>();

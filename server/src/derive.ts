@@ -23,6 +23,11 @@ export function completionsOf(events: EventLike[]): { setCode: string; t: number
   return events.filter((event) => event["kind"] === "set").map((event) => ({ setCode: String(event["key"]), t: Number(event["t"]) }));
 }
 
+// Drops rolled in Casual mode: the add-on writes tape position 0 for them, and a Ranked drop always has a position.
+export function casualDropsOf(events: EventLike[]): number {
+  return events.filter((event) => event["kind"] === "drop" && Number(event["tape"]) === 0).length;
+}
+
 export function dropCountsOf(events: EventLike[], start: Record<string, number> = {}): Record<string, number> {
   const drops = { ...start };
   for (const event of events) if (event["kind"] === "drop") drops[String(event["key"])] = (drops[String(event["key"])] ?? 0) + 1;

@@ -17,6 +17,10 @@ export async function tapeKey(secret: string): Promise<TapeKey> {
   return crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
 }
 
+// The name a player's tape is derived under: their id, and after each new binder the id with the epoch added, so a
+// new binder never replays the roll values of an old one.
+export const tapeOwner = (player: { id: string; epoch: number }): string => (player.epoch > 0 ? `${player.id}.${player.epoch}` : player.id);
+
 // Entry number `index` (from 1) of this player's tape.
 export async function tapeEntry(key: TapeKey, playerId: string, index: number): Promise<string> {
   const mac = await crypto.subtle.sign("HMAC", key, encoder.encode(`${playerId}|${index}`));

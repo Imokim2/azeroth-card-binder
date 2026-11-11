@@ -7,11 +7,12 @@ import type { Catalog } from "./shared.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import { rebuild } from "./rebuild.ts";
 import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, TapeStore, TradeStore, Visibility } from "./store.ts";
-import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey } from "./tape.ts";
+import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
 
 export const MAX_BODY_BYTES = 2_000_000;
 const PUBLIC_CACHE_SECONDS = 60;
+export const RESET_COOLDOWN_SECONDS = 86_400;
 
 export type Logger = (entry: Record<string, unknown>) => void;
 
@@ -139,7 +140,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       const start = issuedEnd + 1;
       const end = issuedEnd + TAPE_SIZE;
       const fresh: string[] = [];
-      for (let index = start; index <= end; index++) fresh.push(await tapeEntry(secret, holder.id, index));
+      for (let index = start; index <= end; index++) fresh.push(await tapeEntry(secret, tapeOwner(holder), index));
       issued = { start, end, commitment: await tapeCommitment(fresh) };
       try {
         await deps.tapes.recordIssue(holder.id, issued, deps.now());
@@ -149,8 +150,27 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       issuedEnd = end;
     }
     const entries: string[] = [];
-    for (let index = next; index <= issuedEnd; index++) entries.push(await tapeEntry(secret, holder.id, index));
+    for (let index = next; index <= issuedEnd; index++) entries.push(await tapeEntry(secret, tapeOwner(holder), index));
     return json(200, { start: next, entries, issued }, { "cache-control": "no-store" });
+  }
+
+  // Start a new binder: the old record is archived and the player begins again with an empty chain. Signed by the
+  // player's key, and not more than once a day.
+  async function reset(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    const { key, sentAt, sig } = body ?? {};
+    if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string") throw new ApiError("bad_request");
+    if (Math.abs(deps.now() - (sentAt as number)) > 86_400) throw new ApiError("bad_request", { field: "sentAt" });
+    const holder = await deps.players.findByActiveKey(key);
+    if (!holder) throw new ApiError("unknown_key");
+    if (holder.status !== "active") throw new ApiError("banned");
+    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, purpose: "reset" })))) throw new ApiError("bad_signature");
+    if (holder.resetAt !== null && deps.now() - holder.resetAt < RESET_COOLDOWN_SECONDS) {
+      throw new ApiError("too_soon", { retryAfter: holder.resetAt + RESET_COOLDOWN_SECONDS - deps.now() }, holder.resetAt + RESET_COOLDOWN_SECONDS - deps.now());
+    }
+    await deps.players.resetBinder(holder.id, newId(deps.now() * 1000), deps.now());
+    return json(200, { playerId: holder.id, epoch: holder.epoch + 1 }, { "cache-control": "no-store" });
   }
 
   async function player(id: string): Promise<Response> {
@@ -279,6 +299,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/register" ? allow("register", ["POST"], () => register(request))
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
+      : url.pathname === "/v1/reset" ? allow("reset", ["POST"], () => reset(request))
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))
       : url.pathname === "/v1/firsts" ? allow("firsts", ["GET"], firsts)
       : url.pathname === "/v1/admin/flags" ? allow("admin-flags", ["GET"], () => adminFlags(request, url))

@@ -52,6 +52,11 @@ export class Engine {
     this.#options = options;
   }
 
+  // The roll tape held for the player belongs to the binder they had; after a new binder it must not be written again.
+  forgetTape(): void {
+    this.#tape = undefined;
+  }
+
   // One pass. Passes never overlap: asking while one is running returns that one.
   syncOnce(): Promise<PassReport> {
     if (!this.#running) {

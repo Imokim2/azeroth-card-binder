@@ -29,8 +29,12 @@ function half(char: string, partner: string, mine: string, theirs: string) {
 const snapshot = (key: string) => ({ counts: { [key]: 1 }, dust: 0, sets: {}, attempts: { [CARD_A]: 100, [CARD_B]: 100 }, titles: {} });
 const alicesHalf = () => half("Alice-RealmName", "bob-realmname", CARD_A, CARD_B);
 const bobsHalf = () => half("Bob-RealmName", "alice-realmname", CARD_B, CARD_A);
-const upload = (env: ReturnType<typeof setup>, player: ReturnType<typeof newPlayer>, who: string, events: Record<string, unknown>[], got: string) =>
-  env.call("/v1/ledger", { body: signedUpload(player, events, { character: who, realm: "RealmName", snapshot: snapshot(got), sentAt: env.clock.now }) });
+// These histories are Casual; the tests are about trade matching, so the players stand in for ones whose drops are all Ranked.
+const upload = async (env: ReturnType<typeof setup>, player: ReturnType<typeof newPlayer>, who: string, events: Record<string, unknown>[], got: string) => {
+  const response = await env.call("/v1/ledger", { body: signedUpload(player, events, { character: who, realm: "RealmName", snapshot: snapshot(got), sentAt: env.clock.now }) });
+  env.pretendVerified();
+  return response;
+};
 const states = (env: ReturnType<typeof setup>) => (env.raw.prepare("SELECT state, COUNT(*) AS n FROM trades GROUP BY state").all() as { state: string; n: number }[]).map((row) => ({ state: row.state, n: row.n }));
 const scoreOfPlayer = (env: ReturnType<typeof setup>, id: string) => (env.raw.prepare("SELECT score FROM scores WHERE player_id = ?").get(id) as { score: number }).score;
 const flagKinds = (env: ReturnType<typeof setup>) => (env.raw.prepare("SELECT kind FROM flags ORDER BY kind").all() as { kind: string }[]).map((row) => row.kind);
@@ -123,6 +127,7 @@ async function finish(env: ReturnType<typeof setup>, player: ReturnType<typeof n
   });
   const response = await env.call("/v1/ledger", { body });
   assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  env.pretendVerified();
 }
 
 test("the firsts feed names whoever finished a set first, skips players held off the ladder, and the leaderboard lists characters", async () => {

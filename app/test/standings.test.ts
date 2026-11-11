@@ -46,6 +46,8 @@ test("standings come from the server, go through Sync.lua and are read back exac
     const response = await env.call("/v1/ledger", { body: signedUpload(player, events, { character: name, realm: "Realm Name" }) });
     void response;
   }
+  // These histories are Casual, which keeps a player off the ladder; this test is about the file, so stand in for Ranked players.
+  env.pretendVerified();
   const result = await fetchStandings(options(env), ids[1] as string);
   assert.equal(result.status, "standings");
   if (result.status !== "standings") return;

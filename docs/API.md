@@ -50,17 +50,27 @@ Ranked random numbers. Body: `{ key, sentAt, sig }`, where `sig` signs the canon
 
 Every entry is derived from a server secret, the player and the position, so nothing is stored per entry and a player cannot compute entries they were not given. A ranked drop is checked against the entry at its `tape` position: it must be at a position that was issued; its roll must be at or below the card's rate, or count as a bad-luck guarantee (a card earns one per `limit` attempts, judged from the snapshot's attempts); and its shiny flag must match the entry's second half while the card has no shiny yet. The `tapeIndex` of an upload may never pass the first position after the last one issued. Failures are `tape_invalid` with `detail.reason` (`not-issued`, `stack`, `shiny`, `next`).
 
+### `POST /v1/reset`
+
+Start a new binder. Body: `{ key, sentAt, sig }`, where `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt }` plus `"purpose": "reset"`. Everything stored for the player (batches, drops, scores, flags, trades, tapes) is kept under a new private archive with no Discord link and no key, so it can never be listed or uploaded to; the player's own record is emptied and their **epoch** goes up by one. Their keys, Discord link and visibility stay. `200 { playerId, epoch }`. The player then uploads a new chain from event 1.
+
+The roll tape of a new binder is derived under `<playerId>.<epoch>` instead of `<playerId>`, so the old binder's roll values are never replayed. A history rolled on the old tape is refused with `tape_invalid`. At most once a day: `too_soon` (`429`) carries `Retry-After` and `detail.retryAfter`. A banned player gets `banned`, so a reset cannot be used to wipe a record. An unknown key, a wrong signature or one made for another purpose are refused as for `/v1/tape`.
+
 ### Checks that flag instead of reject
 
 After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour) and `trade-unmatched` (a trade half the partner never confirmed within seven days; see below). Flags carry no public detail and are not part of any response.
 
 ### `GET /v1/leaderboard?limit=N`
 
-The best **public** players, highest score first, ties broken by who reached the score first. `limit` is 1 to 100 (default 100). `200 { generatedAt, entries: [{ rank, playerId, displayName, scoreTenths, uniqueCards, setsDone, characters }] }`. `characters` lists the player's characters in the form players are named by between themselves (`name-realmname`, lower case), so a client can mark them as verified. Cached for 60 seconds.
+The best **public** players **with no Casual drops** (see below), highest score first, ties broken by who reached the score first. `limit` is 1 to 100 (default 100). `200 { generatedAt, entries: [{ rank, playerId, displayName, scoreTenths, uniqueCards, setsDone, characters }] }`. `characters` lists the player's characters in the form players are named by between themselves (`name-realmname`, lower case), so a client can mark them as verified. Cached for 60 seconds.
 
 ### `GET /v1/firsts`
 
 Who finished each set first, among the players who may appear on the ladder (public, not banned, not held): `200 { generatedAt, firsts: [{ setCode, title, playerId, displayName, at }] }`, earliest first. `at` is when the server received the upload with the finishing event, not the player's own clock. If the first player is later held back or banned, the next one is first. Cached for 60 seconds.
+
+### Only Ranked counts
+
+A drop rolled in Casual mode (tape position 0) uses the player's own random numbers, which the server cannot recheck. Such uploads are stored and scored as before, but a player with **any** Casual drop is not listed on `/v1/leaderboard`, `/v1/player/:id` or `/v1/firsts`. Cards received in a trade from a player with Casual drops do not count towards the receiver's score either (the hourly job puts scores right after the fact). The count is `ledger_state.casual_drops`, and a rebuild recomputes it from the stored events.
 
 ### Trade matching
 
@@ -100,6 +110,7 @@ Every error is `{ "error": { "code", "message", "detail"?, "retryAfter"? } }` wi
 | `replay` | 409 | These events were already stored. |
 | `gap` | 409 | Events are missing before this batch. |
 | `conflict` | 409 | Another upload for this player was in progress. Try again. |
+| `too_soon` | 429 | A binder was started recently. Try again later. |
 | `too_large` | 413 | The upload is too large. |
 | `unsupported_media` | 415 | Send JSON. |
 | `bad_field` | 422 | An event field is not valid. |

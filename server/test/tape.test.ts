@@ -5,7 +5,7 @@ import test from "node:test";
 import { canonicalJson } from "../../packages/shared/src/crypto.ts";
 import { attemptsNeeded, chanceAfter } from "../src/stack.ts";
 import { REFILL_BELOW, TAPE_SIZE, rollValue, shinyValue, tapeCommitment, tapeEntry, tapeKey } from "../src/tape.ts";
-import { NOW, TAPE_SECRET, catalog, chain, newPlayer, registration, setup, signedUpload } from "./harness.ts";
+import { NOW, TAPE_SECRET, catalog, chain, newPlayer, rankedHistory, registration, setup, signedUpload } from "./harness.ts";
 import type { Player } from "./harness.ts";
 
 type Body = Record<string, unknown> & { error?: { code: string; detail?: Record<string, unknown> } };
@@ -93,32 +93,6 @@ test("asking for a tape needs a registered key, a valid signature made for this 
   const second = await registered(closed);
   assert.equal((await read(await closed.call("/v1/tape", { body: tapeRequest(second.player) }))).error?.code, "ranked_unavailable");
 });
-
-// A Ranked history built from the player's own tape: drops only at entries that really win, shiny exactly as the entry says.
-async function rankedHistory(playerId: string, wins: number, cardKey = "npc:589") {
-  const key = await tapeKey(TAPE_SECRET);
-  const rate = catalog.rates[catalog.cards[cardKey]?.rank ?? ""] ?? 0;
-  const base = { dust: 0, partner: "", trade: "", char: "Alice-RealmName" };
-  const partials: Record<string, unknown>[] = [{ seq: 1, t: 1000, kind: "mode", key: "ranked", count: 0, shiny: 0, tape: 0, ...base }];
-  let count = 0;
-  let shinyOwned = false;
-  let used = 0;
-  let misses = 0; // the add-on's own stacking rule: every miss raises the chance of the next attempt
-  for (let index = 1; partials.length <= wins; index++) {
-    used = index;
-    const entry = await tapeEntry(key, playerId, index);
-    if (rollValue(entry) > chanceAfter(rate, misses, catalog.stackFactor)) {
-      misses += 1;
-      continue;
-    }
-    misses = 0;
-    count += 1;
-    const shiny = !shinyOwned && shinyValue(entry, catalog.shinyOdds) === 1;
-    if (shiny) shinyOwned = true;
-    partials.push({ seq: partials.length + 1, t: 1000 + partials.length * 10, kind: "drop", key: cardKey, count, shiny: shiny ? 1 : 0, tape: index, ...base });
-  }
-  return { events: chain(partials), tapeNext: used + 1, attempts: used };
-}
 
 test("an honest Ranked history that matches the tape is accepted and scored", async () => {
   const env = setup();

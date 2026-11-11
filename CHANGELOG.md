@@ -4,6 +4,10 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- **Start a new binder.** `/acb newbinder` (then `/acb newbinder confirm`) erases the binder on that account, keeps a copy of the old collection in the saved file and starts an empty one. The companion app notices that the saved data is not the binder the server holds and offers to start a new binder on the server, which archives the old record and gives the new one a fresh roll tape. Needed to join the Ranked ladder from a binder that already has Casual drops. Once a day at most.
+
+- **Only Ranked counts for the ladder.** A drop rolled in Casual mode cannot be checked by the server, so a player with any Casual drop is no longer listed on the ladder or in the firsts feed, and cards traded in from such a player stop counting for the receiver. The Ladder tab says plainly why a binder cannot join, and `/acb mode casual` warns before you leave Ranked. To join the ladder, switch to Ranked before your first drop.
+
 - Companion app window: an Electron window and tray icon with the three steps (sign in with Discord, choose the game folder, watch the sync). The key is kept encrypted by Windows. Run it with `npm start` in `app/`; there is no installer yet.
 
 - Discord sign-in for the companion app and server: the player signs in with Discord in their own browser; the app never sees a Discord password or secret, and the server keeps only the Discord id. Registration opens once the Discord application's secret is set on the server.

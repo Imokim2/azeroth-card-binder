@@ -23,6 +23,7 @@ h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 26px;
 .pill.bad { color: var(--red); border-color: #7a3a2c; }
 .banner { margin-bottom: 12px; padding: 10px 14px; border: 1px solid #7a3a2c; background: #2b1612; color: var(--red); border-radius: 4px; }
 main { display: grid; gap: 12px; }
+section.attention { margin-bottom: 12px; border-color: var(--brass); background: #2b2012; }
 section { padding: 14px 16px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 4px; }
 h2 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 16px; font-weight: normal; color: var(--brass); }
 p { margin: 6px 0; }

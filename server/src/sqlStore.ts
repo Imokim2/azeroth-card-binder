@@ -12,16 +12,16 @@ import type { Derived, FlagRecord, ModerationStore, RebuildStore } from "./store
 import type { LedgerEvent } from "./ledger.ts";
 import { gunzip } from "./gzip.ts";
 
-type PlayerRow = { id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number };
+type PlayerRow = { id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number; epoch: number; reset_at: number | null };
 
 const toPlayer = (row: PlayerRow): Player => ({
-  id: row.id, discordId: row.discord_id, status: row.status, visibility: row.visibility, createdAt: row.created_at,
+  id: row.id, discordId: row.discord_id, status: row.status, visibility: row.visibility, createdAt: row.created_at, epoch: row.epoch, resetAt: row.reset_at,
 });
 
 // A key that already belongs to another account, or one that was revoked and can never be used again.
 export class KeyUnavailable extends Error {}
 
-const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at";
+const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at, p.epoch, p.reset_at";
 
 export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore {
   readonly #db: Db;
@@ -73,6 +73,22 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
   async characters(playerId: string): Promise<{ name: string; realm: string }[]> {
     return this.#db.all<{ name: string; realm: string }>(
       "SELECT name, realm FROM characters WHERE player_id = ? ORDER BY last_seen DESC, name, realm", [playerId]);
+  }
+
+  async resetBinder(playerId: string, archivedId: string, at: number): Promise<void> {
+    const found = await this.findById(playerId);
+    if (!found) throw new Error("no such player");
+    // The old record moves to a private player of its own with no Discord link and no key, so it can never be listed or
+    // uploaded to; the player keeps their keys and begins again with an empty chain.
+    const moved = ["batches", "drops", "ledger_state", "scores", "characters", "tapes", "flags", "trades", "set_completions"];
+    await this.#db.batch([
+      {
+        sql: "INSERT INTO players (id, discord_id, created_at, status, visibility, epoch, reset_at) VALUES (?, NULL, ?, 'active', 'private', ?, NULL)",
+        params: [archivedId, found.createdAt, found.epoch],
+      },
+      ...moved.map((table) => ({ sql: `UPDATE ${table} SET player_id = ? WHERE player_id = ?`, params: [archivedId, playerId] })),
+      { sql: "UPDATE players SET epoch = epoch + 1, reset_at = ? WHERE id = ?", params: [at, playerId] },
+    ]);
   }
 
   async load(playerId: string): Promise<StoredLedger> {
@@ -128,13 +144,14 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       });
     }
     statements.push({
-      sql: `INSERT INTO ledger_state (player_id, head_seq, head_hash, state_json, updated_at, tape_next, pity_json, drops_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      sql: `INSERT INTO ledger_state (player_id, head_seq, head_hash, state_json, updated_at, tape_next, pity_json, drops_json, casual_drops)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (player_id) DO UPDATE SET head_seq = excluded.head_seq, head_hash = excluded.head_hash,
             state_json = excluded.state_json, updated_at = excluded.updated_at, tape_next = excluded.tape_next,
-            pity_json = excluded.pity_json, drops_json = excluded.drops_json`,
+            pity_json = excluded.pity_json, drops_json = excluded.drops_json,
+            casual_drops = ledger_state.casual_drops + excluded.casual_drops`,
       params: [playerId, commit.head.seq, commit.head.hash, JSON.stringify(commit.state), commit.receivedAt, commit.tapeNext,
-        JSON.stringify(commit.pity), JSON.stringify(commit.drops)],
+        JSON.stringify(commit.pity), JSON.stringify(commit.drops), commit.casualDrops],
     });
     const score = commit.score;
     statements.push({
@@ -238,16 +255,16 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     return out;
   }
 
-  async derivedNow(playerId: string): Promise<{ state: LedgerState; drops: Record<string, number>; score: number | null } | null> {
-    const rows = await this.#db.all<{ state_json: string; drops_json: string }>("SELECT state_json, drops_json FROM ledger_state WHERE player_id = ?", [playerId]);
+  async derivedNow(playerId: string): Promise<{ state: LedgerState; drops: Record<string, number>; score: number | null; casualDrops: number } | null> {
+    const rows = await this.#db.all<{ state_json: string; drops_json: string; casual_drops: number }>("SELECT state_json, drops_json, casual_drops FROM ledger_state WHERE player_id = ?", [playerId]);
     if (!rows[0]) return null;
     const score = await this.#db.all<{ score: number }>("SELECT score FROM scores WHERE player_id = ?", [playerId]);
-    return { state: JSON.parse(rows[0].state_json) as LedgerState, drops: JSON.parse(rows[0].drops_json) as Record<string, number>, score: score[0]?.score ?? null };
+    return { state: JSON.parse(rows[0].state_json) as LedgerState, drops: JSON.parse(rows[0].drops_json) as Record<string, number>, score: score[0]?.score ?? null, casualDrops: rows[0].casual_drops };
   }
 
   async writeDerived(playerId: string, derived: Derived): Promise<void> {
     const statements: Statement[] = [
-      { sql: "UPDATE ledger_state SET state_json = ?, drops_json = ? WHERE player_id = ?", params: [JSON.stringify(derived.state), JSON.stringify(derived.drops), playerId] },
+      { sql: "UPDATE ledger_state SET state_json = ?, drops_json = ?, casual_drops = ? WHERE player_id = ?", params: [JSON.stringify(derived.state), JSON.stringify(derived.drops), derived.casualDrops, playerId] },
       { sql: "DELETE FROM drops WHERE player_id = ?", params: [playerId] },
       { sql: "DELETE FROM trades WHERE player_id = ?", params: [playerId] },
       { sql: "DELETE FROM set_completions WHERE player_id = ?", params: [playerId] },
@@ -295,8 +312,15 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
 
   async excluded(playerId: string): Promise<Record<string, number>> {
     const rows = await this.#db.all<{ card_key: string; n: number }>(
-      "SELECT card_key, COUNT(*) AS n FROM trades WHERE player_id = ? AND direction = 'in' AND state = 'unmatched' GROUP BY card_key", [playerId]);
+      `SELECT t.card_key, COUNT(*) AS n FROM trades t WHERE t.player_id = ? AND t.direction = 'in'
+       AND (t.state = 'unmatched' OR ${FROM_CASUAL}) GROUP BY t.card_key`, [playerId]);
     return Object.fromEntries(rows.map((row) => [row.card_key, row.n]));
+  }
+
+  async receivedFromCasual(): Promise<string[]> {
+    const rows = await this.#db.all<{ player_id: string }>(
+      `SELECT DISTINCT t.player_id FROM trades t WHERE t.direction = 'in' AND ${FROM_CASUAL}`);
+    return rows.map((row) => row.player_id);
   }
 
   async setScore(playerId: string, score: { score: number; uniqueCards: number; setsDone: number }): Promise<void> {
@@ -330,6 +354,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
          FROM set_completions c JOIN players p ON p.id = c.player_id JOIN scores s ON s.player_id = c.player_id
          WHERE p.visibility = 'public' AND p.status = 'active'
          AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')
+       AND COALESCE((SELECT l.casual_drops FROM ledger_state l WHERE l.player_id = p.id), 0) = 0
        ) WHERE n = 1 ORDER BY received_at ASC, set_code ASC`);
     return rows.map((row) => ({ setCode: row.set_code, playerId: row.player_id, displayName: row.display_name, receivedAt: row.received_at }));
   }
@@ -339,6 +364,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       `SELECT ${SCORE_COLUMNS} FROM scores s JOIN players p ON p.id = s.player_id
        WHERE p.visibility = 'public' AND p.status = 'active'
        AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')
+       AND COALESCE((SELECT l.casual_drops FROM ledger_state l WHERE l.player_id = p.id), 0) = 0
        ORDER BY s.score DESC, s.updated_at ASC, s.player_id ASC LIMIT ?`, [limit]);
     return rows.map(toEntry);
   }
@@ -347,18 +373,26 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     const rows = await this.#db.all<ScoreRow>(
       `SELECT ${SCORE_COLUMNS} FROM scores s JOIN players p ON p.id = s.player_id
        WHERE s.player_id = ? AND p.visibility = 'public' AND p.status = 'active'
-       AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')`, [playerId]);
+       AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')
+       AND COALESCE((SELECT l.casual_drops FROM ledger_state l WHERE l.player_id = p.id), 0) = 0`, [playerId]);
     const row = rows[0];
     if (!row) return null;
     const ahead = await this.#db.all<{ n: number }>(
       `SELECT COUNT(*) AS n FROM scores s JOIN players p ON p.id = s.player_id
        WHERE p.visibility = 'public' AND p.status = 'active'
        AND NOT EXISTS (SELECT 1 FROM flags f WHERE f.player_id = p.id AND f.kind = 'luck-hold' AND f.state != 'cleared')
+       AND COALESCE((SELECT l.casual_drops FROM ledger_state l WHERE l.player_id = p.id), 0) = 0
        AND (s.score > ? OR (s.score = ? AND s.updated_at < ?) OR (s.score = ? AND s.updated_at = ? AND s.player_id < ?))`,
       [row.score, row.score, row.updated_at, row.score, row.updated_at, row.player_id]);
     return { entry: toEntry(row), rank: (ahead[0]?.n ?? 0) + 1 };
   }
 }
+
+// A trade half received from a player whose own ledger has Casual drops: the other half is a tradeOut of the same card,
+// naming each other, by a player with a non-zero casual_drops. Those copies cannot be trusted, so they do not count.
+const FROM_CASUAL = `EXISTS (SELECT 1 FROM trades o JOIN ledger_state l ON l.player_id = o.player_id
+  WHERE o.trade_id = t.trade_id AND o.direction = 'out' AND o.card_key = t.card_key AND o.player_id != t.player_id
+  AND o.partner = t.char AND o.char = t.partner AND l.casual_drops > 0)`;
 
 type ScoreRow = {
   player_id: string; display_name: string; score: number; unique_cards: number; sets_done: number; attempts: number; updated_at: number;

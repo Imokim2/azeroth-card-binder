@@ -104,12 +104,14 @@ test("drops that the attempts cannot explain hold a player off the ladder until 
   // Thirty drops of a 1% card from 200 kills: about three were to be expected.
   const response = await env.call("/v1/ledger", { body: signedUpload(player, chain(drops("npc:589", 30)), { snapshot: snapshot({ "npc:589": 30 }, { "npc:589": 200 }) }) });
   assert.equal(response.status, 200, "the upload is accepted: the checks flag, they do not reject");
+  env.pretendVerified(); // these tests are about the luck hold, not about Casual
   assert.deepEqual(flagKinds(env), ["luck-hold"]);
   assert.equal((await env.call("/v1/player/" + id)).status, 404);
   assert.deepEqual(((await (await env.call("/v1/leaderboard")).json()) as { entries: unknown[] }).entries, []);
   // A second upload does not open a second flag for the same thing.
   const more = chain(drops("npc:589", 1, 31).map((event) => ({ ...event, count: 31 })), (env.raw.prepare("SELECT head_hash FROM ledger_state").get() as { head_hash: string }).head_hash);
   await env.call("/v1/ledger", { body: signedUpload(player, more, { snapshot: snapshot({ "npc:589": 31 }, { "npc:589": 200 }) }) });
+  env.pretendVerified();
   assert.deepEqual(flagKinds(env), ["luck-hold"]);
   // After a person reviews and clears it, the player is back on the ladder.
   env.raw.prepare("UPDATE flags SET state = 'cleared'").run();

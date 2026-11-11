@@ -55,7 +55,12 @@ function ACB.ladderStatus(saved)
         return ("You are number %d with %s points (%d cards, %d sets)."):format(
             you.rank, ACB.pointsText(you.score), tonumber(you.cards) or 0, tonumber(you.sets) or 0)
     end
-    if saved.mode ~= "ranked" then return "Switch to Ranked in Settings to join the ladder." end
+    -- Only Ranked counts: a binder with unverifiable cards or drops cannot be on the ladder.
+    if saved.legacy then return "This binder holds cards from before the ledger, which the server cannot check, so it cannot join the ladder." end
+    if (saved.casualDrops or 0) > 0 then
+        return ("This binder has %d Casual drop%s, which cannot be checked, so it cannot join the ladder."):format(saved.casualDrops, saved.casualDrops == 1 and "" or "s")
+    end
+    if saved.mode ~= "ranked" then return "Switch to Ranked in Settings before your next drop to join the ladder. Only Ranked counts." end
     if #ACB.ladderRows() == 0 then return "No standings yet. The companion app brings them in when it syncs." end
     return "You are not on the ladder yet. Standings update when the companion app syncs and you reload."
 end

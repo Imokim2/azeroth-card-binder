@@ -5,7 +5,7 @@
 // A run handles one page of players and says where to carry on, so a big ladder is done in several short runs. A dry run
 // reports what would change and writes nothing. A player whose stored history no longer passes the rules (because a rule
 // was tightened) is reported and left as it is, never half rewritten.
-import { dropCountsOf, tradeRowsOf } from "./derive.ts";
+import { casualDropsOf, dropCountsOf, tradeRowsOf } from "./derive.ts";
 import { RULES_VERSION, scoreOf } from "./score.ts";
 import { newState, replay } from "./shared.ts";
 import type { Catalog } from "./shared.ts";
@@ -44,11 +44,13 @@ export async function rebuild(
     if (!now || JSON.stringify(sorted(now.state)) !== JSON.stringify(sorted(played.state))) differences.push("state");
     if (!now || JSON.stringify(sorted(now.drops)) !== JSON.stringify(sorted(drops))) differences.push("drops");
     if (!now || now.score !== score.score) differences.push("score");
+    const casualDrops = casualDropsOf(events as unknown as Record<string, unknown>[]);
+    if (!now || now.casualDrops !== casualDrops) differences.push("casual");
     if (differences.length === 0 && !options.force) continue;
     report.changed.push({ playerId, differences });
     if (report.dryRun) continue;
     await deps.rebuild.writeDerived(playerId, {
-      state: played.state, drops, score, rulesVersion: RULES_VERSION,
+      state: played.state, drops, score, rulesVersion: RULES_VERSION, casualDrops,
       dropRows: events.filter((event) => event.kind === "drop"),
       trades: tradeRowsOf(events as unknown as Record<string, unknown>[]).map((row) => ({ ...row, receivedAt: received.get(row.seq) ?? 0 })),
       completions: events.filter((event) => event.kind === "set").map((event) => ({ setCode: event.key, t: event.t, receivedAt: received.get(event.seq) ?? 0 })),

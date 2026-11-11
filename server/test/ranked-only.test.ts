@@ -1,0 +1,125 @@
+// Only Ranked counts (roadmap decision D5): a player with any Casual drop, which the server cannot recheck, is not
+// listed on the ladder, and cards received in trades from such a player do not count for the other side.
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import test from "node:test";
+import { runMaintenance } from "../src/maintenance.ts";
+import { rebuild } from "../src/rebuild.ts";
+import { NOW, catalog, chain, chainedHistory, newPlayer, rankedHistory, registration, setup, signedUpload } from "./harness.ts";
+import type { Player } from "./harness.ts";
+
+type Body = Record<string, unknown> & { error?: { code: string } };
+const read = async (response: Response) => (await response.json()) as Body;
+const reference = createRequire(import.meta.url)("../../packages/shared/src/ledger.js") as { signBatch(batch: Record<string, unknown>, key: unknown): string };
+
+async function register(env: ReturnType<typeof setup>, name: string) {
+  const player = newPlayer(name);
+  const body = await read(await env.call("/v1/register", { body: registration(player) }));
+  return { player, id: body["playerId"] as string };
+}
+async function takeTape(env: ReturnType<typeof setup>, player: Player) {
+  const request = { key: player.publicKeyHex, sentAt: NOW };
+  await env.call("/v1/tape", { body: { ...request, sig: reference.signBatch({ ...request, purpose: "tape" }, player.privateKey) } });
+}
+const head = (env: ReturnType<typeof setup>) => (env.raw.prepare("SELECT head_hash FROM ledger_state WHERE player_id = (SELECT player_id FROM ledger_state ORDER BY rowid DESC LIMIT 1)").get() as { head_hash: string }).head_hash;
+const ladder = async (env: ReturnType<typeof setup>) => ((await read(await env.call("/v1/leaderboard"))) as unknown as { entries: { playerId: string }[] }).entries.map((entry) => entry.playerId);
+const scoreOfPlayer = (env: ReturnType<typeof setup>, id: string) => Number((env.raw.prepare("SELECT score FROM scores WHERE player_id = ?").get(id) as { score: number }).score);
+const casualDrops = (env: ReturnType<typeof setup>, id: string) => Number((env.raw.prepare("SELECT casual_drops AS n FROM ledger_state WHERE player_id = ?").get(id) as { n: number }).n);
+
+async function rankedPlayer(env: ReturnType<typeof setup>, name: string, extra: Record<string, unknown>[] = []) {
+  const { player, id } = await register(env, name);
+  await takeTape(env, player);
+  const { events, tapeNext, attempts } = await rankedHistory(id, 2, "npc:589", `${name}-RealmName`);
+  const all = extra.length > 0 ? chain([...events.map(({ prev, h, ...rest }) => { void prev; void h; return rest; }), ...extra.map((event, index) => ({ ...event, seq: events.length + index + 1, t: 5000 + index }))]) : events;
+  const counts: Record<string, number> = { "npc:589": 2 };
+  for (const event of extra) if (event["kind"] === "tradeIn") counts[String(event["key"])] = 1;
+  const response = await env.call("/v1/ledger", {
+    body: signedUpload(player, all, { character: name, realm: "RealmName", tapeIndex: tapeNext, snapshot: { counts, dust: 0, sets: {}, attempts: { "npc:589": attempts }, titles: {} } }),
+  });
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  return { player, id };
+}
+
+test("a Ranked player is on the ladder; a player with Casual drops is stored and scored but never listed", async () => {
+  const env = setup();
+  const casual = await register(env, "casual");
+  const response = await env.call("/v1/ledger", { body: signedUpload(casual.player, chainedHistory(), { character: "Casual", realm: "RealmName" }) });
+  assert.equal(response.status, 200);
+  assert.ok(casualDrops(env, casual.id) > 0);
+  assert.ok(scoreOfPlayer(env, casual.id) > 0, "still stored and scored");
+  assert.deepEqual(await ladder(env), []);
+  assert.equal((await env.call("/v1/player/" + casual.id)).status, 404);
+
+  const ranked = await rankedPlayer(env, "Ranked");
+  assert.equal(casualDrops(env, ranked.id), 0);
+  assert.deepEqual(await ladder(env), [ranked.id]);
+  assert.equal((await env.call("/v1/player/" + ranked.id)).status, 200);
+});
+
+test("one Casual drop takes a Ranked player off the ladder", async () => {
+  const env = setup();
+  const ranked = await rankedPlayer(env, "Ranked");
+  assert.deepEqual(await ladder(env), [ranked.id]);
+  // They switch to Casual and a drop is rolled with the computer's own random numbers.
+  const base = { dust: 0, shiny: 0, partner: "", trade: "", char: "Ranked-RealmName" };
+  const later = chain([
+    { seq: 0, t: 0, kind: "mode", key: "casual", count: 0, tape: 0, ...base },
+    { seq: 0, t: 0, kind: "drop", key: "npc:589", count: 3, tape: 0, ...base },
+  ].map((event, index) => ({ ...event, seq: ((env.raw.prepare("SELECT head_seq AS s FROM ledger_state WHERE player_id = ?").get(ranked.id) as { s: number }).s) + index + 1, t: 9000 + index })), head(env));
+  const response = await env.call("/v1/ledger", {
+    body: signedUpload(ranked.player, later, { character: "Ranked", realm: "RealmName", tapeIndex: 1, snapshot: { counts: { "npc:589": 3 }, dust: 0, sets: {}, attempts: { "npc:589": 500 }, titles: {} } }),
+  });
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  assert.equal(casualDrops(env, ranked.id), 1);
+  assert.deepEqual(await ladder(env), []);
+  assert.equal((await env.call("/v1/player/" + ranked.id)).status, 404);
+});
+
+test("cards received from a player with Casual drops do not count, even if the trade was recorded first", async () => {
+  const env = setup();
+  const trade = "111-482910-1";
+  const tradeIn = { kind: "tradeIn", key: "npc:590", count: 1, dust: 0, shiny: 0, tape: 0, partner: "alice-realmname", trade, char: "Bob-RealmName" };
+  // Bob plays Ranked and receives a card from Alice, who has not uploaded yet: for now it counts.
+  const bob = await rankedPlayer(env, "Bob", [tradeIn]);
+  const withTrade = scoreOfPlayer(env, bob.id);
+  const alice = await register(env, "alice");
+  // Alice's history is Casual: a drop, then the other half of the trade.
+  const base = { dust: 0, shiny: 0, tape: 0, char: "Alice-RealmName" };
+  const events = chain([
+    { seq: 1, t: 1000, kind: "drop", key: "npc:590", count: 1, partner: "", trade: "", ...base },
+    { seq: 2, t: 1010, kind: "tradeOut", key: "npc:590", count: 0, partner: "bob-realmname", trade, ...base },
+  ]);
+  const response = await env.call("/v1/ledger", {
+    body: signedUpload(alice.player, events, { character: "Alice", realm: "RealmName", snapshot: { counts: {}, dust: 0, sets: {}, attempts: { "npc:590": 100 }, titles: {} } }),
+  });
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  assert.equal(casualDrops(env, alice.id), 1);
+  assert.equal(scoreOfPlayer(env, bob.id), withTrade, "nothing has re-checked Bob yet");
+  // The hourly job notices: Bob's copy came from a Casual player, so it stops counting.
+  await runMaintenance(env.deps);
+  const card = catalog.cards["npc:590"]!;
+  const points = ({ common: 1, rare: 2, epic: 5, legendary: 10 } as Record<string, number>)[card.rarity] ?? 0;
+  assert.equal(withTrade - scoreOfPlayer(env, bob.id), points * 10);
+  assert.deepEqual(await ladder(env), [bob.id], "Bob is still on the ladder: only the borrowed card stopped counting");
+  // Run again: nothing more changes.
+  const settled = scoreOfPlayer(env, bob.id);
+  await runMaintenance(env.deps);
+  assert.equal(scoreOfPlayer(env, bob.id), settled);
+});
+
+test("a rebuild works out the Casual drops again from the stored events", async () => {
+  const env = setup();
+  const casual = await register(env, "casual");
+  await env.call("/v1/ledger", { body: signedUpload(casual.player, chainedHistory(), { character: "Casual", realm: "RealmName" }) });
+  const honest = casualDrops(env, casual.id);
+  assert.ok(honest > 0);
+  // Damaged: the count says no Casual drops, which would put the player on the ladder.
+  env.raw.prepare("UPDATE ledger_state SET casual_drops = 0").run();
+  assert.deepEqual(await ladder(env), [casual.id]);
+  const dry = await rebuild(env.deps, { dryRun: true });
+  assert.deepEqual(dry.changed.map((entry) => entry.differences), [["casual"]]);
+  assert.equal(casualDrops(env, casual.id), 0, "a dry run changes nothing");
+  await rebuild(env.deps);
+  assert.equal(casualDrops(env, casual.id), honest);
+  assert.deepEqual(await ladder(env), []);
+});

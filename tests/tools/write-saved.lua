@@ -29,6 +29,8 @@ if arg[3] then
         collection:roll(guid(573, "ranked" .. number), "loot")
     end
 else
+    -- A different binder (a different first event, so a different chain from the very start): WARCARDS_VARIANT=other
+    if os.getenv("WARCARDS_VARIANT") == "other" then find(589, "otherfirst") end
     find(639, "a"); find(639, "b")
     assert(collection:recycle("npc:639"))
     assert(collection:craft("npc:590"))

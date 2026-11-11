@@ -11,6 +11,8 @@ export type Player = {
   status: "active" | "banned";
   visibility: Visibility;
   createdAt: number;
+  epoch: number; // how many times the player has started a new binder
+  resetAt: number | null;
 };
 
 export interface PlayerStore {
@@ -21,6 +23,9 @@ export interface PlayerStore {
   // keeps it, its older keys are revoked and the new one becomes active. Registering the same key twice changes nothing.
   registerKey(input: { discordId: string; key: string; visibility: Visibility; at: number; newPlayerId: string }): Promise<Player>;
   characters(playerId: string): Promise<{ name: string; realm: string }[]>;
+  // Start over: everything stored for the player is kept, under a new private id that nothing lists, and the player
+  // begins again with nothing (and a new epoch). Their keys, Discord link and visibility stay.
+  resetBinder(playerId: string, archivedId: string, at: number): Promise<void>;
 }
 
 // pity (kept under its old column name): the attempts that each card's ranked drops have needed so far, checked against its counted attempts; tapeNext: the tape position
@@ -48,6 +53,8 @@ export type Commit = {
   // Each tradeIn and tradeOut in the batch, and each set finished, for trade matching and the firsts feed.
   trades: TradeRow[];
   completions: { setCode: string; t: number }[];
+  // Drop events in this batch that were rolled in Casual mode (tape position 0); added to the player's running count.
+  casualDrops: number;
 };
 
 export type TradeRow = { seq: number; tradeId: string; direction: "in" | "out"; key: string; char: string; partner: string; t: number };
@@ -74,8 +81,11 @@ export interface TradeStore {
   matchOpen(): Promise<string[]>;
   // Mark the halves still open from before `before` (seconds) as unmatched, and say whose they were.
   expire(before: number): Promise<{ playerId: string; direction: "in" | "out"; key: string }[]>;
-  // The copies of each card the player received in trades that were never matched; they do not count towards the score.
+  // The copies of each card the player received in trades that do not count towards the score: halves never matched,
+  // and copies that came from a player who has unverified Casual drops.
   excluded(playerId: string): Promise<Record<string, number>>;
+  // Players with copies received from a player who has unverified Casual drops, so their scores can be put right.
+  receivedFromCasual(): Promise<string[]>;
   // Replace the score numbers after the excluded copies changed.
   setScore(playerId: string, score: { score: number; uniqueCards: number; setsDone: number }): Promise<void>;
   // Raise a flag outside an upload.
@@ -98,7 +108,7 @@ export interface ModerationStore {
 // Rebuilding everything derived from the stored batches (roadmap D8).
 export type Derived = {
   state: LedgerState; drops: Record<string, number>; score: { score: number; uniqueCards: number; setsDone: number };
-  dropRows: LedgerEvent[]; trades: (TradeRow & { receivedAt: number })[]; completions: { setCode: string; t: number; receivedAt: number }[]; rulesVersion: number;
+  casualDrops: number; dropRows: LedgerEvent[]; trades: (TradeRow & { receivedAt: number })[]; completions: { setCode: string; t: number; receivedAt: number }[]; rulesVersion: number;
 };
 export interface RebuildStore {
   // Player ids in order, after `after` (or from the start), at most `limit`.
@@ -106,7 +116,7 @@ export interface RebuildStore {
   // Every stored batch of a player, oldest first.
   batchesOf(playerId: string): Promise<{ events: LedgerEvent[]; receivedAt: number }[]>;
   // The derived data as it is stored now, to compare with a rebuild.
-  derivedNow(playerId: string): Promise<{ state: LedgerState; drops: Record<string, number>; score: number | null } | null>;
+  derivedNow(playerId: string): Promise<{ state: LedgerState; drops: Record<string, number>; score: number | null; casualDrops: number } | null>;
   // Replace the derived data for a player.
   writeDerived(playerId: string, derived: Derived): Promise<void>;
 }

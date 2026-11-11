@@ -76,6 +76,15 @@ function ACB.initSlash(saved, tools)
                 report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))
             end
             if ACB.refreshZoneBar then ACB.refreshZoneBar() end
+        elseif cmd == "newbinder" or cmd == "newbinder confirm" then
+            if cmd == "newbinder" then
+                report("This erases your binder on this account and starts a new one. Do it to join the Ranked ladder, which only counts a binder that was Ranked from its first drop.")
+                report("A copy of your collection is kept in the saved file. To go ahead, type /acb newbinder confirm. Then wait for the companion app to say the new binder was started before you switch to Ranked.")
+            else
+                ACB.startNewBinder(saved)
+                report("A new binder was started. Reloading the interface.")
+                if ReloadUI then ReloadUI() end
+            end
         elseif cmd == "dust" then
             report(("Binder Dust: %d. Open a card in the binder to recycle a spare or craft a missing card."):format(saved.dust or 0))
         elseif cmd == "mode" or cmd:match("^mode%s+%a+$") then
@@ -83,6 +92,9 @@ function ACB.initSlash(saved, tools)
             if wanted then
                 local ok, why = ACB.setMode(saved, ACB.ledger, wanted)
                 report(ok and ("Mode: " .. saved.mode .. ".") or why)
+                if ok and wanted == "casual" then
+                    report("Only Ranked counts for the ladder. A drop rolled in Casual cannot be checked, and one is enough to keep this binder off the ladder for good.")
+                end
             else
                 report(("Mode: %s. Roll tape entries left: %d. Use /acb mode ranked or /acb mode casual."):format(saved.mode, ACB.tapeLeft(saved)))
             end
@@ -120,7 +132,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, privacy, title, popup, popup test, hints, bar, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

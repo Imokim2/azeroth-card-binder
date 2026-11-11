@@ -201,6 +201,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         end
         if shiny then saved.shiny[card.key] = true end
         record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex })
+        -- A drop rolled with this computer's own random numbers cannot be rechecked by the server.
+        if not ranked then saved.casualDrops = (saved.casualDrops or 0) + 1 end
         report(("%s: %s (x%d)"):format(shiny and "Shiny card found" or "Card found", card.name, counts[card.key]))
         checkAchievements(card)
         found(card, { count = counts[card.key], first = counts[card.key] == 1, shiny = shiny })

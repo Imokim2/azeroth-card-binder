@@ -59,6 +59,7 @@ test("a whole honest history is accepted, scored, and shown on the public pages"
   const response = await env.call("/v1/ledger", { body: signedUpload(player, chainedHistory()) });
   const body = await read(response);
   assert.equal(response.status, 200, JSON.stringify(body));
+  env.pretendVerified(); // a Casual history: see ranked-only.test.ts for what that means for the ladder
   const events = chainedHistory();
   assert.equal(body["ackSeq"], events.length);
   assert.equal(body["ackHash"], events[events.length - 1]?.["h"]);
@@ -228,6 +229,7 @@ test("the leaderboard orders by score, then by who got there first, and honours 
     await env.call("/v1/ledger", { body: signedUpload(player, events, { snapshot }) });
     ids.push(id);
   }
+  env.pretendVerified();
   const board = (await read(await env.call("/v1/leaderboard")))["entries"] as { playerId: string; rank: number }[];
   assert.deepEqual(board.map((entry) => entry.playerId), [ids[2], ids[0], ids[1]]);
   const limited = (await read(await env.call("/v1/leaderboard?limit=2")))["entries"] as unknown[];

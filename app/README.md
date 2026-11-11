@@ -18,7 +18,7 @@ src/controller.ts  what the app does, with no window: settings, sign-in, folder,
 src/settings.ts    the app's own settings file
 src/secrets.ts     keeping the key encrypted on disk
 src/files.ts       finds the game folder, writes files atomically, waits for the game to finish writing
-src/engine.ts      the sync loop: upload, tape, standings, Sync.lua; runs on every change of the game's file
+src/engine.ts      the sync loop (it also notices a saved binder that does not continue the server's, so the player can be offered a new binder): upload, tape, standings, Sync.lua; runs on every change of the game's file
 test/              the parser, and the whole loop with the real Lua add-on and the real server
 ```
 
