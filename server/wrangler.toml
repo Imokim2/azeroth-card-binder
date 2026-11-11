@@ -1,6 +1,9 @@
 # Cloudflare Worker configuration for the World of Warcards API. Infrastructure is code: this file is the
 # source of truth, not the dashboard. Secrets never go here (use `wrangler secret put`).
 #
+# Secrets set with `wrangler secret put <name> --env <staging|production>`: TAPE_SECRET, ADMIN_TOKEN, DISCORD_CLIENT_SECRET.
+# The Discord client id above is public (it is shown in the sign-in page's address); the secret never goes in this file.
+#
 # NOT DEPLOYED YET. The database ids below are placeholders until the Cloudflare account exists (roadmap B2):
 #   npx wrangler d1 create warcards-staging      then paste the id here
 #   npx wrangler d1 migrations apply warcards-staging --env staging
@@ -11,9 +14,9 @@ compatibility_date = "2026-11-01"
 
 [env.staging]
 name = "warcards-api-staging"
-vars = { MIN_CLIENT = "0.1.0", VERSION = "0.1.0" }
+vars = { MIN_CLIENT = "0.1.0", VERSION = "0.1.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
 d1_databases = [
-  { binding = "DB", database_name = "warcards-staging", database_id = "REPLACE-WITH-STAGING-DATABASE-ID", migrations_dir = "migrations" },
+  { binding = "DB", database_name = "warcards-staging", database_id = "adf8ffb3-8272-4962-98e8-6b9dba138532", migrations_dir = "migrations" },
 ]
 
 # Once an hour: pair up trades and write off the ones nobody confirmed (src/maintenance.ts).
@@ -22,7 +25,7 @@ crons = ["17 * * * *"]
 
 [env.production]
 name = "warcards-api"
-vars = { MIN_CLIENT = "0.1.0", VERSION = "0.1.0" }
+vars = { MIN_CLIENT = "0.1.0", VERSION = "0.1.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
 d1_databases = [
   { binding = "DB", database_name = "warcards", database_id = "REPLACE-WITH-PRODUCTION-DATABASE-ID", migrations_dir = "migrations" },
 ]

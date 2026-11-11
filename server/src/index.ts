@@ -2,6 +2,7 @@
 // logic here. Settings come from wrangler.toml (variables) and the dashboard or `wrangler secret` (secrets).
 import { createApi } from "./api.ts";
 import type { Deps } from "./api.ts";
+import { discordIdentity } from "./discord.ts";
 import { fromD1 } from "./db.ts";
 import { runMaintenance } from "./maintenance.ts";
 import type { D1Like } from "./db.ts";
@@ -14,6 +15,9 @@ export interface Env {
   MIN_CLIENT: string;
   VERSION: string;
   TAPE_SECRET?: string; // a secret (wrangler secret put TAPE_SECRET); without it Ranked is closed
+  DISCORD_CLIENT_ID?: string; // the Discord application (a public variable, see wrangler.toml)
+  DISCORD_REDIRECT_URI?: string; // the address the companion app listens on while signing in
+  DISCORD_CLIENT_SECRET?: string; // a secret (wrangler secret put DISCORD_CLIENT_SECRET); without it registration stays closed
   ADMIN_TOKEN?: string; // a secret (wrangler secret put ADMIN_TOKEN); without it the admin routes do not exist
 }
 
@@ -28,6 +32,10 @@ export default {
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },
       minClient: env.MIN_CLIENT, version: env.VERSION,
+      // Registration opens only when the Discord application is fully configured.
+      ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.DISCORD_REDIRECT_URI
+        ? { identity: discordIdentity({ clientId: env.DISCORD_CLIENT_ID, clientSecret: env.DISCORD_CLIENT_SECRET, redirectUri: env.DISCORD_REDIRECT_URI, log }) }
+        : {}),
       // identity: added with the Discord sign-in (roadmap B7); until then registration answers "registration_closed".
     });
     return handle(request);

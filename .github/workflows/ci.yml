@@ -28,8 +28,11 @@ jobs:
       - name: Install LuaJIT and zip
         run: sudo apt-get update && sudo apt-get install -y luajit zip
 
-      - name: Type-check the server and the app
-        run: cd server && npm ci && npm run typecheck && cd ../app && npm ci && npm run typecheck
+      - name: Type-check the server and the app, and compile the app
+        # The Electron program itself is not needed to type-check or compile, so its large download is skipped.
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+        run: cd server && npm ci && npm run typecheck && cd ../app && npm ci && npm run typecheck && npm run build
 
       - name: Check, test and build
         run: node tools/release.js build

@@ -1,0 +1,58 @@
+/* The look of the game's binder: dark leather, brass edges, parchment text. No images, so nothing is loaded from anywhere. */
+:root {
+  --leather: #16110d;
+  --panel: #211812;
+  --panel-edge: #4d3a22;
+  --brass: #e0b066;
+  --brass-dark: #8a6a35;
+  --parchment: #ecdcb4;
+  --muted: #a89a7e;
+  --green: #7fd18a;
+  --red: #e07a62;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; padding: 20px 24px 12px; background: var(--leather); color: var(--parchment); font-size: 14px; line-height: 1.45; }
+header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.gem { width: 34px; height: 34px; background: linear-gradient(135deg, #ffd678, #c48c3c); transform: rotate(45deg) scale(0.62); border: 3px solid var(--brass-dark); border-radius: 3px; }
+h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 26px; font-weight: normal; color: var(--brass); letter-spacing: 0.5px; }
+.sub { margin: 0; color: var(--muted); font-size: 12px; letter-spacing: 3px; text-transform: uppercase; }
+.pill { margin-left: auto; padding: 4px 12px; border: 1px solid var(--panel-edge); border-radius: 12px; font-size: 12px; color: var(--muted); }
+.pill.ok { color: var(--green); border-color: #3c6a44; }
+.pill.warn { color: var(--brass); border-color: var(--brass-dark); }
+.pill.bad { color: var(--red); border-color: #7a3a2c; }
+.banner { margin-bottom: 12px; padding: 10px 14px; border: 1px solid #7a3a2c; background: #2b1612; color: var(--red); border-radius: 4px; }
+main { display: grid; gap: 12px; }
+section { padding: 14px 16px; background: var(--panel); border: 1px solid var(--panel-edge); border-radius: 4px; }
+h2 { margin: 0 0 6px; font-family: Georgia, serif; font-size: 16px; font-weight: normal; color: var(--brass); }
+p { margin: 6px 0; }
+.note { color: var(--muted); font-size: 12px; }
+.path { padding: 6px 10px; background: #120d09; border: 1px solid var(--panel-edge); border-radius: 3px; word-break: break-all; font-family: Consolas, monospace; font-size: 12px; }
+.path.empty { color: var(--muted); font-family: inherit; font-size: 14px; }
+fieldset { margin: 8px 0; padding: 6px 12px 8px; border: 1px solid var(--panel-edge); border-radius: 3px; }
+legend { padding: 0 6px; color: var(--muted); font-size: 12px; }
+fieldset label { display: block; padding: 2px 0; cursor: pointer; }
+.buttons { display: flex; gap: 8px; margin: 10px 0 4px; }
+button { padding: 7px 16px; color: var(--parchment); background: #34261a; border: 1px solid var(--brass-dark); border-radius: 3px; font: inherit; cursor: pointer; }
+button:hover:not(:disabled) { background: #45331f; border-color: var(--brass); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary { background: #6b4a1f; border-color: var(--brass); color: #fff4d6; }
+button.primary:hover:not(:disabled) { background: #85592a; }
+code { padding: 0 4px; background: #120d09; border-radius: 2px; color: var(--brass); }
+.accounts { margin: 6px 0; padding: 0; list-style: none; }
+.accounts li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 10px; margin-bottom: 4px; background: #120d09; border: 1px solid var(--panel-edge); border-radius: 3px; }
+.accounts .name { font-weight: 600; }
+.accounts .mode { margin-left: 8px; padding: 1px 8px; border-radius: 9px; font-size: 11px; background: #2b2216; color: var(--muted); }
+.accounts .mode.ranked { color: var(--brass); background: #3a2a14; }
+.accounts .state { color: var(--muted); text-align: right; }
+.accounts .state.good { color: var(--green); }
+.accounts .state.bad { color: var(--red); }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0; }
+.facts div { padding: 6px 10px; background: #120d09; border: 1px solid var(--panel-edge); border-radius: 3px; }
+.facts dt { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.facts dd { margin: 2px 0 0; }
+.message { margin: 12px 0 0; padding: 8px 12px; background: #1b2b1e; border: 1px solid #3c6a44; color: var(--green); border-radius: 3px; }
+footer { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--panel-edge); color: var(--muted); font-size: 12px; }
+footer label { cursor: pointer; }
+[hidden] { display: none !important; }

@@ -61,10 +61,10 @@ export async function describeInstall(root: string): Promise<Install> {
 }
 
 // Write a file so a reader never sees half of it: write beside it, then rename over it.
-export async function writeFileAtomic(path: string, text: string): Promise<void> {
+export async function writeFileAtomic(path: string, data: string | Uint8Array): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   const temporary = join(dirname(path), `.${basename(path)}.${process.pid}.tmp`);
-  await writeFile(temporary, text, "utf8");
+  await (typeof data === "string" ? writeFile(temporary, data, "utf8") : writeFile(temporary, data));
   await rename(temporary, path);
 }
 
