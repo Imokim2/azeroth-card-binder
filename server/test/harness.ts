@@ -114,7 +114,7 @@ export const casualSnapshot = { counts: casualState.state.counts, dust: casualSt
 
 export function signedUpload(player: Player, events: Record<string, unknown>[], overrides: Record<string, unknown> = {}) {
   const body: Record<string, unknown> = {
-    specVersion: 1, key: player.publicKeyHex, character: "Alice", realm: "RealmName", schema: 2,
+    specVersion: 2, key: player.publicKeyHex, character: "Alice", realm: "RealmName", schema: 2,
     catalogVersion: catalog.catalogVersion, events, tapeIndex: 0, sentAt: NOW,
     snapshot: { ...casualSnapshot, attempts: casualAttempts, titles: {} }, ...overrides,
   };
@@ -123,23 +123,25 @@ export function signedUpload(player: Player, events: Record<string, unknown>[], 
   return { ...body, sig: reference.signBatch(body, player.privateKey) };
 }
 
-// A Ranked history built from the player's own tape: drops only at entries that really win, shiny exactly as the entry says.
+// A Ranked history built from the player's own tape: every attempt written down, as a drop at an entry that really wins
+// (shiny exactly as the entry says) or inside a run of misses at the entries that really lose.
 export async function rankedHistory(playerId: string, wins: number, cardKey = "npc:589", char = "Alice-RealmName") {
   const key = await tapeKey(TAPE_SECRET);
   const rate = catalog.rates[catalog.cards[cardKey]?.rank ?? ""] ?? 0;
   const base = { dust: 0, partner: "", trade: "", char };
-  const partials: Record<string, unknown>[] = [{ seq: 1, t: 1000, kind: "mode", key: "ranked", count: 0, shiny: 0, tape: 0, ...base }];
+  const partials: Record<string, unknown>[] = [{ seq: 1, t: 1000, kind: "mode", key: "ranked2", count: 0, shiny: 0, tape: 0, ...base }];
   let count = 0;
   let shinyOwned = false;
   let used = 0;
   let misses = 0; // the add-on's own stacking rule: every miss raises the chance of the next attempt
-  for (let index = 1; partials.length <= wins; index++) {
+  for (let index = 1; count < wins; index++) {
     used = index;
     const entry = await tapeEntry(key, playerId, index);
     if (rollValue(entry) > chanceAfter(rate, misses, catalog.stackFactor)) {
       misses += 1;
       continue;
     }
+    if (misses > 0) partials.push({ seq: partials.length + 1, t: 1000 + partials.length * 10, kind: "miss", key: cardKey, count: misses, shiny: 0, tape: index - 1, ...base });
     misses = 0;
     count += 1;
     const shiny = !shinyOwned && shinyValue(entry, catalog.shinyOdds) === 1;

@@ -98,6 +98,9 @@ function ACB.initSlash(saved, tools)
             if wanted then
                 local ok, why = ACB.setMode(saved, ACB.ledger, wanted)
                 report(ok and ("Mode: " .. saved.mode .. ".") or why)
+                if ok and wanted == "ranked" then
+                    report("Ranked checks every attempt against the server. Every card starts again from its base drop chance, and the tape is topped up by the companion app, so /reload now and then to let it sync.")
+                end
                 if ok and wanted == "casual" then
                     report("Only Ranked counts for the ladder. A drop rolled in Casual cannot be checked, and one is enough to keep this binder off the ladder for good.")
                 end

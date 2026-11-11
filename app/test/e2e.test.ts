@@ -269,7 +269,7 @@ test("Ranked, end to end: the server issues a tape, the real add-on rolls it, an
     assert.equal(issued.status, "tape");
     if (issued.status !== "tape") return;
     assert.equal(issued.start, 1);
-    assert.equal(issued.entries.length, 10_000);
+    assert.equal(issued.entries.length, 1_000);
     const install = await describeInstall(game.folder);
     await writeFileAtomic(install.syncPath, syncFileText({ syncedAt: NOW, acks: [], tape: { start: issued.start, entries: issued.entries } }));
 
@@ -282,7 +282,20 @@ test("Ranked, end to end: the server issues a tape, the real add-on rolls it, an
     const drops = binder.events.filter((event) => event.kind === "drop");
     assert.ok(drops.length >= 6, "a 10% card with a stacking chance gives at least six drops in sixty attempts");
     assert.ok(drops.every((event) => event.tape >= 1 && event.tape <= 60));
-    assert.deepEqual(binder.events.map((event) => event.tape).filter((tape) => tape > 0), drops.map((event) => event.tape).sort((a, b) => a - b));
+    // Every attempt is written down: drops and runs of misses follow each other with no entry left out. The attempts after the
+    // last event are still an open run in the saved file, which the app does not need to see yet.
+    let covered = 0;
+    for (const event of binder.events) {
+      if (event.kind === "drop") {
+        assert.equal(event.tape, covered + 1);
+        covered = event.tape;
+      } else if (event.kind === "miss") {
+        assert.equal(event.tape - event.count, covered);
+        covered = event.tape;
+      }
+    }
+    assert.ok(covered >= 50 && covered <= 60, "the events cover the attempts up to the open run: " + covered);
+    assert.ok(binder.events.some((event) => event.kind === "miss"), "misses are on record");
 
     // The server recomputes every drop from its own secret and accepts them.
     const outcome = await syncBinder(client.options, binder, null);

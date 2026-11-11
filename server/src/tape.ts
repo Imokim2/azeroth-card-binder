@@ -4,10 +4,12 @@
 import { sha256Hex, toHex } from "../../packages/shared/src/crypto.ts";
 import type { LedgerEvent } from "./ledger.ts";
 import type { Catalog, LedgerState } from "./shared.ts";
-import { attemptsNeeded } from "./stack.ts";
+import { chanceAfter } from "./stack.ts";
 
-export const TAPE_SIZE = 10_000; // entries added at each refill
-export const REFILL_BELOW = 2_000; // a refill happens when this few unused entries remain
+// A player is never given more than TAPE_SIZE + REFILL_BELOW entries ahead of the last upload that used them, so what
+// they could read ahead of time is small. Heavy play is about a thousand attempts an hour.
+export const TAPE_SIZE = 1_000; // entries added at each refill
+export const REFILL_BELOW = 250; // a refill happens when this few unused entries remain
 
 const encoder = new TextEncoder();
 
@@ -31,30 +33,44 @@ export const rollValue = (entry: string): number => (parseInt(entry.slice(0, 8),
 export const shinyValue = (entry: string, odds: number): number => (parseInt(entry.slice(8, 16), 16) % odds) + 1;
 export const tapeCommitment = (entries: string[]): Promise<string> => sha256Hex(entries.join("\n"));
 
-export type TapeFailure = { reason: "not-issued" | "roll" | "stack" | "shiny" | "next"; index: number };
+export type TapeFailure = { reason: "not-issued" | "roll" | "shiny" | "next"; index: number };
 
-// Check every ranked drop in a batch against the entry the server would have issued for it. `claims` are the
-// attempts each card's ranked drops have needed so far; `attempts` is the snapshot's lifetime attempts per card.
-// Returns the failure, or null and the updated claims.
+// Replay every ranked attempt in a batch against the entry the server issued for it (spec section 8). In ranked2 every
+// attempt is written down, as a drop or inside a run of misses, so each one can be checked exactly: a miss needs a roll
+// above the chance of that attempt, a drop needs a roll at or below it. `stack` is how many misses in a row each card
+// has had since its last drop; entering ranked2 starts every card at zero. Returns the failure, or null and the new stack.
 export async function checkTape(args: {
   key: TapeKey; playerId: string; events: LedgerEvent[]; stateBefore: LedgerState; catalog: Catalog;
-  issuedEnd: number; claims: Record<string, number>; attempts: Record<string, number>; tapeNext: number;
-}): Promise<{ failure: TapeFailure } | { failure: null; claims: Record<string, number> }> {
-  const claims = { ...args.claims };
+  issuedEnd: number; stack: Record<string, number>; tapeNext: number;
+}): Promise<{ failure: TapeFailure } | { failure: null; stack: Record<string, number> }> {
+  let stack = { ...args.stack };
   const owned = new Set(Object.keys(args.stateBefore.shiny));
   let lastTape = args.stateBefore.lastTape;
+  const entryAt = (position: number): Promise<string> => tapeEntry(args.key, args.playerId, position);
   for (const [index, event] of args.events.entries()) {
-    if (event.kind !== "drop" || event.tape === 0) continue;
+    if (event.kind === "mode" && event.key === "ranked2") {
+      stack = {};
+      lastTape = event.tape;
+      continue;
+    }
+    if ((event.kind !== "drop" && event.kind !== "miss") || event.tape === 0) continue;
     if (event.tape > args.issuedEnd) return { failure: { reason: "not-issued", index } };
     const card = args.catalog.cards[event.key];
     if (!card) continue; // the rules have already refused unknown cards
-    const entry = await tapeEntry(args.key, args.playerId, event.tape);
     const rate = args.catalog.rates[card.rank] ?? 0;
-    // The server cannot see the misses between two drops, but a drop with this roll needed at least this many
-    // attempts since the card's last one. Added up, those can never exceed the attempts the add-on has counted.
-    const used = (claims[event.key] ?? 0) + attemptsNeeded(rollValue(entry), rate, args.catalog.stackFactor);
-    claims[event.key] = used;
-    if (used > (args.attempts[event.key] ?? 0)) return { failure: { reason: "stack", index } };
+    if (event.kind === "miss") {
+      for (let position = event.tape - event.count + 1; position <= event.tape; position++) {
+        const misses = stack[event.key] ?? 0;
+        // A miss that the roll would have won is a drop the player left out.
+        if (rollValue(await entryAt(position)) <= chanceAfter(rate, misses, args.catalog.stackFactor)) return { failure: { reason: "roll", index } };
+        stack[event.key] = misses + 1;
+      }
+      lastTape = event.tape;
+      continue;
+    }
+    const entry = await entryAt(event.tape);
+    if (rollValue(entry) > chanceAfter(rate, stack[event.key] ?? 0, args.catalog.stackFactor)) return { failure: { reason: "roll", index } };
+    delete stack[event.key];
     // While a card has no shiny copy, a drop is shiny exactly when its entry says so. Once it has one, the rules
     // already refuse any further shiny.
     if (!owned.has(event.key) && (shinyValue(entry, args.catalog.shinyOdds) === 1) !== (event.shiny === 1)) return { failure: { reason: "shiny", index } };
@@ -65,5 +81,5 @@ export async function checkTape(args: {
   if (args.tapeNext > args.issuedEnd + 1 || (lastTape > 0 && args.tapeNext <= lastTape)) {
     return { failure: { reason: "next", index: args.events.length } };
   }
-  return { failure: null, claims };
+  return { failure: null, stack };
 }

@@ -43,6 +43,7 @@ end
 function ACB.setMode(saved, ledger, mode)
     if mode ~= "casual" and mode ~= "ranked" then return false, "The mode is casual or ranked." end
     if saved.mode == mode then return true end
+    ledger:flushRun()
     if mode == "ranked" then
         if saved.legacy then
             return false, "Your binder holds cards from before the ledger, which the server cannot check. Ranked needs a fresh binder."
@@ -52,6 +53,26 @@ function ACB.setMode(saved, ledger, mode)
         end
     end
     saved.mode = mode
-    ledger:record("mode", mode)
+    if mode == "ranked" then
+        -- Ranked writes down every attempt (docs/LEDGER-SPEC.md, section 8.1). The event names the last tape entry used so
+        -- far, and every card starts its run of misses again, so the server can follow each chance from zero.
+        saved.misses, saved.exactMode = {}, true
+        ledger:record("mode", "ranked2", { tape = ACB.tapeUsed(saved) })
+    else
+        saved.exactMode = nil
+        ledger:record("mode", mode)
+    end
     return true
+end
+
+-- The last tape entry this binder has used (0 before the first).
+function ACB.tapeUsed(saved)
+    return (type(saved.tape) == "table" and saved.tape.next or 1) - 1
+end
+
+-- A binder that was already in Ranked when it loaded, from a version that did not write attempts down, starts doing so.
+function ACB.resumeRanked(saved, ledger)
+    if saved.mode ~= "ranked" or saved.exactMode then return end
+    saved.misses, saved.exactMode = {}, true
+    ledger:record("mode", "ranked2", { tape = ACB.tapeUsed(saved) })
 end

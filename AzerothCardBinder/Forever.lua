@@ -285,7 +285,10 @@ local function initialize()
     local ledger = ACB.newLedger(saved, time, ACB.characterName)
     ledger:begin(upgraded)
     -- Events the server has stored are dropped, but never from a binder that fails its check.
-    if ledger:check() then ledger:prune(ACB.sync and ACB.sync.acks) end
+    if ledger:check() then
+        ledger:prune(ACB.sync and ACB.sync.acks)
+        ACB.resumeRanked(saved, ledger)
+    end
     ACB.ledger = ledger
     collection = ACB.newCollection(saved, math.random, report, log, function(card, info)
         if ACB.showToast then ACB.showToast(card, info) end

@@ -26,17 +26,18 @@ write("sha256.json", sha256);
 const char = "Alice-RealmName";
 const base = { dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char };
 const plan = [
-    { t: 1000, kind: "mode", key: "ranked", count: 0 },
+    { t: 1000, kind: "mode", key: "ranked2", count: 0 },
     { t: 1010, kind: "drop", key: "npc:639", count: 1, shiny: 1, tape: 1 },
-    { t: 1020, kind: "drop", key: "npc:589", count: 1, tape: 2 },
-    { t: 1030, kind: "drop", key: "npc:589", count: 2, tape: 3 },
+    { t: 1015, kind: "miss", key: "npc:589", count: 1, tape: 2 },
+    { t: 1020, kind: "drop", key: "npc:589", count: 1, tape: 3 },
+    { t: 1030, kind: "drop", key: "npc:589", count: 2, tape: 4 },
     { t: 1040, kind: "recycle", key: "npc:589", count: 1, dust: 1 },
     { t: 1050, kind: "craft", key: "npc:590", count: 1, dust: -10 },
     { t: 1060, kind: "tradeOut", key: "npc:639", count: 0, partner: "bob-realmname", trade: "111-482910-1" },
     { t: 1060, kind: "tradeIn", key: "npc:573", count: 1, partner: "bob-realmname", trade: "111-482910-1" },
-    { t: 1070, kind: "drop", key: "node:1731", count: 1, tape: 4 },
+    { t: 1070, kind: "drop", key: "node:1731", count: 1, tape: 5 },
     { t: 1080, kind: "set", key: "DM", count: 0 },
-    { t: 1090, kind: "drop", key: "npc:1763", count: 1, tape: 5 },
+    { t: 1090, kind: "drop", key: "npc:1763", count: 1, tape: 6 },
     { t: 1100, kind: "mode", key: "casual", count: 0 },
 ];
 const events = [];
@@ -108,7 +109,7 @@ const seed = ledger.sha256Hex("world-of-warcards test key 1");
 const { privateKey, publicKeyHex } = ledger.keyPairFromSeed(seed);
 const batch = {
     specVersion: ledger.SPEC_VERSION, key: publicKeyHex, character: "Alice", realm: "RealmName", schema: 2,
-    catalogVersion: "test-1", events, tapeIndex: 5, sentAt: 1110,
+    catalogVersion: "test-1", events, tapeIndex: 7, sentAt: 1110,
     snapshot: {
         counts: { "npc:573": 1, "npc:589": 1, "npc:590": 1, "npc:1763": 1, "node:1731": 1 },
         attempts: { "npc:589": 3, "npc:639": 1, "node:1731": 1, "npc:1763": 1 },
@@ -166,13 +167,16 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
         // Any card can be traded, a last copy included: a card from outside the finished set, in and straight out again.
         { kind: "tradeIn", key: outside, count: 1, ...trade2 },
         { kind: "tradeOut", key: outside, count: 0, ...trade2 },
-        { kind: "mode", key: "ranked", count: 0 },
+        // Ranked writes every attempt down: a drop, or a run of misses, so the tape entries follow each other without a gap.
+        { kind: "mode", key: "ranked2", count: 0 },
         { kind: "drop", key: common, count: 2, tape: 1 },
-        { kind: "drop", key: common, count: 3, tape: 5 },
+        { kind: "miss", key: common, count: 2, tape: 3 }, // two misses, entries 2 and 3
+        { kind: "drop", key: common, count: 3, tape: 4 },
     ];
+    let lastTape = 4;
     for (const key of set.cards) {
-        const have = history.filter((step) => step.key === key && step.kind !== "tradeOut" && step.kind !== "recycle").length;
-        if (have === 0) history.push({ kind: "drop", key, count: 1, tape: 6 + history.length });
+        const have = history.filter((step) => step.key === key && step.kind !== "tradeOut" && step.kind !== "recycle" && step.kind !== "miss").length;
+        if (have === 0) history.push({ kind: "drop", key, count: 1, tape: ++lastTape });
     }
     history.push({ kind: "set", key: set.code, count: 0 });
     history.push({ kind: "mode", key: "casual", count: 0 });
@@ -186,9 +190,9 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
 
     const bad = [];
     // Start from the first `upTo` events of the valid history, then add one event that breaks a rule.
-    const breaks = (name, rule, upTo, extra) => {
+    const breaks = (name, rule, upTo, extra, at = upTo) => {
         const steps = history.slice(0, upTo).concat(extra);
-        bad.push({ name, rule, index: upTo, events: build(steps) });
+        bad.push({ name, rule, index: at, events: build(steps) });
     };
     const kindAt = (kind, from = 0) => history.findIndex((step, index) => index >= from && step.kind === kind);
     breaks("a drop that skips a copy", "count", 1, [{ kind: "drop", key: legendary, count: 3 }]);
@@ -208,9 +212,20 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
     breaks("a set code that does not exist", "unknown-set", 0, [{ kind: "set", key: "ZZZZ", count: 0 }]);
     breaks("a mode that does not exist", "mode", 0, [{ kind: "mode", key: "hardcore", count: 0 }]);
     const ranked = kindAt("mode");
-    breaks("a second shiny after a later-copy shiny", "shiny", ranked + 3, [{ kind: "drop", key: common, count: 4, tape: 7, shiny: 1 }]);
-    breaks("a ranked drop that reuses a tape entry", "tape", ranked + 3, [{ kind: "drop", key: common, count: 4, tape: 5 }]);
+    breaks("a second shiny after a later-copy shiny", "shiny", ranked + 4, [{ kind: "drop", key: common, count: 4, tape: 5, shiny: 1 }]);
+    breaks("a ranked drop that reuses a tape entry", "tape", ranked + 4, [{ kind: "drop", key: common, count: 4, tape: 4 }]);
+    breaks("a ranked drop that leaves an attempt out", "tape", ranked + 4, [{ kind: "drop", key: common, count: 4, tape: 6 }]);
     breaks("a ranked drop with no tape entry", "tape", ranked + 1, [{ kind: "drop", key: common, count: 2, tape: 0 }]);
+    breaks("a run of misses that leaves an attempt out", "tape", ranked + 2, [{ kind: "miss", key: common, count: 1, tape: 3 }]);
+    breaks("a run of misses that reaches back too far", "tape", ranked + 2, [{ kind: "miss", key: common, count: 3, tape: 3 }]);
+    breaks("a run of no misses", "miss", ranked + 2, [{ kind: "miss", key: common, count: 0, tape: 1 }]);
+    breaks("a run of misses in Casual", "mode", 0, [{ kind: "miss", key: common, count: 1, tape: 1 }]);
+    breaks("a run of misses for a card that does not exist", "unknown-card", ranked + 1, [{ kind: "miss", key: "npc:999999999", count: 1, tape: 1 }]);
+    breaks("the first switch to ranked2 that skips far ahead", "tape", ranked, [{ kind: "mode", key: "ranked2", count: 0, tape: 5000 }]);
+    breaks("a return to ranked2 that skips tape entries", "tape", ranked + 4,
+        [{ kind: "mode", key: "casual", count: 0 }, { kind: "mode", key: "ranked2", count: 0, tape: 9 }], ranked + 5);
+    breaks("a return to ranked2 that goes back", "tape", ranked + 4,
+        [{ kind: "mode", key: "casual", count: 0 }, { kind: "mode", key: "ranked2", count: 0, tape: 2 }], ranked + 5);
     breaks("a casual drop that claims a tape entry", "tape", 0, [{ kind: "drop", key: common, count: 1, tape: 1 }]);
     const clock = build(history.slice(0, 2));
     clock[1].t = clock[0].t - 1;

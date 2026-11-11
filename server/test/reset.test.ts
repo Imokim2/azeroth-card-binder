@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import { RESET_COOLDOWN_SECONDS } from "../src/api.ts";
 import { rebuild } from "../src/rebuild.ts";
+import { TAPE_SIZE } from "../src/tape.ts";
 import { NOW, chainedHistory, newPlayer, rankedHistory, registration, setup, signedUpload } from "./harness.ts";
 import type { Player } from "./harness.ts";
 
@@ -76,7 +77,7 @@ test("a new binder gets a new roll tape: the old binder's values are not replaye
 
   const after = await tapeOf(env, bob.player);
   assert.equal(after.start, 1, "a new tape from the start");
-  assert.equal(after.entries.length, 10_000);
+  assert.equal(after.entries.length, TAPE_SIZE);
   assert.notDeepEqual(after.entries.slice(0, 20), before.entries.slice(0, 20), "different values");
 
   // A history rolled on the old values is refused; one rolled on the new tape is accepted and listed.

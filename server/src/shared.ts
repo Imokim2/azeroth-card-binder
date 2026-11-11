@@ -21,6 +21,7 @@ export type LedgerState = {
   mode: string;
   lastTape: number;
   lastT: number;
+  exact?: boolean; // the binder has entered ranked2, in which every attempt is written down
 };
 
 export type ReplayResult =
@@ -28,7 +29,7 @@ export type ReplayResult =
   | { ok: false; error: "rule"; rule: string; index: number };
 
 export const newState = shared.newState as () => LedgerState;
-export const replay = shared.replay as (events: unknown[], catalog: Catalog, start?: LedgerState) => ReplayResult;
+export const replay = shared.replay as (events: unknown[], catalog: Catalog, start?: LedgerState, options?: { strict?: boolean }) => ReplayResult;
 export const snapshotDifferences = shared.snapshotDifferences as (
   snapshot: { counts?: Record<string, number>; dust?: number; sets?: Record<string, boolean> },
   state: LedgerState,

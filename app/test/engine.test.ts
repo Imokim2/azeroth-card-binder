@@ -104,7 +104,7 @@ test("Ranked: the pass brings the tape back from where the add-on got to, and th
     const report = await engine.syncOnce();
     assert.equal(report.accounts[0]?.result.status, "synced", JSON.stringify(report));
     assert.equal(report.accounts[0]?.mode, "ranked");
-    assert.deepEqual(report.tape, { start: 61, count: 10_000 - 60 });
+    assert.deepEqual(report.tape, { start: 61, count: 1_000 - 60 });
     const text = await readFile(install.syncPath, "utf8");
     assert.match(text, /start = 61,/);
     assert.match(text, /leaderboard = \{/);

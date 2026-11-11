@@ -1,6 +1,6 @@
 local _, ACB = ...
 
--- The ledger: a tamper-evident history of every change to the binder (docs/LEDGER-SPEC.md, version 1).
+-- The ledger: a tamper-evident history of every change to the binder (docs/LEDGER-SPEC.md, version 2).
 -- Each event carries the hash of the one before it, so changing an earlier event breaks every hash after it.
 -- Part 1 below is the specification itself (event text, hashing, checking a chain). Part 2 keeps the player's
 -- saved ledger up to date and checks it when the add-on loads.
@@ -8,7 +8,7 @@ local _, ACB = ...
 local GENESIS = string.rep("0", 32)
 ACB.GENESIS = GENESIS
 
-local KINDS = { drop = true, craft = true, recycle = true, tradeIn = true, tradeOut = true, set = true, mode = true }
+local KINDS = { drop = true, craft = true, recycle = true, tradeIn = true, tradeOut = true, set = true, mode = true, miss = true }
 -- Un-synced events at which Ranked rolls pause until the companion app has picked them up.
 ACB.backlogLimit = 5000
 
@@ -123,7 +123,8 @@ function ACB.newLedger(saved, now, character)
     end
 
     -- Write one event. For events about a card, `fields.before` is how many copies the player had before
-    -- (the copies now are read from the saved counts); `fields.dust` is the change in dust.
+    -- (the copies now are read from the saved counts); `fields.dust` is the change in dust. A miss run puts its length in
+    -- `fields.count`.
     function ledger:record(kind, key, fields)
         fields = fields or {}
         local head = saved.head
@@ -131,7 +132,7 @@ function ACB.newLedger(saved, now, character)
         local cardEvent = fields.before ~= nil
         local event = {
             seq = head.seq + 1, t = now(), kind = kind, key = key,
-            count = cardEvent and (saved.counts[key] or 0) or 0, dust = dust,
+            count = fields.count or (cardEvent and (saved.counts[key] or 0) or 0), dust = dust,
             shiny = fields.shiny and 1 or 0, tape = fields.tape or 0,
             partner = fields.partner or "", trade = fields.trade or "", char = character(), prev = head.hash,
         }
@@ -152,6 +153,16 @@ function ACB.newLedger(saved, now, character)
         end
         saved.stateSum = ("%06x%06x"):format(high % HALF, low % HALF)
         return event
+    end
+
+    -- Ranked writes down every attempt. Consecutive misses on one card are kept as an open run in the saved file and
+    -- written as a single `miss` event once something else happens: a drop, an attempt on another card, a change of
+    -- mode. The run is the exact tape positions it used, so the server can recheck each of those rolls.
+    function ledger:flushRun()
+        local run = saved.run
+        if not run then return end
+        saved.run = nil
+        self:record("miss", run.key, { count = run.n, tape = run.last })
     end
 
     -- Check the saved ledger. Returns true and the number of events kept, or false and what is wrong.

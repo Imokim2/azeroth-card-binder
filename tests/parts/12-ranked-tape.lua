@@ -32,24 +32,31 @@ test("the Lua tape functions give exactly the roll and shiny values in the share
     equal(ACB.tapeShiny(MISS, 20), 2)
 end)
 
-test("Ranked rolls use the tape in order, win or lose, and write the position into the drop", function()
+test("Ranked rolls use the tape in order, win or lose, and write every attempt into the ledger", function()
     local saved, ledger, collection = rankedBinder({ MISS, DROP_SHINY, DROP_PLAIN })
     equal(saved.mode, "ranked")
     equal(saved.ledger[1].kind, "mode")
-    equal(saved.ledger[1].key, "ranked")
+    equal(saved.ledger[1].key, "ranked2")
+    equal(saved.ledger[1].tape, 0) -- no entry used yet
     equal(ACB.tapeLeft(saved), 3)
     equal(collection:roll(guid(589, "r1"), "loot"), false) -- entry 1: a miss, still used up
     equal(saved.tape.next, 2)
     equal(saved.attempts["npc:589"], 1)
     equal(saved.misses["npc:589"], 1)
-    equal(#saved.ledger, 1) -- a miss is not an event
+    equal(#saved.ledger, 1) -- the miss is an open run, written once something else happens
+    equal(saved.run.n, 1)
     equal(collection:roll(guid(589, "r2"), "loot"), true) -- entry 2: a shiny first copy
-    equal(saved.ledger[2].kind, "drop")
-    equal(saved.ledger[2].tape, 2)
-    equal(saved.ledger[2].shiny, 1)
+    equal(saved.run, nil)
+    equal(saved.ledger[2].kind, "miss") -- the run that came before the drop
+    equal(saved.ledger[2].key, "npc:589")
+    equal(saved.ledger[2].count, 1)
+    equal(saved.ledger[2].tape, 1)
+    equal(saved.ledger[3].kind, "drop")
+    equal(saved.ledger[3].tape, 2)
+    equal(saved.ledger[3].shiny, 1)
     equal(collection:roll(guid(589, "r3"), "loot"), true) -- entry 3: a second copy
-    equal(saved.ledger[3].tape, 3)
-    equal(saved.ledger[3].shiny, 0)
+    equal(saved.ledger[4].tape, 3)
+    equal(saved.ledger[4].shiny, 0)
     equal(saved.counts["npc:589"], 2)
     equal(saved.tape.next, 4)
     equal(ACB.tapeLeft(saved), 0)
@@ -67,7 +74,7 @@ test("with the tape used up, Ranked rolling pauses once with a message, loses no
     assert(lines[1]:find("Ranked rolls are paused"), lines[1])
     equal(saved.counts["npc:589"], 1)
     equal(saved.attempts["npc:589"], 1) -- nothing was counted for the paused kills
-    equal(#saved.ledger, 2)
+    equal(#saved.ledger, 2) -- the switch into Ranked and the one drop
     -- A refill that starts where the old tape ended (the server sends the unused entries and new ones).
     ACB.sync.tape = { start = 2, entries = { DROP_PLAIN, DROP_PLAIN } }
     equal(collection:roll(guid(589, "p2"), "loot"), true) -- the same kill can still be rolled
@@ -90,6 +97,9 @@ test("Ranked stacks the chance after misses: a roll that lost at 1% wins once fo
     equal(saved.misses["npc:589"], 4)
     equal(collection:roll(guid(589, "s5"), "loot"), true) -- 5% reaches the roll of 500
     equal(saved.ledger[#saved.ledger].tape, 5)
+    equal(saved.ledger[#saved.ledger - 1].kind, "miss") -- the four misses are one run, using entries 1 to 4
+    equal(saved.ledger[#saved.ledger - 1].count, 4)
+    equal(saved.ledger[#saved.ledger - 1].tape, 4)
     equal(saved.misses["npc:589"], nil) -- and a drop starts the stack over
     equal(ledger:verify(), true)
 end)
@@ -142,6 +152,70 @@ test("a switch to Ranked needs a verified binder with no unchecked history, and 
     equal(allowed, false)
     assert(reason:find("unverified"), reason)
     equal(tampered.mode, "casual")
+end)
+
+test("misses on different cards are separate runs, and a change of mode writes the open run first", function()
+    local saved, ledger, collection = rankedBinder({ MISS, MISS, MISS, MISS, DROP_PLAIN, MISS })
+    collection:roll(guid(589, "m1"), "loot")
+    collection:roll(guid(589, "m2"), "loot") -- the same card again: one run of two
+    collection:roll(guid(590, "m3"), "loot") -- another card: the first run is written, a new one opens
+    equal(#saved.ledger, 2)
+    equal(saved.ledger[2].kind, "miss")
+    equal(saved.ledger[2].count, 2)
+    equal(saved.ledger[2].tape, 2)
+    equal(saved.run.key, "npc:590")
+    collection:roll(guid(589, "m4"), "loot") -- back to the first card: a new run, not a continuation
+    equal(saved.ledger[3].key, "npc:590")
+    equal(saved.ledger[3].count, 1)
+    equal(saved.ledger[3].tape, 3)
+    equal(saved.run.last, 4)
+    -- Leaving Ranked writes the open run before the mode event, and coming back names where the tape stands.
+    assert(ACB.setMode(saved, ledger, "casual"))
+    equal(saved.run, nil)
+    equal(saved.ledger[4].kind, "miss")
+    equal(saved.ledger[5].kind, "mode")
+    equal(saved.ledger[5].key, "casual")
+    saved.misses = { ["npc:589"] = 7 }
+    assert(ACB.setMode(saved, ledger, "ranked"))
+    equal(saved.ledger[6].key, "ranked2")
+    equal(saved.ledger[6].tape, 4)
+    equal(next(saved.misses), nil) -- every card starts its run of misses again
+    equal(ledger:verify(), true)
+end)
+
+test("a binder that was already Ranked when it loaded starts writing attempts down, once", function()
+    local saved = { mode = "ranked", tape = { next = 31 } }
+    local _, upgraded = ACB.cleanSavedData(saved)
+    local ledger = newLedger(saved)
+    ledger:begin(upgraded)
+    assert(ledger:check())
+    saved.mode, saved.misses = "ranked", { ["npc:589"] = 3 }
+    ACB.resumeRanked(saved, ledger)
+    equal(saved.ledger[#saved.ledger].key, "ranked2")
+    equal(saved.ledger[#saved.ledger].tape, 30)
+    equal(saved.exactMode, true)
+    equal(next(saved.misses), nil)
+    local length = #saved.ledger
+    ACB.resumeRanked(saved, ledger) -- already done: nothing more is written
+    equal(#saved.ledger, length)
+    -- Casual binders are left alone.
+    local casual = {}
+    ACB.cleanSavedData(casual)
+    local casualLedger = newLedger(casual)
+    casualLedger:begin(false)
+    ACB.resumeRanked(casual, casualLedger)
+    equal(#casual.ledger, 0)
+end)
+
+test("the open run in the saved file is kept when it is sound and dropped when it is not", function()
+    local good = ACB.cleanSavedData({ run = { key = "npc:589", n = 3, last = 9 }, exactMode = true })
+    equal(good.run.n, 3)
+    equal(good.exactMode, true)
+    for _, run in ipairs({ "x", { key = "npc:589", n = 0, last = 4 }, { key = "npc:589", n = 5, last = 4 }, { key = "npc:0", n = 1, last = 1 },
+        { key = "npc:589", n = 1.5, last = 3 } }) do
+        equal(ACB.cleanSavedData({ run = run }).run, nil)
+    end
+    equal(ACB.cleanSavedData({ exactMode = "yes" }).exactMode, nil)
 end)
 
 test("the tape position is cleaned: a damaged one starts again from 1", function()

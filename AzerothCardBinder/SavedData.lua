@@ -74,6 +74,16 @@ local function cleanLedgerFields(saved)
     local tape = ACB.tableOrEmpty(saved.tape)
     local nextEntry = tape.next
     saved.tape = { next = (type(nextEntry) == "number" and nextEntry >= 1 and nextEntry == math.floor(nextEntry)) and nextEntry or 1 }
+    -- The open run of misses that is not in the ledger yet (see ledger:flushRun), and whether Ranked is the kind that writes
+    -- every attempt down.
+    local run = saved.run
+    local function count(value) return type(value) == "number" and value >= 1 and value == math.floor(value) end
+    if type(run) == "table" and type(run.key) == "string" and ACB.cards[run.key] and count(run.n) and count(run.last) and run.last >= run.n then
+        saved.run = { key = run.key, n = run.n, last = run.last }
+    else
+        saved.run = nil
+    end
+    saved.exactMode = saved.exactMode == true or nil
     saved.ledger = tableOrEmpty(saved.ledger)
     local head = saved.head
     if type(head) ~= "table" or type(head.seq) ~= "number" or head.seq < 0 or head.seq ~= math.floor(head.seq)

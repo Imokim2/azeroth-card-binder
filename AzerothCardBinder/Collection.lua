@@ -165,7 +165,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             if not entry then
                 if not self.pausedNotice then
                     self.pausedNotice = true
-                    report("Ranked rolls are paused: the roll tape has run out. Open the companion app to refill it, or switch to Casual in Settings.")
+                    report("Ranked rolls are paused: the roll tape has run out. Type /reload so the companion app can refill it, or switch to Casual in Settings.")
                 end
                 return
             end
@@ -186,9 +186,20 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             guaranteed and "card, certain by now" or dropped and "card" or "miss"))
         if not dropped then
             saved.misses[card.key] = misses + 1
+            -- Ranked writes every attempt down: misses in a row on one card are one run, kept open until something else happens.
+            if ranked and ledger then
+                local run = saved.run
+                if run and run.key == card.key and run.last == tapeIndex - 1 then
+                    run.n, run.last = run.n + 1, tapeIndex
+                else
+                    ledger:flushRun()
+                    saved.run = { key = card.key, n = 1, last = tapeIndex }
+                end
+            end
             return false
         end
         saved.misses[card.key] = nil
+        if ranked and ledger then ledger:flushRun() end
 
         local counts = saved.counts
         local before = counts[card.key] or 0

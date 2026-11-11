@@ -12,10 +12,10 @@
         "char": "Alice-RealmName",
         "t": 1000,
         "kind": "mode",
-        "key": "ranked",
+        "key": "ranked2",
         "count": 0,
         "prev": "00000000000000000000000000000000",
-        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+        "h": "476cb181d3c8c77ffe9cf36fd86df333"
       },
       {
         "seq": 2,
@@ -29,8 +29,8 @@
         "kind": "drop",
         "key": "npc:639",
         "count": 1,
-        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
-        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+        "prev": "476cb181d3c8c77ffe9cf36fd86df333",
+        "h": "bb824150eb24baba07f64dd34565dafb"
       },
       {
         "seq": 3,
@@ -40,12 +40,12 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
-        "t": 1020,
-        "kind": "drop",
+        "t": 1015,
+        "kind": "miss",
         "key": "npc:589",
         "count": 9,
-        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
-        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+        "prev": "bb824150eb24baba07f64dd34565dafb",
+        "h": "abd40e8cd693f8218cb570541a782cf3"
       },
       {
         "seq": 4,
@@ -55,12 +55,12 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
-        "t": 1030,
+        "t": 1020,
         "kind": "drop",
         "key": "npc:589",
-        "count": 2,
-        "prev": "23d48c05d9aa9cf29c87f5074b9ca133",
-        "h": "ecc150ad1995e70bb033d2d6b3b81700"
+        "count": 1,
+        "prev": "abd40e8cd693f8218cb570541a782cf3",
+        "h": "ee3b49cc7d40f81b58e6accd7fd2b4e3"
       }
     ],
     "head": null,
@@ -80,10 +80,10 @@
         "char": "Alice-RealmName",
         "t": 1000,
         "kind": "mode",
-        "key": "ranked",
+        "key": "ranked2",
         "count": 0,
         "prev": "00000000000000000000000000000000",
-        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+        "h": "476cb181d3c8c77ffe9cf36fd86df333"
       },
       {
         "seq": 2,
@@ -97,8 +97,8 @@
         "kind": "drop",
         "key": "npc:639",
         "count": 1,
-        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
-        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+        "prev": "476cb181d3c8c77ffe9cf36fd86df333",
+        "h": "bb824150eb24baba07f64dd34565dafb"
       },
       {
         "seq": 3,
@@ -108,12 +108,12 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
-        "t": 1020,
-        "kind": "drop",
+        "t": 1015,
+        "kind": "miss",
         "key": "npc:589",
         "count": 1,
-        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
-        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+        "prev": "bb824150eb24baba07f64dd34565dafb",
+        "h": "abd40e8cd693f8218cb570541a782cf3"
       }
     ],
     "head": null,
@@ -133,10 +133,10 @@
         "char": "Alice-RealmName",
         "t": 1000,
         "kind": "mode",
-        "key": "ranked",
+        "key": "ranked2",
         "count": 0,
         "prev": "00000000000000000000000000000000",
-        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+        "h": "476cb181d3c8c77ffe9cf36fd86df333"
       },
       {
         "seq": 2,
@@ -150,8 +150,8 @@
         "kind": "drop",
         "key": "npc:639",
         "count": 1,
-        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
-        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+        "prev": "476cb181d3c8c77ffe9cf36fd86df333",
+        "h": "bb824150eb24baba07f64dd34565dafb"
       },
       {
         "seq": 4,
@@ -161,12 +161,12 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
-        "t": 1030,
+        "t": 1020,
         "kind": "drop",
         "key": "npc:589",
-        "count": 2,
-        "prev": "23d48c05d9aa9cf29c87f5074b9ca133",
-        "h": "ecc150ad1995e70bb033d2d6b3b81700"
+        "count": 1,
+        "prev": "abd40e8cd693f8218cb570541a782cf3",
+        "h": "ee3b49cc7d40f81b58e6accd7fd2b4e3"
       }
     ],
     "head": null,
@@ -184,15 +184,30 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
+        "t": 1020,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "abd40e8cd693f8218cb570541a782cf3",
+        "h": "ee3b49cc7d40f81b58e6accd7fd2b4e3"
+      },
+      {
+        "seq": 5,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 4,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
         "t": 1030,
         "kind": "drop",
         "key": "npc:589",
         "count": 2,
-        "prev": "23d48c05d9aa9cf29c87f5074b9ca133",
-        "h": "ecc150ad1995e70bb033d2d6b3b81700"
+        "prev": "ee3b49cc7d40f81b58e6accd7fd2b4e3",
+        "h": "3844998e348f6f2b7b2277005d401fc5"
       },
       {
-        "seq": 5,
+        "seq": 6,
         "dust": 1,
         "shiny": 0,
         "tape": 0,
@@ -203,28 +218,13 @@
         "kind": "recycle",
         "key": "npc:589",
         "count": 1,
-        "prev": "ecc150ad1995e70bb033d2d6b3b81700",
-        "h": "326c7310f761672a2702db74f90acd10"
-      },
-      {
-        "seq": 6,
-        "dust": -10,
-        "shiny": 0,
-        "tape": 0,
-        "partner": "",
-        "trade": "",
-        "char": "Alice-RealmName",
-        "t": 1050,
-        "kind": "craft",
-        "key": "npc:590",
-        "count": 1,
-        "prev": "326c7310f761672a2702db74f90acd10",
-        "h": "82fb76f01614a4e098c1efdbc4be29fb"
+        "prev": "3844998e348f6f2b7b2277005d401fc5",
+        "h": "dd1c413fe85ce9557affd10e7d14bd02"
       }
     ],
     "head": {
       "seq": 1,
-      "hash": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+      "hash": "476cb181d3c8c77ffe9cf36fd86df333"
     },
     "error": "gap",
     "index": 0
@@ -242,10 +242,10 @@
         "char": "Alice-RealmName",
         "t": 1000,
         "kind": "mode",
-        "key": "ranked",
+        "key": "ranked2",
         "count": 0,
         "prev": "00000000000000000000000000000000",
-        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+        "h": "476cb181d3c8c77ffe9cf36fd86df333"
       },
       {
         "seq": 2,
@@ -259,8 +259,8 @@
         "kind": "drop",
         "key": "npc:639",
         "count": 1,
-        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
-        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+        "prev": "476cb181d3c8c77ffe9cf36fd86df333",
+        "h": "bb824150eb24baba07f64dd34565dafb"
       },
       {
         "seq": 3,
@@ -270,17 +270,17 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
-        "t": 1020,
-        "kind": "drop",
+        "t": 1015,
+        "kind": "miss",
         "key": "npc:589",
         "count": 1,
-        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
-        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+        "prev": "bb824150eb24baba07f64dd34565dafb",
+        "h": "abd40e8cd693f8218cb570541a782cf3"
       }
     ],
     "head": {
       "seq": 3,
-      "hash": "23d48c05d9aa9cf29c87f5074b9ca133"
+      "hash": "abd40e8cd693f8218cb570541a782cf3"
     },
     "error": "replay",
     "index": 0
@@ -298,10 +298,10 @@
         "char": "Alice-RealmName",
         "t": 1000,
         "kind": "mode",
-        "key": "ranked",
+        "key": "ranked2",
         "count": 0,
         "prev": "00000000000000000000000000000000",
-        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+        "h": "476cb181d3c8c77ffe9cf36fd86df333"
       },
       {
         "seq": 3,
@@ -311,12 +311,12 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
-        "t": 1020,
-        "kind": "drop",
+        "t": 1015,
+        "kind": "miss",
         "key": "npc:589",
         "count": 1,
-        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
-        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+        "prev": "bb824150eb24baba07f64dd34565dafb",
+        "h": "abd40e8cd693f8218cb570541a782cf3"
       },
       {
         "seq": 2,
@@ -330,8 +330,8 @@
         "kind": "drop",
         "key": "npc:639",
         "count": 1,
-        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
-        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+        "prev": "476cb181d3c8c77ffe9cf36fd86df333",
+        "h": "bb824150eb24baba07f64dd34565dafb"
       }
     ],
     "head": null,
@@ -351,10 +351,10 @@
         "char": "Alice-RealmName",
         "t": 1000,
         "kind": "mode",
-        "key": "ranked",
+        "key": "ranked2",
         "count": 0,
         "prev": "00000000000000000000000000000000",
-        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+        "h": "476cb181d3c8c77ffe9cf36fd86df333"
       },
       {
         "seq": 2,
@@ -369,7 +369,7 @@
         "key": "npc:639",
         "count": 1,
         "prev": "ffffffffffffffffffffffffffffffff",
-        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+        "h": "bb824150eb24baba07f64dd34565dafb"
       },
       {
         "seq": 3,
@@ -379,12 +379,12 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
-        "t": 1020,
-        "kind": "drop",
+        "t": 1015,
+        "kind": "miss",
         "key": "npc:589",
         "count": 1,
-        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
-        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+        "prev": "bb824150eb24baba07f64dd34565dafb",
+        "h": "abd40e8cd693f8218cb570541a782cf3"
       }
     ],
     "head": null,
@@ -404,10 +404,10 @@
         "char": "Alice-RealmName",
         "t": 1000,
         "kind": "mode",
-        "key": "ranked",
+        "key": "ranked2",
         "count": 0,
         "prev": "00000000000000000000000000000000",
-        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+        "h": "476cb181d3c8c77ffe9cf36fd86df333"
       },
       {
         "seq": 2,
@@ -421,8 +421,8 @@
         "kind": "gift",
         "key": "npc:639",
         "count": 1,
-        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
-        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+        "prev": "476cb181d3c8c77ffe9cf36fd86df333",
+        "h": "bb824150eb24baba07f64dd34565dafb"
       }
     ],
     "head": null,
@@ -442,10 +442,10 @@
         "char": "Alice-RealmName",
         "t": 1000,
         "kind": "mode",
-        "key": "ranked",
+        "key": "ranked2",
         "count": 0,
         "prev": "00000000000000000000000000000000",
-        "h": "25aefeea1bb7a2b3b1645ef7f5e3d15f"
+        "h": "476cb181d3c8c77ffe9cf36fd86df333"
       },
       {
         "seq": 2,
@@ -459,8 +459,8 @@
         "kind": "drop",
         "key": "npc:639|npc:1",
         "count": 1,
-        "prev": "25aefeea1bb7a2b3b1645ef7f5e3d15f",
-        "h": "a119c03b1084c99081ca2adbbb8cd71b"
+        "prev": "476cb181d3c8c77ffe9cf36fd86df333",
+        "h": "bb824150eb24baba07f64dd34565dafb"
       }
     ],
     "head": null,
@@ -478,12 +478,12 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
-        "t": 1020,
-        "kind": "drop",
+        "t": 1015,
+        "kind": "miss",
         "key": "npc:589",
         "count": 1,
-        "prev": "a119c03b1084c99081ca2adbbb8cd71b",
-        "h": "23d48c05d9aa9cf29c87f5074b9ca133"
+        "prev": "bb824150eb24baba07f64dd34565dafb",
+        "h": "abd40e8cd693f8218cb570541a782cf3"
       },
       {
         "seq": 4,
@@ -493,27 +493,27 @@
         "partner": "",
         "trade": "",
         "char": "Alice-RealmName",
+        "t": 1020,
+        "kind": "drop",
+        "key": "npc:589",
+        "count": 1,
+        "prev": "abd40e8cd693f8218cb570541a782cf3",
+        "h": "ee3b49cc7d40f81b58e6accd7fd2b4e3"
+      },
+      {
+        "seq": 5,
+        "dust": 0,
+        "shiny": 0,
+        "tape": 4,
+        "partner": "",
+        "trade": "",
+        "char": "Alice-RealmName",
         "t": 1030,
         "kind": "drop",
         "key": "npc:589",
         "count": 2,
-        "prev": "23d48c05d9aa9cf29c87f5074b9ca133",
-        "h": "ecc150ad1995e70bb033d2d6b3b81700"
-      },
-      {
-        "seq": 5,
-        "dust": 1,
-        "shiny": 0,
-        "tape": 0,
-        "partner": "",
-        "trade": "",
-        "char": "Alice-RealmName",
-        "t": 1040,
-        "kind": "recycle",
-        "key": "npc:589",
-        "count": 1,
-        "prev": "ecc150ad1995e70bb033d2d6b3b81700",
-        "h": "326c7310f761672a2702db74f90acd10"
+        "prev": "ee3b49cc7d40f81b58e6accd7fd2b4e3",
+        "h": "3844998e348f6f2b7b2277005d401fc5"
       }
     ],
     "head": {

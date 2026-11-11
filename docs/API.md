@@ -16,7 +16,7 @@ Version 1, served under `/v1`. The server is `server/`; the ledger and signing r
 |---|---|---|---|
 | 0.1.x | `/v1` | 1 | 2 |
 
-The server rejects uploads whose `specVersion` it does not support. The table gains a row with every release that changes one of the columns.
+The server rejects uploads whose `specVersion` it does not support (`client_too_old`). It supports version 2 only; version 1 uploads must be made again by an updated companion app. The table gains a row with every release that changes one of the columns.
 
 ## Endpoints
 
@@ -46,9 +46,9 @@ Errors about the chain (`replay`, `gap`, `bad_field`, `bad_prev`, `bad_hash`) in
 
 ### `POST /v1/tape`
 
-Ranked random numbers. Body: `{ key, sentAt, sig }`, where `sig` signs the canonical JSON of `{ key, sentAt, purpose: "tape" }` (a signature made for another purpose fails). `200 { start, entries, issued }`: `entries` are all the roll-tape entries this player has not used yet, counting from `start` (the position the add-on last said it would use next); each is 16 hex characters. When 2,000 or fewer remain, 10,000 new entries are added and `issued` is `{ start, end, commitment }` for the new range (the commitment is the SHA-256 of its entries joined by line feeds); otherwise `issued` is `null`. Asking again returns the same entries, so a lost reply costs nothing. `ranked_unavailable` while the server has no tape secret.
+Ranked random numbers. Body: `{ key, sentAt, sig }`, where `sig` signs the canonical JSON of `{ key, sentAt, purpose: "tape" }` (a signature made for another purpose fails). `200 { start, entries, issued }`: `entries` are all the roll-tape entries this player has not used yet, counting from `start` (the position the add-on last said it would use next); each is 16 hex characters. When 250 or fewer remain, 1,000 new entries are added (a player is never more than about 1,250 entries ahead, so little of it can be read in advance) and `issued` is `{ start, end, commitment }` for the new range (the commitment is the SHA-256 of its entries joined by line feeds); otherwise `issued` is `null`. Asking again returns the same entries, so a lost reply costs nothing. `ranked_unavailable` while the server has no tape secret.
 
-Every entry is derived from a server secret, the player and the position, so nothing is stored per entry and a player cannot compute entries they were not given. A ranked drop is checked against the entry at its `tape` position: it must be at a position that was issued; its roll must be at or below the card's rate, or count as a bad-luck guarantee (a card earns one per `limit` attempts, judged from the snapshot's attempts); and its shiny flag must match the entry's second half while the card has no shiny yet. The `tapeIndex` of an upload may never pass the first position after the last one issued. Failures are `tape_invalid` with `detail.reason` (`not-issued`, `stack`, `shiny`, `next`).
+Every entry is derived from a server secret, the player and the position, so nothing is stored per entry and a player cannot compute entries they were not given. Every ranked attempt is checked against the entry at its `tape` position (spec section 8.1): a drop needs a roll at or below the chance that the card's own run of misses has built up, and its shiny flag must match the entry's second half while the card has no shiny yet; every attempt inside a `miss` run needs a roll above that chance. The positions of the events must follow each other with no gap (`rule_broken`, rule `tape`), and must have been issued. The `tapeIndex` of an upload may never pass the first position after the last one issued. Failures are `tape_invalid` with `detail.reason` (`not-issued`, `roll`, `shiny`, `next`).
 
 ### `POST /v1/reset`
 

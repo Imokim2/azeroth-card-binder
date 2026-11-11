@@ -149,17 +149,17 @@ test("using tape entries faster than a person could play is flagged", async () =
   const reference = createRequire(import.meta.url)("../../packages/shared/src/ledger.js") as { signBatch(batch: Record<string, unknown>, key: unknown): string };
   const request = { key: player.publicKeyHex, sentAt: NOW };
   await env.call("/v1/tape", { body: { ...request, sig: reference.signBatch({ ...request, purpose: "tape" }, player.privateKey) } });
-  const first = chain([mode(1, "ranked")]);
+  const first = chain([mode(1, "ranked2")]);
   const empty = snapshot({}, {});
   assert.equal((await env.call("/v1/ledger", { body: signedUpload(player, first, { tapeIndex: 1, snapshot: empty }) })).status, 200);
-  // An hour later it says it has used 6,000 entries.
-  env.clock.now = NOW + 3600;
+  // Eleven minutes later it says it has used 400 entries: over 2,000 an hour.
+  env.clock.now = NOW + 660;
   const second = chain([mode(2, "casual")], (env.raw.prepare("SELECT head_hash FROM ledger_state").get() as { head_hash: string }).head_hash);
-  assert.equal((await env.call("/v1/ledger", { body: signedUpload(player, second, { tapeIndex: 6000, sentAt: NOW + 3600, snapshot: empty }) })).status, 200);
+  assert.equal((await env.call("/v1/ledger", { body: signedUpload(player, second, { tapeIndex: 400, sentAt: NOW + 660, snapshot: empty }) })).status, 200);
   assert.deepEqual(flagKinds(env), ["rate"]);
   // A slow, human pace over the next hour does not add another.
   env.clock.now = NOW + 7200;
-  const third = chain([mode(3, "ranked")], (env.raw.prepare("SELECT head_hash FROM ledger_state").get() as { head_hash: string }).head_hash);
-  await env.call("/v1/ledger", { body: signedUpload(player, third, { tapeIndex: 6600, sentAt: NOW + 7200, snapshot: empty }) });
+  const third = chain([mode(3, "ranked2")], (env.raw.prepare("SELECT head_hash FROM ledger_state").get() as { head_hash: string }).head_hash);
+  await env.call("/v1/ledger", { body: signedUpload(player, third, { tapeIndex: 500, sentAt: NOW + 7200, snapshot: empty }) });
   assert.deepEqual(flagKinds(env), ["rate"]);
 });
