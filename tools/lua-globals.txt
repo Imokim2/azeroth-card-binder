@@ -44,11 +44,13 @@ GGET SlashCmdList
 GGET TooltipDataProcessor
 GGET UIParent
 GGET UISpecialFrames
+GGET UnitAffectingCombat
 GGET UnitClassification
 GGET UnitFullName
 GGET UnitGUID
 GGET UnitIsDeadOrGhost
 GGET UnitIsPlayer
+GGET UnitIsTapDenied
 GGET UnitIsUnit
 GGET UnitName
 GGET UnitTokenFromGUID

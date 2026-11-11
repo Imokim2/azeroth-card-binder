@@ -17,6 +17,7 @@ Ledger.lua
 Data/Sync.lua
 Tape.lua
 Collection.lua
+Kills.lua
 Trade.lua
 Range.lua
 CardModels.lua

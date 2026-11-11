@@ -1,7 +1,7 @@
 local addonName, ACB = ...
 local read = ACB.read
 local events = CreateFrame("Frame")
-local saved, collection, trade
+local saved, collection, trade, kills
 local readyLoot, gather, pickpocketAt, encounter
 local diagnostics = {}
 local units = { "target", "mouseover", "focus", "boss1", "boss2", "boss3", "boss4", "boss5" }
@@ -299,6 +299,21 @@ local function initialize()
         if ACB.refresh then ACB.refresh() end
     end, ledger)
     ACB.collection = collection
+    -- Kills with nothing to loot (critters and the like): see Kills.lua.
+    kills = ACB.newKillWatcher(collection, {
+        now = GetTime, units = { "target", "mouseover", "focus" }, log = log,
+        after = function(delay, action) if C_Timer then C_Timer.After(delay, action) end end,
+        guidOf = function(unit)
+            local guid = apiValue("string", UnitGUID, unit)
+            if ACB.source(guid) then return guid end
+        end,
+        isDead = function(unit) return apiValue("boolean", UnitIsDeadOrGhost, unit) == true end,
+        rank = function(unit) return apiValue("string", UnitClassification, unit) end,
+        tapDenied = function(unit) return apiValue("boolean", UnitIsTapDenied, unit) == true end,
+        inCombat = function() return apiValue("boolean", UnitAffectingCombat, "player") == true end,
+        enabled = function() return ACB.settingOn(saved, "killRolls") end,
+        refresh = function() if ACB.refresh then ACB.refresh() end end,
+    })
     collection:restoreAchievements()
     if not ACB.isBinderTitle(saved.title) or not saved.titles[saved.title] then saved.title = nil end
     local sequence = 0
@@ -344,10 +359,15 @@ local handlers = {
         if inDeadmines() then log("BOSS_KILL: encounter=" .. tostring(read(id, "number"))) end
     end,
     INSTANCE_ENCOUNTER_ENGAGE_UNIT = watchBoss,
-    PLAYER_TARGET_CHANGED = watchBoss,
+    PLAYER_TARGET_CHANGED = function() watchBoss() if kills then kills:look() end end,
+    PLAYER_REGEN_DISABLED = function() if kills then kills:combatChanged() end end,
+    PLAYER_REGEN_ENABLED = function() if kills then kills:combatChanged() end end,
     UPDATE_MOUSEOVER_UNIT = watchBoss,
     PLAYER_FOCUS_CHANGED = watchBoss,
-    PLAYER_ENTERING_WORLD = function() readyLoot, gather, pickpocketAt, encounter = nil, nil, nil, nil end,
+    PLAYER_ENTERING_WORLD = function()
+        readyLoot, gather, pickpocketAt, encounter = nil, nil, nil, nil
+        if kills then kills:reset() end
+    end,
     CHAT_MSG_ADDON = function(prefix, message, channel, sender)
         local kind = read(prefix, "string")
         if (kind ~= ACB.tradePrefix and kind ~= ACB.viewPrefix) or read(channel, "string") ~= "WHISPER" then return end
