@@ -8,12 +8,53 @@
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
-    "start": "npm run build && electron ."
+    "start": "npm run build && electron .",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder"
   },
   "devDependencies": {
     "@types/node": "24.10.1",
     "electron": "45.2.3",
+    "electron-builder": "26.18.1",
     "typescript": "5.9.3"
   },
-  "main": "dist/app/electron/main.js"
+  "main": "dist/app/electron/main.js",
+  "author": "World of Warcards",
+  "build": {
+    "appId": "app.worldofwarcards.companion",
+    "productName": "World of Warcards",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/**/*",
+      "package.json",
+      "!**/*.map"
+    ],
+    "extraResources": [
+      {
+        "from": "../packages/shared/catalog.json",
+        "to": "catalog.json"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false,
+      "shortcutName": "World of Warcards"
+    }
+  }
 }

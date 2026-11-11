@@ -38,6 +38,12 @@ function ACB.initSlash(saved, tools)
         elseif cmd:match("^link%s+%S") then
             local card = ACB.findCard(saved, message:match("^%s*%S+%s+(.-)%s*$"))
             if card then ACB.linkCard(saved, card) else report("You do not own a card with that name.") end
+        elseif cmd:match("^ask%s+%S+%s+%S") then
+            local who, what = message:match("^%s*%S+%s+(%S+)%s+(.-)%s*$")
+            local peer, why
+            if who:lower() == "target" then peer, why = ACB.targetPeer() else peer = ACB.tradePeer(who) end
+            local ok, reason = ACB.askForCard(peer, ACB.findAnyCard(what))
+            if not ok then report(reason or why) end
         elseif cmd:match("^view%s+%S") then
             local peer = ACB.tradePeer(message:match("^%s*%S+%s+(%S+)"))
             local ok, reason = ACB.requestBinder(peer)
@@ -76,6 +82,19 @@ function ACB.initSlash(saved, tools)
                 report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))
             end
             if ACB.refreshZoneBar then ACB.refreshZoneBar() end
+        elseif cmd == "packs" or cmd == "pack" then
+            if ACB.openPacks then ACB.openPacks() end
+        elseif cmd == "report" or cmd:match("^report%s") then
+            ACB.reportCommand(saved, message:match("^%s*%S+%s*(.-)%s*$"), report, time())
+        elseif cmd == "newbinder" or cmd == "newbinder confirm" then
+            if cmd == "newbinder" then
+                report("This erases your binder on this account and starts a new one. Do it to join the Ranked ladder, which only counts a binder that was Ranked from its first drop.")
+                report("A copy of your collection is kept in the saved file. To go ahead, type /acb newbinder confirm. Then wait for the companion app to say the new binder was started before you switch to Ranked.")
+            else
+                ACB.startNewBinder(saved)
+                report("A new binder was started. Reloading the interface.")
+                if ReloadUI then ReloadUI() end
+            end
         elseif cmd == "dust" then
             report(("Binder Dust: %d. Open a card in the binder to recycle a spare or craft a missing card."):format(saved.dust or 0))
         elseif cmd == "mode" or cmd:match("^mode%s+%a+$") then
@@ -83,6 +102,12 @@ function ACB.initSlash(saved, tools)
             if wanted then
                 local ok, why = ACB.setMode(saved, ACB.ledger, wanted)
                 report(ok and ("Mode: " .. saved.mode .. ".") or why)
+                if ok and wanted == "ranked" then
+                    report("Ranked checks every attempt against the server. Every card starts again from its base drop chance, and the tape is topped up by the companion app, so /reload now and then to let it sync.")
+                end
+                if ok and wanted == "casual" then
+                    report("Only Ranked counts for the ladder. A drop rolled in Casual cannot be checked, and one is enough to keep this binder off the ladder for good.")
+                end
             else
                 report(("Mode: %s. Roll tape entries left: %d. Use /acb mode ranked or /acb mode casual."):format(saved.mode, ACB.tapeLeft(saved)))
             end
@@ -120,7 +145,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, privacy, title, popup, popup test, hints, bar, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

@@ -55,12 +55,23 @@ function ACB.initUI(saved, trade)
     tradeView:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
     local settingsView = ACB.createSettingsView(frame, saved)
     local ladderView = ACB.createLadderView(frame, saved)
+    local wantedView = ACB.createWantedView(frame, saved)
 
     local tabs = {}
-    for index, destination in ipairs({ "index", "collection", "trade", "achievements", "ladder", "settings" }) do
+    for index, destination in ipairs({ "index", "collection", "trade", "achievements", "ladder", "wanted", "settings" }) do
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
+    -- Card packs: how many are held, and a way to open them (PackView.lua).
+    local packButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    packButton:SetSize(110, 22)
+    packButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -62, -20)
+    packButton:SetScript("OnClick", function() if ACB.openPacks then ACB.openPacks() end end)
+    function ACB.refreshPackButton()
+        local _, total = ACB.packList(saved)
+        packButton:SetText(total > 0 and ("Packs (%d)"):format(total) or "Packs")
+    end
+    ACB.refreshPackButton()
     local titleMark = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     titleMark:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -56, -54)
     titleMark:SetTextColor(unpack(brass))
@@ -74,7 +85,7 @@ function ACB.initUI(saved, trade)
     box:SetPoint("TOP", tradeView, "TOP", 0, -8)
     label(box, "GameFontHighlightSmall", 22, 17, muted, "TRADE WITH")
     local partner = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
-    partner:SetSize(235, 28)
+    partner:SetSize(150, 28)
     partner:SetPoint("TOPLEFT", 100, -8)
     partner:SetAutoFocus(false)
     partner:SetMaxLetters(100)
@@ -106,6 +117,16 @@ function ACB.initUI(saved, trade)
         if peer then action(peer) else trade.status = "Enter your partner's character name." end
         ACB.refresh()
     end
+    button(box, "My target", 252, 8, 90, function()
+        local peer, why = ACB.targetPeer()
+        if peer then
+            partner:SetText(peer)
+            trade.status = "Trading with " .. peer .. ". Pick a card and Send offer, or Listen for theirs."
+        else
+            trade.status = why
+        end
+        ACB.refresh()
+    end)
     local listen = button(box, "Listen", 346, 8, 84, function()
         withPeer(function(peer) trade:listen(peer) end)
     end)
@@ -164,6 +185,7 @@ function ACB.initUI(saved, trade)
         "Outdoors and out of combat. Both players accept the same two cards and the swap then happens on both sides. It runs on trust.")
 
     function ACB.refresh()
+        ACB.refreshPackButton()
         if not frame:IsShown() then return end
         for destination, control in pairs(tabs) do
             local active = destination == mode
@@ -178,8 +200,14 @@ function ACB.initUI(saved, trade)
         end
         titleMark:SetText(saved.title and ("Title: " .. saved.title) or "")
         local inTrade, inSettings = mode == "trade", mode == "settings"
-        local inAchievements, inLadder = mode == "achievements", mode == "ladder"
-        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder)
+        local inAchievements, inLadder, inWanted = mode == "achievements", mode == "ladder", mode == "wanted"
+        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder and not inWanted)
+        wantedView:SetShown(inWanted)
+        if inWanted then
+            regionMark:SetText("BINDER  /  WANTED")
+            wantedView:refresh()
+            return
+        end
         tradeView:SetShown(inTrade)
         settingsView:SetShown(inSettings)
         achievementView:SetShown(inAchievements)

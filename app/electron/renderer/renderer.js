@@ -6,15 +6,20 @@ const $ = (id) => document.getElementById(id);
 
 // With "#demo-<name>" in the address (used only to take pictures of each screen) the page shows a made-up status.
 const demos = {
-  setup: { version: "0.1.0", server: "", problem: null, signedIn: false, visibility: "public", startAtLogin: false, gameFolder: null, accounts: [], lastSyncAt: null, tapeEntries: null, standings: null, message: null, busy: false },
+  newbinder: {
+    version: "0.1.0", server: "", problem: null, signedIn: true, visibility: "public", startAtLogin: false, gameFolder: "D:\\Games\\World of Warcraft Forever",
+    accounts: [{ account: "HARRYACCOUNT", mode: "casual", state: "This is a new binder: it does not continue the one the server has" }],
+    lastSyncAt: Math.floor(Date.now() / 1000) - 20, tapeEntries: null, standings: "fresh", message: null, busy: false, needsNewBinder: true,
+  },
+  setup: { version: "0.1.0", server: "", problem: null, signedIn: false, visibility: "public", startAtLogin: false, gameFolder: null, accounts: [], lastSyncAt: null, tapeEntries: null, standings: null, message: null, busy: false, needsNewBinder: false },
   syncing: {
     version: "0.1.0", server: "", problem: null, signedIn: true, visibility: "public", startAtLogin: true, gameFolder: "D:\\Games\\World of Warcraft Forever",
     accounts: [{ account: "HARRYACCOUNT", mode: "ranked", state: "Synced (42 new events)" }, { account: "ALTACCOUNT", mode: "casual", state: "Up to date" }],
-    lastSyncAt: Math.floor(Date.now() / 1000) - 95, tapeEntries: 9710, standings: "fresh", message: "Signed in. Syncing now.", busy: false,
+    lastSyncAt: Math.floor(Date.now() / 1000) - 95, tapeEntries: 9710, standings: "fresh", message: "Signed in. Syncing now.", busy: false, needsNewBinder: false,
   },
   problem: {
     version: "0.1.0", server: "", problem: "Your key cannot be stored safely on this computer. The app cannot sign in or upload until that is fixed.",
-    signedIn: false, visibility: "public", startAtLogin: false, gameFolder: null, accounts: [], lastSyncAt: null, tapeEntries: null, standings: null, message: null, busy: false,
+    signedIn: false, visibility: "public", startAtLogin: false, gameFolder: null, accounts: [], lastSyncAt: null, tapeEntries: null, standings: null, message: null, busy: false, needsNewBinder: false,
   },
 };
 
@@ -29,11 +34,16 @@ function ago(seconds) {
 function render(status) {
   const ready = status.signedIn && status.gameFolder !== null;
   const pill = $("pill");
-  pill.className = "pill " + (status.problem ? "bad" : status.busy ? "warn" : ready ? "ok" : "warn");
-  pill.textContent = status.problem ? "Needs attention" : status.busy ? "Working…" : ready ? "Syncing" : "Set-up needed";
+  pill.className = "pill " + (status.problem ? "bad" : status.busy || status.needsNewBinder ? "warn" : ready ? "ok" : "warn");
+  pill.textContent = status.problem ? "Needs attention" : status.busy ? "Working…" : status.needsNewBinder ? "New binder?" : ready ? "Syncing" : "Set-up needed";
 
   $("problem").hidden = !status.problem;
   $("problem").textContent = status.problem || "";
+
+  $("delete-data").hidden = !status.signedIn;
+  $("delete-data").disabled = status.busy;
+  $("new-binder").hidden = !status.needsNewBinder;
+  $("new-binder-button").disabled = status.busy;
 
   // 1. Discord
   $("discord-text").textContent = status.signedIn ? "You are signed in. " + (status.visibility === "private" ? "You are kept off the ladder." : "You are listed on the ladder.") : "Sign in so your cards and rank belong to you.";
@@ -94,6 +104,8 @@ if (demo && demos[demo[1]]) {
   $("find-game").addEventListener("click", () => api.findGame());
   $("choose-folder").addEventListener("click", () => api.chooseGameFolder());
   $("sync-now").addEventListener("click", () => api.syncNow());
+  $("new-binder-button").addEventListener("click", () => api.startNewBinder());
+  $("delete-data").addEventListener("click", () => api.deleteMyData());
   $("start-at-login").addEventListener("change", (event) => api.setStartAtLogin(event.target.checked));
   api.onStatus(render);
   api.status().then(render);

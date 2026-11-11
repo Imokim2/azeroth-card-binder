@@ -6,7 +6,7 @@
 local addon = "AzerothCardBinder"
 local ACB = {}
 for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "Achievements.lua",
-    "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Tape.lua", "Collection.lua", "SavedData.lua" }) do
+    "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Tape.lua", "Collection.lua", "Packs.lua", "SavedData.lua", "Reports.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 local clock = 1700000000
@@ -25,16 +25,32 @@ if arg[3] then
     assert(loadfile(arg[3]))(addon, ACB)
     assert(ACB.setMode(saved, ledger, "ranked"))
     -- A 10% card, so a few drops come quickly; misses use tape entries too.
+    -- WARCARDS_PACKS=1: packs are on, the kills stop at the first pack found, and that pack is opened.
+    local packs = os.getenv("WARCARDS_PACKS") ~= nil
+    collection.packsEnabled = packs
     for number = 1, tonumber(arg[2] or 60) do
         collection:roll(guid(573, "ranked" .. number), "loot")
+        if packs and next(saved.packs or {}) then break end
+    end
+    if packs then
+        for zone in pairs(saved.packs or {}) do assert(collection:openPack(zone)) end
     end
 else
+    -- A different binder (a different first event, so a different chain from the very start): WARCARDS_VARIANT=other
+    if os.getenv("WARCARDS_VARIANT") == "other" then find(589, "otherfirst") end
     find(639, "a"); find(639, "b")
     assert(collection:recycle("npc:639"))
     assert(collection:craft("npc:590"))
     for number = 1, 3 do find(589, "c" .. number) end
     assert(collection:swap("npc:589", "npc:573", "bob-realmname", "111-482910-1"))
     for number = 1, tonumber(arg[2] or 0) do find(589, "extra" .. number) end
+end
+-- Cards on the wanted list, for tests: WARCARDS_WANTED=npc:589,npc:639
+for key in (os.getenv("WARCARDS_WANTED") or ""):gmatch("[^,]+") do saved.wanted = saved.wanted or {}; saved.wanted[key] = true end
+-- Reports waiting to be sent, for tests: WARCARDS_REPORTS=bob-realmname:trading:a note,carl-realmname:cheating:
+for entry in (os.getenv("WARCARDS_REPORTS") or ""):gmatch("[^,]+") do
+    local peer, reason, note = entry:match("^([^:]+):([^:]+):(.*)$")
+    assert(ACB.addReport(saved, peer, reason, note, time()))
 end
 saved.title = "Zul'Gurub \226\128\147 Ünïcöde" -- raw and escaped non-ASCII text, as a player's title could be
 

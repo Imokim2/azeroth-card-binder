@@ -1,0 +1,757 @@
+{
+  "odds": 500,
+  "size": 5,
+  "shinyOdds": 20,
+  "zones": [
+    "AQT",
+    "AHX",
+    "ABX",
+    "DM"
+  ],
+  "cases": [
+    {
+      "entry": "0000000000000000",
+      "roll": 1,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "0000000000000013",
+      "roll": 1,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "0000000000000014",
+      "roll": 1,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2553",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "0000000000003039",
+      "roll": 1,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2595",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00000000ffffffff",
+      "roll": 1,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2764",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "0000000100000000",
+      "roll": 2,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "0000000100000013",
+      "roll": 2,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "0000000100000014",
+      "roll": 2,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2553",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "0000000100003039",
+      "roll": 2,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2595",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00000001ffffffff",
+      "roll": 2,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2764",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00000bb700000000",
+      "roll": 3000,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00000bb700000013",
+      "roll": 3000,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00000bb700000014",
+      "roll": 3000,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2553",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00000bb700003039",
+      "roll": 3000,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2595",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00000bb7ffffffff",
+      "roll": 3000,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2764",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5600000000",
+      "roll": 6999,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5600000013",
+      "roll": 6999,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5600000014",
+      "roll": 6999,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2553",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001b5600003039",
+      "roll": 6999,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2595",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001b56ffffffff",
+      "roll": 6999,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2764",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5700000000",
+      "roll": 7000,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5700000013",
+      "roll": 7000,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5700000014",
+      "roll": 7000,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2553",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001b5700003039",
+      "roll": 7000,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2595",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001b57ffffffff",
+      "roll": 7000,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2764",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5800000000",
+      "roll": 7001,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5800000013",
+      "roll": 7001,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001b5800000014",
+      "roll": 7001,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2553",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001b5800003039",
+      "roll": 7001,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2595",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001b58ffffffff",
+      "roll": 7001,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2764",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001d4a00000000",
+      "roll": 7499,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001d4a00000013",
+      "roll": 7499,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001d4a00000014",
+      "roll": 7499,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2553",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001d4a00003039",
+      "roll": 7499,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2595",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001d4affffffff",
+      "roll": 7499,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2764",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001f3f00000000",
+      "roll": 8000,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001f3f00000013",
+      "roll": 8000,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2552",
+        "ABX": "npc:15045",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "00001f3f00000014",
+      "roll": 8000,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2553",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001f3f00003039",
+      "roll": 8000,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2595",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "00001f3fffffffff",
+      "roll": 8000,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15300",
+        "AHX": "npc:2764",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "0000270e00000000",
+      "roll": 9999,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15263",
+        "AHX": "npc:2558",
+        "ABX": "npc:15045",
+        "DM": "npc:639"
+      }
+    },
+    {
+      "entry": "0000270e00000013",
+      "roll": 9999,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15263",
+        "AHX": "npc:2558",
+        "ABX": "npc:15045",
+        "DM": "npc:639"
+      }
+    },
+    {
+      "entry": "0000270e00000014",
+      "roll": 9999,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15275",
+        "AHX": "npc:2569",
+        "ABX": "npc:15046",
+        "DM": "npc:643"
+      }
+    },
+    {
+      "entry": "0000270e00003039",
+      "roll": 9999,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15511",
+        "AHX": "npc:2773",
+        "ABX": "npc:15046",
+        "DM": "npc:643"
+      }
+    },
+    {
+      "entry": "0000270effffffff",
+      "roll": 9999,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15963",
+        "AHX": "npc:2588",
+        "ABX": "npc:15107",
+        "DM": "npc:646"
+      }
+    },
+    {
+      "entry": "0000270f00000000",
+      "roll": 10000,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15263",
+        "AHX": "npc:2558",
+        "ABX": "npc:15045",
+        "DM": "npc:639"
+      }
+    },
+    {
+      "entry": "0000270f00000013",
+      "roll": 10000,
+      "packValue": 1,
+      "found": true,
+      "picks": {
+        "AQT": "npc:15263",
+        "AHX": "npc:2558",
+        "ABX": "npc:15045",
+        "DM": "npc:639"
+      }
+    },
+    {
+      "entry": "0000270f00000014",
+      "roll": 10000,
+      "packValue": 2,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15275",
+        "AHX": "npc:2569",
+        "ABX": "npc:15046",
+        "DM": "npc:643"
+      }
+    },
+    {
+      "entry": "0000270f00003039",
+      "roll": 10000,
+      "packValue": 118,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15511",
+        "AHX": "npc:2773",
+        "ABX": "npc:15046",
+        "DM": "npc:643"
+      }
+    },
+    {
+      "entry": "0000270fffffffff",
+      "roll": 10000,
+      "packValue": 365,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15963",
+        "AHX": "npc:2588",
+        "ABX": "npc:15107",
+        "DM": "npc:646"
+      }
+    },
+    {
+      "entry": "2215302c33b2aa7c",
+      "roll": 3933,
+      "packValue": 354,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2589",
+        "ABX": "npc:15046",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "e9f2046f7860e543",
+      "roll": 2176,
+      "packValue": 304,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2778",
+        "ABX": "npc:15072",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "c46c138046e67d21",
+      "roll": 7217,
+      "packValue": 22,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2579",
+        "ABX": "npc:15072",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "d2387554dd7d4395",
+      "roll": 5413,
+      "packValue": 202,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15316",
+        "AHX": "npc:2579",
+        "ABX": "npc:15089",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "4515e26ec44e51b7",
+      "roll": 2127,
+      "packValue": 354,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2559",
+        "ABX": "npc:15066",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "859476669e7b9e90",
+      "roll": 9367,
+      "packValue": 83,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15236",
+        "AHX": "npc:2570",
+        "ABX": "npc:15065",
+        "DM": "npc:3947"
+      }
+    },
+    {
+      "entry": "de90236ab5cf93c6",
+      "roll": 8203,
+      "packValue": 494,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2762",
+        "ABX": "npc:15086",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "d71dc9698f2cd5b6",
+      "roll": 3546,
+      "packValue": 10,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15957",
+        "AHX": "npc:2566",
+        "ABX": "npc:15089",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "809caa67ea0223c8",
+      "roll": 888,
+      "packValue": 439,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15896",
+        "AHX": "npc:2563",
+        "ABX": "npc:15107",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "887a514925e3ba3d",
+      "roll": 7578,
+      "packValue": 68,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15475",
+        "AHX": "npc:2764",
+        "ABX": "npc:15072",
+        "DM": "npc:4416"
+      }
+    },
+    {
+      "entry": "d16fe20ce7395099",
+      "roll": 509,
+      "packValue": 155,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15317",
+        "AHX": "npc:4062",
+        "ABX": "npc:15062",
+        "DM": "npc:598"
+      }
+    },
+    {
+      "entry": "5083e6e1cc0a8675",
+      "roll": 1602,
+      "packValue": 93,
+      "found": false,
+      "picks": {
+        "AQT": "npc:15317",
+        "AHX": "npc:2578",
+        "ABX": "npc:15087",
+        "DM": "npc:598"
+      }
+    }
+  ]
+}

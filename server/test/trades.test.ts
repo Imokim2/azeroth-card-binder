@@ -29,8 +29,12 @@ function half(char: string, partner: string, mine: string, theirs: string) {
 const snapshot = (key: string) => ({ counts: { [key]: 1 }, dust: 0, sets: {}, attempts: { [CARD_A]: 100, [CARD_B]: 100 }, titles: {} });
 const alicesHalf = () => half("Alice-RealmName", "bob-realmname", CARD_A, CARD_B);
 const bobsHalf = () => half("Bob-RealmName", "alice-realmname", CARD_B, CARD_A);
-const upload = (env: ReturnType<typeof setup>, player: ReturnType<typeof newPlayer>, who: string, events: Record<string, unknown>[], got: string) =>
-  env.call("/v1/ledger", { body: signedUpload(player, events, { character: who, realm: "RealmName", snapshot: snapshot(got), sentAt: env.clock.now }) });
+// These histories are Casual; the tests are about trade matching, so the players stand in for ones whose drops are all Ranked.
+const upload = async (env: ReturnType<typeof setup>, player: ReturnType<typeof newPlayer>, who: string, events: Record<string, unknown>[], got: string) => {
+  const response = await env.call("/v1/ledger", { body: signedUpload(player, events, { character: who, realm: "RealmName", snapshot: snapshot(got), sentAt: env.clock.now }) });
+  env.pretendVerified();
+  return response;
+};
 const states = (env: ReturnType<typeof setup>) => (env.raw.prepare("SELECT state, COUNT(*) AS n FROM trades GROUP BY state").all() as { state: string; n: number }[]).map((row) => ({ state: row.state, n: row.n }));
 const scoreOfPlayer = (env: ReturnType<typeof setup>, id: string) => (env.raw.prepare("SELECT score FROM scores WHERE player_id = ?").get(id) as { score: number }).score;
 const flagKinds = (env: ReturnType<typeof setup>) => (env.raw.prepare("SELECT kind FROM flags ORDER BY kind").all() as { kind: string }[]).map((row) => row.kind);
@@ -123,6 +127,7 @@ async function finish(env: ReturnType<typeof setup>, player: ReturnType<typeof n
   });
   const response = await env.call("/v1/ledger", { body });
   assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  env.pretendVerified();
 }
 
 test("the firsts feed names whoever finished a set first, skips players held off the ladder, and the leaderboard lists characters", async () => {
@@ -148,4 +153,24 @@ test("the firsts feed names whoever finished a set first, skips players held off
   assert.equal(feed.firsts[0]?.at, NOW + 100);
   // Unknown routes and methods are refused as usual.
   assert.equal((await env.call("/v1/firsts", { method: "POST", body: {} })).status, 405);
+});
+
+test("when the partner has uploaded since and still lacks their half, the partner is flagged, not the player they took from", async () => {
+  const env = setup();
+  const alice = await registered(env, "alice");
+  const bob = await registered(env, "bob");
+  // Alice records the whole trade: she gave CARD_A and received CARD_B from Bob.
+  await upload(env, alice.player, "Alice", alicesHalf(), CARD_B);
+  const before = scoreOfPlayer(env, alice.id);
+  // Bob plays and uploads an hour later, but his history never records the trade (he kept Alice's card and his own).
+  env.clock.now = NOW + 3600;
+  const dishonest = chain([{ seq: 1, t: 2000, kind: "drop", key: CARD_B, count: 1, dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char: "Bob-RealmName" }]);
+  assert.equal((await upload(env, bob.player, "Bob", dishonest, CARD_B)).status, 200);
+  // A week later the halves are written off, and the fault is put where it belongs.
+  env.clock.now = NOW + TRADE_GRACE_SECONDS + 7200;
+  await runMaintenance(env.deps);
+  const flags = env.raw.prepare("SELECT player_id, kind FROM flags").all() as { player_id: string; kind: string }[];
+  assert.deepEqual(flags.map((flag) => [flag.player_id === bob.id ? "bob" : flag.player_id === alice.id ? "alice" : "?", flag.kind]), [["bob", "trade-half-missing"]]);
+  // Alice's received copy still does not count (the card exists twice), but she is not flagged for it.
+  assert.ok(scoreOfPlayer(env, alice.id) < before);
 });

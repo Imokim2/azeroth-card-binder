@@ -10,7 +10,7 @@ local methods = {
     SetBackdropColor = ignore,
     SetBackdropBorderColor = ignore, SetHeight = ignore, RegisterForDrag = ignore,
     SetHighlightTexture = ignore, SetNormalTexture = ignore, RegisterForClicks = ignore,
-    SetFontString = ignore, SetScale = function(self, scale) self.scale = scale end,
+    SetFontString = ignore, SetScale = function(self, scale) self.scale = scale end, SetClipsChildren = ignore,
     SetTextInsets = ignore, EnableMouseWheel = ignore,
     SetJustifyH = ignore, SetTextColor = ignore, SetAllPoints = ignore, SetTexCoord = ignore,
     SetWidth = ignore, SetAutoFocus = ignore, SetMaxLetters = ignore, SetFocus = ignore,
@@ -147,12 +147,19 @@ loadAddon("Hints.lua")
 loadAddon("ZoneBar.lua")
 loadAddon("Settings.lua")
 loadAddon("Social.lua")
+loadAddon("Swaps.lua")
+loadAddon("Requests.lua")
+loadAddon("Reports.lua")
+loadAddon("Kills.lua")
+loadAddon("Packs.lua")
 loadAddon("FolioUi.lua")
 loadAddon("FolioIndex.lua")
 loadAddon("Folio.lua")
 loadAddon("UiKit.lua")
 loadAddon("SettingsView.lua")
 loadAddon("LeaderboardView.lua")
+loadAddon("WantedView.lua")
+loadAddon("PackView.lua")
 loadAddon("Binder.lua")
 loadAddon("Minimap.lua")
 loadAddon("SavedData.lua")

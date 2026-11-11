@@ -6,7 +6,8 @@
 // whole on every pass, so a crash, a restart or a failed request cannot leave the two out of step.
 import { readBinder, BinderFileError } from "./binderFile.ts";
 import type { Binder } from "./binderFile.ts";
-import { fetchStandings, fetchTape, syncBinder } from "./client.ts";
+import { fetchStandings, fetchTape, sendReports, syncBinder, uploadWanted } from "./client.ts";
+import type { PendingReport } from "./binderFile.ts";
 import type { ClientOptions, Outcome, Standings } from "./client.ts";
 import { readText, watchSettled, writeFileAtomic } from "./files.ts";
 import type { Install } from "./files.ts";
@@ -47,9 +48,16 @@ export class Engine {
   #tape: { start: number; entries: string[] } | undefined;
   #standings: Standings | undefined;
   #standingsAt = 0;
+  #wantedSent: string | null = null; // the wanted list the server last accepted, so it is only sent when it changes
+  #reportsDone: string[] = []; // tokens of reports the server has settled, newest last; written to Sync.lua for the add-on
 
   constructor(options: EngineOptions) {
     this.#options = options;
+  }
+
+  // The roll tape held for the player belongs to the binder they had; after a new binder it must not be written again.
+  forgetTape(): void {
+    this.#tape = undefined;
   }
 
   // One pass. Passes never overlap: asking while one is running returns that one.
@@ -66,6 +74,8 @@ export class Engine {
     const { install, client } = this.#options;
     const accounts: AccountReport[] = [];
     let anyRanked = false;
+    const wanted = new Set<string>();
+    const reports = new Map<string, PendingReport>();
     for (const file of install.savedFiles) {
       let binder: Binder;
       try {
@@ -76,12 +86,30 @@ export class Engine {
         continue;
       }
       if (binder.mode === "ranked") anyRanked = true;
+      for (const key of binder.wanted) wanted.add(key);
+      for (const report of binder.reports) reports.set(report.token, report);
       const result = await syncBinder(client, binder, this.#acks.get(file.account) ?? null);
       if (result.status === "synced" && result.ack) this.#acks.set(file.account, result.ack);
       accounts.push({
         account: file.account, mode: binder.mode,
         result: result.status === "rejected" && result.code === "unknown_key" ? { status: "not-registered" } : result,
       });
+    }
+
+    // The player's wanted list goes up when it has changed since the server last took it.
+    const list = [...wanted].sort().slice(0, 60);
+    const fingerprint = JSON.stringify(list);
+    if (accounts.length > 0 && fingerprint !== this.#wantedSent) {
+      const sent = await uploadWanted(client, list);
+      if (sent.status === "stored") this.#wantedSent = fingerprint;
+    }
+
+    // Reports the player made in the game go up once; the ones the server has settled are written for the add-on to forget.
+    const pending = [...reports.values()].filter((report) => !this.#reportsDone.includes(report.token));
+    if (accounts.length > 0 && pending.length > 0) {
+      const sent = await sendReports(client, pending);
+      if (sent.status === "reported") this.#reportsDone = [...this.#reportsDone, ...sent.done.filter((token) => !this.#reportsDone.includes(token))].slice(-200);
+      else this.#options.log?.(`reports could not be sent: ${JSON.stringify(sent)}`);
     }
 
     // The tape is asked for after the uploads, so the server knows how far the add-on has got.
@@ -117,9 +145,9 @@ export class Engine {
 
   async #writeSync(syncedAt: number): Promise<boolean> {
     const text = syncFileText({
-      syncedAt, acks: [...this.#acks.values()],
+      syncedAt, acks: [...this.#acks.values()], reportsDone: this.#reportsDone,
       ...(this.#tape ? { tape: this.#tape } : {}),
-      ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts } : {}),
+      ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts, wanted: this.#standings.wanted } : {}),
     });
     try {
       await writeFileAtomic(this.#options.install.syncPath, text);

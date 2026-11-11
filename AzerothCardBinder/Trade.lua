@@ -6,9 +6,11 @@ ACB.tradePrefix = "AzerothBinder1"
 -- of their own (R), and each side confirms the exact pair (C). When a side has sent its confirmation
 -- and received the partner's, it applies the swap once through `apply`.
 -- `wanted` returns the cards the player is looking for, as a list of catalog keys.
-function ACB.newTrade(counts, now, makeID, send, apply, wanted)
+function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
     local trade = { seen = {}, status = "Choose a partner and a card to offer." }
     apply = apply or function() return true end
+    -- `allowed(peer)` may say no, with a reason (the trading distance); with none given every trade may go ahead.
+    allowed = allowed or function() return true end
 
     function trade:reset(status)
         self.session = nil
@@ -60,6 +62,11 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
 
     function trade:offer(peer, key)
         if busy(self) or not peer then return end
+        local ok, why = allowed(peer)
+        if not ok then
+            self.status = why
+            return
+        end
         if not owns(key) then
             self.status = "Choose a card from your binder."
             return
@@ -73,6 +80,11 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
     function trade:reply(key)
         local session = self:active()
         if not session or not session.take or session.give then return end
+        local ok, why = allowed(session.peer)
+        if not ok then
+            self.status = why
+            return
+        end
         if not owns(key) or key == session.take then
             self.status = "Choose a different card from your binder."
             return
@@ -124,6 +136,11 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted)
     function trade:confirm()
         local session = self:active()
         if not session or session.sentConfirm or not session.take or not session.give then return end
+        local ok, why = allowed(session.peer)
+        if not ok then
+            self.status = why
+            return
+        end
         if not owns(session.give) then
             self.status = "The card you offered is no longer in your binder."
             return

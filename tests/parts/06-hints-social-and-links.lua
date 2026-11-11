@@ -213,13 +213,14 @@ test("a binder can be viewed read-only, only when asked for, and can be made pri
     ACB.initSocial(aSaved, aliceSend, function() return clock end, after)
     ACB.receiveView("bob-realm", "Q")
     for _, run in ipairs(timers) do run() end
-    equal(#sentToB, #messages)
+    equal(#sentToB, #messages + 1) -- the binder, then what this player is looking for
+    assert(sentToB[#messages + 1]:find("^L|%d+|"), "the wanted list follows the binder")
     ACB.receiveView("bob-realm", "Q") -- asked again straight away
-    equal(#timers, #messages)
+    equal(#timers, #messages + 1)
     clock = clock + 11
     aSaved.inspectable = false
     ACB.receiveView("carol-realm", "Q")
-    equal(#timers, #messages) -- private binders answer nobody
+    equal(#timers, #messages + 1) -- private binders answer nobody
     aSaved.inspectable = nil
 
     -- Bob's side.
@@ -228,15 +229,15 @@ test("a binder can be viewed read-only, only when asked for, and can be made pri
     ACB.initSocial(bSaved, bobSend, function() return clock end, after, function(message) reports[#reports + 1] = message end)
     ACB.showInspect = function(peer, counts, shiny) shown[#shown + 1] = { peer = peer, counts = counts, shiny = shiny } end
     -- Alice told Bob to wait when he asked again, and told Carol her binder is private.
-    equal(sentToB[#messages + 1], "N|wait")
-    equal(sentToB[#messages + 2], "N|private")
+    equal(sentToB[#messages + 2], "N|wait")
+    equal(sentToB[#messages + 3], "N|private")
     ACB.receiveView("alice-realm", sentToB[1]) -- nobody asked, so it is ignored
     equal(#shown, 0)
     equal(ACB.requestBinder("alice-realm"), true)
     equal(sentToA[#sentToA], "Q")
     ACB.receiveView("mallory-realm", sentToB[1])
     equal(#shown, 0) -- only the player asked answers
-    equal(#sentToB, #messages + 2)
+    equal(#sentToB, #messages + 3)
     ACB.receiveView("alice-realm", sentToB[1])
     ACB.receiveView("alice-realm", sentToB[1]) -- a repeated part changes nothing
     equal(#shown, 0)

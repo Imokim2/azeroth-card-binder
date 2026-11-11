@@ -88,6 +88,15 @@ function ACB.createFolio(parent, saved, selectSet)
 
     local selected = text(right, 23, 17, "", 10, SEPIA, 250)
     local dustMark = text(right, 273, 17, "", 10, SEPIA, 150, "RIGHT")
+    local askButton = panel(right, "Button", 185, 11, 76, 20, POCKET, EDGE)
+    text(askButton, 0, 4, "Ask target", 10, INK, 76, "CENTER")
+    askButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    askButton:SetScript("OnClick", function()
+        local entry = ACB.pages[region].cards[state.slot]
+        local peer, why = ACB.targetPeer()
+        if peer then why = select(2, ACB.askForCard(peer, entry)) end
+        if why then ACB.say(why) end
+    end)
     local name = text(right, 22, 37, "", 34, INK, 405, "LEFT", true)
     name:SetWordWrap(false)
     rule(right, 23, 96, 402)
@@ -198,6 +207,7 @@ function ACB.createFolio(parent, saved, selectSet)
         local code = page.code or ("SET %02d"):format(index)
         selected:SetText(("SELECTED CARD  /  %s %02d"):format(code, state.slot))
         ACB.fitText(name, DISPLAY_FONT, entry.name, 405, 34, 20, "")
+        askButton:SetShown(count == 0 and not showIndex)
         rarity:SetText(tier.name:upper())
         rarity:SetTextColor(unpack(count == 0 and MISSING_INK or RARITY_INK[entry.rarity] or INK))
         chance:SetText(("%g%%"):format(ACB.rates[entry.rank] / 100))

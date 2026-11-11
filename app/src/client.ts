@@ -30,7 +30,9 @@ export type Outcome =
   | { status: "synced"; ack: Ack | null; uploaded: number }
   | { status: "retry-later"; afterMs: number; reason: string }
   | { status: "rejected"; code: string; detail?: Record<string, unknown> }
-  | { status: "history-missing"; haveFrom: number; needFrom: number };
+  | { status: "history-missing"; haveFrom: number; needFrom: number }
+  // The saved data is a different binder from the one the server holds (the player started over in the game).
+  | { status: "diverged"; serverSeq: number };
 
 type Reply = { status: number; body: Record<string, unknown>; retryAfter: number | null };
 
@@ -54,7 +56,7 @@ const errorOf = (reply: Reply): { code: string; detail?: Record<string, unknown>
 };
 
 // Failures that a later attempt can fix: nothing to do with the contents of the upload.
-const worthRetrying = (reply: Reply): boolean => reply.status >= 500 || errorOf(reply).code === "conflict";
+const worthRetrying = (reply: Reply): boolean => reply.status >= 500 || errorOf(reply).code === "conflict" || errorOf(reply).code === "rate_limited";
 
 // Send with a few retries and growing pauses; honours the server's Retry-After. Returns the reply, or why to wait.
 async function sendWithRetries(options: ClientOptions, path: string, body?: Record<string, unknown>): Promise<Reply | { later: number; reason: string }> {
@@ -73,11 +75,21 @@ async function sendWithRetries(options: ClientOptions, path: string, body?: Reco
 
 async function uploadBody(options: ClientOptions, binder: Binder, events: BinderEvent[]): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {
-    specVersion: 1, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
+    specVersion: 3, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
     realm: binder.character?.realm ?? "Unknown", schema: binder.schema, catalogVersion: options.catalogVersion,
     events, snapshot: binder.snapshot, tapeIndex: binder.tapeNext, sentAt: options.now(),
   };
   return { ...body, sig: await options.identity.sign(canonicalJson(body)) };
+}
+
+// Does the saved data continue the chain the server says it holds? The server's newest event is (seq, hash): the saved
+// data must either have that very event, or not have reached it yet (which a new binder with a short history shows).
+// An older event that has been pruned from the file cannot be checked and is given the benefit of the doubt.
+function continues(binder: Binder, ack: Ack | null): boolean {
+  if (!ack || ack.seq === 0) return true;
+  if (binder.head.seq < ack.seq) return false;
+  const event = binder.events.find((entry) => entry.seq === ack.seq);
+  return event ? event.h === ack.hash : true;
 }
 
 // Upload what the server has not stored yet. `known` is the last acknowledgement we saw (or null).
@@ -100,6 +112,7 @@ export async function syncBinder(options: ClientOptions, binder: Binder, known: 
       const seq = probe.body["ackSeq"];
       const hash = probe.body["ackHash"];
       ack = typeof seq === "number" && typeof hash === "string" && seq > 0 ? { seq, hash } : null;
+      if (!continues(binder, ack)) return { status: "diverged", serverSeq: ack?.seq ?? 0 };
       continue;
     }
     const reply = await sendWithRetries(options, "/v1/ledger", await uploadBody(options, binder, pending.slice(0, batchSize)));
@@ -116,8 +129,12 @@ export async function syncBinder(options: ClientOptions, binder: Binder, known: 
     // Told where the server stands (events already stored, or missing): take that and carry on, a couple of times.
     if ((code === "replay" || code === "gap") && resyncs++ < 2 && typeof detail?.["ackSeq"] === "number" && typeof detail["ackHash"] === "string") {
       ack = detail["ackSeq"] > 0 ? { seq: detail["ackSeq"], hash: detail["ackHash"] } : null;
+      // Told the server already has events up to here: are they ours? If not, this is a different binder.
+      if (!continues(binder, ack)) return { status: "diverged", serverSeq: ack?.seq ?? 0 };
       continue;
     }
+    // The same range stored with different contents: also a different binder, not an attempt to be repaired here.
+    if (code === "duplicate_batch") return { status: "diverged", serverSeq: typeof detail?.["ackSeq"] === "number" ? detail["ackSeq"] : 0 };
     return { status: "rejected", code, ...(detail ? { detail } : {}) };
   }
 }
@@ -154,6 +171,8 @@ export type Standings = {
   verified: string[];
   firsts: { setCode: string; title: string; by: string; at: number }[];
   you: { rank: number; score: number; cards: number; sets: number } | null;
+  // What public players are looking for: each player's name, their characters and the card keys.
+  wanted: { name: string; characters: string[]; cards: string[] }[];
 };
 
 const record = (value: unknown): Record<string, unknown> => (typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {});
@@ -166,6 +185,14 @@ export async function fetchStandings(options: ClientOptions, playerId: string | 
   const feed = await sendWithRetries(options, "/v1/firsts");
   if ("later" in feed) return { status: "retry-later", afterMs: feed.later, reason: feed.reason };
   if (feed.status !== 200) return { status: "rejected", ...errorOf(feed) };
+  const wantedReply = await sendWithRetries(options, "/v1/wanted");
+  if ("later" in wantedReply) return { status: "retry-later", afterMs: wantedReply.later, reason: wantedReply.reason };
+  if (wantedReply.status !== 200) return { status: "rejected", ...errorOf(wantedReply) };
+  const wanted = (Array.isArray(wantedReply.body["players"]) ? (wantedReply.body["players"] as unknown[]).map(record) : []).map((entry) => ({
+    name: String(entry["displayName"] ?? ""),
+    characters: Array.isArray(entry["characters"]) ? (entry["characters"] as unknown[]).filter((name): name is string => typeof name === "string") : [],
+    cards: Array.isArray(entry["cards"]) ? (entry["cards"] as unknown[]).filter((card): card is string => typeof card === "string") : [],
+  }));
   const entries = Array.isArray(board.body["entries"]) ? (board.body["entries"] as unknown[]).map(record) : [];
   const verified = new Set<string>();
   const leaderboard = entries.map((entry) => {
@@ -179,5 +206,53 @@ export async function fetchStandings(options: ClientOptions, playerId: string | 
     const page = await sendWithRetries(options, "/v1/player/" + playerId);
     if (!("later" in page) && page.status === 200) you = { rank: whole(page.body["rank"]), score: whole(page.body["scoreTenths"]), cards: whole(page.body["uniqueCards"]), sets: whole(page.body["setsDone"]) };
   }
-  return { status: "standings", standings: { leaderboard, verified: [...verified], firsts, you } };
+  return { status: "standings", standings: { leaderboard, verified: [...verified], firsts, you, wanted } };
+}
+
+// Start a new binder: the server archives the old record and the player begins again with an empty chain and a new roll
+// tape. Signed by the player's key. At most once a day; `too_soon` says how long to wait.
+export async function resetBinder(options: ClientOptions): Promise<{ status: "reset"; epoch: number } | Outcome> {
+  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now() };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "reset" }));
+  const reply = await sendWithRetries(options, "/v1/reset", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  return { status: "reset", epoch: Number(reply.body["epoch"] ?? 0) };
+}
+
+// Delete everything the server holds about this player (their record, key link, Discord id and any archived binders). Signed by
+// the player's key and confirmed by the exact words. It cannot be undone.
+export async function deleteAccount(options: ClientOptions): Promise<{ status: "deleted" } | Outcome> {
+  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now(), confirm: "delete my data" };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "delete" }));
+  const reply = await sendWithRetries(options, "/v1/delete", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  return { status: "deleted" };
+}
+
+// Send reports about other players. Signed by the player's key. Returns the tokens the server has settled (stored, repeated,
+// or about the player themselves); the rest are kept by the add-on and sent again. At most 10 go in one request.
+export async function sendReports(options: ClientOptions, reports: { token: string; target: string; reason: string; note: string }[]): Promise<{ status: "reported"; done: string[] } | Outcome> {
+  const done: string[] = [];
+  for (let from = 0; from < reports.length; from += 10) {
+    const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now(), reports: reports.slice(from, from + 10) };
+    const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "report" }));
+    const reply = await sendWithRetries(options, "/v1/report", { ...body, sig });
+    if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+    if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+    if (Array.isArray(reply.body["done"])) for (const token of reply.body["done"]) if (typeof token === "string") done.push(token);
+  }
+  return { status: "reported", done };
+}
+
+// Tell the server which cards this player is looking for, so other players can see them (the wanted board). Signed by the
+// player's key. The server lists only public players and drops the list of a private one; an empty list clears it.
+export async function uploadWanted(options: ClientOptions, cards: string[]): Promise<{ status: "stored"; listed: boolean } | Outcome> {
+  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now(), cards };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "wanted" }));
+  const reply = await sendWithRetries(options, "/v1/wanted", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  return { status: "stored", listed: reply.body["listed"] === true };
 }

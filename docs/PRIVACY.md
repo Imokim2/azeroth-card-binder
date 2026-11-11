@@ -9,11 +9,13 @@ Written for the website's privacy page and the app's About window. It describes 
 - **Your characters' names and realms**, taken from your ledger.
 - **Your ledger**: every card found, crafted, recycled and traded, with times, the partner's character name and the trade id.
 - **Your score** and when it last changed.
+- **The cards you are looking for** (your wanted list), only if you are public. A private player's list is not kept.
+- **Reports** you send about other players (the character's name, a reason and a short note you wrote) and reports other players sent about you. Only the people who run the service read them; they are not shown to anyone else, and they are erased with the rest when you delete your data.
 - **Counts the server needs to check play**: attempts per card, roll-tape positions used, and flags raised by the fair-play checks (with a reviewer's note if a person looked).
 
 ## What is shown to others
 
-Only if you choose **public** when you register: your character name and realm, your rank and score, your sets finished, and a "verified" mark beside your name in the game. A **private** player is stored but never listed.
+Only if you choose **public** when you register: your character name and realm, your rank and score, your sets finished, the cards you are looking for, and a "verified" mark beside your name in the game. A **private** player is stored but never listed.
 
 ## What is not collected
 
@@ -22,8 +24,12 @@ Nothing about what is on your screen, in the game's memory or in your chat. The 
 ## Your choices
 
 - Choose public or private when you register, and change it by signing in again.
-- Ask for your data to be deleted. (**Not built yet**: a deletion route is a launch requirement, roadmap E3.)
+- Delete your data from the server at any time with **Delete my data…** in the companion app: your record, ledger, characters, Discord link and any archived binders are erased and cannot be recovered. Your cards in the game and the files on your computer are not touched. You can sign up again later, from nothing. (A banned account's record is kept, so a ban cannot be undone by deleting the account.)
 - A banned player is hidden, not deleted, so that a ban cannot be dodged by starting again.
+
+## Technical logs
+
+The server keeps a log of each request (the route, the result and how long it took, with a request id) so that problems can be found. It does not log your Discord id, your cards or what you uploaded. Cloudflare, which runs the server, also keeps its own technical logs, which include the address a request came from, for a limited time.
 
 ## Where it lives
 

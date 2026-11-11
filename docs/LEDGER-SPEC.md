@@ -1,6 +1,6 @@
 # Ledger specification
 
-Version 1 (draft until Phase A of the [roadmap](ROADMAP.md) has shipped). This is the contract between the Lua add-on, the companion app and the server. All three implement it separately; all three must produce exactly the results in [packages/shared/vectors](../packages/shared/vectors). The reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 3 (draft until Phase A of the [roadmap](ROADMAP.md) has shipped). Version 2 added the `miss` event and the `ranked2` mode (sections 3.1 and 8.1); version 3 adds card packs (the `packFind`, `packOpen` and `packCard` events, section 8.2). Version 1 is no longer accepted for new uploads; version 2 histories are valid in version 3. This is the contract between the Lua add-on, the companion app and the server. All three implement it separately; all three must produce exactly the results in [packages/shared/vectors](../packages/shared/vectors). The reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
 
 If this document, the reference implementation and the vectors ever disagree, that is a bug. Fix all three together in one change.
 
@@ -24,12 +24,12 @@ It does **not** prove an event really happened in the game. The player's compute
 |---|---|---|
 | `seq` | integer, 1 or more | Position in the chain. The first event is 1; each next one is exactly one more. |
 | `t` | integer, 0 or more | When the add-on wrote it, by the player's clock. |
-| `kind` | string | One of `drop`, `craft`, `recycle`, `tradeIn`, `tradeOut`, `set`, `mode`. |
-| `key` | string, not empty | The card key; for `set` the set code (for example `DM`); for `mode` either `casual` or `ranked`. |
-| `count` | integer, 0 or more | How many copies of that card the player owns after this event. 0 for `set` and `mode`. |
+| `kind` | string | One of `drop`, `craft`, `recycle`, `tradeIn`, `tradeOut`, `set`, `mode`, `miss`, `packFind`, `packOpen`, `packCard`. |
+| `key` | string, not empty | The card key; for `set` the set code (for example `DM`); for `mode` `casual`, `ranked2` (or `ranked`, which only old history holds); for `packFind` and `packOpen` the zone (the set code). |
+| `count` | integer, 0 or more | How many copies of that card the player owns after this event. 0 for `set` and `mode`. For `miss` it is the length of the run of misses instead (1 or more); no copies change. For `packFind` and `packOpen` it is the number of packs of that zone held after the event. |
 | `dust` | integer, may be negative | Change in Binder Dust: plus for `recycle`, minus for `craft`, 0 otherwise. |
 | `shiny` | 0 or 1 | 1 when this event produced the shiny copy of a card. |
-| `tape` | integer, 0 or more | The ranked tape entry used, counting from 1; 0 when none was used. |
+| `tape` | integer, 0 or more | The ranked tape entry used, counting from 1; 0 when none was used. For a `miss` it is the last entry of the run; for `mode ranked2` it is the last entry used before it (0 for a new binder). For `packFind` it is the entry of the attempt that found the pack (it uses no entry of its own), for `packOpen` the last entry used before it, and for `packCard` the entry that chose the card. |
 | `partner` | string, may be empty | For trades: the other player, as `name-realm` in lowercase, spaces removed. |
 | `trade` | string, may be empty | For trades: the trade id both players share. |
 | `char` | string, not empty | The acting character as `Name-Realm`, spaces removed from the realm. |
@@ -40,16 +40,20 @@ It does **not** prove an event really happened in the game. The player's compute
 
 The server replays the events from `seq` 1 and keeps a running count per card and a running dust balance. It rejects a batch that breaks any of these:
 
-- `drop`: `count` is the previous count plus 1. `shiny` may be 1 only when no earlier event for that card had `shiny` 1: a card has at most one shiny copy, found by whichever drop rolls it first. In ranked mode `tape` must be at least 1 and greater than the `tape` of every earlier event.
+- `drop`: `count` is the previous count plus 1. `shiny` may be 1 only when no earlier event for that card had `shiny` 1: a card has at most one shiny copy, found by whichever drop rolls it first. In `ranked2` mode `tape` must be exactly one more than the last tape entry written down, so no attempt is left out. (In the old `ranked` mode it only had to rise; that mode is replayed from history but refused for new events.)
+- `miss` (only in `ranked2`): a run of `count` attempts on one card that all missed, using the `count` tape entries that end at `tape`. `count` is at least 1 and `tape - count` is exactly the last tape entry written down. No copies change.
 - `craft`: the previous count is 0 and `count` is 1; `dust` equals minus the craft cost of the card's rarity, from the catalog; `shiny` is 0.
 - `recycle`: the previous count is at least 2, `count` is one less, and `dust` equals the recycle yield of the card's rarity.
 - `tradeOut`: the previous count is at least 1 (any card in the binder can be traded, a last copy included) and `count` is one less. `tradeIn`: `count` is the previous count plus 1. Both need `partner` and `trade`.
 - `set`: `key` is a set code and every card of that set is owned at that point.
-- `mode`: `key` is `casual` or `ranked`.
+- `packFind`: a pack of the zone `key` was found; `count` is the packs of that zone held afterwards. In `ranked2` its `tape` must be the entry of the last attempt written down (a `drop` or the end of a `miss` run), the same entry may not find two packs, and the zone must be the zone of the card that attempt was on, which cannot be a gathering node. In Casual `tape` is 0.
+- `packOpen`: a pack of `key` is opened: the player must hold one, `count` is the packs held afterwards, and `tape` is the last entry used so far (0 in Casual). Exactly five `packCard` events must follow, with nothing between them.
+- `packCard`: a card of the opened pack's zone, `count` one more than before, `shiny` as for a `drop`. In `ranked2` `tape` is one more than the last entry used; in Casual it is 0.
+- `mode`: `key` is `casual`, `ranked2` or (history only) `ranked`. A `ranked2` event names in `tape` the last entry used so far. The first time it may be up to 2,000 past the last entry written down (for misses a binder kept before attempts were written down); every later time it must equal it, so entries cannot be skipped by leaving Ranked and coming back.
 - The running dust balance never goes below 0.
 - `t` never decreases from one event to the next.
 
-Misses are not events. They are counted in the snapshot's `attempts` (Section 6).
+In `ranked2` every attempt is on record, as a `drop` or inside a `miss` run. In Casual misses are not events; they are counted in the snapshot's `attempts` (Section 6).
 
 ## 4. The event hash
 
@@ -126,9 +130,28 @@ For each ranked roll the add-on takes the next unused entry (counting from 1):
 
 The server knows every entry, so it can recheck each drop. Entries are never reused.
 
+### 8.2 Card packs
+
+Any attempt on a creature (not a gathering node) can find a pack: **1 in 500**. A pack holds **five cards from the zone it was found in**: the zone of the creature the attempt was on, as a set of the catalog. Both are decided by tape entries, so the server can recheck them. The Lua add-on, the server and the vectors (`packs.json`) must agree on the arithmetic below, which uses whole numbers only.
+
+A tape entry's second half (8 hex characters, `hex2`) is used two ways that do not depend on each other: `hex2 mod shinyOdds` is the shiny remainder (section 8), and `floor(hex2 / shinyOdds)` is what packs use.
+
+- **Finding a pack:** `(floor(hex2 / shinyOdds) mod 500) + 1 = 1`. It needs no entry of its own: it rides on the entry of the attempt, whether or not that attempt dropped its card, and is written as a `packFind` event with that attempt's `tape`.
+- **Opening a pack** takes five consecutive entries, one for each card, at the positions after `packOpen`'s `tape`.
+- **Choosing a card** from an entry: take the zone's cards by rarity, each rarity in order of card number, and leave out rarities the zone has none of. The rarities have weights Common 7000, Rare 2000, Epic 800, Legendary 200 (out of 10000 before leaving any out). With `total` the weights of the rarities that remain, the rarity is the first whose cumulative weight times 10000 is above `(roll - 1) * total`, where `roll` is the entry's roll (section 8). The card is number `floor(hex2 / shinyOdds) mod n` of that rarity's `n` cards. Creature zones have no Rare cards (only gathering nodes are Rare), so there the Rare share goes to the others.
+- **Shiny:** exactly as for a drop: the card is shiny when it has no shiny copy yet and `hex2 mod shinyOdds` says so.
+
+The server checks every `packFind` (the entry must say a pack was found) and every `packCard` (the card and its shiny flag must be exactly what the entry gives from the zone). Cards from Casual packs count as Casual drops. As for any ranked roll, a player who reads the tape ahead can choose which kills to spend on which entries, and when to open a pack; the small tape batches (section 8.1) bound that.
+
+### 8.1 Ranked2: every attempt on record
+
+Entering `ranked2` writes a `mode` event and starts every card's run of misses again from zero, so the server and the add-on agree on each card's chance. From then on every attempt is on record, in order: a drop is a `drop` event; consecutive misses on the **same card** are one `miss` event covering their entries; an attempt on another card, a drop, or a change of mode ends the run. The tape positions recorded therefore follow each other with no gap, which the rules in section 3.1 check without any secret.
+
+The server then replays every attempt against its own entry, keeping each card's stack of misses: a **miss** needs a roll above the chance at that point (a roll that would have won means a drop was left out), a **drop** needs a roll at or below it, and a drop's shiny flag must match its entry while the card has no shiny copy. This replaces the older check, which could only compare totals. What the server still cannot see is **which card an entry was spent on**: a player who reads the entries ahead of time could spend a winning entry on the card they want. Two things bound that: the tape is issued in small batches, topped up only when an upload shows the last batch nearly used (at most about 1,250 entries ahead of the last upload), and the luck checks still look at the totals.
+
 ## 9. Versioning and compatibility
 
-- `specVersion` changes when anything in this document changes in a way an old implementation would get wrong. The server states the lowest version it accepts.
+- `specVersion` changes when anything in this document changes in a way an old implementation would get wrong. The server states the lowest version it accepts. Version 2 added the `miss` kind and the `ranked2` mode, and version 3 the three pack kinds; the chain and the hashed text did not change, so a version 1 chain continues under version 2, but new uploads must be in version 2 and any Ranked play must begin with a `ranked2` mode event.
 - Fields may be added to uploads without a version change, but never to the hashed event text: that would change every hash. A new hashed field means a new `specVersion` and a new chain.
 - Event kinds are only ever added. An implementation that sees a kind it does not know rejects the batch with `bad-field`.
 - Cards are never removed from the catalog; a retired card stays valid in old ledgers.
@@ -151,6 +174,7 @@ This is a local check for accidents and casual edits. Anyone who reads the add-o
 ## 12. Known limits
 
 - The ledger cannot show that a kill happened. See the roadmap's plausibility checks and evidence process.
-- A player who edits the add-on can still choose which tape entries to spend. The server bounds this by rate limits and by comparing attempts with drops.
+- A player who edits the add-on can still choose which card to spend a tape entry on, and can read entries ahead of time (a few hundred to about 1,250 at once). The server bounds this by issuing the tape in small batches, rate limits and the luck checks.
+- A player can also end the game without it saving (killing the process) after seeing a result they do not like: the saved file then still holds the older state and the same entries. This cannot be seen from the ledger.
 - A binder upgraded from schema 1 has cards the ledger never saw drop, so its events cannot account for them. Phase B must decide how the server treats such a binder (play Casual, or ranked from a fresh binder). Until then it is verified locally only.
 - The 32-character hash is a truncation of SHA-256. It is plenty to catch edits and accidents; it is not meant to resist someone who controls both ends of the chain, which this design never claims to stop.

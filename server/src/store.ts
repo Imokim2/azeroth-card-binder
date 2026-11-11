@@ -11,6 +11,8 @@ export type Player = {
   status: "active" | "banned";
   visibility: Visibility;
   createdAt: number;
+  epoch: number; // how many times the player has started a new binder
+  resetAt: number | null;
 };
 
 export interface PlayerStore {
@@ -21,9 +23,15 @@ export interface PlayerStore {
   // keeps it, its older keys are revoked and the new one becomes active. Registering the same key twice changes nothing.
   registerKey(input: { discordId: string; key: string; visibility: Visibility; at: number; newPlayerId: string }): Promise<Player>;
   characters(playerId: string): Promise<{ name: string; realm: string }[]>;
+  // Start over: everything stored for the player is kept, under a new private id that nothing lists, and the player
+  // begins again with nothing (and a new epoch). Their keys, Discord link and visibility stay.
+  resetBinder(playerId: string, archivedId: string, at: number): Promise<void>;
+  // Delete everything held about the player: their record, their keys and Discord link, and any archives from earlier
+  // binders. Trade halves other players recorded with them stay with those players.
+  deletePlayer(playerId: string): Promise<void>;
 }
 
-// pity (kept under its old column name): the attempts that each card's ranked drops have needed so far, checked against its counted attempts; tapeNext: the tape position
+// pity (kept under its old column name): how many misses in a row each card has had since its last drop, in ranked2; tapeNext: the tape position
 // the add-on said it will use next, at its last upload.
 // drops: drop events per card so far; lastUpload: when the last upload was stored (null if never); openFlags: kinds of
 // flags still open for this player.
@@ -48,6 +56,8 @@ export type Commit = {
   // Each tradeIn and tradeOut in the batch, and each set finished, for trade matching and the firsts feed.
   trades: TradeRow[];
   completions: { setCode: string; t: number }[];
+  // Drop events in this batch that were rolled in Casual mode (tape position 0); added to the player's running count.
+  casualDrops: number;
 };
 
 export type TradeRow = { seq: number; tradeId: string; direction: "in" | "out"; key: string; char: string; partner: string; t: number };
@@ -73,9 +83,17 @@ export interface TradeStore {
   // as unmatched that are matched now, so their scores can be put right.
   matchOpen(): Promise<string[]>;
   // Mark the halves still open from before `before` (seconds) as unmatched, and say whose they were.
-  expire(before: number): Promise<{ playerId: string; direction: "in" | "out"; key: string }[]>;
-  // The copies of each card the player received in trades that were never matched; they do not count towards the score.
+  // Each row also says which player held the other half, if that player has uploaded since this half was recorded: if
+  // their upload still lacks the matching half, the fault is theirs, not the owner's.
+  expire(before: number): Promise<{ playerId: string; direction: "in" | "out"; key: string; partnerUploadedSince: string | null }[]>;
+  // The copies of each card the player received in trades that do not count towards the score: halves never matched,
+  // and copies that came from a player who has unverified Casual drops.
   excluded(playerId: string): Promise<Record<string, number>>;
+  // Every received trade half with the player who gave it, and the players who have unverified Casual drops: what is
+  // needed to follow a card through several trades (src/taint.ts).
+  tradeGraph(): Promise<{ halves: { playerId: string; seq: number; key: string; state: "open" | "matched" | "unmatched"; source: string | null }[]; casualPlayers: string[] }>;
+  // Replace the list of untrusted halves. Returns the players whose list changed, so their scores can be put right.
+  replaceTaint(rows: { playerId: string; seq: number }[]): Promise<string[]>;
   // Replace the score numbers after the excluded copies changed.
   setScore(playerId: string, score: { score: number; uniqueCards: number; setsDone: number }): Promise<void>;
   // Raise a flag outside an upload.
@@ -98,7 +116,7 @@ export interface ModerationStore {
 // Rebuilding everything derived from the stored batches (roadmap D8).
 export type Derived = {
   state: LedgerState; drops: Record<string, number>; score: { score: number; uniqueCards: number; setsDone: number };
-  dropRows: LedgerEvent[]; trades: (TradeRow & { receivedAt: number })[]; completions: { setCode: string; t: number; receivedAt: number }[]; rulesVersion: number;
+  casualDrops: number; dropRows: LedgerEvent[]; trades: (TradeRow & { receivedAt: number })[]; completions: { setCode: string; t: number; receivedAt: number }[]; rulesVersion: number;
 };
 export interface RebuildStore {
   // Player ids in order, after `after` (or from the start), at most `limit`.
@@ -106,9 +124,35 @@ export interface RebuildStore {
   // Every stored batch of a player, oldest first.
   batchesOf(playerId: string): Promise<{ events: LedgerEvent[]; receivedAt: number }[]>;
   // The derived data as it is stored now, to compare with a rebuild.
-  derivedNow(playerId: string): Promise<{ state: LedgerState; drops: Record<string, number>; score: number | null } | null>;
+  derivedNow(playerId: string): Promise<{ state: LedgerState; drops: Record<string, number>; score: number | null; casualDrops: number } | null>;
   // Replace the derived data for a player.
   writeDerived(playerId: string, derived: Derived): Promise<void>;
+}
+
+// The wanted board: what public players are looking for.
+export type WantedEntry = { playerId: string; displayName: string; characters: string[]; cards: string[]; updatedAt: number };
+export interface WantedStore {
+  // Replace the player's list (an empty list clears it).
+  setWanted(playerId: string, cards: string[], at: number): Promise<void>;
+  // The most recently updated lists of public, active players who have a character, at most `limit` players.
+  board(limit: number): Promise<WantedEntry[]>;
+}
+
+// Reports from one player about another.
+export type ReportRecord = {
+  id: string; reporterId: string; token: string; targetName: string; targetId: string | null; reason: string; note: string; createdAt: number;
+};
+export interface ReportStore {
+  // The player who has played a character with this name ("name-realmname"), leaving out archived binders.
+  playerOfCharacter(peer: string): Promise<string | null>;
+  // Store a report. "duplicate" (nothing stored) when this player already sent this token, or reported this character since `since`.
+  add(report: ReportRecord, since: number): Promise<"stored" | "duplicate">;
+  // How many reports this player has sent since `since`, and how many different players have reported this one.
+  countSince(reporterId: string, since: number): Promise<number>;
+  reportersOf(targetId: string, since: number): Promise<number>;
+  hasOpenFlag(playerId: string, kind: string): Promise<boolean>;
+  // The newest reports about a player, for the people who review them.
+  about(targetId: string, limit: number): Promise<ReportRecord[]>;
 }
 
 export type IssuedTape = { start: number; end: number; commitment: string };
@@ -137,6 +181,8 @@ export interface LeaderboardStore {
   entry(playerId: string): Promise<{ entry: BoardEntry; rank: number } | null>;
   // The characters each of these players has played, in the form partners use ("name-realmname").
   charactersOf(playerIds: string[]): Promise<Record<string, string[]>>;
+  // The cards a player holds, for their page on the website; null unless they may appear on the ladder.
+  binder(playerId: string): Promise<{ counts: Record<string, number>; shiny: Record<string, boolean> } | null>;
   // Who finished each set first among the players who may appear on the ladder (roadmap C6).
   firsts(): Promise<{ setCode: string; playerId: string; displayName: string; receivedAt: number }[]>;
 }

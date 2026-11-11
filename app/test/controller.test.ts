@@ -50,13 +50,14 @@ async function app(options: { crypt?: Crypt; opener?: "approve" | "cancel" | "wr
   await mkdir(join(saved, ".."), { recursive: true });
   lua("tests/tools/write-saved.lua", saved, "0");
   const fetchLike: FetchLike = async (url, init) => env.api(new Request(url, init));
-  const picks = { next: join(folder) as string | null };
+  const picks = { next: join(folder) as string | null, agree: true };
   const opened: string[] = [];
   const deps: Deps = {
     dataFolder, secrets: encryptedFileStore(join(dataFolder, "key.bin"), options.crypt ?? fakeCrypt()), server: "https://warcards.test",
     version: CLIENT, catalogVersion: "test", fetch: fetchLike, now: () => NOW, sleep: async () => {}, signInPort: 0,
     engineTimings: { quietMs: 40, everyMs: 3_600_000 },
     chooseFolder: async () => picks.next,
+    confirm: async () => picks.agree,
     open: async (url) => {
       opened.push(url);
       const callback = new URL(url).searchParams.get("redirect_uri") as string;
@@ -163,7 +164,7 @@ test("settings and the key are kept: a new controller starts already signed in a
     const second = new Controller({
       dataFolder: a.dataFolder, secrets: encryptedFileStore(join(a.dataFolder, "key.bin"), fakeCrypt()), server: "https://warcards.test", version: CLIENT,
       catalogVersion: "test", fetch: async (url, init) => a.env.api(new Request(url, init)), now: () => NOW, sleep: async () => {},
-      engineTimings: { quietMs: 40, everyMs: 3_600_000 }, chooseFolder: async () => null, open: () => undefined,
+      engineTimings: { quietMs: 40, everyMs: 3_600_000 }, chooseFolder: async () => null, confirm: async () => false, open: () => undefined,
     });
     await second.start();
     const status = second.status();
@@ -215,8 +216,10 @@ test("a folder with no game in it is refused, the game is found in the usual pla
   const a = await app();
   try {
     await a.controller.start();
-    a.picks.next = tmpdir(); // somewhere with no WTF folder
+    const empty = await mkdtemp(join(tmpdir(), "warcards-empty-")); // a folder of our own with no game in it (the shared temp folder may hold other tests' games)
+    a.picks.next = empty;
     await a.controller.chooseGameFolder();
+    await rm(empty, { recursive: true, force: true });
     assert.match(a.controller.status().message ?? "", /No game folder found/);
     assert.equal(a.controller.status().gameFolder, null);
     a.picks.next = null; // the dialog was closed: nothing changes
@@ -237,5 +240,81 @@ test("a folder with no game in it is refused, the game is found in the usual pla
     assert.equal(broken.opened.length, 0, "no sign-in is started without a safe place for the key");
   } finally {
     await broken.cleanup();
+  }
+});
+
+test("a new binder in the game is noticed, and starting it on the server archives the old one and syncs the new", async () => {
+  const a = await app();
+  try {
+    await a.controller.start();
+    await a.controller.chooseGameFolder();
+    await a.controller.signIn("public");
+    await a.waitFor("the first binder to sync", (s) => s.lastSyncAt !== null && /Synced|Up to date/.test(s.accounts[0]?.state ?? ""));
+    assert.equal(a.controller.status().needsNewBinder, false);
+    const playerId = (a.env.raw.prepare("SELECT id FROM players").get() as { id: string }).id;
+
+    // The player starts over in the game: the saved file is a different binder from its very first event.
+    process.env["WARCARDS_VARIANT"] = "other";
+    try { lua("tests/tools/write-saved.lua", a.saved, "0"); } finally { delete process.env["WARCARDS_VARIANT"]; }
+    await a.controller.syncNow();
+    const noticed = await a.waitFor("the new binder to be noticed", (s) => s.needsNewBinder);
+    assert.match(noticed.accounts[0]?.state ?? "", /new binder/);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM batches WHERE player_id = ?").get(playerId) as { n: number }).n, 1, "nothing was uploaded on top of the old chain");
+
+    // Not agreeing changes nothing.
+    a.picks.agree = false;
+    await a.controller.startNewBinder();
+    assert.equal(a.controller.status().message, "Nothing was changed.");
+    assert.equal(a.controller.status().needsNewBinder, true);
+
+    // Agreeing archives the old binder and the new one is uploaded from its first event.
+    a.picks.agree = true;
+    await a.controller.startNewBinder();
+    const done = await a.waitFor("the new binder to sync", (s) => !s.needsNewBinder && /Synced|Up to date/.test(s.accounts[0]?.state ?? ""));
+    assert.equal(done.accounts.length, 1);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM batches WHERE player_id = ?").get(playerId) as { n: number }).n, 1);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM batches").get() as { n: number }).n, 2, "the old binder is kept on record");
+    assert.equal((a.env.raw.prepare("SELECT epoch FROM players WHERE id = ?").get(playerId) as { epoch: number }).epoch, 1);
+
+    // Asking again the same day is refused politely.
+    await a.controller.startNewBinder();
+    assert.match(a.controller.status().message ?? "", /started a new binder recently/);
+  } finally {
+    await a.cleanup();
+  }
+});
+
+test("deleting your data asks first, erases the server's record and leaves you signed out and able to start again", async () => {
+  const a = await app();
+  try {
+    await a.controller.start();
+    await a.controller.chooseGameFolder();
+    await a.controller.signIn("public");
+    await a.waitFor("the first sync", (s) => s.lastSyncAt !== null);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM players").get() as { n: number }).n, 1);
+
+    a.picks.agree = false;
+    await a.controller.deleteMyData();
+    assert.equal(a.controller.status().message, "Nothing was changed.");
+    assert.equal(a.controller.status().signedIn, true);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM players").get() as { n: number }).n, 1);
+
+    a.picks.agree = true;
+    await a.controller.deleteMyData();
+    const status = a.controller.status();
+    assert.deepEqual([status.signedIn, status.accounts], [false, []]);
+    assert.match(status.message ?? "", /deleted from the server/);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM players").get() as { n: number }).n, 0);
+    assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM batches").get() as { n: number }).n, 0);
+    assert.equal(JSON.parse(await readFile(join(a.dataFolder, "settings.json"), "utf8")).playerId, null);
+
+    // Not signed in: nothing to delete, and it says so.
+    await a.controller.deleteMyData();
+    assert.match(a.controller.status().message ?? "", /not signed in/);
+    // And signing in again starts from nothing.
+    await a.controller.signIn("public");
+    assert.equal(a.controller.status().signedIn, true);
+  } finally {
+    await a.cleanup();
   }
 });

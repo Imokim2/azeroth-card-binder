@@ -21,7 +21,7 @@ function ACB.createSettingsView(frame, saved)
     label(settingsView, "GameFontNormalLarge", 32, 20, brass, "Settings")
     local checks = {}
     for index, setting in ipairs(ACB.settings) do
-        local y = 62 + (index - 1) * 48
+        local y = 62 + (index - 1) * 36
         local check = CreateFrame("CheckButton", nil, settingsView, "UICheckButtonTemplate")
         check:SetPoint("TOPLEFT", 30, -y)
         check:SetSize(30, 30)
@@ -33,7 +33,7 @@ function ACB.createSettingsView(frame, saved)
         label(settingsView, "GameFontHighlightSmall", 70, y + 20, muted, setting.note)
         checks[setting.key] = check
     end
-    local titleY = 62 + #ACB.settings * 48 + 6
+    local titleY = 62 + #ACB.settings * 36 + 6
     label(settingsView, "GameFontNormal", 32, titleY + 6, parchment, "Title shown in player tooltips")
     button(settingsView, "Previous title", 290, titleY, 110, function()
         ACB.cycleTitle(saved, -1)

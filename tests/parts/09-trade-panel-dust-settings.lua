@@ -150,7 +150,10 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     local saved = AzerothCardBinderDB
     local keep = { saved.popups, saved.hints, saved.inspectable, saved.diagnostics, saved.bossTrial, saved.title, saved.titles }
     saved.popups, saved.hints, saved.inspectable, saved.diagnostics, saved.bossTrial = nil, nil, nil, nil, nil
+    local keepRange = saved.tradeRange
+    saved.tradeRange = nil
     equal(ACB.settingOn(saved, "popups"), true) -- on until switched off
+    equal(ACB.settingOn(saved, "tradeRange"), true) -- the trading distance is on until switched off
     equal(ACB.settingOn(saved, "diagnostics"), false) -- off until switched on
     equal(ACB.setSetting(saved, "nonsense", true), false)
     equal(ACB.setSetting(saved, "hints", false), true)
@@ -207,5 +210,6 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     click("Test pop-up")
 
     saved.popups, saved.hints, saved.inspectable, saved.diagnostics, saved.bossTrial, saved.title, saved.titles = unpack(keep, 1, 7)
+    saved.tradeRange = keepRange
     ACB.open("collection")
 end)

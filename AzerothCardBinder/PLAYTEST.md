@@ -42,6 +42,38 @@ Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each reco
 
 Every card has a description of at most 80 characters so it fits the card face. The original hand-made cards keep their lines. All raid and dungeon bosses and about a hundred well-known rares and elites have a line written for them. Most other creatures get a line built from their name: a named group ("the Scarlet Crusade"), a kind of creature (boar, murloc, ghoul), a title or job (guard, captain, miner) or, failing that, their rank. About a third of the creatures fall back to a rank line. The 39 nodes have their own lines. Read a few cards from a big set such as The Barrens for anything that sounds wrong.
 
+## Trading, asking and distance
+
+With a second player: (1) Target them, open the **Trade** tab and click **My target**; the name fills in. Offer a card. Move away (more than about 11 yards) and try to send the reply or accept: it should say your partner is too far away. In **Settings**, "Trading distance" turns that off. (2) Right-click them and choose **View their binder**: below the sets it should list the spares they have that you need and the other way round, and **Offer a trade** should open the Trade tab with their name. (3) Open a card you do not own and click **Ask target** while targeting them, or type `/acb ask TheirName CardName`: they should see "... is looking for [Card]. You have N (M spare)" only if they own it, and asking again straight away should be refused politely.
+
+## Card packs
+
+Packs are rare (1 in 500 attempts), so to test without waiting, ask for a test build or temporarily lower `ACB.packOdds` in `Packs.lua` to 5 (Casual only; Ranked takes the odds from the server's check, so a Ranked test needs the real rate). (1) When one drops, chat says "Card pack found" and the **Packs** button on the binder window shows the count. (2) Click **Packs** (or `/acb packs`), then **Open** on a zone: the pack should shake, burst, and deal five face-down cards. Click one: it should turn over (the back narrows, the card face widens from the middle) and a caption says NEW CARD, SHINY! or Duplicate. **Flip all** turns the rest over. Check the cards belong to the pack's zone and that rarer ones really are rarer over several packs. (3) Close the window with cards still face down: chat should list them. (4) In Ranked with a fresh binder: the pack should open only with five tape entries; after `/reload`, a sync and another `/reload` the server should accept it (no error from the app), and the cards should show in the binder and on the website. The animation and the card flips are new and have only been tested with a stand-in for the game: please look at how they actually appear (sizes, overlap with the window, the flip) and tell us what to adjust.
+
+## Cards from kills you can't loot
+
+(1) Turn on diagnostics in Settings. Target a critter (a rabbit, rat or squirrel), kill it, and about three seconds after it dies chat should say whether you found its card; `/acb log` should show "Kill seen on target". A critter's card is in the catalog, so one should drop eventually; its page shows the stacking chance. (2) Kill a creature that drops loot while it is targeted and loot it straight away: the card should be rolled once, not twice. (3) Have someone else kill a creature while you only stand near it, or kill one that someone else tapped: nothing should happen (the log says it was skipped). (4) If a kill is missed that should have counted, copy the "Kill skipped" lines from `/acb log`; they say whether combat, tapping or targeting was the reason. (5) Switch the setting off: kills you can't loot should give nothing again.
+
+## Reporting a player
+
+(1) Right-click a player, **View their binder**, click **Report**: the button should change to "Click to confirm" and chat should say what it is about to do. Click again within a few seconds: chat should say the report is saved. Clicking it again for the same player should say you already reported them today. (2) `/acb report TheirName trading a short note` should save one with that reason; `/acb report` alone explains the command. (3) With the companion app running, `/reload`, wait for it to sync, `/reload` again: the saved reports should be gone from the game (the app handed back which ones the server took). Nothing should ever happen to the other player.
+
+## Ranked checks every attempt
+
+With the companion app signed in and a binder that is Ranked: (1) `/acb mode ranked` should say every card starts again from its base chance. (2) Kill a few creatures with a Ranked binder, `/reload`, wait for the app to sync, `/reload` again: nothing should be refused and no fair-play flag should appear. (3) Kill creatures until the tape runs out (about 1,000 attempts) and check the paused message tells you to `/reload`; after a reload and a sync, rolling should start again. (4) The Ladder tab and `/acb verify` should still say verified. A binder that was Ranked before this version should switch over on its own at load, and the chat should not show errors.
+
+## Wanted tab
+
+With a second player: (1) Open the **Wanted** tab, type a card you do not own into the box and press Enter or **Add a card**; it should appear on the left, and clicking it removes it. (2) Target the other player and click **Check my target**: within a few seconds their wanted cards should appear on the right (marked "just now") and in chat. Cards you have two or more of are marked "you have a spare", and those players come first. Click a name: the Trade tab should open with their name. (3) With the companion app signed in as a public player, wait for it to sync, `/reload`, and the board should list other public players' cards. (4) Right-click them and **View their binder**: it should now also say what they are looking for. A player who keeps their binder private must not answer either.
+
+## Starting a new binder
+
+To join the Ranked ladder from a binder that has Casual drops or old cards: (1) type `/acb newbinder`, read the message, then `/acb newbinder confirm`; the interface reloads into an empty binder. (2) Open the companion app; it should say **This looks like a new binder** with a button. Click **Start a new binder** and agree. (3) Wait until the app shows the account as synced. (4) In the game type `/acb mode ranked` **before your first drop**, then `/reload` so the app can bring the new roll tape, and `/reload` again once it has synced. Check that a kill then rolls without a pause message. The old collection is kept in the saved file as `lastBinder`.
+
+## Only Ranked counts
+
+The ladder only lists players whose every drop was rolled in Ranked mode. In Casual, or on a binder that already has Casual drops or cards from before the ledger, the Ladder tab says why it cannot join. `/acb mode casual` warns that one Casual drop keeps the binder off the ladder for good. Check those messages, and that a drop rolled in Ranked does not change them.
+
 ## Ladder tab
 
 Open the binder and click **Ladder**. Without the companion app it says you are not on the ladder (or to switch to Ranked) and the list is empty, with "Nobody yet." under "First to finish a set". Check the tab opens without an error and the columns line up. With the app and a server running it should list up to 100 players, show your own place and mark your row in gold. The "(verified)" mark in the trade window and binder view only appears for characters on the ladder.

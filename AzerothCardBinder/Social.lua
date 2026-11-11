@@ -82,10 +82,12 @@ end
 
 -- Cards go over the wire as "c589" (a creature) or "o1731" (a node), then =count and * for a shiny.
 local function shortKey(card) return (card.profession and "o" or "c") .. card.id end
+function ACB.shortKey(card) return shortKey(card) end
 local function longKey(short)
     local kind, id = short:match("^([co])(%d+)$")
     return kind and ((kind == "o" and "node:" or "npc:") .. id)
 end
+ACB.longKey = longKey
 
 -- The messages that describe a binder: "B|part/parts|key=count[*],..." where * marks a shiny.
 function ACB.encodeBinder(saved)
@@ -110,32 +112,13 @@ function ACB.encodeBinder(saved)
     return messages
 end
 
--- Printable lines for someone's binder: totals, then one line for every set they have started.
-function ACB.inspectLines(counts, shiny)
-    local lines, owned, total, shinies = {}, 0, 0, 0
-    local sets = {}
-    for _, page in ipairs(ACB.pages) do
-        local have = 0
-        for _, card in ipairs(page.cards) do
-            total = total + 1
-            if (counts[card.key] or 0) > 0 then
-                have, owned = have + 1, owned + 1
-                if shiny[card.key] then shinies = shinies + 1 end
-            end
-        end
-        if have > 0 then sets[#sets + 1] = ("%s   %d / %d"):format(page.title, have, #page.cards) end
-    end
-    lines[1] = ("%d of %d cards collected, %d shiny"):format(owned, total, shinies)
-    lines[2] = ""
-    for _, line in ipairs(sets) do lines[#lines + 1] = line end
-    if #sets == 0 then lines[#lines + 1] = "No cards yet." end
-    return lines
-end
-
 -- `report` tells the player what is happening with a request they made (it prints to chat).
 function ACB.initSocial(saved, send, now, after, report)
     report = report or function() end
     local pending, served, inbox, heard = {}, {}, {}, {}
+    local requests = ACB.newRequests(saved, send, now, after, report)
+    function ACB.requestWanted(peer) return requests:requestWanted(peer) end
+    function ACB.askForCard(peer, card) return requests:ask(peer, card) end
     local titleChecks, titleServed = {}, {}
 
     function ACB.peerTitle(peer)
@@ -180,7 +163,7 @@ function ACB.initSocial(saved, send, now, after, report)
     local inspector = window("AzerothCardBinderInspect", 380, 560, "Binder")
     local scroll = CreateFrame("ScrollFrame", nil, inspector, "UIPanelScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 28, -54)
-    scroll:SetPoint("BOTTOMRIGHT", -44, 24)
+    scroll:SetPoint("BOTTOMRIGHT", -44, 58)
     local inspectBody = CreateFrame("Frame", nil, scroll)
     inspectBody:SetSize(300, 100)
     scroll:SetScrollChild(inspectBody)
@@ -191,12 +174,53 @@ function ACB.initSocial(saved, send, now, after, report)
     inspectText:SetJustifyV("TOP")
     inspectText:SetSpacing(3)
 
+    -- Start a trade with the player whose binder this is.
+    local tradeButton = CreateFrame("Button", nil, inspector, "UIPanelButtonTemplate")
+    tradeButton:SetSize(130, 24)
+    tradeButton:SetPoint("BOTTOMLEFT", 28, 24)
+    tradeButton:SetText("Offer a trade")
+    tradeButton:SetScript("OnClick", function()
+        if inspector.peer and ACB.prepareTrade then
+            ACB.prepareTrade(inspector.peer)
+            inspector:Hide()
+        end
+    end)
+
+    -- Report this player for cheating. The second click, within a few seconds, is the one that counts, so one slip sends
+    -- nothing; for another reason, or to add a note, use /acb report.
+    local reportButton = CreateFrame("Button", nil, inspector, "UIPanelButtonTemplate")
+    reportButton:SetSize(120, 24)
+    reportButton:SetPoint("BOTTOMRIGHT", -28, 24)
+    reportButton:SetText("Report")
+    local confirmUntil = 0
+    reportButton:SetScript("OnClick", function()
+        if not inspector.peer then return end
+        if now() > confirmUntil then
+            confirmUntil = now() + 6
+            reportButton:SetText("Click to confirm")
+            after(6, function() if now() >= confirmUntil then reportButton:SetText("Report") end end)
+            report(("Report %s for cheating? Click Report again within a few seconds. For another reason, type /acb report."):format(inspector.peer))
+            return
+        end
+        confirmUntil = 0
+        reportButton:SetText("Report")
+        local ok, problem = ACB.addReport(saved, inspector.peer, "cheating", "", time())
+        report(ok and ("Report about %s saved. The companion app sends it the next time it syncs."):format(inspector.peer) or problem)
+    end)
+
     function ACB.showInspect(peer, counts, shiny)
+        inspector.peer, inspector.counts, inspector.shiny = peer, counts, shiny
         inspector.title:SetText(peer .. "'s binder" .. (ACB.isVerified(peer) and " (verified)" or ""))
-        local lines = ACB.inspectLines(counts, shiny)
+        local heard = ACB.heardWanted and ACB.heardWanted[peer]
+        local lines = ACB.inspectLines(counts, shiny, saved.counts, saved.wanted, heard and heard.cards)
         inspectText:SetText(table.concat(lines, "\n"))
         inspectBody:SetHeight(math.max(100, #lines * 15))
         inspector:Show()
+    end
+
+    -- Draw the binder window again, if it is open for this player (their wanted list has just arrived).
+    function ACB.refreshInspect(peer)
+        if inspector:IsShown() and inspector.peer == peer and inspector.counts then ACB.showInspect(peer, inspector.counts, inspector.shiny) end
     end
 
     -- ---- Asking for and answering binder views ----
@@ -206,6 +230,7 @@ function ACB.initSocial(saved, send, now, after, report)
         if sent then
             local window = now() + REQUEST_WINDOW
             pending[peer], inbox[peer], heard[peer] = window, nil, nil
+            requests:expectList(peer, window + 10) -- their wanted list follows the binder
             -- Say something if nothing comes back, instead of leaving the player looking at nothing.
             after(NO_ANSWER_AFTER, function()
                 if pending[peer] == window and not heard[peer] then
@@ -224,6 +249,7 @@ function ACB.initSocial(saved, send, now, after, report)
 
     function ACB.receiveView(peer, message)
         if not peer or type(message) ~= "string" or #message > 250 then return end
+        if requests:handle(peer, message) then return end
         if message == "T?" then
             local at = now()
             if titleServed[peer] and at < titleServed[peer] then return end
@@ -264,6 +290,8 @@ function ACB.initSocial(saved, send, now, after, report)
             for index, part in ipairs(parts) do
                 after(partDelay(index), function() sendPart(part, 1) end)
             end
+            -- Then what this player is looking for, so the binder window can show it.
+            after(partDelay(#parts + 1), function() sendPart(requests:listMessage(), 1) end)
             return
         end
         local refusal = message:match("^N|(%a+)$")

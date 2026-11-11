@@ -18,6 +18,7 @@ async function luckyPlayer(env: ReturnType<typeof setup>, count = 30) {
   const registered = (await read(await env.call("/v1/register", { body: registration(player) }))) as { playerId: string };
   const response = await env.call("/v1/ledger", { body: signedUpload(player, chain(drops(count)), { snapshot: snapshot(count, 200) }) });
   assert.equal(response.status, 200);
+  env.pretendVerified(); // these tests are about review and bans, not about Casual
   return { player, id: registered.playerId };
 }
 const listed = async (env: ReturnType<typeof setup>, query = "") => ((await read(await env.call("/v1/admin/flags" + query, { headers: admin }))) as unknown as Flags).flags;
@@ -73,6 +74,7 @@ test("luck a person has cleared is not flagged again, but much more luck than th
   const more = chain(drops(1, 31).map((event) => ({ ...event, count: 31 })), head());
   const second = await env.call("/v1/ledger", { body: signedUpload(player, more, { snapshot: snapshot(31, 200) }) });
   assert.equal(second.status, 200, JSON.stringify(await second.clone().json()));
+  env.pretendVerified();
   assert.deepEqual(await listed(env), [], "no new flag for the same luck");
   assert.equal((await env.call("/v1/player/" + id)).status, 200);
   // Far more luck than was cleared: flagged again.
@@ -92,6 +94,7 @@ test("a banned player cannot upload and leaves the ladder; unbanning puts them b
   const events = chain([{ seq: 1, t: 1000, kind: "drop", key: "npc:589", count: 1, ...base }]);
   const upload = (overrides: Record<string, unknown> = {}) => env.call("/v1/ledger", { body: signedUpload(player, events, { snapshot: snapshot(1, 100), ...overrides }) });
   assert.equal((await upload()).status, 200);
+  env.pretendVerified();
   assert.equal(((await read(await env.call("/v1/leaderboard"))) as { entries: unknown[] }).entries.length, 1);
   const ban = (banned: unknown) => env.call(`/v1/admin/players/${registered.playerId}/ban`, { body: { banned }, headers: admin });
   assert.equal((await ban(true)).status, 200);

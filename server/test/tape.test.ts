@@ -5,7 +5,7 @@ import test from "node:test";
 import { canonicalJson } from "../../packages/shared/src/crypto.ts";
 import { attemptsNeeded, chanceAfter } from "../src/stack.ts";
 import { REFILL_BELOW, TAPE_SIZE, rollValue, shinyValue, tapeCommitment, tapeEntry, tapeKey } from "../src/tape.ts";
-import { NOW, TAPE_SECRET, catalog, chain, newPlayer, registration, setup, signedUpload } from "./harness.ts";
+import { NOW, TAPE_SECRET, catalog, chain, newPlayer, rankedHistory, registration, setup, signedUpload } from "./harness.ts";
 import type { Player } from "./harness.ts";
 
 type Body = Record<string, unknown> & { error?: { code: string; detail?: Record<string, unknown> } };
@@ -54,24 +54,26 @@ test("the tape is issued once, is the same on every request, and differs from pl
   assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM tapes").get()?.["n"], 2);
 });
 
-test("a refill is issued only when 2,000 or fewer entries are unused, and always starts where the old one ended", async () => {
+test("a refill is issued only when few entries are unused, and always starts where the old one ended", async () => {
   const env = setup();
   const { player } = await registered(env);
   await env.call("/v1/tape", { body: tapeRequest(player) });
-  // The add-on says it will next use entry 7,500: 2,500 unused, not yet time.
+  const far = TAPE_SIZE - REFILL_BELOW - 100; // plenty unused: not yet time
+  const near = TAPE_SIZE - REFILL_BELOW + 50; // few enough unused to need more
+  // The add-on says it will next use `far`.
   const history = chain([{ seq: 1, t: 1000, kind: "mode", key: "casual", count: 0, dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char: "Alice-RealmName" }]);
   const upload = (tapeIndex: number, events = history) => env.call("/v1/ledger", { body: signedUpload(player, events, { tapeIndex, snapshot: { counts: {}, dust: 0, sets: {}, attempts: {}, titles: {} } }) });
-  assert.equal((await upload(7500)).status, 200);
+  assert.equal((await upload(far)).status, 200);
   let reply = await read(await env.call("/v1/tape", { body: tapeRequest(player, { sentAt: NOW + 1 }) }));
-  assert.equal(reply["start"], 7500);
-  assert.equal((reply["entries"] as string[]).length, TAPE_SIZE - 7500 + 1);
+  assert.equal(reply["start"], far);
+  assert.equal((reply["entries"] as string[]).length, TAPE_SIZE - far + 1);
   assert.equal(reply["issued"], null);
-  // At entry 8,500 there are exactly 1,501 left (8,500 to 10,000): refill.
-  await upload(8500, []);
+  // At `near` there are no more than REFILL_BELOW left: refill.
+  await upload(near, []);
   reply = await read(await env.call("/v1/tape", { body: tapeRequest(player, { sentAt: NOW + 2 }) }));
-  assert.equal(reply["start"], 8500);
+  assert.equal(reply["start"], near);
   assert.deepEqual((reply["issued"] as { start: number; end: number }).start, TAPE_SIZE + 1);
-  assert.equal((reply["entries"] as string[]).length, 2 * TAPE_SIZE - 8500 + 1);
+  assert.equal((reply["entries"] as string[]).length, 2 * TAPE_SIZE - near + 1);
   assert.ok(REFILL_BELOW < TAPE_SIZE);
   // A second request at the same position issues nothing more.
   const repeat = await read(await env.call("/v1/tape", { body: tapeRequest(player, { sentAt: NOW + 3 }) }));
@@ -94,32 +96,6 @@ test("asking for a tape needs a registered key, a valid signature made for this 
   assert.equal((await read(await closed.call("/v1/tape", { body: tapeRequest(second.player) }))).error?.code, "ranked_unavailable");
 });
 
-// A Ranked history built from the player's own tape: drops only at entries that really win, shiny exactly as the entry says.
-async function rankedHistory(playerId: string, wins: number, cardKey = "npc:589") {
-  const key = await tapeKey(TAPE_SECRET);
-  const rate = catalog.rates[catalog.cards[cardKey]?.rank ?? ""] ?? 0;
-  const base = { dust: 0, partner: "", trade: "", char: "Alice-RealmName" };
-  const partials: Record<string, unknown>[] = [{ seq: 1, t: 1000, kind: "mode", key: "ranked", count: 0, shiny: 0, tape: 0, ...base }];
-  let count = 0;
-  let shinyOwned = false;
-  let used = 0;
-  let misses = 0; // the add-on's own stacking rule: every miss raises the chance of the next attempt
-  for (let index = 1; partials.length <= wins; index++) {
-    used = index;
-    const entry = await tapeEntry(key, playerId, index);
-    if (rollValue(entry) > chanceAfter(rate, misses, catalog.stackFactor)) {
-      misses += 1;
-      continue;
-    }
-    misses = 0;
-    count += 1;
-    const shiny = !shinyOwned && shinyValue(entry, catalog.shinyOdds) === 1;
-    if (shiny) shinyOwned = true;
-    partials.push({ seq: partials.length + 1, t: 1000 + partials.length * 10, kind: "drop", key: cardKey, count, shiny: shiny ? 1 : 0, tape: index, ...base });
-  }
-  return { events: chain(partials), tapeNext: used + 1, attempts: used };
-}
-
 test("an honest Ranked history that matches the tape is accepted and scored", async () => {
   const env = setup();
   const { player, id } = await registered(env);
@@ -132,31 +108,82 @@ test("an honest Ranked history that matches the tape is accepted and scored", as
   assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM flags").get()?.["n"], 0);
 });
 
-test("a drop on a roll above the card's rate is refused, unless the attempts can account for the stack that allows it", async () => {
+// Cheats the aggregate check could not see, because every attempt is now written down and replayed on its own entry.
+const NPC = "npc:589";
+const events12 = (id: string) => ({ dust: 0, partner: "", trade: "", char: "Alice-RealmName", id });
+const without = (event: Record<string, unknown>) => { const { prev, h, ...rest } = event; void prev; void h; return rest; };
+
+test("a drop on an entry that loses is refused: the roll decides, whatever the player says about their attempts", async () => {
   const env = setup();
   const { player, id } = await registered(env);
   await env.call("/v1/tape", { body: tapeRequest(player) });
-  const key = await tapeKey(TAPE_SIZE ? TAPE_SECRET : "");
-  // Find an entry that loses for a 1% card, and needs a stack of at least five attempts (a roll above 4%).
-  let losing = 1;
-  while (rollValue(await tapeEntry(key, id, losing)) <= 400) losing++;
-  const lossEntry = await tapeEntry(key, id, losing);
-  const needed = attemptsNeeded(rollValue(lossEntry), 100, catalog.stackFactor);
-  assert.ok(needed >= 5);
-  const base = { dust: 0, partner: "", trade: "", char: "Alice-RealmName", count: 1 };
-  const forged = chain([
-    { seq: 1, t: 1000, kind: "mode", key: "ranked", ...base, count: 0, shiny: 0, tape: 0 },
-    { seq: 2, t: 1010, kind: "drop", key: "npc:589", ...base, shiny: shinyValue(lossEntry, 20) === 1 ? 1 : 0, tape: losing },
-  ]);
-  const send = (events: Record<string, unknown>[], attempts: number) => env.call("/v1/ledger", {
-    body: signedUpload(player, events, { tapeIndex: losing + 1, snapshot: { counts: { "npc:589": 1 }, dust: 0, sets: {}, attempts: { "npc:589": attempts }, titles: {} } }),
-  });
-  // One attempt short of the stack that roll needs: refused.
-  const refused = await read(await send(forged, needed - 1));
-  assert.equal(refused.error?.code, "tape_invalid");
-  assert.equal(refused.error?.detail?.["reason"], "stack");
-  // With exactly the attempts the stack needs, the same drop is allowed.
-  assert.equal((await send(forged, needed)).status, 200);
+  const key = await tapeKey(TAPE_SECRET);
+  // An honest history, then one more drop at the next entry, which has to be one that loses for a card with no stack.
+  let wins = 1;
+  let history = await rankedHistory(id, wins);
+  while (rollValue(await tapeEntry(key, id, history.tapeNext)) <= 100) history = await rankedHistory(id, ++wins);
+  const entry = await tapeEntry(key, id, history.tapeNext);
+  const forged = chain([...history.events.map(without), { ...events12(id), seq: history.events.length + 1, t: 5000, kind: "drop", key: NPC, count: wins + 1, shiny: 0, tape: history.tapeNext }]);
+  void entry;
+  const body = await read(await env.call("/v1/ledger", { body: signedUpload(player, forged, { tapeIndex: history.tapeNext + 1, snapshot: { counts: { [NPC]: wins + 1 }, dust: 0, sets: {}, attempts: { [NPC]: 999_999 }, titles: {} } }) }));
+  assert.equal(body.error?.code, "tape_invalid", JSON.stringify(body));
+  assert.equal(body.error?.detail?.["reason"], "roll");
+  assert.equal(body.error?.detail?.["index"], history.events.length);
+});
+
+test("a miss that the roll would have won is refused: a drop cannot be left out", async () => {
+  const env = setup();
+  const { player, id } = await registered(env);
+  await env.call("/v1/tape", { body: tapeRequest(player) });
+  // Take the honest history up to its last drop and write that drop down as a run of one miss instead.
+  const { events, tapeNext } = await rankedHistory(id, 2);
+  const list = events.map(without);
+  const last = list[list.length - 1] as Record<string, unknown>;
+  list[list.length - 1] = { ...last, kind: "miss", count: 1, shiny: 0, tape: last["tape"] };
+  const body = await read(await env.call("/v1/ledger", { body: signedUpload(player, chain(list), { tapeIndex: tapeNext, snapshot: { counts: { [NPC]: 1 }, dust: 0, sets: {}, attempts: { [NPC]: 10 }, titles: {} } }) }));
+  assert.equal(body.error?.code, "tape_invalid", JSON.stringify(body));
+  assert.equal(body.error?.detail?.["reason"], "roll");
+});
+
+test("an attempt left out of the ledger breaks the chain of tape positions", async () => {
+  const env = setup();
+  const { player, id } = await registered(env);
+  await env.call("/v1/tape", { body: tapeRequest(player) });
+  const { events, tapeNext } = await rankedHistory(id, 2);
+  const list = events.map(without);
+  // Skip an entry: the last drop claims the position after the next one.
+  const last = list[list.length - 1] as Record<string, unknown>;
+  list[list.length - 1] = { ...last, tape: (last["tape"] as number) + 1 };
+  const body = await read(await env.call("/v1/ledger", { body: signedUpload(player, chain(list), { tapeIndex: tapeNext + 1, snapshot: { counts: { [NPC]: 2 }, dust: 0, sets: {}, attempts: { [NPC]: 10 }, titles: {} } }) }));
+  assert.equal(body.error?.code, "rule_broken", JSON.stringify(body));
+  assert.equal(body.error?.detail?.["rule"], "tape");
+});
+
+test("the first kind of Ranked, which did not write misses down, is no longer accepted for new events", async () => {
+  const env = setup();
+  const { player } = await registered(env);
+  await env.call("/v1/tape", { body: tapeRequest(player) });
+  const loose = chain([{ seq: 1, t: 1000, kind: "mode", key: "ranked", count: 0, dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char: "Alice-RealmName" }]);
+  const body = await read(await env.call("/v1/ledger", { body: signedUpload(player, loose, { tapeIndex: 1, snapshot: { counts: {}, dust: 0, sets: {}, attempts: {}, titles: {} } }) }));
+  assert.equal(body.error?.code, "rule_broken");
+  assert.equal(body.error?.detail?.["rule"], "mode");
+  // An upload in the first version of the format is turned away before anything else is looked at.
+  const old = await read(await env.call("/v1/ledger", { body: signedUpload(player, [], { specVersion: 1 }) }));
+  assert.equal(old.error?.code, "client_too_old");
+});
+
+test("a run of misses long enough to leave the issued entries is refused before any are looked at", async () => {
+  const env = setup();
+  const { player, id } = await registered(env);
+  await env.call("/v1/tape", { body: tapeRequest(player) });
+  const { events } = await rankedHistory(id, 1);
+  const list = events.map(without);
+  const lastTape = (list[list.length - 1] as Record<string, unknown>)["tape"] as number;
+  const run = TAPE_SIZE + 5;
+  list.push({ ...events12(id), seq: list.length + 1, t: 6000, kind: "miss", key: NPC, count: run, shiny: 0, tape: lastTape + run });
+  const body = await read(await env.call("/v1/ledger", { body: signedUpload(player, chain(list), { tapeIndex: TAPE_SIZE, snapshot: { counts: { [NPC]: 1 }, dust: 0, sets: {}, attempts: { [NPC]: 10 }, titles: {} } }) }));
+  assert.equal(body.error?.code, "tape_invalid", JSON.stringify(body));
+  assert.equal(body.error?.detail?.["reason"], "not-issued");
 });
 
 test("the stack arithmetic: what a roll needs, and what an attempt's chance is", () => {
@@ -196,11 +223,10 @@ test("every other way of misusing the tape is refused", async () => {
     assert.equal(body.error?.code, "tape_invalid", JSON.stringify(body));
     assert.equal(body.error?.detail?.["reason"], reason);
   };
-  // A position that was never issued (the last drop, so the positions still rise).
-  await refuse((list) => list.map((event, index) => (index === 2 ? { ...event, tape: 50_000 } : event)), tapeNext, "not-issued");
-  // The wrong shiny flag for the entry. Flip a flag the rules alone would let through.
-  const flags = [events[1]?.["shiny"], events[2]?.["shiny"]];
-  const flip = flags[0] === 1 || flags[1] === 0 ? 1 : 2;
+  // The wrong shiny flag for the entry. Flip a flag the rules alone would let through: the first shiny drop to plain, or,
+  // when none is shiny, the first drop to shiny.
+  const dropAt = events.flatMap((event, index) => (event["kind"] === "drop" ? [index] : []));
+  const flip = dropAt.find((index) => events[index]?.["shiny"] === 1) ?? (dropAt[0] as number);
   await refuse((list) => list.map((event, index) => (index === flip ? { ...event, shiny: event["shiny"] === 1 ? 0 : 1 } : event)), tapeNext, "shiny");
   // Saying the next entry is one the add-on has already used, or one that was never issued.
   await refuse((list) => list, 1, "next");

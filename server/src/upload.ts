@@ -8,12 +8,12 @@ import { replay, snapshotDifferences } from "./shared.ts";
 import type { Catalog } from "./shared.ts";
 import { RULES_VERSION, scoreOf } from "./score.ts";
 import { StoreConflict } from "./store.ts";
-import { completionsOf, dropCountsOf, tradeRowsOf } from "./derive.ts";
+import { casualDropsOf, completionsOf, dropCountsOf, tradeRowsOf } from "./derive.ts";
 import type { IngestStore, Player, TapeStore, TradeStore } from "./store.ts";
-import { checkTape, tapeKey } from "./tape.ts";
+import { checkTape, tapeKey, tapeOwner } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [1];
+export const SUPPORTED_SPEC_VERSIONS = [2, 3]; // 3 added the pack events; every version 2 history is valid in version 3
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -122,22 +122,21 @@ export async function acceptUpload(
     // Where the stored chain stands is included so the app can work out what to send next.
     throw new ApiError(CHAIN_ERRORS[chain.error] ?? "bad_field", { index: chain.index, ackSeq: stored.head.seq, ackHash: stored.head.hash });
   }
-  const played = replay(events, deps.catalog, stored.state);
+  const played = replay(events, deps.catalog, stored.state, { strict: true });
   if (!played.ok) throw new ApiError("rule_broken", { rule: played.rule, index: played.index });
 
-  // Ranked drops must match the tape entries the server issued, and each must be affordable in attempts: a drop
-  // on a high roll needs the earlier misses that stacked up its chance. The snapshot's attempts are signed by the
-  // player but are not proof by themselves.
+  // Every ranked attempt (a drop, or a run of misses) must match the tape entries the server issued, with the chance
+  // that the card's own run of misses had built up. Entering ranked2 starts every card's run again.
   let pity = stored.pity;
-  if (events.some((event) => event["kind"] === "drop" && Number(event["tape"]) > 0)) {
+  const usesTape = (event: Record<string, unknown>): boolean => Number(event["tape"]) > 0 && (event["kind"] === "drop" || event["kind"] === "miss" || event["kind"] === "packFind" || event["kind"] === "packCard" || (event["kind"] === "mode" && event["key"] === "ranked2"));
+  if (events.some(usesTape)) {
     if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
     const checked = await checkTape({
-      key: await tapeKey(deps.tapeSecret), playerId: player.id, events: events as unknown as LedgerEvent[], stateBefore: stored.state,
-      catalog: deps.catalog, issuedEnd: await deps.tapes.issuedEnd(player.id), claims: stored.pity,
-      attempts: upload.snapshot.attempts, tapeNext: upload.tapeIndex,
+      key: await tapeKey(deps.tapeSecret), playerId: tapeOwner(player), events: events as unknown as LedgerEvent[], stateBefore: stored.state,
+      catalog: deps.catalog, issuedEnd: await deps.tapes.issuedEnd(player.id), stack: stored.pity, tapeNext: upload.tapeIndex,
     });
     if (checked.failure) throw new ApiError("tape_invalid", { reason: checked.failure.reason, index: checked.failure.index });
-    pity = checked.claims;
+    pity = checked.stack;
   }
 
   const flags: { id: string; kind: string; notes: string }[] = [];
@@ -160,7 +159,7 @@ export async function acceptUpload(
       events: events as unknown as LedgerEvent[], head: chain.head, state: played.state, pity, drops, tapeNext, receivedAt: deps.now(),
       character: { name: upload.character, realm: upload.realm },
       score: { displayName: `${upload.character}-${upload.realm}`, ...score, attempts, rulesVersion: RULES_VERSION },
-      flags, trades, completions,
+      flags, trades, completions, casualDrops: casualDropsOf(events),
     });
   } catch (error) {
     if (error instanceof StoreConflict) throw new ApiError("conflict", undefined, 1);

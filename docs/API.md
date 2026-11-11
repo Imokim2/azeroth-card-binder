@@ -16,7 +16,7 @@ Version 1, served under `/v1`. The server is `server/`; the ledger and signing r
 |---|---|---|---|
 | 0.1.x | `/v1` | 1 | 2 |
 
-The server rejects uploads whose `specVersion` it does not support. The table gains a row with every release that changes one of the columns.
+The server rejects uploads whose `specVersion` it does not support (`client_too_old`). It supports versions 2 and 3 (3 adds card packs; every version 2 history is valid in 3); version 1 uploads must be made again by an updated companion app. The table gains a row with every release that changes one of the columns.
 
 ## Endpoints
 
@@ -46,25 +46,55 @@ Errors about the chain (`replay`, `gap`, `bad_field`, `bad_prev`, `bad_hash`) in
 
 ### `POST /v1/tape`
 
-Ranked random numbers. Body: `{ key, sentAt, sig }`, where `sig` signs the canonical JSON of `{ key, sentAt, purpose: "tape" }` (a signature made for another purpose fails). `200 { start, entries, issued }`: `entries` are all the roll-tape entries this player has not used yet, counting from `start` (the position the add-on last said it would use next); each is 16 hex characters. When 2,000 or fewer remain, 10,000 new entries are added and `issued` is `{ start, end, commitment }` for the new range (the commitment is the SHA-256 of its entries joined by line feeds); otherwise `issued` is `null`. Asking again returns the same entries, so a lost reply costs nothing. `ranked_unavailable` while the server has no tape secret.
+Ranked random numbers. Body: `{ key, sentAt, sig }`, where `sig` signs the canonical JSON of `{ key, sentAt, purpose: "tape" }` (a signature made for another purpose fails). `200 { start, entries, issued }`: `entries` are all the roll-tape entries this player has not used yet, counting from `start` (the position the add-on last said it would use next); each is 16 hex characters. When 250 or fewer remain, 1,000 new entries are added (a player is never more than about 1,250 entries ahead, so little of it can be read in advance) and `issued` is `{ start, end, commitment }` for the new range (the commitment is the SHA-256 of its entries joined by line feeds); otherwise `issued` is `null`. Asking again returns the same entries, so a lost reply costs nothing. `ranked_unavailable` while the server has no tape secret.
 
-Every entry is derived from a server secret, the player and the position, so nothing is stored per entry and a player cannot compute entries they were not given. A ranked drop is checked against the entry at its `tape` position: it must be at a position that was issued; its roll must be at or below the card's rate, or count as a bad-luck guarantee (a card earns one per `limit` attempts, judged from the snapshot's attempts); and its shiny flag must match the entry's second half while the card has no shiny yet. The `tapeIndex` of an upload may never pass the first position after the last one issued. Failures are `tape_invalid` with `detail.reason` (`not-issued`, `stack`, `shiny`, `next`).
+Every entry is derived from a server secret, the player and the position, so nothing is stored per entry and a player cannot compute entries they were not given. Every ranked attempt is checked against the entry at its `tape` position (spec section 8.1): a drop needs a roll at or below the chance that the card's own run of misses has built up, and its shiny flag must match the entry's second half while the card has no shiny yet; every attempt inside a `miss` run needs a roll above that chance. The positions of the events must follow each other with no gap (`rule_broken`, rule `tape`), and must have been issued. The `tapeIndex` of an upload may never pass the first position after the last one issued. A `packFind` must sit on an entry that says a pack was found, and each `packCard` must be the card and shiny flag its entry gives from the pack's zone (spec section 8.2). Failures are `tape_invalid` with `detail.reason` (`not-issued`, `roll`, `shiny`, `pack`, `next`).
+
+### `POST /v1/reset`
+
+Start a new binder. Body: `{ key, sentAt, sig }`, where `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt }` plus `"purpose": "reset"`. Everything stored for the player (batches, drops, scores, flags, trades, tapes) is kept under a new private archive with no Discord link and no key, so it can never be listed or uploaded to; the player's own record is emptied and their **epoch** goes up by one. Their keys, Discord link and visibility stay. `200 { playerId, epoch }`. The player then uploads a new chain from event 1.
+
+The roll tape of a new binder is derived under `<playerId>.<epoch>` instead of `<playerId>`, so the old binder's roll values are never replayed. A history rolled on the old tape is refused with `tape_invalid`. At most once a day: `too_soon` (`429`) carries `Retry-After` and `detail.retryAfter`. A banned player gets `banned`, so a reset cannot be used to wipe a record. An unknown key, a wrong signature or one made for another purpose are refused as for `/v1/tape`.
+
+### `POST /v1/delete`
+
+Delete everything held about the player: their record, ledger, scores, characters, flags, trade halves, roll tapes, keys, Discord link and any archived binders from earlier resets. Body: `{ key, sentAt, confirm: "delete my data", sig }`, where `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt, confirm }` plus `"purpose": "delete"`. `200 { deleted: true }`. It cannot be undone. The same Discord account can sign up again and starts from nothing. Trade halves other players recorded against this player stay with those players. A **banned** player is refused (`banned`): their record, and the ban, is kept so that deleting the account cannot undo it. Cards in the game and files on the player's computer are not touched.
+
+### Rate limits
+
+Each client address has a general limit (120 requests a minute) and a stricter one for `POST` to `/v1/register`, `/v1/reset`, `/v1/delete` and `/v1/admin/*` (10 a minute). Over the limit the answer is `429 rate_limited` with `Retry-After: 60`; the companion app waits as long as it is told and tries again. `/v1/health` is never limited. The limits are Cloudflare rate-limit bindings (`server/wrangler.toml`); with no binding configured nothing is limited. Cloudflare counts them per location and approximately: on staging, 60 requests a minute against the strict limit of 10 let about 35 through before the first refusal. They stop floods, not exact counts, so do not rely on them for fine control.
 
 ### Checks that flag instead of reject
 
-After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour) and `trade-unmatched` (a trade half the partner never confirmed within seven days; see below). Flags carry no public detail and are not part of any response.
+After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour), `trade-unmatched` (a trade half the partner never confirmed within seven days; see below) and `trade-half-missing` (raised against a player who uploaded after a trade and never recorded their half of it) and `reported` (three different players reported the player within a week; see `POST /v1/report`). Flags carry no public detail and are not part of any response.
 
 ### `GET /v1/leaderboard?limit=N`
 
-The best **public** players, highest score first, ties broken by who reached the score first. `limit` is 1 to 100 (default 100). `200 { generatedAt, entries: [{ rank, playerId, displayName, scoreTenths, uniqueCards, setsDone, characters }] }`. `characters` lists the player's characters in the form players are named by between themselves (`name-realmname`, lower case), so a client can mark them as verified. Cached for 60 seconds.
+The best **public** players **with no Casual drops** (see below), highest score first, ties broken by who reached the score first. `limit` is 1 to 100 (default 100). `200 { generatedAt, entries: [{ rank, playerId, displayName, scoreTenths, uniqueCards, setsDone, characters }] }`. `characters` lists the player's characters in the form players are named by between themselves (`name-realmname`, lower case), so a client can mark them as verified. Cached for 60 seconds.
 
 ### `GET /v1/firsts`
 
 Who finished each set first, among the players who may appear on the ladder (public, not banned, not held): `200 { generatedAt, firsts: [{ setCode, title, playerId, displayName, at }] }`, earliest first. `at` is when the server received the upload with the finishing event, not the player's own clock. If the first player is later held back or banned, the next one is first. Cached for 60 seconds.
 
+### `POST /v1/wanted` and `GET /v1/wanted`
+
+The cards a player is looking for, so other players can see them at once. `POST` body: `{ key, sentAt, cards, sig }`, where `cards` is a list of up to 60 distinct catalog keys (`npc:589`, `obj:1731`) and `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt, cards }` plus `"purpose": "wanted"`. `sentAt` must be within a day of the server's clock. It replaces the player's whole list. `200 { stored, listed }`: only a **public** player's list is kept (`listed: true`); a private player's is stored as empty. `GET` answers `200 { generatedAt, players: [{ playerId, displayName, characters, cards, updatedAt }] }` for up to 100 public, non-banned players with at least one character, most recently changed first. Cached for 60 seconds. The same list is the website's `/wanted` page. The companion app uploads the list whenever it changes and brings the board into `Data/Sync.lua` for the add-on's Wanted tab.
+
+### `POST /v1/report`
+
+A player tells us about another player: a suspected cheat or a trade that went wrong. Body: `{ key, sentAt, reports, sig }`, where `reports` is 1 to 10 of `{ token, target, reason, note }` and `sig` is the Ed25519 signature, by the reporter's key, of the canonical JSON of `{ key, sentAt, reports }` plus `"purpose": "report"`. `token` is 6 to 40 characters of `0-9a-z` that the add-on makes up, so a lost reply can be sent again safely. `target` is the character as players name each other (`name-realmname`, lower case). `reason` is `cheating`, `trading` or `other`; `note` is up to 120 characters with no control characters (it may be empty). `200 { done, stored }`: `done` lists the tokens that are settled (stored, repeated, or about the reporter's own character), so the companion app can tell the add-on to forget them; `stored` is how many were new. A reporter can store 20 reports a day (the rest are left out of `done` and sent again later) and one about the same character a day; a name no known player has played is stored with no player attached. Nothing is hidden or changed for the reported player: when three different players have reported them within a week the server opens one `reported` flag for a person to review, which does not hide them from the ladder. A banned reporter gets `banned`. This route has the stricter rate limit.
+
+### `GET /v1/admin/reports?player=<id>&limit=N`
+
+For reviewers, behind the admin token (see Admin routes below): the newest reports about one player, `{ reports: [{ id, reporterId, targetName, targetId, reason, note, createdAt }] }` (`limit` 1 to 200, default 50).
+
+### Only Ranked counts
+
+A drop rolled in Casual mode (tape position 0) uses the player's own random numbers, which the server cannot recheck. Such uploads are stored and scored as before, but a player with **any** Casual drop is not listed on `/v1/leaderboard`, `/v1/player/:id` or `/v1/firsts`. Cards received in a trade from a player with Casual drops do not count towards the receiver's score either (the hourly job puts scores right after the fact). The count is `ledger_state.casual_drops`, and a rebuild recomputes it from the stored events.
+
 ### Trade matching
 
-Every `tradeIn` and `tradeOut` is stored as one half of a trade. A half is matched when the other player's upload holds the opposite half: the same trade id and card, each naming the other as partner. Once an hour the server pairs up what it has; a half still unmatched after seven days is written off, a `trade-unmatched` flag is raised, and the copies it brought in stop counting towards the score and towards finishing a set. If the partner's upload turns up later, the halves match and the score is put right.
+Every `tradeIn` and `tradeOut` is stored as one half of a trade. A half is matched when the other player's upload holds the opposite half: the same trade id and card, each naming the other as partner. Once an hour the server pairs up what it has; a half still unmatched after seven days is written off, and the copies it brought in stop counting towards the score and towards finishing a set. Who is flagged depends on who is at fault: if the partner has uploaded since the trade and their upload still lacks the matching half, **the partner** gets a `trade-half-missing` flag (this is how someone who takes a card without recording what they gave shows up, rather than the person they took it from). If the partner has not uploaded since, the owner of the half gets `trade-unmatched`, because nothing says whose fault it is. If the partner's upload turns up later, the halves match and the score is put right.
 
 ### Admin routes
 
@@ -100,6 +130,8 @@ Every error is `{ "error": { "code", "message", "detail"?, "retryAfter"? } }` wi
 | `replay` | 409 | These events were already stored. |
 | `gap` | 409 | Events are missing before this batch. |
 | `conflict` | 409 | Another upload for this player was in progress. Try again. |
+| `too_soon` | 429 | A binder was started recently. Try again later. |
+| `rate_limited` | 429 | Too many requests. Slow down and try again. |
 | `too_large` | 413 | The upload is too large. |
 | `unsupported_media` | 415 | Send JSON. |
 | `bad_field` | 422 | An event field is not valid. |

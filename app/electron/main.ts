@@ -85,7 +85,9 @@ async function main(): Promise<void> {
 
   let catalogVersion = "unknown";
   try {
-    catalogVersion = JSON.parse(await readFile(join(appRoot, "..", "packages", "shared", "catalog.json"), "utf8")).catalogVersion;
+    // In the installed app the catalog is a resource beside the program; in development it is in the repository.
+    const catalogPath = app.isPackaged ? join(process.resourcesPath, "catalog.json") : join(appRoot, "..", "packages", "shared", "catalog.json");
+    catalogVersion = JSON.parse(await readFile(catalogPath, "utf8")).catalogVersion;
   } catch {
     // Not found next to the app (a packaged build bundles it); the server only needs some text here.
   }
@@ -109,6 +111,10 @@ async function main(): Promise<void> {
       const result = await dialog.showOpenDialog(window as BrowserWindow, { title: "Choose your World of Warcraft folder", properties: ["openDirectory"] });
       return result.canceled ? null : (result.filePaths[0] ?? null);
     },
+    confirm: async (message, button) => {
+      const answer = await dialog.showMessageBox(window as BrowserWindow, { type: "warning", buttons: [button, "Cancel"], defaultId: 1, cancelId: 1, title: "World of Warcards", message });
+      return answer.response === 0;
+    },
     fetch: (url, init) => fetch(url, init as RequestInit),
     now: () => Math.floor(Date.now() / 1000),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
@@ -126,6 +132,8 @@ async function main(): Promise<void> {
   ipcMain.handle("chooseGameFolder", () => controller.chooseGameFolder());
   ipcMain.handle("findGame", () => controller.findGame());
   ipcMain.handle("syncNow", () => controller.syncNow());
+  ipcMain.handle("startNewBinder", () => controller.startNewBinder());
+  ipcMain.handle("deleteMyData", () => controller.deleteMyData());
   ipcMain.handle("setStartAtLogin", (_event, on: unknown) => controller.setStartAtLogin(on === true));
 
   window = createWindow();

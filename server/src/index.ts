@@ -3,6 +3,8 @@
 import { createApi } from "./api.ts";
 import type { Deps } from "./api.ts";
 import { discordIdentity } from "./discord.ts";
+import { bindingLimiter } from "./limit.ts";
+import type { RateLimitBinding } from "./limit.ts";
 import { fromD1 } from "./db.ts";
 import { runMaintenance } from "./maintenance.ts";
 import type { D1Like } from "./db.ts";
@@ -15,6 +17,8 @@ export interface Env {
   MIN_CLIENT: string;
   VERSION: string;
   TAPE_SECRET?: string; // a secret (wrangler secret put TAPE_SECRET); without it Ranked is closed
+  RATE_GENERAL?: RateLimitBinding; // Cloudflare rate-limit bindings (wrangler.toml); without them nothing is limited
+  RATE_STRICT?: RateLimitBinding;
   DISCORD_CLIENT_ID?: string; // the Discord application (a public variable, see wrangler.toml)
   DISCORD_REDIRECT_URI?: string; // the address the companion app listens on while signing in
   DISCORD_CLIENT_SECRET?: string; // a secret (wrangler secret put DISCORD_CLIENT_SECRET); without it registration stays closed
@@ -28,10 +32,11 @@ export default {
     const db = fromD1(env.DB);
     const store = new SqlStore(db);
     const handle = createApi({
-      players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, rebuild: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
+      players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, rebuild: store, wanted: store, reports: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },
       minClient: env.MIN_CLIENT, version: env.VERSION,
+      ...(env.RATE_GENERAL && env.RATE_STRICT ? { limits: { general: bindingLimiter(env.RATE_GENERAL), strict: bindingLimiter(env.RATE_STRICT) } } : {}),
       // Registration opens only when the Discord application is fully configured.
       ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.DISCORD_REDIRECT_URI
         ? { identity: discordIdentity({ clientId: env.DISCORD_CLIENT_ID, clientSecret: env.DISCORD_CLIENT_SECRET, redirectUri: env.DISCORD_REDIRECT_URI, log }) }

@@ -22,6 +22,51 @@ function ACB.sumValues(values)
     return total
 end
 
+-- Start a new binder (for the Ranked ladder, which only counts a binder that was Ranked from its first drop). Everything
+-- in the saved data is erased except a copy of the old collection, kept as `lastBinder` in case it is wanted again, and
+-- an empty binder with a new ledger takes its place; the add-on then reloads. Returns the copy.
+function ACB.startNewBinder(saved)
+    local backup = {
+        at = time and time() or 0, counts = saved.counts, shiny = saved.shiny, dust = saved.dust, sets = saved.sets,
+        titles = saved.titles, achievements = saved.achievements,
+    }
+    for key in pairs(saved) do saved[key] = nil end
+    saved.lastBinder = backup
+    -- An empty, valid binder straight away, so the open window never meets missing data before the reload.
+    ACB.cleanSavedData(saved)
+    -- A roll tape held in memory belonged to the old binder.
+    if ACB.sync then ACB.sync.tape = nil end
+    return backup
+end
+
+-- Reports waiting to be sent (see Reports.lua): kept only when exactly the expected shape.
+ACB.reportReason = { cheating = true, trading = true, other = true }
+ACB.maxPendingReports, ACB.maxReportNote = 20, 120
+
+function ACB.cleanReports(saved)
+    local function validToken(value)
+        return type(value) == "string" and #value >= 6 and #value <= 40 and not value:find("[^0-9a-z]")
+    end
+    local kept = {}
+    for _, report in ipairs(type(saved.reports) == "table" and saved.reports or {}) do
+        if type(report) == "table" and validToken(report.token) and type(report.target) == "string" and #report.target <= 80
+            and ACB.reportReason[report.reason] and type(report.note) == "string" and #report.note <= ACB.maxReportNote
+            and not report.note:find("%c") and type(report.at) == "number" and #kept < ACB.maxPendingReports then
+            kept[#kept + 1] = { token = report.token, target = report.target, reason = report.reason, note = report.note, at = report.at }
+        end
+    end
+    saved.reports = kept
+    local seen = type(saved.reportedAt) == "table" and saved.reportedAt or {}
+    saved.reportedAt = {}
+    local count = 0
+    for peer, at in pairs(seen) do
+        if type(peer) == "string" and #peer <= 80 and type(at) == "number" and count < 200 then
+            saved.reportedAt[peer] = at
+            count = count + 1
+        end
+    end
+end
+
 -- The saved-data version this build writes. Version 1 files (before the ledger) are upgraded in place:
 -- nothing in them is removed, and the ledger and the new counters start empty.
 ACB.schema = 2
@@ -33,6 +78,9 @@ end
 -- The ledger fields (schema 2). Events are left alone: any damage shows up when the chain is checked.
 local function cleanLedgerFields(saved)
     saved.attempts = tableOrEmpty(saved.attempts)
+    -- Drops rolled in Casual mode, which the server cannot recheck: any keeps this binder off the Ranked ladder.
+    local casual = saved.casualDrops
+    if type(casual) ~= "number" or casual < 0 or casual ~= math.floor(casual) then saved.casualDrops = 0 end
     for key, value in pairs(saved.attempts) do
         if type(value) ~= "number" or value < 1 or value ~= math.floor(value) or not ACB.cards[key] then
             saved.attempts[key] = nil
@@ -54,6 +102,29 @@ local function cleanLedgerFields(saved)
     local tape = ACB.tableOrEmpty(saved.tape)
     local nextEntry = tape.next
     saved.tape = { next = (type(nextEntry) == "number" and nextEntry >= 1 and nextEntry == math.floor(nextEntry)) and nextEntry or 1 }
+    -- The open run of misses that is not in the ledger yet (see ledger:flushRun), and whether Ranked is the kind that writes
+    -- every attempt down.
+    local run = saved.run
+    local function count(value) return type(value) == "number" and value >= 1 and value == math.floor(value) end
+    if type(run) == "table" and type(run.key) == "string" and ACB.cards[run.key] and count(run.n) and count(run.last) and run.last >= run.n then
+        saved.run = { key = run.key, n = run.n, last = run.last }
+    else
+        saved.run = nil
+    end
+    saved.exactMode = saved.exactMode == true or nil
+    ACB.cleanReports(saved)
+    -- Card packs held, by zone code. Only whole counts of known zones survive (Packs.lua knows the zones; before it loads
+    -- nothing is dropped).
+    local packs = {}
+    if type(saved.packs) == "table" then
+        for zone, count in pairs(saved.packs) do
+            if type(zone) == "string" and type(count) == "number" and count >= 1 and count == math.floor(count) and count <= 100000
+                and (not ACB.pageOfZone or ACB.pageOfZone(zone)) then
+                packs[zone] = count
+            end
+        end
+    end
+    saved.packs = packs
     saved.ledger = tableOrEmpty(saved.ledger)
     local head = saved.head
     if type(head) ~= "table" or type(head.seq) ~= "number" or head.seq < 0 or head.seq ~= math.floor(head.seq)
