@@ -38,6 +38,12 @@ function ACB.initSlash(saved, tools)
         elseif cmd:match("^link%s+%S") then
             local card = ACB.findCard(saved, message:match("^%s*%S+%s+(.-)%s*$"))
             if card then ACB.linkCard(saved, card) else report("You do not own a card with that name.") end
+        elseif cmd:match("^ask%s+%S+%s+%S") then
+            local who, what = message:match("^%s*%S+%s+(%S+)%s+(.-)%s*$")
+            local peer, why
+            if who:lower() == "target" then peer, why = ACB.targetPeer() else peer = ACB.tradePeer(who) end
+            local ok, reason = ACB.askForCard(peer, ACB.findAnyCard(what))
+            if not ok then report(reason or why) end
         elseif cmd:match("^view%s+%S") then
             local peer = ACB.tradePeer(message:match("^%s*%S+%s+(%S+)"))
             local ok, reason = ACB.requestBinder(peer)
@@ -132,7 +138,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

@@ -66,7 +66,7 @@ Each client address has a general limit (120 requests a minute) and a stricter o
 
 ### Checks that flag instead of reject
 
-After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour) and `trade-unmatched` (a trade half the partner never confirmed within seven days; see below). Flags carry no public detail and are not part of any response.
+After an upload is accepted the server also looks at the player's results and may open a flag for a person to review (the upload is still stored): `snapshot-mismatch` (the snapshot disagrees with what the events add up to), `luck-review` and `luck-hold` (more drops than the attempts explain; a held player is hidden from `/v1/leaderboard` and `/v1/player/:id` until the flag is cleared), `rate` (roll-tape entries used faster than 1,200 an hour), `fast-start` (over 200 unique cards in an account's first hour), `trade-unmatched` (a trade half the partner never confirmed within seven days; see below) and `trade-half-missing` (raised against a player who uploaded after a trade and never recorded their half of it). Flags carry no public detail and are not part of any response.
 
 ### `GET /v1/leaderboard?limit=N`
 
@@ -82,7 +82,7 @@ A drop rolled in Casual mode (tape position 0) uses the player's own random numb
 
 ### Trade matching
 
-Every `tradeIn` and `tradeOut` is stored as one half of a trade. A half is matched when the other player's upload holds the opposite half: the same trade id and card, each naming the other as partner. Once an hour the server pairs up what it has; a half still unmatched after seven days is written off, a `trade-unmatched` flag is raised, and the copies it brought in stop counting towards the score and towards finishing a set. If the partner's upload turns up later, the halves match and the score is put right.
+Every `tradeIn` and `tradeOut` is stored as one half of a trade. A half is matched when the other player's upload holds the opposite half: the same trade id and card, each naming the other as partner. Once an hour the server pairs up what it has; a half still unmatched after seven days is written off, and the copies it brought in stop counting towards the score and towards finishing a set. Who is flagged depends on who is at fault: if the partner has uploaded since the trade and their upload still lacks the matching half, **the partner** gets a `trade-half-missing` flag (this is how someone who takes a card without recording what they gave shows up, rather than the person they took it from). If the partner has not uploaded since, the owner of the half gets `trade-unmatched`, because nothing says whose fault it is. If the partner's upload turns up later, the halves match and the score is put right.
 
 ### Admin routes
 

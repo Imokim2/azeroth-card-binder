@@ -24,10 +24,10 @@ const tapeOf = async (env: ReturnType<typeof setup>, player: Player) => ((await 
 const ladder = async (env: ReturnType<typeof setup>) => ((await read(await env.call("/v1/leaderboard"))) as unknown as { entries: { playerId: string }[] }).entries.map((entry) => entry.playerId);
 const count = (env: ReturnType<typeof setup>, sql: string, ...params: (string | number)[]) => Number((env.raw.prepare(sql).get(...params) as { n: number }).n);
 
-async function playRanked(env: ReturnType<typeof setup>, player: Player, owner: string, name: string) {
-  const { events, tapeNext, attempts } = await rankedHistory(owner, 3, "npc:589", `${name}-RealmName`);
+async function playRanked(env: ReturnType<typeof setup>, player: Player, owner: string, name: string, wins = 3) {
+  const { events, tapeNext, attempts } = await rankedHistory(owner, wins, "npc:589", `${name}-RealmName`);
   const response = await env.call("/v1/ledger", {
-    body: signedUpload(player, events, { character: name, realm: "RealmName", tapeIndex: tapeNext, snapshot: { counts: { "npc:589": 3 }, dust: 0, sets: {}, attempts: { "npc:589": attempts }, titles: {} } }),
+    body: signedUpload(player, events, { character: name, realm: "RealmName", tapeIndex: tapeNext, snapshot: { counts: { "npc:589": wins }, dust: 0, sets: {}, attempts: { "npc:589": attempts }, titles: {} } }),
   });
   return response;
 }
@@ -81,7 +81,8 @@ test("a new binder gets a new roll tape: the old binder's values are not replaye
 
   // A history rolled on the old values is refused; one rolled on the new tape is accepted and listed.
   env.clock.now = NOW + 10;
-  const stale = await playRanked(env, bob.player, bob.id, "Bob");
+  // Many wins, so that old values passing as new ones by chance (the check is on the total of attempts, not each drop) is negligible.
+  const stale = await playRanked(env, bob.player, bob.id, "Bob", 10);
   assert.equal(stale.status, 422);
   assert.equal(((await stale.json()) as Body).error?.code, "tape_invalid");
   const fresh = await playRanked(env, bob.player, `${bob.id}.1`, "Bob");

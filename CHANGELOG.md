@@ -4,6 +4,9 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- **Trading between players:** the binder view of another player now lists the spares they have that you need and the spares you have that they need (cards on your wanted list first), with an **Offer a trade** button. `/acb ask <player> <card>` (or `/acb ask target <card>`, or **Ask target** on a missing card's page) tells a player you are looking for a card; they see it only if they own it, with a link and how to start a swap. **Trading distance:** like the game's own trading, a trade now needs your partner targeted and within about 11 yards (a **My target** button on the Trade tab fills the name in); switch it off in Settings. The distance is a nicety of play, not a safeguard: the server checks every trade regardless.
+- Server: when a trade half is never matched and the partner has uploaded since, the partner is flagged (`trade-half-missing`) instead of the player they took the card from.
+
 - **Website pages**, served by the server: the ladder and first-to-finish list, a player's page with a read-only view of their binder, fair play and privacy. Plain, safe HTML with no scripts or game art.
 - **Windows installer** for the companion app (`npm run dist` in `app/`). Unsigned, so Windows will show an "unknown publisher" warning.
 - Cards that came from Casual play are now followed through any number of trades, not just the first.

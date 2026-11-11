@@ -18,6 +18,7 @@ Data/Sync.lua
 Tape.lua
 Collection.lua
 Trade.lua
+Range.lua
 CardModels.lua
 CardArt.lua
 Cards.lua
@@ -26,6 +27,7 @@ Hints.lua
 ZoneBar.lua
 Settings.lua
 Social.lua
+Swaps.lua
 FolioUi.lua
 FolioIndex.lua
 Folio.lua

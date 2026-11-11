@@ -74,7 +74,7 @@ function ACB.initUI(saved, trade)
     box:SetPoint("TOP", tradeView, "TOP", 0, -8)
     label(box, "GameFontHighlightSmall", 22, 17, muted, "TRADE WITH")
     local partner = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
-    partner:SetSize(235, 28)
+    partner:SetSize(150, 28)
     partner:SetPoint("TOPLEFT", 100, -8)
     partner:SetAutoFocus(false)
     partner:SetMaxLetters(100)
@@ -106,6 +106,16 @@ function ACB.initUI(saved, trade)
         if peer then action(peer) else trade.status = "Enter your partner's character name." end
         ACB.refresh()
     end
+    button(box, "My target", 252, 8, 90, function()
+        local peer, why = ACB.targetPeer()
+        if peer then
+            partner:SetText(peer)
+            trade.status = "Trading with " .. peer .. ". Pick a card and Send offer, or Listen for theirs."
+        else
+            trade.status = why
+        end
+        ACB.refresh()
+    end)
     local listen = button(box, "Listen", 346, 8, 84, function()
         withPeer(function(peer) trade:listen(peer) end)
     end)

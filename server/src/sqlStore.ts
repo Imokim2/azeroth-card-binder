@@ -315,11 +315,16 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     return recovered.map((row) => row.player_id);
   }
 
-  async expire(before: number): Promise<{ playerId: string; direction: "in" | "out"; key: string }[]> {
-    const rows = await this.#db.all<{ player_id: string; direction: "in" | "out"; card_key: string }>(
-      "SELECT player_id, direction, card_key FROM trades WHERE state = 'open' AND received_at < ?", [before]);
+  async expire(before: number): Promise<{ playerId: string; direction: "in" | "out"; key: string; partnerUploadedSince: string | null }[]> {
+    // The partner's player, found by the character name the trade half names, when they have uploaded after this half was recorded.
+    const rows = await this.#db.all<{ player_id: string; direction: "in" | "out"; card_key: string; partner_player: string | null }>(
+      `SELECT t.player_id, t.direction, t.card_key,
+              (SELECT c.player_id FROM characters c JOIN ledger_state l ON l.player_id = c.player_id
+               WHERE lower(c.name) || '-' || lower(replace(replace(replace(c.realm, ' ', ''), '''', ''), '-', '')) = t.partner
+               AND c.player_id != t.player_id AND l.updated_at > t.received_at LIMIT 1) AS partner_player
+       FROM trades t WHERE t.state = 'open' AND t.received_at < ?`, [before]);
     if (rows.length > 0) await this.#db.batch([{ sql: "UPDATE trades SET state = 'unmatched' WHERE state = 'open' AND received_at < ?", params: [before] }]);
-    return rows.map((row) => ({ playerId: row.player_id, direction: row.direction, key: row.card_key }));
+    return rows.map((row) => ({ playerId: row.player_id, direction: row.direction, key: row.card_key, partnerUploadedSince: row.partner_player }));
   }
 
   async excluded(playerId: string): Promise<Record<string, number>> {

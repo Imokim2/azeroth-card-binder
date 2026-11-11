@@ -83,7 +83,9 @@ export interface TradeStore {
   // as unmatched that are matched now, so their scores can be put right.
   matchOpen(): Promise<string[]>;
   // Mark the halves still open from before `before` (seconds) as unmatched, and say whose they were.
-  expire(before: number): Promise<{ playerId: string; direction: "in" | "out"; key: string }[]>;
+  // Each row also says which player held the other half, if that player has uploaded since this half was recorded: if
+  // their upload still lacks the matching half, the fault is theirs, not the owner's.
+  expire(before: number): Promise<{ playerId: string; direction: "in" | "out"; key: string; partnerUploadedSince: string | null }[]>;
   // The copies of each card the player received in trades that do not count towards the score: halves never matched,
   // and copies that came from a player who has unverified Casual drops.
   excluded(playerId: string): Promise<Record<string, number>>;

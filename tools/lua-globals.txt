@@ -11,6 +11,7 @@ GGET ChatFontNormal
 GGET ChatFrameUtil
 GGET ChatFrame_AddMessageEventFilter
 GGET ChatFrame_OpenChat
+GGET CheckInteractDistance
 GGET CreateColor
 GGET CreateFrame
 GGET DEFAULT_CHAT_FRAME

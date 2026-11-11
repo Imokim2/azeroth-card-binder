@@ -19,6 +19,7 @@ local parts = {
     "12-ranked-tape",
     "13-zone-bar",
     "14-ladder",
+    "15-trading-social",
 }
 
 local source, ranges, line = {}, {}, 1

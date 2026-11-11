@@ -15,6 +15,8 @@ ACB.settings = {
         note = "Keep a trace of loot rolls for bug reports. Open it with /acb log." },
     { key = "bossTrial", name = "VanCleef completion trial", default = false,
         note = "A testing option for the Deadmines boss roll. Leave it off unless asked." },
+    { key = "tradeRange", name = "Trading distance", default = true,
+        note = "Trades need your partner targeted and within about 11 yards, like the game's own trading." },
 }
 
 local byKey = {}

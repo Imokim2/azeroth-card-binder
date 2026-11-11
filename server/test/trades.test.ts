@@ -154,3 +154,23 @@ test("the firsts feed names whoever finished a set first, skips players held off
   // Unknown routes and methods are refused as usual.
   assert.equal((await env.call("/v1/firsts", { method: "POST", body: {} })).status, 405);
 });
+
+test("when the partner has uploaded since and still lacks their half, the partner is flagged, not the player they took from", async () => {
+  const env = setup();
+  const alice = await registered(env, "alice");
+  const bob = await registered(env, "bob");
+  // Alice records the whole trade: she gave CARD_A and received CARD_B from Bob.
+  await upload(env, alice.player, "Alice", alicesHalf(), CARD_B);
+  const before = scoreOfPlayer(env, alice.id);
+  // Bob plays and uploads an hour later, but his history never records the trade (he kept Alice's card and his own).
+  env.clock.now = NOW + 3600;
+  const dishonest = chain([{ seq: 1, t: 2000, kind: "drop", key: CARD_B, count: 1, dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char: "Bob-RealmName" }]);
+  assert.equal((await upload(env, bob.player, "Bob", dishonest, CARD_B)).status, 200);
+  // A week later the halves are written off, and the fault is put where it belongs.
+  env.clock.now = NOW + TRADE_GRACE_SECONDS + 7200;
+  await runMaintenance(env.deps);
+  const flags = env.raw.prepare("SELECT player_id, kind FROM flags").all() as { player_id: string; kind: string }[];
+  assert.deepEqual(flags.map((flag) => [flag.player_id === bob.id ? "bob" : flag.player_id === alice.id ? "alice" : "?", flag.kind]), [["bob", "trade-half-missing"]]);
+  // Alice's received copy still does not count (the card exists twice), but she is not flagged for it.
+  assert.ok(scoreOfPlayer(env, alice.id) < before);
+});
