@@ -85,7 +85,9 @@ async function main(): Promise<void> {
 
   let catalogVersion = "unknown";
   try {
-    catalogVersion = JSON.parse(await readFile(join(appRoot, "..", "packages", "shared", "catalog.json"), "utf8")).catalogVersion;
+    // In the installed app the catalog is a resource beside the program; in development it is in the repository.
+    const catalogPath = app.isPackaged ? join(process.resourcesPath, "catalog.json") : join(appRoot, "..", "packages", "shared", "catalog.json");
+    catalogVersion = JSON.parse(await readFile(catalogPath, "utf8")).catalogVersion;
   } catch {
     // Not found next to the app (a packaged build bundles it); the server only needs some text here.
   }

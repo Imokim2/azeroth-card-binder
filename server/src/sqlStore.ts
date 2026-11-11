@@ -80,7 +80,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     if (!found) throw new Error("no such player");
     // The old record moves to a private player of its own with no Discord link and no key, so it can never be listed or
     // uploaded to; the player keeps their keys and begins again with an empty chain.
-    const moved = ["batches", "drops", "ledger_state", "scores", "characters", "tapes", "flags", "trades", "set_completions"];
+    const moved = ["batches", "drops", "ledger_state", "scores", "characters", "tapes", "flags", "trades", "set_completions", "trade_taint"];
     await this.#db.batch([
       {
         sql: "INSERT INTO players (id, discord_id, created_at, status, visibility, epoch, reset_at, archived_from) VALUES (?, NULL, ?, 'active', 'private', ?, NULL, ?)",
@@ -96,7 +96,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     const ids = [playerId, ...archives.map((row) => row.id)];
     const marks = ids.map(() => "?").join(", ");
     // Children before parents, so nothing is left pointing at a player that is gone.
-    const tables = ["trades", "set_completions", "flags", "drops", "batches", "tapes", "characters", "scores", "ledger_state", "keys"];
+    const tables = ["trade_taint", "trades", "set_completions", "flags", "drops", "batches", "tapes", "characters", "scores", "ledger_state", "keys"];
     await this.#db.batch([
       ...tables.map((table) => ({ sql: `DELETE FROM ${table} WHERE player_id IN (${marks})`, params: ids })),
       { sql: `DELETE FROM players WHERE id IN (${marks})`, params: ids },
@@ -325,14 +325,39 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
   async excluded(playerId: string): Promise<Record<string, number>> {
     const rows = await this.#db.all<{ card_key: string; n: number }>(
       `SELECT t.card_key, COUNT(*) AS n FROM trades t WHERE t.player_id = ? AND t.direction = 'in'
-       AND (t.state = 'unmatched' OR ${FROM_CASUAL}) GROUP BY t.card_key`, [playerId]);
+       AND (t.state = 'unmatched' OR ${FROM_CASUAL}
+            OR EXISTS (SELECT 1 FROM trade_taint x WHERE x.player_id = t.player_id AND x.seq = t.seq)) GROUP BY t.card_key`, [playerId]);
     return Object.fromEntries(rows.map((row) => [row.card_key, row.n]));
   }
 
-  async receivedFromCasual(): Promise<string[]> {
-    const rows = await this.#db.all<{ player_id: string }>(
-      `SELECT DISTINCT t.player_id FROM trades t WHERE t.direction = 'in' AND ${FROM_CASUAL}`);
-    return rows.map((row) => row.player_id);
+  async tradeGraph() {
+    const halves = await this.#db.all<{ player_id: string; seq: number; card_key: string; state: "open" | "matched" | "unmatched"; source: string | null }>(
+      `SELECT t.player_id, t.seq, t.card_key, t.state,
+              (SELECT o.player_id FROM trades o WHERE o.trade_id = t.trade_id AND o.direction = 'out' AND o.card_key = t.card_key
+               AND o.player_id != t.player_id AND o.partner = t.char AND o.char = t.partner LIMIT 1) AS source
+       FROM trades t WHERE t.direction = 'in'`);
+    const casual = await this.#db.all<{ player_id: string }>("SELECT player_id FROM ledger_state WHERE casual_drops > 0");
+    return {
+      halves: halves.map((row) => ({ playerId: row.player_id, seq: row.seq, key: row.card_key, state: row.state, source: row.source })),
+      casualPlayers: casual.map((row) => row.player_id),
+    };
+  }
+
+  async replaceTaint(rows: { playerId: string; seq: number }[]): Promise<string[]> {
+    const before = await this.#db.all<{ player_id: string; seq: number }>("SELECT player_id, seq FROM trade_taint");
+    const had = new Set(before.map((row) => `${row.player_id}:${row.seq}`));
+    const will = new Set(rows.map((row) => `${row.playerId}:${row.seq}`));
+    const changed = new Set<string>();
+    for (const row of before) if (!will.has(`${row.player_id}:${row.seq}`)) changed.add(row.player_id);
+    for (const row of rows) if (!had.has(`${row.playerId}:${row.seq}`)) changed.add(row.playerId);
+    if (changed.size === 0) return [];
+    const statements: Statement[] = [{ sql: "DELETE FROM trade_taint", params: [] }];
+    for (let from = 0; from < rows.length; from += 40) {
+      const group = rows.slice(from, from + 40);
+      statements.push({ sql: "INSERT INTO trade_taint (player_id, seq) VALUES " + group.map(() => "(?, ?)").join(", "), params: group.flatMap((row) => [row.playerId, row.seq]) });
+    }
+    await this.#db.batch(statements);
+    return [...changed];
   }
 
   async setScore(playerId: string, score: { score: number; uniqueCards: number; setsDone: number }): Promise<void> {
@@ -347,6 +372,14 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       sql: "INSERT INTO flags (id, player_id, kind, notes, created_at) VALUES (?, ?, ?, ?, ?)",
       params: [flag.id, playerId, flag.kind, flag.notes, at],
     }]);
+  }
+
+  async binder(playerId: string): Promise<{ counts: Record<string, number>; shiny: Record<string, boolean> } | null> {
+    if (!(await this.entry(playerId))) return null;
+    const rows = await this.#db.all<{ state_json: string }>("SELECT state_json FROM ledger_state WHERE player_id = ?", [playerId]);
+    if (!rows[0]) return null;
+    const state = JSON.parse(rows[0].state_json) as LedgerState;
+    return { counts: state.counts, shiny: state.shiny };
   }
 
   async charactersOf(playerIds: string[]): Promise<Record<string, string[]>> {

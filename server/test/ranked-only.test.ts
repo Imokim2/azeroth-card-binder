@@ -123,3 +123,65 @@ test("a rebuild works out the Casual drops again from the stored events", async 
   assert.equal(casualDrops(env, casual.id), honest);
   assert.deepEqual(await ladder(env), []);
 });
+
+// ---- following a card through more than one trade ----
+import { computeTaint } from "../src/taint.ts";
+import type { TradeHalf } from "../src/taint.ts";
+
+const half = (playerId: string, seq: number, key: string, source: string | null, state: TradeHalf["state"] = "matched"): TradeHalf => ({ playerId, seq, key, state, source });
+const ids = (rows: { playerId: string; seq: number }[]) => rows.map((row) => `${row.playerId}:${row.seq}`).sort();
+
+test("a card is followed from a Casual player through every clean player it passes through", () => {
+  // A has Casual drops and gave npc:590 to B, who gave it to C, who gave it to D.
+  const chain = [half("B", 1, "npc:590", "A"), half("C", 1, "npc:590", "B"), half("D", 1, "npc:590", "C")];
+  assert.deepEqual(ids(computeTaint(chain, ["A"])), ["B:1", "C:1", "D:1"]);
+  // The order the halves are listed in does not matter.
+  assert.deepEqual(ids(computeTaint([...chain].reverse(), ["A"])), ["B:1", "C:1", "D:1"]);
+  // Without a Casual player at the start, nothing is untrusted.
+  assert.deepEqual(computeTaint(chain, []), []);
+  // A different card from a clean player is not affected: C got npc:591 from E, who is clean.
+  assert.deepEqual(ids(computeTaint([...chain, half("C", 2, "npc:591", "E")], ["A"])), ["B:1", "C:1", "D:1"]);
+  // A card from a player who holds an untrusted copy of that same card is untrusted (the cautious rule).
+  assert.deepEqual(ids(computeTaint([half("B", 1, "npc:590", "A"), half("C", 1, "npc:590", "B"), half("C", 2, "npc:600", "B")], ["A"])), ["B:1", "C:1"]);
+  // A copy from an unconfirmed trade makes the holder's copies of that card untrusted when passed on.
+  assert.deepEqual(ids(computeTaint([half("B", 1, "npc:590", null, "unmatched"), half("C", 1, "npc:590", "B")], [])), ["C:1"]);
+  // A loop of trades between untrusted players ends.
+  assert.deepEqual(ids(computeTaint([half("B", 1, "npc:590", "A"), half("C", 1, "npc:590", "B"), half("B", 2, "npc:590", "C")], ["A"])), ["B:1", "B:2", "C:1"]);
+});
+
+test("a card passed from a Casual player to a clean one to a Ranked main stops counting for the main", async () => {
+  const env = setup();
+  const t1 = "111-482910-1"; // A gives B the card
+  const t2 = "111-482910-2"; // B gives C the same card
+  const pass = { dust: 0, shiny: 0, tape: 0 };
+  const inFrom = (partner: string, trade: string, char: string) => ({ kind: "tradeIn", key: "npc:590", count: 1, ...pass, partner, trade, char });
+  const outTo = (partner: string, trade: string, char: string) => ({ kind: "tradeOut", key: "npc:590", count: 0, ...pass, partner, trade, char });
+
+  // C (the main) and B (the clean middle) both play Ranked; the trades are recorded before A's Casual play is known.
+  const c = await rankedPlayer(env, "Carl", [inFrom("bert-realmname", t2, "Carl-RealmName")]);
+  const b = await rankedPlayer(env, "Bert", [inFrom("alice-realmname", t1, "Bert-RealmName"), outTo("carl-realmname", t2, "Bert-RealmName")]);
+  const before = scoreOfPlayer(env, c.id);
+  await runMaintenance(env.deps);
+  assert.equal(scoreOfPlayer(env, c.id), before, "nothing untrusted is known yet: A has not played");
+
+  // Alice's Casual play arrives. Bert's copy came from her, so Bert's does not count, and neither does what he passed on to Carl.
+  const alice = await register(env, "alice");
+  const base = { dust: 0, shiny: 0, tape: 0, char: "Alice-RealmName" };
+  const events = chain([
+    { seq: 1, t: 1000, kind: "drop", key: "npc:590", count: 1, partner: "", trade: "", ...base },
+    { seq: 2, t: 1010, kind: "tradeOut", key: "npc:590", count: 0, partner: "bert-realmname", trade: t1, ...base },
+  ]);
+  const response = await env.call("/v1/ledger", { body: signedUpload(alice.player, events, { character: "Alice", realm: "RealmName", snapshot: { counts: {}, dust: 0, sets: {}, attempts: { "npc:590": 100 }, titles: {} } }) });
+  assert.equal(response.status, 200, JSON.stringify(await response.clone().json()));
+  const points = ({ common: 1, rare: 2, epic: 5, legendary: 10 } as Record<string, number>)[catalog.cards["npc:590"]!.rarity] ?? 0;
+  const bertBefore = scoreOfPlayer(env, b.id);
+  await runMaintenance(env.deps);
+  assert.equal(before - scoreOfPlayer(env, c.id), points * 10, "Carl's copy came from Casual play, two trades back");
+  assert.equal(scoreOfPlayer(env, b.id), bertBefore, "Bert passed the card on, so he holds nothing untrusted to lose");
+  assert.equal(new Set(await ladder(env)).has(c.id), true, "both are still on the ladder: only the borrowed card stopped counting");
+
+  // Running again changes nothing further.
+  const settled = scoreOfPlayer(env, c.id);
+  await runMaintenance(env.deps);
+  assert.equal(scoreOfPlayer(env, c.id), settled);
+});

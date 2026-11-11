@@ -37,6 +37,17 @@ npm start
 
 `npm start` compiles the TypeScript to `dist/` and opens the window. Closing the window sends the app to the tray; **Quit** is in the tray menu. Settings and the encrypted key live in `%APPDATA%World of Warcards`. Set `WARCARDS_DATA` to use another data folder, and `WARCARDS_SERVER` to use another server (the default is the staging server in `src/config.ts`).
 
+## Build the installer
+
+From this folder, with `npm ci` done once:
+
+```
+npm run pack      # an unpacked app in release/win-unpacked, to try without installing
+npm run dist      # release/World of Warcards Setup <version>.exe
+```
+
+The installer is a per-user install (no administrator rights) of about 116 MB, most of it Electron itself. It is **not code-signed**, so Windows SmartScreen shows an "unknown publisher" warning the first time; signing needs a certificate, which costs money and is a decision for later. There is no auto-update yet: the repository is private, and updates need a public release feed or a token. The installed app finds the catalog as a resource beside the program (`resources/catalog.json`).
+
 ## Run the tests
 
 Needs Node 24 or later and LuaJIT (the end-to-end tests run the real add-on code). No install is needed to run them:

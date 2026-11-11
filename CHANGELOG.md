@@ -4,6 +4,10 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- **Website pages**, served by the server: the ladder and first-to-finish list, a player's page with a read-only view of their binder, fair play and privacy. Plain, safe HTML with no scripts or game art.
+- **Windows installer** for the companion app (`npm run dist` in `app/`). Unsigned, so Windows will show an "unknown publisher" warning.
+- Cards that came from Casual play are now followed through any number of trades, not just the first.
+
 - Server hardening: per-address rate limits (a general one and a strict one for registration, reset, deletion and admin routes), and a data-deletion route with a **Delete my data…** button in the companion app. Deleting erases the player's record and archived binders; a banned player's record is kept.
 
 - **Start a new binder.** `/acb newbinder` (then `/acb newbinder confirm`) erases the binder on that account, keeps a copy of the old collection in the saved file and starts an empty one. The companion app notices that the saved data is not the binder the server holds and offers to start a new binder on the server, which archives the old record and gives the new one a fresh roll tape. Needed to join the Ranked ladder from a binder that already has Casual drops. Once a day at most.

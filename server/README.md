@@ -12,6 +12,9 @@ src/ledger.ts     hash chain checks; src/crypto.ts hashing, signatures, canonica
 src/shared.ts     the rules shared with the app (../packages/shared/src/rules.js), with types
 src/score.ts      the score formula, versioned
 src/tape.ts       the roll tape: entries derived from a secret, and the check of every ranked drop
+src/site.ts       the website: the ladder, a player's page, fair play and privacy, as plain safe HTML
+src/taint.ts      following cards that came from Casual play through any number of trades
+src/limit.ts      rate limiting
 src/discord.ts    Discord sign-in, server half: exchange the code, read the player's id, revoke the token
 src/maintenance.ts the hourly job: match the two halves of trades, write off unconfirmed ones
 src/rebuild.ts    recompute everything derived from the stored batches (a page of players at a time)

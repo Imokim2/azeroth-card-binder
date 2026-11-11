@@ -2,6 +2,7 @@
 // and writing off halves whose partner never confirmed them. Run hourly by the Worker's scheduled handler.
 import { newId } from "../../packages/shared/src/crypto.ts";
 import { scoreOf } from "./score.ts";
+import { computeTaint } from "./taint.ts";
 import type { Catalog } from "./shared.ts";
 import type { IngestStore, TradeStore } from "./store.ts";
 
@@ -10,9 +11,10 @@ export const TRADE_GRACE_SECONDS = 7 * 24 * 3600;
 export async function runMaintenance(deps: { ingest: IngestStore; trades: TradeStore; catalog: Catalog; now: () => number }): Promise<{ matchedBack: number; unmatched: number }> {
   const now = deps.now();
   const affected = new Set<string>(await deps.trades.matchOpen());
-  // Copies received from a player with Casual drops do not count, and that can change after the trade was recorded.
-  for (const playerId of await deps.trades.receivedFromCasual()) affected.add(playerId);
   const matchedBack = affected.size;
+  // Copies that came from Casual play, however many trades ago, do not count; that can change after a trade was recorded.
+  const graph = await deps.trades.tradeGraph();
+  for (const playerId of await deps.trades.replaceTaint(computeTaint(graph.halves, graph.casualPlayers))) affected.add(playerId);
   const expired = await deps.trades.expire(now - TRADE_GRACE_SECONDS);
   const counts = new Map<string, { in: number; out: number }>();
   for (const row of expired) {

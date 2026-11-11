@@ -6,6 +6,7 @@ import { canonicalJson, newId, verifySignature } from "../../packages/shared/src
 import type { Catalog } from "./shared.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
+import { binderSets, fairPlayPage, homePage, notFoundPage, playerPage, privacyPage } from "./site.ts";
 import { rebuild } from "./rebuild.ts";
 import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, TapeStore, TradeStore, Visibility } from "./store.ts";
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
@@ -275,6 +276,33 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return json(200, report, { "cache-control": "no-store" });
   }
 
+  // ---- The website (src/site.ts): plain HTML from the same data as the API ----
+  const html = (status: number, body: string): Response => new Response(body, {
+    status,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": status === 200 ? `public, max-age=${PUBLIC_CACHE_SECONDS}` : "no-store",
+      "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+      "x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "no-referrer",
+    },
+  });
+
+  async function siteHome(): Promise<Response> {
+    const entries = await deps.board.top(100);
+    const titles = new Map(deps.catalog.sets.map((set) => [set.code, set.title]));
+    const firsts = (await deps.board.firsts()).flatMap((row) => (titles.has(row.setCode) ? [{ title: titles.get(row.setCode) as string, displayName: row.displayName, playerId: row.playerId, at: row.receivedAt }] : []));
+    return html(200, homePage(entries.map((entry, index) => ({ rank: index + 1, playerId: entry.playerId, displayName: entry.displayName, scoreTenths: entry.score, uniqueCards: entry.uniqueCards, setsDone: entry.setsDone })), firsts));
+  }
+
+  async function sitePlayer(id: string): Promise<Response> {
+    const found = await deps.board.entry(id);
+    const binder = found ? await deps.board.binder(id) : null;
+    // A private, held, banned or unknown player all get the same page, so privacy cannot be probed.
+    if (!found || !binder) return html(404, notFoundPage());
+    const { entry, rank } = found;
+    return html(200, playerPage({ displayName: entry.displayName, rank, scoreTenths: entry.score, uniqueCards: entry.uniqueCards, setsDone: entry.setsDone, updatedAt: entry.updatedAt }, binderSets(deps.catalog, binder.counts, binder.shiny)));
+  }
+
   async function health(): Promise<Response> {
     try {
       await deps.health();
@@ -324,10 +352,15 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       return { route: name, response: run() };
     };
     const playerMatch = /^\/v1\/player\/([0-9A-Z]{26})$/.exec(url.pathname);
+    const pageMatch = /^\/player\/([0-9A-Z]{26})$/.exec(url.pathname);
     const reviewMatch = /^\/v1\/admin\/flags\/([0-9A-Za-z]{1,40})$/.exec(url.pathname);
     const banMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/ban$/.exec(url.pathname);
     const chosen =
-      url.pathname === "/v1/health" ? allow("health", ["GET"], health)
+      url.pathname === "/" ? allow("site-home", ["GET"], siteHome)
+      : url.pathname === "/fair-play" ? allow("site-fair-play", ["GET"], async () => html(200, fairPlayPage()))
+      : url.pathname === "/privacy" ? allow("site-privacy", ["GET"], async () => html(200, privacyPage()))
+      : pageMatch ? allow("site-player", ["GET"], () => sitePlayer(pageMatch[1] as string))
+      : url.pathname === "/v1/health" ? allow("health", ["GET"], health)
       : url.pathname === "/v1/register" ? allow("register", ["POST"], () => register(request))
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))

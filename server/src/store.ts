@@ -87,8 +87,11 @@ export interface TradeStore {
   // The copies of each card the player received in trades that do not count towards the score: halves never matched,
   // and copies that came from a player who has unverified Casual drops.
   excluded(playerId: string): Promise<Record<string, number>>;
-  // Players with copies received from a player who has unverified Casual drops, so their scores can be put right.
-  receivedFromCasual(): Promise<string[]>;
+  // Every received trade half with the player who gave it, and the players who have unverified Casual drops: what is
+  // needed to follow a card through several trades (src/taint.ts).
+  tradeGraph(): Promise<{ halves: { playerId: string; seq: number; key: string; state: "open" | "matched" | "unmatched"; source: string | null }[]; casualPlayers: string[] }>;
+  // Replace the list of untrusted halves. Returns the players whose list changed, so their scores can be put right.
+  replaceTaint(rows: { playerId: string; seq: number }[]): Promise<string[]>;
   // Replace the score numbers after the excluded copies changed.
   setScore(playerId: string, score: { score: number; uniqueCards: number; setsDone: number }): Promise<void>;
   // Raise a flag outside an upload.
@@ -150,6 +153,8 @@ export interface LeaderboardStore {
   entry(playerId: string): Promise<{ entry: BoardEntry; rank: number } | null>;
   // The characters each of these players has played, in the form partners use ("name-realmname").
   charactersOf(playerIds: string[]): Promise<Record<string, string[]>>;
+  // The cards a player holds, for their page on the website; null unless they may appear on the ladder.
+  binder(playerId: string): Promise<{ counts: Record<string, number>; shiny: Record<string, boolean> } | null>;
   // Who finished each set first among the players who may appear on the ladder (roadmap C6).
   firsts(): Promise<{ setCode: string; playerId: string; displayName: string; receivedAt: number }[]>;
 }
