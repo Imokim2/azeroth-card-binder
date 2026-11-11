@@ -13,7 +13,7 @@ import type { IngestStore, Player, TapeStore, TradeStore } from "./store.ts";
 import { checkTape, tapeKey, tapeOwner } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2];
+export const SUPPORTED_SPEC_VERSIONS = [2, 3]; // 3 added the pack events; every version 2 history is valid in version 3
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -128,7 +128,7 @@ export async function acceptUpload(
   // Every ranked attempt (a drop, or a run of misses) must match the tape entries the server issued, with the chance
   // that the card's own run of misses had built up. Entering ranked2 starts every card's run again.
   let pity = stored.pity;
-  const usesTape = (event: Record<string, unknown>): boolean => Number(event["tape"]) > 0 && (event["kind"] === "drop" || event["kind"] === "miss" || (event["kind"] === "mode" && event["key"] === "ranked2"));
+  const usesTape = (event: Record<string, unknown>): boolean => Number(event["tape"]) > 0 && (event["kind"] === "drop" || event["kind"] === "miss" || event["kind"] === "packFind" || event["kind"] === "packCard" || (event["kind"] === "mode" && event["key"] === "ranked2"));
   if (events.some(usesTape)) {
     if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
     const checked = await checkTape({

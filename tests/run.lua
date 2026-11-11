@@ -23,6 +23,8 @@ local parts = {
     "16-wanted-tab",
     "17-reports",
     "18-kills",
+    "19-packs",
+    "20-pack-view",
 }
 
 local source, ranges, line = {}, {}, 1

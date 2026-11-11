@@ -30,6 +30,19 @@ function ACB.takeTape(saved)
     return entry, index
 end
 
+-- Are the next `count` tape entries there and well formed? Checked before anything is written that needs them all.
+function ACB.tapeHolds(saved, count)
+    local tape = ACB.sync and ACB.sync.tape
+    if type(tape) ~= "table" or type(tape.entries) ~= "table" or type(tape.start) ~= "number" then return false end
+    local index = type(saved.tape) == "table" and saved.tape.next or 1
+    if type(index) ~= "number" or index < tape.start then return false end
+    for offset = 0, count - 1 do
+        local entry = tape.entries[index + offset - tape.start + 1]
+        if type(entry) ~= "string" or #entry ~= 16 or entry:find("[^0-9a-f]") then return false end
+    end
+    return true
+end
+
 -- How many tape entries are left, for the Settings tab and /acb verify.
 function ACB.tapeLeft(saved)
     local tape = ACB.sync and ACB.sync.tape

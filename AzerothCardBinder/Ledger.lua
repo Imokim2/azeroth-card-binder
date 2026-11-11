@@ -1,6 +1,6 @@
 local _, ACB = ...
 
--- The ledger: a tamper-evident history of every change to the binder (docs/LEDGER-SPEC.md, version 2).
+-- The ledger: a tamper-evident history of every change to the binder (docs/LEDGER-SPEC.md, version 3).
 -- Each event carries the hash of the one before it, so changing an earlier event breaks every hash after it.
 -- Part 1 below is the specification itself (event text, hashing, checking a chain). Part 2 keeps the player's
 -- saved ledger up to date and checks it when the add-on loads.
@@ -8,7 +8,10 @@ local _, ACB = ...
 local GENESIS = string.rep("0", 32)
 ACB.GENESIS = GENESIS
 
-local KINDS = { drop = true, craft = true, recycle = true, tradeIn = true, tradeOut = true, set = true, mode = true, miss = true }
+local KINDS = {
+    drop = true, craft = true, recycle = true, tradeIn = true, tradeOut = true, set = true, mode = true, miss = true,
+    packFind = true, packOpen = true, packCard = true,
+}
 -- Un-synced events at which Ranked rolls pause until the companion app has picked them up.
 ACB.backlogLimit = 5000
 

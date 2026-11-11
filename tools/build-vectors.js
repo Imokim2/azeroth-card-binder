@@ -9,6 +9,7 @@ const fs = require("fs");
 const path = require("path");
 const ledger = require("../packages/shared/src/ledger.js");
 const rules = require("../packages/shared/src/rules.js");
+const packs = require("../packages/shared/src/packs.js");
 const catalog = require("../packages/shared/catalog.json");
 
 const out = process.env.VECTORS_OUT || path.join(__dirname, "..", "packages", "shared", "vectors");
@@ -38,6 +39,11 @@ const plan = [
     { t: 1070, kind: "drop", key: "node:1731", count: 1, tape: 5 },
     { t: 1080, kind: "set", key: "DM", count: 0 },
     { t: 1090, kind: "drop", key: "npc:1763", count: 1, tape: 6 },
+    // A pack found on that attempt (its zone is the creature's), opened straight away: five cards on the next five entries.
+    { t: 1092, kind: "packFind", key: catalog.cards["npc:1763"].set, count: 1, tape: 6 },
+    { t: 1093, kind: "packOpen", key: catalog.cards["npc:1763"].set, count: 0, tape: 6 },
+    ...catalog.sets.find((entry) => entry.code === catalog.cards["npc:1763"].set).cards.slice(0, 5)
+        .map((key, index) => ({ t: 1094 + index, kind: "packCard", key, count: key === "npc:1763" ? 2 : 1, tape: 7 + index })),
     { t: 1100, kind: "mode", key: "casual", count: 0 },
 ];
 const events = [];
@@ -109,7 +115,7 @@ const seed = ledger.sha256Hex("world-of-warcards test key 1");
 const { privateKey, publicKeyHex } = ledger.keyPairFromSeed(seed);
 const batch = {
     specVersion: ledger.SPEC_VERSION, key: publicKeyHex, character: "Alice", realm: "RealmName", schema: 2,
-    catalogVersion: "test-1", events, tapeIndex: 7, sentAt: 1110,
+    catalogVersion: "test-1", events, tapeIndex: 12, sentAt: 1110,
     snapshot: {
         counts: { "npc:573": 1, "npc:589": 1, "npc:590": 1, "npc:1763": 1, "node:1731": 1 },
         attempts: { "npc:589": 3, "npc:639": 1, "node:1731": 1, "npc:1763": 1 },
@@ -137,6 +143,27 @@ for (const entry of entries) {
     });
 }
 write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(entries), cases });
+
+// ---- Packs: which attempts find one, and which card a tape entry gives from a zone ----
+const packCases = [];
+{
+    const hex8 = (n) => n.toString(16).padStart(8, "0");
+    const zones = ["AQT", "AHX", "ABX", "DM"]; // all of common, epic and legendary; common and epic; common only; a dungeon
+    for (const roll of [1, 2, 3000, 6999, 7000, 7001, 7499, 8000, 9999, 10000]) {
+        for (const second of [0, 19, 20, 12345, 4294967295]) {
+            const entry = hex8(roll - 1) + hex8(second);
+            const row = { entry, roll: ledger.rollValue(entry), packValue: packs.packValue(entry, catalog.shinyOdds), found: packs.packFound(entry, catalog.shinyOdds), picks: {} };
+            for (const zone of zones) row.picks[zone] = packs.packPick(catalog, zone, entry, catalog.shinyOdds);
+            packCases.push(row);
+        }
+    }
+    for (const entry of entries) {
+        const row = { entry, roll: ledger.rollValue(entry), packValue: packs.packValue(entry, catalog.shinyOdds), found: packs.packFound(entry, catalog.shinyOdds), picks: {} };
+        for (const zone of zones) row.picks[zone] = packs.packPick(catalog, zone, entry, catalog.shinyOdds);
+        packCases.push(row);
+    }
+    write("packs.json", { odds: packs.PACK_ODDS, size: packs.PACK_SIZE, shinyOdds: catalog.shinyOdds, zones, cases: packCases });
+}
 
 // ---- What events must mean (section 3.1 of the spec): one valid binder history and many that break a rule ----
 // These events are not chained (no prev or h); the rules look only at what each event says.
@@ -178,11 +205,37 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
         const have = history.filter((step) => step.key === key && step.kind !== "tradeOut" && step.kind !== "recycle" && step.kind !== "miss").length;
         if (have === 0) history.push({ kind: "drop", key, count: 1, tape: ++lastTape });
     }
-    history.push({ kind: "set", key: set.code, count: 0 });
-    history.push({ kind: "mode", key: "casual", count: 0 });
     const build = (steps) => steps.map((step, index) => ({
         seq: index + 1, t: 1000 + index * 10, dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char, ...step,
     }));
+    // Packs: found on the last attempt written down, whose creature decides the zone; opened at once; five cards on the
+    // next five entries. Counts are worked out from the history so far.
+    const lastDrop = history.filter((step) => step.kind === "drop" && step.tape > 0).pop();
+    const packZone = catalog.cards[lastDrop.key].set;
+    const packSet = catalog.sets.find((entry) => entry.code === packZone);
+    const otherZone = catalog.sets.find((entry) => entry.code !== packZone && entry.code !== "GA").code;
+    const otherCard = catalog.sets.find((entry) => entry.code === otherZone).cards[0];
+    const have = { ...rules.replay(build(history), catalog).state.counts };
+    const shinyHad = { ...rules.replay(build(history), catalog).state.shiny };
+    const packCards = (from, tapes) => Array.from({ length: 5 }, (_, index) => {
+        const key = packSet.cards[(from + index) % packSet.cards.length];
+        have[key] = (have[key] || 0) + 1;
+        const shiny = index === 0 && !shinyHad[key] ? 1 : 0;
+        if (shiny) shinyHad[key] = true;
+        return { kind: "packCard", key, count: have[key], shiny, tape: tapes ? lastTape + 1 + index : 0 };
+    });
+    const packFindAt = history.length;
+    history.push({ kind: "packFind", key: packZone, count: 1, tape: lastTape });
+    history.push({ kind: "packOpen", key: packZone, count: 0, tape: lastTape });
+    history.push(...packCards(0, true));
+    lastTape += 5;
+    history.push({ kind: "set", key: set.code, count: 0 });
+    history.push({ kind: "mode", key: "casual", count: 0 });
+    // And in Casual, with no tape: the same events with every tape position 0.
+    const casualFindAt = history.length;
+    history.push({ kind: "packFind", key: packZone, count: 1, tape: 0 });
+    history.push({ kind: "packOpen", key: packZone, count: 0, tape: 0 });
+    history.push(...packCards(5, false));
     // Counts in the steps above are the counts after each event; a drop of an owned card after trading must follow on.
     const validEvents = build(history);
     const checked = rules.replay(validEvents, catalog);
@@ -208,7 +261,7 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
     breaks("a trade in with no trade id", "trade", 6, [{ kind: "tradeIn", key: epic, count: 1, partner: "bob-realmname", trade: "" }]);
     breaks("a trade partner on a plain drop", "trade", 0, [{ kind: "drop", key: common, count: 1, partner: "bob-realmname" }]);
     breaks("a set that is not complete", "set", 6, [{ kind: "set", key: set.code, count: 0 }]);
-    breaks("a set finished twice", "set", history.length - 1, [{ kind: "set", key: set.code, count: 0 }]);
+    breaks("a set finished twice", "set", history.findIndex((step) => step.kind === "set") + 1, [{ kind: "set", key: set.code, count: 0 }]);
     breaks("a set code that does not exist", "unknown-set", 0, [{ kind: "set", key: "ZZZZ", count: 0 }]);
     breaks("a mode that does not exist", "mode", 0, [{ kind: "mode", key: "hardcore", count: 0 }]);
     const ranked = kindAt("mode");
@@ -216,6 +269,23 @@ write("tape.json", { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(e
     breaks("a ranked drop that reuses a tape entry", "tape", ranked + 4, [{ kind: "drop", key: common, count: 4, tape: 4 }]);
     breaks("a ranked drop that leaves an attempt out", "tape", ranked + 4, [{ kind: "drop", key: common, count: 4, tape: 6 }]);
     breaks("a ranked drop with no tape entry", "tape", ranked + 1, [{ kind: "drop", key: common, count: 2, tape: 0 }]);
+    // Packs.
+    const lastBefore = lastDrop.tape;
+    const firstPackCard = history[packFindAt + 2];
+    breaks("a pack found for a zone the last attempt was not in", "pack", packFindAt, [{ kind: "packFind", key: otherZone, count: 1, tape: lastBefore }]);
+    breaks("a pack found on an attempt that is not the latest", "tape", packFindAt, [{ kind: "packFind", key: packZone, count: 1, tape: lastBefore - 1 }]);
+    breaks("a second pack found on the same entry", "tape", packFindAt + 1, [{ kind: "packFind", key: packZone, count: 2, tape: lastBefore }]);
+    breaks("a pack found with the wrong count", "pack", packFindAt, [{ kind: "packFind", key: packZone, count: 5, tape: lastBefore }]);
+    breaks("a pack of a zone that does not exist", "unknown-set", packFindAt, [{ kind: "packFind", key: "ZZZZ", count: 1, tape: lastBefore }]);
+    breaks("a pack found in Ranked with no tape entry", "tape", packFindAt, [{ kind: "packFind", key: packZone, count: 1, tape: 0 }]);
+    breaks("a pack opened that was never found", "pack", packFindAt, [{ kind: "packOpen", key: packZone, count: 0, tape: lastBefore }]);
+    breaks("a pack opened at the wrong place on the tape", "tape", packFindAt + 1, [{ kind: "packOpen", key: packZone, count: 0, tape: lastBefore + 1 }]);
+    breaks("a pack card from outside the zone", "pack", packFindAt + 2, [{ kind: "packCard", key: otherCard, count: 1, tape: lastBefore + 1 }]);
+    breaks("a pack card that leaves a tape entry out", "tape", packFindAt + 2, [{ ...firstPackCard, shiny: 0, tape: lastBefore + 2 }]);
+    breaks("a pack card with no pack open", "pack", packFindAt, [{ ...firstPackCard, shiny: 0, tape: lastBefore + 1 }]);
+    breaks("something else while a pack is half opened", "pack", packFindAt + 3, [{ kind: "mode", key: "casual", count: 0 }]);
+    breaks("a sixth card from one pack", "pack", packFindAt + 7, [{ ...firstPackCard, shiny: 0, count: firstPackCard.count + 1, tape: lastBefore + 6 }]);
+    breaks("a pack found in Casual that claims a tape entry", "tape", casualFindAt, [{ kind: "packFind", key: packZone, count: 1, tape: 5 }]);
     breaks("a run of misses that leaves an attempt out", "tape", ranked + 2, [{ kind: "miss", key: common, count: 1, tape: 3 }]);
     breaks("a run of misses that reaches back too far", "tape", ranked + 2, [{ kind: "miss", key: common, count: 3, tape: 3 }]);
     breaks("a run of no misses", "miss", ranked + 2, [{ kind: "miss", key: common, count: 0, tape: 1 }]);
@@ -264,5 +334,6 @@ fs.writeFileSync(path.join(out, "vectors.lua"),
     "return " + lua({
         genesis: ledger.GENESIS, sha256, valid: { events, head, texts: events.map(ledger.eventText) }, invalid,
         tape: { shinyOdds: 20, entries, commitment: ledger.tapeCommitment(entries), cases },
+        packs: { odds: packs.PACK_ODDS, size: packs.PACK_SIZE, shinyOdds: catalog.shinyOdds, zones: ["AQT", "AHX", "ABX", "DM"], cases: packCases },
     }) + "\n");
 console.log(`vectors written: ${sha256.length} hashes, ${events.length} events, ${invalid.length} invalid ledgers, ${cases.length} tape entries`);

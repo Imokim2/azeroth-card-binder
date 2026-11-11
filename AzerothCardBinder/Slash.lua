@@ -82,6 +82,8 @@ function ACB.initSlash(saved, tools)
                 report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))
             end
             if ACB.refreshZoneBar then ACB.refreshZoneBar() end
+        elseif cmd == "packs" or cmd == "pack" then
+            if ACB.openPacks then ACB.openPacks() end
         elseif cmd == "report" or cmd:match("^report%s") then
             ACB.reportCommand(saved, message:match("^%s*%S+%s*(.-)%s*$"), report, time())
         elseif cmd == "newbinder" or cmd == "newbinder confirm" then
@@ -143,7 +145,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

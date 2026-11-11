@@ -62,6 +62,16 @@ function ACB.initUI(saved, trade)
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
+    -- Card packs: how many are held, and a way to open them (PackView.lua).
+    local packButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+    packButton:SetSize(110, 22)
+    packButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -62, -20)
+    packButton:SetScript("OnClick", function() if ACB.openPacks then ACB.openPacks() end end)
+    function ACB.refreshPackButton()
+        local _, total = ACB.packList(saved)
+        packButton:SetText(total > 0 and ("Packs (%d)"):format(total) or "Packs")
+    end
+    ACB.refreshPackButton()
     local titleMark = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     titleMark:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -56, -54)
     titleMark:SetTextColor(unpack(brass))
@@ -175,6 +185,7 @@ function ACB.initUI(saved, trade)
         "Outdoors and out of combat. Both players accept the same two cards and the swap then happens on both sides. It runs on trust.")
 
     function ACB.refresh()
+        ACB.refreshPackButton()
         if not frame:IsShown() then return end
         for destination, control in pairs(tabs) do
             local active = destination == mode

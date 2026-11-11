@@ -114,7 +114,7 @@ export const casualSnapshot = { counts: casualState.state.counts, dust: casualSt
 
 export function signedUpload(player: Player, events: Record<string, unknown>[], overrides: Record<string, unknown> = {}) {
   const body: Record<string, unknown> = {
-    specVersion: 2, key: player.publicKeyHex, character: "Alice", realm: "RealmName", schema: 2,
+    specVersion: 3, key: player.publicKeyHex, character: "Alice", realm: "RealmName", schema: 2,
     catalogVersion: catalog.catalogVersion, events, tapeIndex: 0, sentAt: NOW,
     snapshot: { ...casualSnapshot, attempts: casualAttempts, titles: {} }, ...overrides,
   };

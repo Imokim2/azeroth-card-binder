@@ -181,6 +181,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         local guaranteed = chance >= 10000
         -- A certain drop needs no roll; a Casual roll is drawn only when it is needed.
         local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= chance
+        -- Any attempt on a creature can find a card pack (see Packs.lua), whether or not the card drops.
+        local packWin = self.packRoll and self:packRoll(card, ranked and entry or nil)
         if saved.attempts then saved.attempts[card.key] = (saved.attempts[card.key] or 0) + 1 end
         log(("%s: %s at %g%% (%s)"):format(origin, card.name, chance / 100,
             guaranteed and "card, certain by now" or dropped and "card" or "miss"))
@@ -195,6 +197,10 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
                     ledger:flushRun()
                     saved.run = { key = card.key, n = 1, last = tapeIndex }
                 end
+            end
+            if packWin then
+                if ranked and ledger then ledger:flushRun() end -- the pack belongs to this attempt, so the run ends with it
+                self:addPack(card, tapeIndex)
             end
             return false
         end
@@ -212,6 +218,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         end
         if shiny then saved.shiny[card.key] = true end
         record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex })
+        if packWin then self:addPack(card, tapeIndex) end
         -- A drop rolled with this computer's own random numbers cannot be rechecked by the server.
         if not ranked then saved.casualDrops = (saved.casualDrops or 0) + 1 end
         report(("%s: %s (x%d)"):format(shiny and "Shiny card found" or "Card found", card.name, counts[card.key]))
@@ -268,5 +275,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         return true
     end
 
+    if ACB.addPackMethods then
+        ACB.addPackMethods(collection, { saved = saved, random = random, report = report, ledger = ledger, record = record, checkAchievements = checkAchievements })
+    end
     return collection
 end

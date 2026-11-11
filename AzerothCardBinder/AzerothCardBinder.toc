@@ -18,6 +18,7 @@ Data/Sync.lua
 Tape.lua
 Collection.lua
 Kills.lua
+Packs.lua
 Trade.lua
 Range.lua
 CardModels.lua
@@ -38,6 +39,7 @@ UiKit.lua
 SettingsView.lua
 LeaderboardView.lua
 WantedView.lua
+PackView.lua
 Binder.lua
 Minimap.lua
 SavedData.lua

@@ -23,7 +23,7 @@ test("SHA-256 matches the published standard answers and every vector", () => {
 
 test("the valid ledger verifies, in one batch and in two", () => {
     const valid = load("ledger-valid.json");
-    assert.equal(valid.events.length, 13);
+    assert.equal(valid.events.length, 20);
     valid.events.forEach((event, index) => assert.equal(ledger.eventText(event), valid.texts[index]));
     const whole = ledger.verifyChain(valid.events);
     assert.deepEqual(whole, { ok: true, head: valid.head });

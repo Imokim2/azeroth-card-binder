@@ -113,6 +113,18 @@ local function cleanLedgerFields(saved)
     end
     saved.exactMode = saved.exactMode == true or nil
     ACB.cleanReports(saved)
+    -- Card packs held, by zone code. Only whole counts of known zones survive (Packs.lua knows the zones; before it loads
+    -- nothing is dropped).
+    local packs = {}
+    if type(saved.packs) == "table" then
+        for zone, count in pairs(saved.packs) do
+            if type(zone) == "string" and type(count) == "number" and count >= 1 and count == math.floor(count) and count <= 100000
+                and (not ACB.pageOfZone or ACB.pageOfZone(zone)) then
+                packs[zone] = count
+            end
+        end
+    end
+    saved.packs = packs
     saved.ledger = tableOrEmpty(saved.ledger)
     local head = saved.head
     if type(head) ~= "table" or type(head.seq) ~= "number" or head.seq < 0 or head.seq ~= math.floor(head.seq)

@@ -1,6 +1,7 @@
 // The rules shared with the app (packages/shared/src/rules.js), with types. Plain JavaScript on purpose: the same
 // file is used by the server and the app, and checked by the same test vectors.
 import * as shared from "../../packages/shared/src/rules.js";
+import * as packs from "../../packages/shared/src/packs.js";
 
 export type Catalog = {
   catalogVersion: string;
@@ -22,6 +23,11 @@ export type LedgerState = {
   lastTape: number;
   lastT: number;
   exact?: boolean; // the binder has entered ranked2, in which every attempt is written down
+  packs?: Record<string, number>; // packs held, by zone (set code)
+  packZone?: string; // the zone of the pack being opened
+  packLeft?: number; // cards still to come from it
+  packFound?: number; // the tape position of the last pack found
+  lastAttempt?: { key: string; tape: number }; // the last attempt written down
 };
 
 export type ReplayResult =
@@ -34,3 +40,9 @@ export const snapshotDifferences = shared.snapshotDifferences as (
   snapshot: { counts?: Record<string, number>; dust?: number; sets?: Record<string, boolean> },
   state: LedgerState,
 ) => string[];
+
+export const PACK_SIZE = packs.PACK_SIZE as number;
+export const PACK_ODDS = packs.PACK_ODDS as number;
+// 1 on the attempts that found a pack; the card a tape entry gives from a zone's pack, or null for an unknown zone.
+export const packValue = packs.packValue as (entry: string, shinyOdds: number) => number;
+export const packPick = packs.packPick as (catalog: Catalog, zone: string, entry: string, shinyOdds: number) => string | null;
