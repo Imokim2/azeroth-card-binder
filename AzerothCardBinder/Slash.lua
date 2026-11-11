@@ -45,9 +45,12 @@ function ACB.initSlash(saved, tools)
             local ok, reason = ACB.askForCard(peer, ACB.findAnyCard(what))
             if not ok then report(reason or why) end
         elseif cmd:match("^view%s+%S") then
-            local peer = ACB.tradePeer(message:match("^%s*%S+%s+(%S+)"))
+            local peer = ACB.tradePeer(message:match("^%s*%S+%s+(.-)%s*$"))
             local ok, reason = ACB.requestBinder(peer)
             report(ok and "Asked for their binder. It opens when they answer." or (reason or "Enter another player's name."))
+        elseif cmd == "whisperform space" or cmd == "whisperform hyphen" then
+            saved.whisperForm = cmd:match("%a+$")
+            report("Whispers to other players are now addressed as " .. (saved.whisperForm == "hyphen" and "First-Second." or "First Second."))
         elseif cmd == "privacy" then
             saved.inspectable = saved.inspectable == false
             report("Other players " .. (saved.inspectable == false and "can no longer" or "can now") .. " view your binder.")

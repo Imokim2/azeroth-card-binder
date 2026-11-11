@@ -12,6 +12,29 @@ test("UI and SavedVariables initialize through ADDON_LOADED", function()
     equal(ACB.tradePeer("Bob"), "bob-realmname")
     equal(ACB.tradePeer("Alice"), nil)
     equal(ACB.tradePeer("Bob|malformed"), nil)
+    -- Forever has no realms: a character has two names, written with a space or a hyphen.
+    equal(ACB.tradePeer("Filfred Whizzlebang"), "filfred-whizzlebang")
+    equal(ACB.tradePeer("Filfred-Whizzlebang"), "filfred-whizzlebang")
+    equal(ACB.tradePeer("  Filfred   Whizzlebang "), "filfred-whizzlebang")
+    equal(ACB.tradePeer("A B C"), nil)
+end)
+
+test("/acb whisperform chooses how a name is addressed, and /acb view takes a two-word name", function()
+    local saved = AzerothCardBinderDB
+    local originalSend, originalCodes = C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult
+    local targets = {}
+    Enum.SendAddonMessageResult = { Success = 0 }
+    C_ChatInfo.SendAddonMessage = function(_, _, _, peer) targets[#targets + 1] = peer return 0 end
+    SlashCmdList.AZEROTHCARDBINDER("view Filfred Whizzlebang")
+    SlashCmdList.AZEROTHCARDBINDER("whisperform hyphen")
+    equal(saved.whisperForm, "hyphen")
+    SlashCmdList.AZEROTHCARDBINDER("view Filfred Whizzlebang")
+    SlashCmdList.AZEROTHCARDBINDER("whisperform space")
+    equal(saved.whisperForm, "space")
+    equal(targets[1], "Filfred Whizzlebang")
+    equal(targets[2], "filfred-whizzlebang")
+    saved.whisperForm = nil
+    C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult = originalSend, originalCodes
 end)
 
 test("the Achievements tab lists earned titles and lets the player equip and hide one", function()
