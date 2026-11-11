@@ -110,11 +110,11 @@ test("the website page lists the most wanted cards first, names every player, an
   assert.ok(text.indexOf("Edwin VanCleef") < text.indexOf(env.deps.catalog.cards["npc:589"]!.name), "wanted by two comes before wanted by one");
   assert.match(text, /<td class="num">2<\/td><td>[^<]*Alice-Realm Name[^<]*Bob-Realm Name|<td class="num">2<\/td><td>[^<]*Bob-Realm Name[^<]*Alice-Realm Name/);
   assert.match(text, /<details><summary>Alice-Realm Name: 2 cards<\/summary>/);
-  assert.match(text, /<nav aria-label="Main"><a href="\/">Ladder<\/a><a href="\/wanted">Wanted<\/a>/);
+  assert.match(text, /<a href="\/ladder">Ladder<\/a><a href="\/wanted" aria-current="page">Wanted<\/a>/);
   assert.ok(!/<script/i.test(text));
   // A hostile character name is shown as text.
   env.raw.prepare("UPDATE characters SET name = ? WHERE player_id = ?").run("<img src=x onerror=alert(1)>", alice.id);
   const hostile = await (await env.call("/wanted")).text();
-  assert.ok(!hostile.includes("<img"));
+  assert.ok(!hostile.includes("<img src=x"));
   assert.ok(hostile.includes("&lt;img src=x onerror=alert(1)&gt;"));
 });

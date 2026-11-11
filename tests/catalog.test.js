@@ -25,13 +25,19 @@ test("every card is in exactly one set, and every set lists real cards", () => {
             assert.strictEqual(committed.cards[key].set, set.code);
         }
     }
-    assert.strictEqual(owner.size, Object.keys(committed.cards).length);
+    for (const [key, card] of Object.entries(committed.cards)) {
+        if (card.baseKey) {
+            assert.strictEqual(owner.get(card.baseKey), card.set);
+            assert.ok(committed.editions[card.baseKey].some((edition) => edition.key === key));
+        }
+    }
+    assert.strictEqual(owner.size, Object.values(committed.cards).filter((card) => !card.baseKey).length);
     assert.strictEqual(new Set(committed.sets.map((set) => set.code)).size, committed.sets.length, "set codes are unique");
 });
 
 test("every card has what the ledger rules need: a name, a known rarity and a known rank", () => {
     for (const [key, card] of Object.entries(committed.cards)) {
-        assert.match(key, /^(npc|node):\d+$/);
+        assert.match(key, /^(npc|node|edition):\d+$/);
         assert.ok(card.name && !/[|\r\n]/.test(card.name), `${key} has a bad name`);
         assert.ok(committed.dust.recycle[card.rarity] > 0, `${key}: no dust value for ${card.rarity}`);
         assert.strictEqual(committed.dust.craft[card.rarity], committed.dust.recycle[card.rarity] * 10);

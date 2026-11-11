@@ -1,6 +1,6 @@
 # Ledger specification
 
-Version 3 (draft until Phase A of the [roadmap](ROADMAP.md) has shipped). Version 2 added the `miss` event and the `ranked2` mode (sections 3.1 and 8.1); version 3 adds card packs (the `packFind`, `packOpen` and `packCard` events, section 8.2). Version 1 is no longer accepted for new uploads; version 2 histories are valid in version 3. This is the contract between the Lua add-on, the companion app and the server. All three implement it separately; all three must produce exactly the results in [packages/shared/vectors](../packages/shared/vectors). The reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 4. Version 2 added `miss` and `ranked2`; version 3 added card packs. Version 4 adds collectible editions, described in [COLLECTIBLE-EDITIONS.md](COLLECTIBLE-EDITIONS.md), using the existing event fields and a `mode` event with key `editions1`. This marker activates edition-aware drop verification without reinterpreting older events. Versions 2 and 3 histories and their hashes remain valid. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
 
 If this document, the reference implementation and the vectors ever disagree, that is a bug. Fix all three together in one change.
 

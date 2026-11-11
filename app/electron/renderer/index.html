@@ -8,71 +8,106 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header>
-    <div class="gem" aria-hidden="true"></div>
-    <div>
-      <h1>World of Warcards</h1>
-      <p class="sub">Companion app</p>
-    </div>
-    <div id="pill" class="pill" role="status">Starting</div>
-  </header>
-
-  <div id="problem" class="banner" role="alert" hidden></div>
-
-  <section id="new-binder" class="attention" aria-labelledby="new-binder-title" hidden>
-    <h2 id="new-binder-title">This looks like a new binder</h2>
-    <p>The saved data is not the binder the server has on record, which usually means you started over in the game. To go on, start a new binder on the server. The old one stays on record but stops counting.</p>
-    <div class="buttons"><button id="new-binder-button" class="primary">Start a new binder</button></div>
-  </section>
-
-  <main>
-    <section id="discord" aria-labelledby="discord-title">
-      <h2 id="discord-title">1. Discord</h2>
-      <p id="discord-text">Sign in so your cards and rank belong to you.</p>
-      <fieldset id="visibility">
-        <legend>Show me on the ladder?</legend>
-        <label><input type="radio" name="visibility" value="public" checked> Yes, list my character and rank</label>
-        <label><input type="radio" name="visibility" value="private"> No, keep me private</label>
-      </fieldset>
-      <div class="buttons">
-        <button id="sign-in" class="primary">Sign in with Discord</button>
-        <button id="sign-out" hidden>Sign out</button>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span></div>
+        <div><h1>World of Warcards</h1><p class="brand-caption">THE COLLECTOR'S COMPANION</p></div>
       </div>
-      <p id="discord-note" class="note">Your browser opens Discord's own page. This app never sees your Discord password.</p>
-    </section>
+      <span class="build-label">PREVIEW BUILD</span>
+    </header>
 
-    <section id="folder" aria-labelledby="folder-title">
-      <h2 id="folder-title">2. Game folder</h2>
-      <p id="folder-path" class="path">Not chosen yet</p>
-      <div class="buttons">
-        <button id="find-game">Find it for me</button>
-        <button id="choose-folder">Choose folder…</button>
+    <section class="overview" aria-labelledby="overview-title">
+      <div>
+        <p class="eyebrow">YOUR COLLECTION</p>
+        <h2 id="overview-title">Set up your companion.</h2>
+        <p id="overview-description" class="overview-description">Connect your account and game to sync your binder.</p>
       </div>
-      <p class="note">The folder that contains <code>WTF</code> and <code>Interface</code>.</p>
+      <div class="overview-status">
+        <div id="pill" class="pill" role="status">Starting</div>
+        <span id="setup-count" class="setup-count">Getting ready</span>
+      </div>
     </section>
 
-    <section id="sync" aria-labelledby="sync-title">
-      <h2 id="sync-title">3. Syncing</h2>
-      <ul id="accounts" class="accounts"></ul>
-      <p id="sync-empty" class="note">Nothing yet. Once you have signed in and chosen the folder, your cards are uploaded each time you reload or leave the game.</p>
-      <dl id="facts" class="facts" hidden>
-        <div><dt>Last sync</dt><dd id="last-sync">–</dd></div>
-        <div><dt>Ladder data</dt><dd id="standings">–</dd></div>
-        <div><dt>Ranked roll tape</dt><dd id="tape">–</dd></div>
-      </dl>
-      <div class="buttons"><button id="sync-now">Sync now</button></div>
-      <p class="note">After a sync, type <code>/reload</code> in the game to bring the new ladder and roll tape in.</p>
+    <div id="problem" class="banner" role="alert" hidden></div>
+    <section id="new-binder" class="attention" aria-labelledby="new-binder-title" hidden>
+      <div>
+        <p class="eyebrow">COLLECTION CHANGED</p>
+        <h2 id="new-binder-title">A new binder needs your approval.</h2>
+        <p>Your game has a different binder from the one on the server. Starting a new binder archives your previous collection and starts your ranking again.</p>
+      </div>
+      <button id="new-binder-button" class="primary">Review new binder</button>
     </section>
-  </main>
 
-  <p id="message" class="message" role="status" hidden></p>
+    <main>
+      <div class="setup-column">
+        <section id="discord" class="panel" aria-labelledby="discord-title">
+          <div class="section-heading">
+            <span class="step-number" aria-hidden="true">01</span>
+            <div><p class="eyebrow">YOUR ACCOUNT</p><h2 id="discord-title">Connect Discord</h2></div>
+            <span id="discord-state" class="section-state">Not connected</span>
+          </div>
+          <p id="discord-text" class="section-description">Connect Discord to sync your binder and take part in the ladder.</p>
+          <fieldset id="visibility">
+            <legend>Your ladder visibility</legend>
+            <label class="visibility-choice"><input type="radio" name="visibility" value="public" checked><span><strong>Join the ladder</strong><small>Show my character and rank to other collectors.</small></span></label>
+            <label class="visibility-choice"><input type="radio" name="visibility" value="private"><span><strong>Keep my collection private</strong><small>Sync my binder without a public ladder listing.</small></span></label>
+          </fieldset>
+          <div class="buttons">
+            <button id="sign-in" class="primary">Continue with Discord <span aria-hidden="true">↗</span></button>
+            <button id="sign-out" class="quiet" hidden>Sign out</button>
+          </div>
+          <p id="discord-note" class="note">Sign-in opens in your browser on Discord's own page.</p>
+        </section>
 
-  <footer>
-    <label><input type="checkbox" id="start-at-login"> Start with Windows</label>
-    <button id="delete-data" class="link" hidden>Delete my data…</button>
-    <span id="version" class="version"></span>
-  </footer>
+        <section id="folder" class="panel" aria-labelledby="folder-title">
+          <div class="section-heading">
+            <span class="step-number" aria-hidden="true">02</span>
+            <div><p class="eyebrow">YOUR GAME</p><h2 id="folder-title">Find your game</h2></div>
+            <span id="folder-state" class="section-state">Choose a folder</span>
+          </div>
+          <p class="section-description">Choose your World of Warcraft: Forever installation.</p>
+          <p id="folder-path" class="path empty">Game folder hasn't been selected</p>
+          <div class="buttons">
+            <button id="find-game">Find my game</button>
+            <button id="choose-folder" class="quiet">Choose folder…</button>
+          </div>
+          <p class="note">Select the folder containing <code>WTF</code> and <code>Interface</code>.</p>
+        </section>
+      </div>
 
+      <section id="sync" class="panel sync-panel" aria-labelledby="sync-title">
+        <div class="section-heading">
+          <span class="sync-mark" aria-hidden="true">↻</span>
+          <div><p class="eyebrow">YOUR BINDER</p><h2 id="sync-title">Collection sync</h2></div>
+          <span id="sync-state" class="section-state">Waiting</span>
+        </div>
+        <div id="sync-empty" class="empty-state">
+          <div class="card-stack" aria-hidden="true"><span></span><span></span><span><i></i></span></div>
+          <h3 id="empty-title">Connect your binder</h3>
+          <p id="empty-description">Connect your account and choose your game folder to get started.</p>
+        </div>
+        <ul id="accounts" class="accounts" aria-label="Your game accounts"></ul>
+        <dl id="facts" class="facts" hidden>
+          <div><dt>Last sync</dt><dd id="last-sync">–</dd></div>
+          <div><dt>Ladder data</dt><dd id="standings">–</dd></div>
+          <div><dt>Ranked rolls ready</dt><dd id="tape">–</dd></div>
+        </dl>
+        <div class="sync-actions">
+          <button id="sync-now" class="primary">Sync collection <span aria-hidden="true">↻</span></button>
+          <div class="reload-note"><span class="note-symbol" aria-hidden="true">i</span><p>Sync happens after you reload or leave the game. Use <code>/reload</code> again to bring updates into your binder.</p></div>
+        </div>
+      </section>
+    </main>
+
+    <p id="message" class="message" role="status" hidden></p>
+    <footer>
+      <label class="startup-choice"><input type="checkbox" id="start-at-login"> Start with Windows</label>
+      <button id="delete-data" class="link" hidden>Delete my account data…</button>
+      <span id="version" class="version"></span>
+    </footer>
+    <p class="fan-note">A fan-made companion for World of Warcraft: Forever.</p>
+  </div>
   <script src="renderer.js"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 local _, ACB = ...
 
--- The ledger: a tamper-evident history of every change to the binder (docs/LEDGER-SPEC.md, version 3).
+-- The ledger: a tamper-evident history of every change to the binder (docs/LEDGER-SPEC.md, version 4).
 -- Each event carries the hash of the one before it, so changing an earlier event breaks every hash after it.
 -- Part 1 below is the specification itself (event text, hashing, checking a chain). Part 2 keeps the player's
 -- saved ledger up to date and checks it when the add-on loads.

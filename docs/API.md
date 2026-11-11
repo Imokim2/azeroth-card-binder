@@ -14,11 +14,15 @@ Version 1, served under `/v1`. The server is `server/`; the ledger and signing r
 
 | App | Server API | Ledger spec | Add-on saved-data schema |
 |---|---|---|---|
-| 0.1.x | `/v1` | 1 | 2 |
+| 0.1.x | `/v1` | 2–4 (current app: 4) | 2 |
 
-The server rejects uploads whose `specVersion` it does not support (`client_too_old`). It supports versions 2 and 3 (3 adds card packs; every version 2 history is valid in 3); version 1 uploads must be made again by an updated companion app. The table gains a row with every release that changes one of the columns.
+The server rejects uploads whose `specVersion` it does not support (`client_too_old`). It supports versions 2, 3 and 4. Version 3 adds packs; version 4 adds collectible editions and the `editions1` activation marker. Old chain hashes remain valid. Edition events require version 4; the companion app now uploads version 4. All components need the matching generated catalog. The table gains a row with every release that changes one of the columns.
 
 ## Endpoints
+
+The public HTML website is served outside `/v1`: `/` introduces the project, `/ladder` lists Ranked collections, `/wanted` lists public requests, and `/player/:id` shows eligible public binders. Setup information is at `/download`, `/help` and `/faq`, with existing policies at `/fair-play` and `/privacy`.
+
+`GET /status` performs a current database check and returns an HTML status page (200 healthy, 503 database unavailable). `GET /status/badge.svg` performs the same check and returns an SVG online/issue indicator with HTTP 200 in either case so it remains a valid image. Both use `Cache-Control: no-store`; neither monitors Discord, game realms or historical uptime. Public pages otherwise cache for 60 seconds and use no JavaScript or external resources.
 
 ### `GET /v1/health`
 

@@ -63,6 +63,7 @@ end
 
 -- Attempts without a drop so far, and the attempt that is certain to drop, for a catalog card.
 function ACB.luck(saved, card)
+    card = ACB.baseCard(card)
     local rate = ACB.rates[card.rank]
     local factor = ACB.stackFactor or 0
     local limit = factor > 0 and 1 + math.ceil((10000 - rate) / (rate * factor)) or nil
@@ -87,7 +88,7 @@ function ACB.progress(counts, page, bossesOnly)
     for _, card in ipairs(ACB.pages[page].cards) do
         if not bossesOnly or card.boss then
             total = total + 1
-            if (counts[card.key] or 0) > 0 then owned = owned + 1 end
+            if ACB.familyCount(counts, card) > 0 then owned = owned + 1 end
         end
     end
     return owned, total
@@ -156,6 +157,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             log("Already rolled: " .. card.name .. " (" .. origin .. ")")
             return
         end
+        if ACB.editions[card.key] then ACB.activateEditions(saved, ledger) end
 
         -- In Ranked mode every attempt uses the next entry of the server's tape. With none left, rolling pauses.
         local ranked = saved.mode == "ranked"
@@ -206,6 +208,10 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         end
         saved.misses[card.key] = nil
         if ranked and ledger then ledger:flushRun() end
+
+        if saved.editionDrops and ACB.editions[card.key] then
+            card = ACB.pickEdition(card, ranked and ACB.editionRoll(entry) or random(1, ACB.editionDenominator))
+        end
 
         local counts = saved.counts
         local before = counts[card.key] or 0
@@ -262,7 +268,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     -- Spend dust on a card that is not in the binder yet. It is a plain copy, never shiny.
     function collection:craft(key)
         local card = ACB.cards[key]
-        if not card or (saved.counts[key] or 0) > 0 then return false end
+        if not card or card.baseKey or (saved.counts[key] or 0) > 0 then return false end
         local _, cost = ACB.dustFor(card)
         if (saved.dust or 0) < cost then return false end
         saved.dust = saved.dust - cost

@@ -2,7 +2,7 @@
 
 The Windows desktop app that watches the add-on's saved-data file, uploads new ledger events to the server and writes the file the add-on reads back. Built in Phase B of [docs/ROADMAP.md](../docs/ROADMAP.md). The contracts it follows are [docs/LEDGER-SPEC.md](../docs/LEDGER-SPEC.md), [docs/API.md](../docs/API.md) and [packages/shared/](../packages/shared/).
 
-**What exists:** the app's core, tested end to end, and an Electron window and tray around it. The window walks a player through signing in with Discord, choosing the game folder and watching the sync; the private key is kept encrypted by the operating system (Electron's `safeStorage`). **What does not:** the installer and auto-update (roadmap B10) and the in-game link code. The window has been drawn and checked by screenshot, but not yet used by a person.
+**What exists:** the app's core, tested end to end, an Electron window and tray around it, and a per-user Windows installer build (see below). The dashboard walks a player through signing in with Discord, choosing the game folder and watching the sync; the private key is kept encrypted by the operating system (Electron's `safeStorage`). **Still needed:** code signing, automatic updates, and a full live sign-in and in-game sync playtest. The dashboard has been checked with sample account data at desktop and narrow window sizes, including its setup, connected, error and new-binder screens.
 
 ```
 src/luaTable.ts    reads the game's SavedVariables text without running it (strict, size and depth limits)

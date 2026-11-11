@@ -5,7 +5,7 @@ test("Trade panel sends only supported outdoor whispers and filters incoming mes
     C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
         equal(prefix, ACB.tradePrefix)
         equal(channel, "WHISPER")
-        equal(peer, "bob-realmname")
+        equal(peer, "Bob Realmname")
         if locked then return Enum.SendAddonMessageResult.AddOnMessageLockdown end
         sent[#sent + 1] = message
         return 0

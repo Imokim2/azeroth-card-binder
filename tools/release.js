@@ -66,7 +66,7 @@ function updateGlobals() {
 
 function check() {
     const problems = [];
-    const skip = ["node_modules", ".git", "dist"];
+    const skip = ["node_modules", ".git", "dist", ".local-tools", "outputs"];
 
     // Every Lua file must compile.
     const probe = run(luajit, ["-e", "print(1)"]);

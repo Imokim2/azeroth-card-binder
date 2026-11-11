@@ -50,7 +50,8 @@ test("player tooltip titles come from solicited replies and an equipped title ca
     C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
         equal(prefix, ACB.viewPrefix)
         equal(channel, "WHISPER")
-        equal(peer, "bob-realmname")
+        -- Forever addresses a whisper as "First Second", as its own whisper box shows it (/acb whisperform hyphen undoes that).
+        equal(peer, AzerothCardBinderDB.whisperForm == "hyphen" and "bob-realmname" or "Bob Realmname")
         messages[#messages + 1] = message
         return 0
     end
@@ -109,7 +110,7 @@ test("binder requests use the addon whisper result when the general chat flags a
         equal(prefix, ACB.viewPrefix)
         equal(message, "Q")
         equal(channel, "WHISPER")
-        equal(peer, "carol-realmname")
+        equal(peer, AzerothCardBinderDB.whisperForm == "hyphen" and "carol-realmname" or "Carol Realmname")
         sends = sends + 1
         return result
     end
@@ -147,7 +148,7 @@ test("shift-click drafts a link and the recipient opens the exact card with loca
     local pocket, detail, stats
     for _, widget in ipairs(widgets) do
         if widget.text == edwin.name and widget.parent.OnClick then pocket = widget.parent end
-        if widget.OnMouseUp and widget.OnMouseDown and widget.scale == 1.48 then detail = widget end
+        if widget.OnMouseUp and widget.OnMouseDown and widget.scale == 1.32 then detail = widget end
         if widget.text == "BASE DROP CHANCE" then stats = widget.parent end
     end
     assert(pocket and detail and stats)

@@ -45,9 +45,12 @@ function ACB.initSlash(saved, tools)
             local ok, reason = ACB.askForCard(peer, ACB.findAnyCard(what))
             if not ok then report(reason or why) end
         elseif cmd:match("^view%s+%S") then
-            local peer = ACB.tradePeer(message:match("^%s*%S+%s+(%S+)"))
+            local peer = ACB.tradePeer(message:match("^%s*%S+%s+(.-)%s*$"))
             local ok, reason = ACB.requestBinder(peer)
             report(ok and "Asked for their binder. It opens when they answer." or (reason or "Enter another player's name."))
+        elseif cmd == "whisperform space" or cmd == "whisperform hyphen" then
+            saved.whisperForm = cmd:match("%a+$")
+            report("Whispers to other players are now addressed as " .. (saved.whisperForm == "hyphen" and "First-Second." or "First Second."))
         elseif cmd == "privacy" then
             saved.inspectable = saved.inspectable == false
             report("Other players " .. (saved.inspectable == false and "can no longer" or "can now") .. " view your binder.")
@@ -118,6 +121,9 @@ function ACB.initSlash(saved, tools)
             report(("Mode: %s. Cards owned: %d. Attempts counted: %d."):format(saved.mode, ACB.countKeys(saved.counts),
                 ACB.sumValues(saved.attempts)))
             if ACB.refresh then ACB.refresh() end
+        elseif cmd == "studio" or cmd == "designs" or cmd:match("^studio%s+") then
+            local query = message:match("^%s*%S+%s+(.-)%s*$")
+            ACB.openCardStudio(query and ACB.findAnyCard(query))
         elseif cmd == "settings" or cmd == "options" then
             ACB.open("settings")
         elseif cmd == "popup" then
@@ -145,7 +151,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, studio, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end
