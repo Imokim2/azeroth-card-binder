@@ -50,7 +50,8 @@ test("player tooltip titles come from solicited replies and an equipped title ca
     C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
         equal(prefix, ACB.viewPrefix)
         equal(channel, "WHISPER")
-        equal(peer, "bob-realmname")
+        -- Forever addresses a whisper as "First Second", as its own whisper box shows it (/acb whisperform hyphen undoes that).
+        equal(peer, AzerothCardBinderDB.whisperForm == "hyphen" and "bob-realmname" or "Bob Realmname")
         messages[#messages + 1] = message
         return 0
     end
@@ -109,7 +110,7 @@ test("binder requests use the addon whisper result when the general chat flags a
         equal(prefix, ACB.viewPrefix)
         equal(message, "Q")
         equal(channel, "WHISPER")
-        equal(peer, "carol-realmname")
+        equal(peer, AzerothCardBinderDB.whisperForm == "hyphen" and "carol-realmname" or "Carol Realmname")
         sends = sends + 1
         return result
     end

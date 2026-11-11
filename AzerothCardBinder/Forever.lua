@@ -234,7 +234,10 @@ local function normalizePeer(name)
     name = read(name, "string")
     if not name or #name > 100 then return end
     name = name:match("^%s*(.-)%s*$")
+    -- Forever has no realms: a character has two names ("Filfred Whizzlebang"), which the game's own whisper box
+    -- shows with a space. Both that and the "Name-Realm" form are accepted, and both become "name-realm" inside.
     local character, realm = name:match("^([^%-]+)%-(.+)$")
+    if not character then character, realm = name:match("^(%S+)%s+(%S+)$") end
     if not character then
         character, realm = name, apiValue("string", GetNormalizedRealmName)
     end
@@ -242,6 +245,15 @@ local function normalizePeer(name)
     realm = realm:gsub("[%s'%-]", "")
     if realm == "" or realm:find("[%p]") then return end
     return (character .. "-" .. realm):lower()
+end
+
+-- The name the game wants a whisper sent to: "First Second", as its own whisper box shows it (or "First-Second",
+-- chosen with /acb whisperform hyphen if that turns out to be what a server needs).
+local function whisperTarget(peer)
+    if saved and saved.whisperForm == "hyphen" then return peer end
+    local first, second = peer:match("^([^%-]+)%-(.+)$")
+    if not first then return peer end
+    return first:gsub("^%l", string.upper) .. " " .. second:gsub("^%l", string.upper)
 end
 
 local function sendAddon(prefix, peer, message)
@@ -253,7 +265,11 @@ local function sendAddon(prefix, peer, message)
         return false, "Addon whisper registration is unavailable."
     end
     -- The addon whisper result is authoritative. The general chat flags can be unavailable.
-    local result = apiValue("number", C_ChatInfo.SendAddonMessage, prefix, message, "WHISPER", peer)
+    local target = whisperTarget(peer)
+    local result = apiValue("number", C_ChatInfo.SendAddonMessage, prefix, message, "WHISPER", target)
+    log(("whisper %s to %s (%s): result %s, restricted %s, registered %s"):format(prefix, target, tostring(message):sub(1, 12),
+        tostring(result), tostring(apiValue("boolean", C_ChatInfo.AreOutgoingAddonChatMessagesRestricted)),
+        tostring(apiValue("boolean", C_ChatInfo.IsAddonMessagePrefixRegistered, prefix))))
     local codes = Enum and Enum.SendAddonMessageResult
     if result ~= nil and codes then
         if result == codes.Success then return true end
@@ -371,8 +387,16 @@ local handlers = {
     end,
     CHAT_MSG_ADDON = function(prefix, message, channel, sender)
         local kind = read(prefix, "string")
+        -- Any addon whisper is logged, ours or another addon's: it shows whether this game delivers them at all.
+        if kind == ACB.tradePrefix or kind == ACB.viewPrefix or read(channel, "string") == "WHISPER" then
+            log(("received %s on %s from %s: %s"):format(tostring(kind), tostring(read(channel, "string")),
+                tostring(read(sender, "string")), tostring(read(message, "string")):sub(1, 12)))
+        end
         if (kind ~= ACB.tradePrefix and kind ~= ACB.viewPrefix) or read(channel, "string") ~= "WHISPER" then return end
-        if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then return end
+        if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then
+            log("ignored: in an instance or in combat")
+            return
+        end
         if kind == ACB.tradePrefix then
             trade:receive(normalizePeer(sender), read(message, "string"))
             ACB.refresh()
