@@ -146,7 +146,8 @@ function ACB.initUI(saved, trade)
 
     local status = centered(box, "GameFontHighlight", 384, gold, 600)
     local confirm = button(box, "Accept trade", 20, 414, 140, function()
-        trade:confirm()
+        local session = trade:active()
+        if session and session.incoming and not session.give then trade:accept() else trade:confirm() end
         ACB.refresh()
     end)
     local retry = button(box, "Resend last step", 166, 414, 140, function()
@@ -163,7 +164,8 @@ function ACB.initUI(saved, trade)
         ACB.refresh()
     end)
     local clear = button(box, "Cancel", 534, 414, 86, function()
-        trade:reset()
+        local session = trade:active()
+        if session and session.incoming and not session.give then trade:decline() else trade:reset() end
         ACB.refresh()
     end)
     local historyPanel = CreateFrame("Frame", nil, box, "BackdropTemplate")
@@ -236,7 +238,9 @@ function ACB.initUI(saved, trade)
         local session = trade:active()
         local live = session ~= nil and not session.applied -- a finished trade stays on screen but is over
         local give, take = session and ACB.cards[session.give], session and ACB.cards[session.take]
-        local offering = give or (selected and ACB.cards[selected])
+        -- An offer made to you: the card they want from you is shown, ready to accept or decline.
+        local incoming = live and session.incoming == true and not session.give
+        local offering = give or (incoming and ACB.cards[session.want]) or (selected and ACB.cards[selected])
         local name = ACB.read(UnitName and UnitName("player"), "string") or "You"
         local partnerName = (partner:GetText() or ""):match("^%s*(.-)%s*$")
         partner:SetEnabled(not live)
@@ -253,7 +257,9 @@ function ACB.initUI(saved, trade)
             local lines = ACB.tradeHistory(saved)
             historyText:SetText(#lines > 0 and table.concat(lines, "\n") or "No trades yet. Finished swaps are listed here.")
         end
-        confirm:SetEnabled(live and give ~= nil and take ~= nil and not session.sentConfirm)
+        confirm:SetEnabled(incoming or (live and give ~= nil and take ~= nil and not session.sentConfirm))
+        confirm:SetText(incoming and "Accept offer" or "Accept trade")
+        clear:SetText(incoming and "Decline" or "Cancel")
         retry:SetEnabled(give ~= nil)
 
         mine.header:SetText(name)
@@ -266,7 +272,7 @@ function ACB.initUI(saved, trade)
         end
         fill(mine, offering, offering and saved.counts[offering.key] or 0,
             offering and saved.shiny and saved.shiny[offering.key])
-        fill(theirs, take, 1)
+        fill(theirs, take or ((session and session.initiator and session.want and ACB.cards[session.want]) or nil), 1)
         -- What the partner shared, with the cards that matter to you picked out.
         local function names(keys, mark)
             local out = {}

@@ -57,9 +57,9 @@ test("the ladder says where you stand, lists the top, who was first, and marks v
     equal(widgetWithText("Alice-RealmName").shown, true)
     -- Another player's binder says when the server has checked them.
     ACB.showInspect("bob-realmname", {}, {})
-    widgetWithText("bob-realmname's binder (verified)")
+    widgetWithText("Bob Realmname's Binder (verified)")
     ACB.showInspect("carol-realmname", {}, {})
-    widgetWithText("carol-realmname's binder")
+    widgetWithText("Carol Realmname's Binder")
     ACB.open("collection")
     ACB.sync, saved.mode, saved.casualDrops, saved.legacy = keep, mode, casual, legacy
 end)

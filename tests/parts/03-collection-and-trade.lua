@@ -350,3 +350,88 @@ test("a trade can offer any card in the binder, a single copy included, but not 
     equal(bCards["npc:639"], nil)
     equal(bCards["npc:589"], 1)
 end)
+
+test("an offer names both cards: the partner accepts and both sides swap with nothing more to choose", function()
+    local aCards, bCards = { ["npc:589"] = 1 }, { ["npc:639"] = 2 }
+    local a, b
+    local told = {}
+    local function swapper(counts)
+        return function(give, take)
+            counts[give] = counts[give] - 1
+            counts[take] = (counts[take] or 0) + 1
+            return true
+        end
+    end
+    a = ACB.newTrade(aCards, function() return 1 end, function() return "id-1" end, function(peer, msg)
+        b:receive("alice-realm", msg)
+        return true
+    end, swapper(aCards))
+    b = ACB.newTrade(bCards, function() return 1 end, function() return "id-2" end, function(peer, msg)
+        a:receive("bob-realm", msg)
+        return true
+    end, swapper(bCards))
+    b.notify = function(text) told[#told + 1] = text end
+    -- Alice offers her 589 for Bob's 639. Bob was not listening: the offer opens a trade on his side.
+    equal(a:propose("bob-realm", "npc:589", "npc:639"), true)
+    equal(b.session.incoming, true)
+    equal(b.session.take, "npc:589")
+    equal(b.session.want, "npc:639")
+    assert(#told == 1 and told[1]:find("alice-realm offers", 1, true) and told[1]:find("/acb trade accept", 1, true), told[1])
+    equal(a.status:find("Waiting for them to accept", 1, true) ~= nil, true)
+    -- Nothing has changed hands until Bob accepts.
+    equal(aCards["npc:589"], 1)
+    equal(b:accept(), true)
+    equal(aCards["npc:589"], 0)
+    equal(aCards["npc:639"], 1)
+    equal(bCards["npc:589"], 1)
+    equal(bCards["npc:639"], 1)
+end)
+
+test("an offer can be declined, and is ignored when you do not own the card asked for, or repeated, or answered wrongly", function()
+    local aCards, bCards = { ["npc:589"] = 1 }, { ["npc:639"] = 1 }
+    local a, b
+    local told = {}
+    a = ACB.newTrade(aCards, function() return 1 end, function() return "id-1" end, function(peer, msg)
+        b:receive("alice-realm", msg)
+        return true
+    end)
+    b = ACB.newTrade(bCards, function() return 1 end, function() return "id-2" end, function(peer, msg)
+        a:receive("bob-realm", msg)
+        return true
+    end)
+    a.notify = function(text) told[#told + 1] = text end
+    -- Bob does not own the card Alice asks for: he hears nothing.
+    equal(a:propose("bob-realm", "npc:589", "npc:590"), true)
+    equal(b.session, nil)
+    a:reset()
+    -- A real offer, declined.
+    equal(a:propose("bob-realm", "npc:589", "npc:639"), true)
+    equal(b.session.incoming, true)
+    equal(b:decline(), true)
+    equal(b.session, nil)
+    equal(a.session, nil)
+    assert(told[#told]:find("declined your offer", 1, true), told[#told])
+    -- Offers from one player are not accepted more than once in a while.
+    equal(a:propose("bob-realm", "npc:589", "npc:639"), true)
+    equal(b.session, nil)
+    -- Bob cannot accept what is not on offer, and a different card from his binder does not answer a named offer.
+    equal(b:accept(), false)
+    a:reset()
+    bCards["npc:640"] = 1
+    local now = 100
+    a = ACB.newTrade(aCards, function() return now end, function() return "id-3" end, function(peer, msg)
+        b:receive("alice-realm", msg)
+        return true
+    end)
+    b = ACB.newTrade(bCards, function() return now end, function() return "id-4" end, function(peer, msg)
+        a:receive("bob-realm", msg)
+        return true
+    end)
+    equal(a:propose("bob-realm", "npc:589", "npc:639"), true)
+    b:reply("npc:640")
+    equal(a.session.take, nil)
+    -- A proposal needs a card of yours and a card of theirs, and not the same one.
+    a:reset()
+    equal(a:propose("carol-realm", "npc:590", "npc:639"), false)
+    equal(a:propose("carol-realm", "npc:589", "npc:589"), false)
+end)

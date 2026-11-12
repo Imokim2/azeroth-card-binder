@@ -143,8 +143,12 @@ function ACB.initSlash(saved, tools)
             else
                 ACB.open(cmd)
             end
+        elseif cmd == "trade accept" then
+            ACB.acceptTrade()
+        elseif cmd == "trade decline" then
+            ACB.declineTrade()
         elseif cmd:match("^trade%s+%S") then
-            ACB.prepareTrade(message:match("^%s*%S+%s+(%S+)"))
+            ACB.prepareTrade(message:match("^%s*%S+%s+(.-)%s*$"))
         elseif cmd == "" then
             ACB.open()
         else

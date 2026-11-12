@@ -30,6 +30,7 @@ ZoneBar.lua
 Settings.lua
 Social.lua
 Swaps.lua
+Inspector.lua
 Requests.lua
 Reports.lua
 FolioUi.lua

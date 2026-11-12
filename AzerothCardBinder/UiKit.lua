@@ -59,6 +59,7 @@ local function window(name, width, height, title, folio)
         seal:SetPoint("TOPLEFT", 8, -6)
         local heading = label(header, "GameFontNormalLarge", 55, 9, parchment, title)
         heading:SetFont("Fonts\\MORPHEUS.ttf", 33, "")
+        frame.heading = heading
         local edition = header:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
         edition:SetPoint("TOPRIGHT", -14, -20)
         edition:SetTextColor(unpack(brass))

@@ -41,6 +41,11 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
         return table.concat({ "C", session.id, session.give, session.take }, "|")
     end
 
+    -- A proposal names both cards: what the sender gives (give) and the card of the partner they want for it (want).
+    local function proposalMessage(session)
+        return table.concat({ "P", session.id, session.give, session.want }, "|")
+    end
+
     function trade:listen(peer)
         if busy(self) or not peer then return end
         self.session = { peer = peer, expires = now() + 120 }
@@ -51,6 +56,7 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
         local session = self:active()
         if not session or not session.give then return end
         local message = session.sentConfirm and confirmation(session)
+            or (session.want and session.initiator and not session.take and proposalMessage(session))
             or ((session.initiator and "O" or "R") .. "|" .. session.id .. "|" .. session.give)
         local sent, reason = send(session.peer, message)
         if not sent then
@@ -91,6 +97,58 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
         end
         session.give = key
         self:retry()
+    end
+
+    -- Offer one of your cards (give) for a card you saw in the partner's binder (want). They accept or decline.
+    function trade:propose(peer, give, want)
+        if busy(self) or not peer then
+            self.status = "Finish or cancel the trade you have open first."
+            return false
+        end
+        local ok, why = allowed(peer)
+        if not ok then
+            self.status = why
+            return false
+        end
+        if not owns(give) then
+            self.status = "Choose a card from your binder."
+            return false
+        end
+        if not ACB.cards[want] or want == give then
+            self.status = "Choose the card you want from their binder."
+            return false
+        end
+        local id = makeID()
+        self.seen[peer .. "|" .. id] = true
+        self.session = { peer = peer, id = id, give = give, want = want, initiator = true, expires = now() + 120 }
+        self:retry()
+        if self.session and self.status == "Offer sent." then
+            self.status = ("Offer sent: your %s for their %s. Waiting for them to accept."):format(ACB.cards[give].name, ACB.cards[want].name)
+        end
+        return true
+    end
+
+    -- Accept an offer made to you: send the card they asked for, and confirm the pair.
+    function trade:accept()
+        local session = self:active()
+        if not session or not session.incoming or session.give then
+            self.status = "There is no offer to accept."
+            return false
+        end
+        self:reply(session.want)
+        if session.give then self:confirm() end
+        return session.give ~= nil
+    end
+
+    function trade:decline()
+        local session = self:active()
+        if not session or not session.incoming or session.give then
+            self.status = "There is no offer to decline."
+            return false
+        end
+        send(session.peer, "X|" .. session.id)
+        self:reset("Offer declined.")
+        return true
     end
 
     -- Apply the swap once both confirmations are in.
@@ -155,9 +213,42 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
         end
     end
 
+    -- Somebody offers a card for one of yours. Said only if you own the card they ask for, at most once in a while per
+    -- player, and never over a trade you have open.
+    local proposedAt = {}
+    local function receiveProposal(self, peer, id, give, want)
+        if #id > 36 or not ACB.cards[give] or not ACB.cards[want] or give == want or not owns(want) then return end
+        local at = now()
+        if proposedAt[peer] and at < proposedAt[peer] then return end
+        proposedAt[peer] = at + 10
+        local key = peer .. "|" .. id
+        if self.seen[key] then return end
+        self.seen[key] = true
+        local current = self:active()
+        if current and not current.applied and not (current.peer == peer and not current.give and not current.take) then return end
+        self.session = { peer = peer, id = id, take = give, want = want, incoming = true, expires = at + 120 }
+        self.status = ("%s offers %s for your %s. Accept or decline."):format(peer, ACB.cards[give].name, ACB.cards[want].name)
+        if self.notify then
+            self.notify(("%s offers %s for your %s. Type /acb trade accept, or open the Trade tab."):format(
+                peer, ACB.cards[give].name, ACB.cards[want].name))
+        end
+    end
+
     function trade:receive(peer, message)
+        if type(message) == "string" and #message <= 100 then
+            local id, give, want = message:match("^P|([%w%-]+)|(%a+:%d+)|(%a+:%d+)$")
+            if id then return receiveProposal(self, peer, id, give, want) end
+        end
         local session = self:active()
         if not session or session.peer ~= peer or type(message) ~= "string" or #message > 100 then return end
+        local declined = message:match("^X|([%w%-]+)$")
+        if declined then
+            if declined == session.id and session.initiator and not session.take then
+                self:reset(peer .. " declined your offer.")
+                if self.notify then self.notify(self.status) end
+            end
+            return
+        end
         local listCommand, list = message:match("^([SW])|([%w:,]*)$")
         if listCommand then
             local items = {}
@@ -178,9 +269,14 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
             session.id, session.take = id, give
             self.status = "Offer received. Choose your card and send a reply."
         elseif command == "R" and take == "" and id == session.id and session.initiator
-            and not session.take and session.give ~= give then
+            and not session.take and session.give ~= give and (not session.want or give == session.want) then
             session.take = give
             self.status = "Reply received. Review both cards and accept."
+            -- A proposal already named the card, so the proposer agreed to this pair when they sent it.
+            if session.want then
+                self:confirm()
+                if self.notify then self.notify(peer .. " accepted your offer.") end
+            end
         elseif command == "C" and id == session.id and session.give and session.take
             and session.take == give and take == "|" .. session.give then
             if session.peerConfirmed then

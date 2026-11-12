@@ -21,16 +21,21 @@ local turnButton = ui.turnButton
 
 local createIndex = ACB.createFolioIndex
 
-function ACB.createFolio(parent, saved, selectSet)
+-- `viewing` (optional, { mine = function returning your counts }) makes the folio a read-only view of someone else's binder.
+function ACB.createFolio(parent, saved, selectSet, viewing)
     local view = CreateFrame("Frame", nil, parent)
     view:SetAllPoints(parent)
     local left, right = paper(view, 20), paper(view, 471, true)
-    local indexPage = createIndex(view, saved, selectSet)
+    local openCard = viewing and function(key)
+        local card = ACB.cards[key]
+        if card and view:selectCard(card.page, key) then view:showRegion(card.page) end
+    end
+    local indexPage = createIndex(view, saved, selectSet, openCard)
     local preloadPortraits = ACB.createPortraitLoader(view, left)
     view:SetScript("OnHide", function() preloadPortraits() end)
     local region, state
     local byRegion = {}
-    local function share(entry) ACB.linkCard(saved, entry) end
+    local function share(entry) if not viewing then ACB.linkCard(saved, entry) end end
 
     text(left, 23, 17, "REGION COLLECTION", 10, SEPIA, 180)
     local title = text(left, 22, 33, "", 35, INK, 280, "LEFT", true)
@@ -128,6 +133,12 @@ function ACB.createFolio(parent, saved, selectSet)
         view:showRegion(region)
     end)
     wantButton:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    if viewing and viewing.offer then
+        -- In someone else's binder this button asks for the selected card (see Inspector.lua).
+        dustButton:SetScript("OnClick", function()
+            viewing.offer(ACB.cards[state.edition] or ACB.pages[region].cards[state.slot])
+        end)
+    end
     wantButton:SetScript("OnClick", function()
         local entry = ACB.pages[region].cards[state.slot]
         if (saved.counts[entry.key] or 0) > 0 then
@@ -235,6 +246,21 @@ function ACB.createFolio(parent, saved, selectSet)
         local wanted = saved.wanted and saved.wanted[entry.key] == true
         wantText:SetText(count > 0 and "Link in chat" or (wanted and "On your wanted list" or "Add to wanted list"))
         setCard(detail, entry, count, saved.shiny and saved.shiny[entry.key], wanted)
+        if viewing then
+            -- Nothing here is theirs to change from your side: no dust, no wanted list, no asking.
+            askButton:Hide()
+            local buttonLabel = viewing.buttonLabel and viewing.buttonLabel()
+            dustButton:SetShown(count > 0 and buttonLabel ~= nil)
+            dustButton:SetEnabled(true)
+            dustButton:SetAlpha(1)
+            dustText:SetText(buttonLabel or "")
+            wantButton:Hide()
+            dustMark:SetText("")
+            attemptsText:SetText("")
+            local mine = viewing.mine and viewing.mine() or {}
+            luckText:SetText(("You own: %d"):format(mine[entry.key] or 0))
+            detailNote:SetText(count > 0 and entry.lore or ("Not in their binder. " .. ACB.whereToFind(entry)))
+        end
         if showIndex then
             preloadPortraits()
         else
@@ -242,8 +268,8 @@ function ACB.createFolio(parent, saved, selectSet)
         end
 
         for slot, label in ipairs(milestones) do
-            label:SetShown(index == 1)
-            if index == 1 then
+            label:SetShown(index == 1 and not viewing)
+            if index == 1 and not viewing then
                 local achievement = ACB.achievements[slot]
                 local collected, needed = ACB.progress(saved.counts, 1, achievement.bossesOnly)
                 local status = saved.achievements[achievement.key] and "Earned" or ("%d / %d"):format(collected, needed)

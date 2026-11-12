@@ -342,6 +342,23 @@ local function initialize()
         ACB.refresh()
         return done
     end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.tradeDistanceOk(saved, peer) end)
+    trade.notify = report
+    -- Offer one of your cards for a card in another player's binder; they accept or decline (Trade.lua).
+    function ACB.proposeTrade(peer, give, want)
+        trade:propose(peer, give, want)
+        report(trade.status)
+        ACB.refresh()
+    end
+    function ACB.acceptTrade()
+        trade:accept()
+        report(trade.status)
+        ACB.refresh()
+    end
+    function ACB.declineTrade()
+        trade:decline()
+        report(trade.status)
+        ACB.refresh()
+    end
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.tradePrefix)
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.viewPrefix)
