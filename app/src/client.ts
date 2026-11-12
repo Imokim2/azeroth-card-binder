@@ -91,6 +91,7 @@ async function uploadBody(options: ClientOptions, binder: Binder, events: Binder
 function continues(binder: Binder, ack: Ack | null): boolean {
   if (!ack || ack.seq === 0) return true;
   if (binder.head.seq < ack.seq) return false;
+  if (binder.head.seq === ack.seq) return binder.head.hash === ack.hash;
   const event = binder.events.find((entry) => entry.seq === ack.seq);
   return event ? event.h === ack.hash : true;
 }
@@ -102,9 +103,22 @@ export async function syncBinder(options: ClientOptions, binder: Binder, known: 
   let uploaded = 0;
   let resyncs = 0;
   for (;;) {
+    // Even an empty/pruned file must continue the last server acknowledgement.
+    if (!continues(binder, ack)) return { status: "diverged", serverSeq: ack?.seq ?? 0 };
     const have = ack?.seq ?? 0;
     const pending = binder.events.filter((event) => event.seq > have);
-    if (pending.length === 0) return { status: "synced", ack, uploaded };
+    if (pending.length === 0) {
+      if (ack) return { status: "synced", ack, uploaded };
+      // On a cold start an empty file is not evidence that the server is empty too.
+      // Ask once, then cache even a zero acknowledgement for later save-driven passes.
+      const probe = await sendWithRetries(options, "/v1/ledger", await uploadBody(options, binder, []));
+      if ("later" in probe) return { status: "retry-later", afterMs: probe.later, reason: probe.reason };
+      if (probe.status !== 200) return { status: "rejected", ...errorOf(probe) };
+      const seq = probe.body["ackSeq"], hash = probe.body["ackHash"];
+      if (!Number.isSafeInteger(seq) || (seq as number) < 0 || typeof hash !== "string" || !/^[0-9a-f]{32}$/.test(hash)) return { status: "rejected", code: "bad_reply" };
+      ack = { seq: seq as number, hash };
+      continue;
+    }
     const first = pending[0] as BinderEvent;
     if (first.seq !== have + 1) {
       // The file's oldest event comes after the server's newest: ask where the server really is, once.

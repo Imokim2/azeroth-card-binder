@@ -13,6 +13,13 @@ local clock = 1700000000
 time = function() clock = clock + 5 return clock end
 
 local saved = {}
+-- Continue an existing fixture instead of inventing a second history against a later Sync.lua range.
+if arg[4] == "resume" then
+    assert(loadfile(arg[1]))()
+    saved = assert(AzerothCardBinderDB)
+    local last = saved.ledger and saved.ledger[#saved.ledger]
+    clock = math.max(clock, last and last.t or 0)
+end
 local _, upgraded = ACB.cleanSavedData(saved)
 local ledger = ACB.newLedger(saved, time, function() return "Alice-RealmName" end)
 ledger:begin(upgraded)
@@ -29,7 +36,7 @@ if arg[3] then
     local packs = os.getenv("WARCARDS_PACKS") ~= nil
     collection.packsEnabled = packs
     for number = 1, tonumber(arg[2] or 60) do
-        collection:roll(guid(573, "ranked" .. number), "loot")
+        collection:roll(guid(573, (arg[4] == "resume" and "continued" or "ranked") .. number), "loot")
         if packs and next(saved.packs or {}) then break end
     end
     if packs then

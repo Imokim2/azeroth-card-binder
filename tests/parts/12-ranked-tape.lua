@@ -6,6 +6,7 @@ local MISS = "0000270f00000001" -- roll 10000 (a miss), shiny roll 2
 local DROP_PLAIN = "0000000000000001" -- roll 1, shiny roll 2 (not shiny)
 
 local function rankedBinder(entries, start, report)
+    ACB.sync.rankedIssue = nil
     local saved = {}
     local _, upgraded = ACB.cleanSavedData(saved)
     saved.balancedDrops = false -- these fixtures exercise the legacy rank-rate tape contract
@@ -32,6 +33,23 @@ test("the Lua tape functions give exactly the roll and shiny values in the share
     equal(ACB.tapeRoll(DROP_SHINY), 1)
     equal(ACB.tapeRoll(MISS), 10000)
     equal(ACB.tapeShiny(MISS, 20), 2)
+end)
+
+test("a mismatched Ranked supply is not called empty or skipped forward", function()
+    local keep = ACB.sync
+    ACB.sync = { tape = { start = 96, entries = { DROP_PLAIN, MISS } } }
+    local saved = { tape = { next = 1 } }
+    equal(ACB.tapeLeft(saved), 0)
+    equal(ACB.takeTape(saved), nil)
+    equal(ACB.tapeHolds(saved, 1), false)
+    equal(saved.tape.next, 1)
+    assert(ACB.rankedPauseReason(saved):find("out of sync", 1, true))
+    assert(not ACB.rankedPauseReason(saved):find("run out", 1, true))
+    ACB.sync = { rankedIssue = "binder-mismatch" }
+    assert(ACB.rankedPauseReason(saved):find("Your cards have been kept", 1, true))
+    ACB.sync = {}
+    assert(ACB.rankedPauseReason(saved):find("no Ranked supply", 1, true))
+    ACB.sync = keep
 end)
 
 test("Ranked rolls use the tape in order, win or lose, and write every attempt into the ledger", function()

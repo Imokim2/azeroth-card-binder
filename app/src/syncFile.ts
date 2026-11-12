@@ -15,6 +15,7 @@ export type SyncData = {
   reportsDone?: string[];
   // What the server says is the newest add-on and the oldest it accepts (x.y.z), so the add-on can say when it is out of date.
   releases?: { latestAddon: string; minAddon: string };
+  rankedIssue?: "binder-mismatch" | "position-mismatch";
 };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
@@ -54,6 +55,10 @@ export function syncFileText(data: SyncData): string {
   const standing = (entry: Standing, index: number) =>
     `        { rank = ${whole(entry.rank, "rank")}, name = ${luaString(entry.name, "name")}, score = ${whole(entry.score, "score")}, cards = ${whole(entry.cards, "cards")}, sets = ${whole(entry.sets, "sets")} }, -- ${index + 1}`;
   const extra: string[] = [];
+  if (data.rankedIssue) {
+    if (!["binder-mismatch", "position-mismatch"].includes(data.rankedIssue)) throw new Error("unknown Ranked sync issue");
+    extra.push(`    rankedIssue = "${data.rankedIssue}",`);
+  }
   if (data.leaderboard) {
     if (data.leaderboard.length > 100) throw new Error("the leaderboard has at most 100 places");
     extra.push("    leaderboard = {", ...data.leaderboard.map(standing), "    },");

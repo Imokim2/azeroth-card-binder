@@ -63,7 +63,21 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
     function trade:canAccept()
         local s = current()
         return s ~= nil and not s.closed and not s.cancelPending and s.connected == true and not s.sentConfirm
+            and not s.invited
             and (s.give ~= nil or s.take ~= nil) and s.give ~= s.take and owns(s.give) == true
+    end
+
+    -- Joining an invitation opens the trade, but does not accept either offer.
+    function trade:join()
+        local s = current()
+        if not s or s.closed or s.cancelPending then return false end
+        if not s.invited then return true end
+        local ok, why = allowed(s.peer)
+        if not ok then self.status = why return false end
+        s.invited, s.connected, s.expires = nil, true, now() + 120
+        self.status = s.gift and "Check the gift, then click Accept." or "Click your item slot to choose a card."
+        offer(s)
+        return true
     end
 
     function trade:start(peer, key, gift)
@@ -82,7 +96,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
 
     function trade:change(key)
         local s = current()
-        if not s or s.closed or s.cancelPending or s.decision then return false end
+        if not s or s.closed or s.invited or s.cancelPending or s.decision then return false end
         if s.sentConfirm then self.status = "You accepted. Wait for the other player, or cancel." return false end
         if not owns(key) or s.revision >= 9999 or (s.gift and (not s.initiator or not key)) then return false end
         if key == s.give then return true end
@@ -136,7 +150,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
             local s = self:active()
             if s and s.modern and s.id == id and s.peer == peer then
                 if s.cancelled then transmit(s, "X|" .. id)
-                elseif not s.closed then offer(s) end
+                elseif not s.closed and not s.invited then offer(s) end
                 return
             end
             if (s and not s.closed and not s.applied) or self.seen[peer .. "|" .. id]
@@ -144,11 +158,10 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
             lastInvite = now()
             self.seen[peer .. "|" .. id] = true
             s = { modern = true, peer = peer, id = id, take = key ~= "0" and key or nil, gift = mode == "g",
-                revision = 1, theirRevision = 1, connected = true, expires = now() + 120 }
+                revision = 1, theirRevision = 1, invited = true, expires = now() + 120 }
             self.session = s
             self.status = s.gift and "A gift for you. Check the item, then click Accept."
                 or "Choose a card or pack, or leave your side empty to receive a gift."
-            offer(s)
             return true
         end
         local s = current()
@@ -167,6 +180,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         end
         local command, confirmId, mine, theirs, give, take = message:match("^([AF])|([%w%-]+)|(%d+)|(%d+)|([%w:]+)|([%w:]+)$")
         if command then
+            if s.invited then return end
             if confirmId ~= s.id or tonumber(mine) ~= s.theirRevision or tonumber(theirs) ~= s.revision
                 or give ~= wire(s.take) or take ~= wire(s.give) or (not s.give and not s.take) or s.give == s.take then return end
             if command == "A" and not s.closed and not s.cancelPending then
@@ -199,6 +213,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         elapsed = 0
         local s = current()
         if not s or s.closed then return true end
+        if s.invited then return true end
         if s.cancelPending then transmit(s, "K|" .. s.id)
         elseif s.decision == "commit" then transmit(s, packet(s, "F"))
         elseif s.sentConfirm then transmit(s, packet(s, "A"))

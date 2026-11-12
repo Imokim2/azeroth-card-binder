@@ -41,17 +41,17 @@ const tapeRequest = (player: ReturnType<typeof newPlayer>) => {
 const secret = await tapeKey(TAPE_SECRET);
 for (let index = 1; index <= 300; index++) await tapeEntry(secret, "warmup", index);
 
-await measure("1,000 tape entries (HMAC-SHA256)", "the cost inside a tape request", 15, async () => {
+await measure(`${TAPE_SIZE.toLocaleString("en-US")} tape entries (HMAC-SHA256)`, "the cost inside a tape request", 15, async () => {
   for (let index = 1; index <= TAPE_SIZE; index++) await tapeEntry(secret, "01ARZ3NDEKTSV4RRFFQ69G5FAV", index);
 });
-await measure("SHA-256 of a 16 KB text", "the tape commitment", 15, async () => { await sha256Hex("a".repeat(16_000)); });
+await measure("SHA-256 of one tape batch", "the tape commitment", 15, async () => { await sha256Hex("a".repeat(TAPE_SIZE * 17 - 1)); });
 
-// A fresh player and a real tape request: the first issues 1,000 entries, a later one only returns what is unused.
+// A fresh player and a real tape request: the first issues a full batch, a later one only returns what is unused.
 const env = setup();
 const alice = newPlayer("alice");
 const registered = (await (await env.call("/v1/register", { body: registration(alice) })).json()) as { playerId: string };
-await measure("POST /v1/tape, first (issues 1,000 entries)", "the worst tape request: derive, commit, store, return", 1, async () => { await env.call("/v1/tape", { body: tapeRequest(alice) }); });
-await measure("POST /v1/tape, again (returns up to 1,000 unused)", "what the app asks every ten minutes while playing Ranked", 15, async () => { await env.call("/v1/tape", { body: tapeRequest(alice) }); });
+await measure("POST /v1/tape, first (issues a full batch)", "the worst tape request: derive, commit, store, return", 1, async () => { await env.call("/v1/tape", { body: tapeRequest(alice) }); });
+await measure("POST /v1/tape, again (returns unused batch)", "a repeated request, not an idle poll", 15, async () => { await env.call("/v1/tape", { body: tapeRequest(alice) }); });
 
 // Uploads: a small Casual history, and a Ranked history that uses most of an issued tape (the largest an upload can be).
 const casual = newPlayer("casual");
@@ -74,7 +74,7 @@ async function rankedUpload(wins: number, label: string) {
 }
 await rankedUpload(2, "a few attempts");
 await rankedUpload(8, "hundreds of attempts");
-await rankedUpload(14, "about as many attempts as one tape batch holds");
+await rankedUpload(14, "a longer session sample");
 
 console.log(`\nTape batch: ${TAPE_SIZE} entries, refilled below ${REFILL_BELOW}.\n`);
 console.log("What".padEnd(62) + "CPU ms".padStart(9) + "wall ms".padStart(9) + "  note");

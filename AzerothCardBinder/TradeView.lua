@@ -22,15 +22,10 @@ local function side(parent, x, caption)
 end
 
 function ACB.createTradeView(parent, saved, trade)
-    local view = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-    view:SetPoint("TOPLEFT", 20, -109)
-    view:SetSize(900, 500)
-    kit.backdrop(view, "Interface\\Buttons\\WHITE8X8", 1)
-    view:SetBackdropColor(0.13, 0.09, 0.07, 1)
-    view:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
+    local view = kit.window("AzerothCardBinderTradeWindow", 680, 560, "Card trade")
     local box = CreateFrame("Frame", nil, view)
     box:SetSize(640, 480)
-    box:SetPoint("TOP", view, "TOP", 0, -8)
+    box:SetPoint("TOP", view, "TOP", 0, -48)
     label(box, "GameFontHighlightSmall", 20, 14, kit.muted, "PLAYER")
     local partner = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
     partner:SetPoint("TOPLEFT", 78, -4)
@@ -65,14 +60,16 @@ function ACB.createTradeView(parent, saved, trade)
     local mine, theirs = side(box, 20, "YOU GIVE"), side(box, 330, "YOU RECEIVE")
     local function selectCard(key)
         local s = trade:active()
-        if s and s.modern and not s.closed and not trade:change(key) then refresh() return end
+        if s and s.modern and not s.closed and not trade:change(key) then refresh() return false end
         if s and s.closed then trade:reset() end
         selected = key
         refresh()
+        return true
     end
 
-    -- A searchable list replaces cycling through every owned card with arrows.
-    local picker = kit.window("AzerothCardBinderTradeCards", 480, 420, "Choose a card or pack", false)
+    -- Cards are chosen from the binder; sealed packs keep their own searchable list.
+    local picker = kit.window("AzerothCardBinderTradeCards", 480, 420, "Choose a pack", false)
+    picker:SetFrameStrata("FULLSCREEN_DIALOG")
     local search = CreateFrame("EditBox", nil, picker, "InputBoxTemplate")
     search:SetPoint("TOPLEFT", 38, -56)
     search:SetSize(404, 26)
@@ -80,16 +77,11 @@ function ACB.createTradeView(parent, saved, trade)
     search:SetMaxLetters(80)
     search:SetScript("OnEscapePressed", function() picker:Hide() end)
     local rows, page, pages = {}, 1, 1
-    local empty = label(picker, "GameFontHighlight", 30, 94, kit.muted, "No matching cards or packs.")
+    local empty = label(picker, "GameFontHighlight", 30, 94, kit.muted, "No matching packs.")
     local pageLabel = centered(picker, "GameFontHighlightSmall", 377, kit.muted, 160)
     local back, more
     local function listCards()
         local query, cards = search:GetText():lower(), {}
-        for _, group in ipairs(ACB.inventoryPages()) do
-            for _, card in ipairs(group.cards) do
-                if (saved.counts[card.key] or 0) > 0 and card.name:lower():find(query, 1, true) then cards[#cards + 1] = card end
-            end
-        end
         for _, item in ipairs(ACB.packList(saved)) do
             local pack = ACB.packItem("pack:" .. item.zone)
             if (pack.name .. " " .. pack.page.title .. " pack " .. pack.tier):lower():find(query, 1, true) then cards[#cards + 1] = pack end
@@ -119,14 +111,34 @@ function ACB.createTradeView(parent, saved, trade)
     back = button(picker, "Previous", 30, 370, 100, function() page = page - 1 listCards() end)
     more = button(picker, "Next", 350, 370, 100, function() page = page + 1 listCards() end)
     search:SetScript("OnTextChanged", function() page = 1 listCards() end)
-    local choose = button(mine.frame, "Choose item", 30, 230, 145, function()
+    local function editable()
+        local s = trade:active()
+        return not showHistory and (not s or s.closed or (s.modern and not s.invited and not s.sentConfirm
+            and not s.cancelPending and not s.decision and not (s.gift and not s.initiator)))
+    end
+    local function chooseCard()
+        if not editable() then return end
+        local session = trade:active()
+        if session and session.closed then trade:reset() session = nil end
+        local function canPick() return editable() and trade:active() == session and (not session or not session.closed) end
+        if ACB.selectTradeCard then ACB.selectTradeCard(selectCard, canPick, selected) end
+    end
+    local slot = CreateFrame("Button", nil, mine.frame)
+    slot:SetPoint("TOPLEFT", 24, -35)
+    slot:SetSize(242, 190)
+    slot:SetFrameLevel(mine.frame:GetFrameLevel() + 40)
+    slot:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+    slot:SetScript("OnClick", chooseCard)
+    local choose = button(mine.frame, "Choose card", 16, 230, 98, chooseCard)
+    local choosePack = button(mine.frame, "Choose pack", 120, 230, 98, function()
+        if not editable() then return end
         page = 1
         search:SetText("")
         listCards()
         picker:Show()
         search:SetFocus()
     end)
-    local remove = button(mine.frame, "Remove", 183, 230, 77, function() selectCard(nil) end)
+    local remove = button(mine.frame, "Clear", 224, 230, 54, function() if editable() then selectCard(nil) end end)
     local status = centered(box, "GameFontHighlight", 394, kit.brass, 600)
     local accept = button(box, "Accept", 20, 426, 150, function() trade:confirm() refresh() end)
     local cancel = button(box, "Cancel", 180, 426, 120, function() trade:cancel() refresh() end)
@@ -166,12 +178,14 @@ function ACB.createTradeView(parent, saved, trade)
         mark(tradeMode, not gift)
         mark(giftMode, gift)
         modeNote:SetText(gift and "One item. Nothing needed in return." or "Trade cards, packs, or one of each.")
-        local editable = not showHistory and (not live or (not s.sentConfirm and not s.cancelPending and not s.decision))
-            and not (live and gift and not s.initiator)
-        choose:SetEnabled(editable)
+        local canEdit = editable() == true
+        slot:SetEnabled(canEdit)
+        choose:SetEnabled(canEdit)
+        choosePack:SetEnabled(canEdit)
+        choosePack:SetShown(not (live and gift and not s.initiator))
         choose:SetShown(not (live and gift and not s.initiator))
         remove:SetShown(not (live and gift and not s.initiator))
-        remove:SetEnabled(editable and give ~= nil and not (live and gift))
+        remove:SetEnabled(canEdit and give ~= nil and not (live and gift))
         local function fill(panel, key, count, confirmed, emptyText)
             local item = key and ACB.tradeItem(key)
             panel.card.frame:SetShown(item ~= nil and not item.pack)
@@ -188,7 +202,7 @@ function ACB.createTradeView(parent, saved, trade)
         end
         -- The offer is one copy, even when the picker says several are owned.
         fill(mine, give, give and 1 or 0, live and s.sentConfirm or s and s.applied,
-            live and gift and not s.initiator and "Nothing. This is a gift to you." or "Nothing chosen.\nClick Choose item to add a card or pack.")
+            live and gift and not s.initiator and "Nothing. This is a gift to you." or "Click here to choose a card.\nUse Choose pack for a sealed pack.")
         fill(theirs, take, 1, live and s.peerConfirmed or s and s.applied,
             gift and "Nothing in return.\nThis is a gift." or "Nothing has been added.")
         local pack = give and ACB.packItem(give)
@@ -210,13 +224,15 @@ function ACB.createTradeView(parent, saved, trade)
     end
 
     function ACB.prepareTrade(name, key)
+        local s = trade:active()
+        if s and s.invited and not trade:join() then return false end
         if type(name) == "string" and name ~= "" then partner:SetText(name:gsub("%-", " ")) end
         if key and ACB.itemCount(saved, key) > 0 then selectCard(key) end
         showHistory = false
         ACB.open("trade")
     end
     -- Exposed to the offline UI checks and the layout preview, not saved data.
-    view.controls = { partner = partner, start = start, gift = giftMode, trade = tradeMode, choose = choose,
+    view.controls = { partner = partner, start = start, gift = giftMode, trade = tradeMode, choose = choose, slot = slot, packs = choosePack,
         accept = accept, cancel = cancel, search = search, rows = rows, picker = picker, mine = mine.card,
         minePack = mine.pack, theirPack = theirs.pack }
     return view

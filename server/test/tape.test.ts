@@ -30,7 +30,7 @@ function signWith(player: Player, canonical: string): string {
   return reference.signBatch(JSON.parse(canonical), player.privateKey);
 }
 
-test("the tape is issued once, is the same on every request, and differs from player to player", async () => {
+test("a 10,000-attempt session buffer is issued once, is repeatable, and differs between players", async () => {
   const env = setup();
   const alice = await registered(env, "alice");
   const bob = await registered(env, "bob");
@@ -38,6 +38,7 @@ test("the tape is issued once, is the same on every request, and differs from pl
   const entries = first["entries"] as string[];
   assert.equal(first["start"], 1);
   assert.equal(entries.length, TAPE_SIZE);
+  assert.equal(entries.length, 10_000);
   assert.ok(entries.every((entry) => /^[0-9a-f]{16}$/.test(entry)));
   const issued = first["issued"] as { start: number; end: number; commitment: string };
   assert.deepEqual([issued.start, issued.end], [1, TAPE_SIZE]);
@@ -52,6 +53,30 @@ test("the tape is issued once, is the same on every request, and differs from pl
   const key = await tapeKey(TAPE_SECRET);
   assert.equal(entries[41], await tapeEntry(key, alice.id, 42));
   assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM tapes").get()?.["n"], 2);
+});
+
+test("an exhausted legacy 1,000-entry tape refills at its next position without changing the binder", async () => {
+  const env = setup();
+  const { player, id } = await registered(env);
+  const key = await tapeKey(TAPE_SECRET);
+  const legacy: string[] = [];
+  for (let index = 1; index <= 1_000; index++) legacy.push(await tapeEntry(key, id, index));
+  await env.deps.tapes.recordIssue(id, { start: 1, end: 1_000, commitment: await tapeCommitment(legacy) }, NOW);
+  // This is an existing binder and acknowledgement, not a new registration or reset during refill.
+  const history = chain([{ seq: 1, t: 1000, kind: "mode", key: "casual", count: 0, dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char: "Alice-RealmName" }]);
+  assert.equal((await env.call("/v1/ledger", { body: signedUpload(player, history, { tapeIndex: 1_001, snapshot: { counts: {}, dust: 0, sets: {}, attempts: {}, titles: {} } }) })).status, 200);
+  const before = env.raw.prepare("SELECT * FROM players WHERE id = ?").get(id);
+  const response = await env.call("/v1/tape", { body: tapeRequest(player) });
+  assert.equal(response.status, 200);
+  const reply = await read(response);
+  const entries = reply["entries"] as string[];
+  assert.equal(reply["start"], 1_001);
+  assert.equal(entries.length, 10_000);
+  assert.equal(entries[0], await tapeEntry(key, id, 1_001));
+  assert.equal(entries.at(-1), await tapeEntry(key, id, 11_000));
+  assert.deepEqual(env.raw.prepare("SELECT * FROM players WHERE id = ?").get(id), before);
+  assert.equal(await env.deps.tapes.issuedEnd(id), 11_000);
+  assert.equal(await env.deps.tapes.tapeNext(id), 1_001);
 });
 
 test("a refill is issued only when few entries are unused, and always starts where the old one ended", async () => {

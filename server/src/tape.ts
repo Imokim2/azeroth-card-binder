@@ -8,8 +8,9 @@ import type { Catalog, LedgerState } from "./shared.ts";
 import { chanceFor } from "../../packages/shared/src/drops.js";
 
 // A player is never given more than TAPE_SIZE + REFILL_BELOW entries ahead of the last upload that used them, so what
-// they could read ahead of time is small. Heavy play is about a thousand attempts an hour.
-export const TAPE_SIZE = 1_000; // entries added at each refill
+// they could read ahead of time is bounded. Ten thousand attempts leaves room for a long session between game saves.
+// Keep the refill threshold compatible with installed companions; this needs no client update or binder reset.
+export const TAPE_SIZE = 10_000; // entries added at each refill
 export const REFILL_BELOW = 250; // a refill happens when this few unused entries remain
 
 const encoder = new TextEncoder();

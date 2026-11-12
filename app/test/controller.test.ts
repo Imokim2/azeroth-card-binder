@@ -258,7 +258,7 @@ test("a new binder in the game is noticed, and starting it on the server archive
     try { lua("tests/tools/write-saved.lua", a.saved, "0"); } finally { delete process.env["WARCARDS_VARIANT"]; }
     await a.controller.syncNow();
     const noticed = await a.waitFor("the new binder to be noticed", (s) => s.needsNewBinder);
-    assert.match(noticed.accounts[0]?.state ?? "", /new binder/);
+    assert.match(noticed.accounts[0]?.state ?? "", /differs from the server record/);
     assert.equal((a.env.raw.prepare("SELECT COUNT(*) AS n FROM batches WHERE player_id = ?").get(playerId) as { n: number }).n, 1, "nothing was uploaded on top of the old chain");
 
     // Not agreeing changes nothing.

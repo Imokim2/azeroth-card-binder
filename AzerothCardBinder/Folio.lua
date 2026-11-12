@@ -33,7 +33,7 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
     local indexPage = createIndex(view, saved, selectSet, openCard)
     local preloadPortraits = ACB.createPortraitLoader(view, left)
     view:SetScript("OnHide", function() preloadPortraits() end)
-    local region, state
+    local region, state, tradePick, tradeAllowed
     local byRegion = {}
     local function share(entry) if not viewing then ACB.linkCard(saved, entry) end end
 
@@ -158,6 +158,17 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
 
     rule(right, 23, 412, 402)
     local detailNote = text(right, 26, 424, "", 12, SEPIA, 396, "CENTER")
+    local tradeButton = ACB.uiKit.button(right, "Add to trade", 28, 420, 201, function()
+        if not tradePick or not state or not tradeAllowed() then return end
+        local entry = ACB.cards[state.edition] or ACB.pages[region].cards[state.slot]
+        if (saved.counts[entry.key] or 0) > 0 then tradePick(entry.key) end
+    end)
+    tradeButton:Hide()
+    view.tradeButton = tradeButton
+    function view:setTradePicker(choose, allowed)
+        tradePick, tradeAllowed = choose, allowed
+        tradeButton:SetShown(choose ~= nil)
+    end
     local milestones = {}
     for index, achievement in ipairs(ACB.achievements) do
         milestones[index] = text(right, 24, 455 + (index - 1) * 20, achievement.name, 11, INK, 400)
@@ -226,6 +237,11 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
         detail.holder:SetSize(ACB.cardWidth * scale, ACB.cardHeight * scale)
         detail.frame:SetScale(scale)
         local count = saved.counts[entry.key] or 0
+        tradeButton:SetShown(tradePick ~= nil)
+        tradeButton:SetEnabled(tradePick ~= nil and count > 0 and tradeAllowed() == true)
+        detailNote:SetShown(tradePick == nil)
+        dustButton:SetShown(tradePick == nil)
+        wantButton:SetShown(tradePick == nil)
         local tier = ACB.rarities[entry.rarity]
         local code = page.code or ("SET %02d"):format(index)
         selected:SetText(("SELECTED CARD  /  %s %02d"):format(code, state.slot))
@@ -281,7 +297,7 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
         end
 
         for slot, label in ipairs(milestones) do
-            label:SetShown(index == 1 and not viewing)
+            label:SetShown(index == 1 and not viewing and not tradePick)
             if index == 1 and not viewing then
                 local achievement = ACB.achievements[slot]
                 local collected, needed = ACB.progress(saved.counts, 1, achievement.bossesOnly)

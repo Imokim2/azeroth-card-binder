@@ -48,6 +48,11 @@ jobs:
           npm ci
           node --test test/updatePreservation.test.ts
           npm run dist
+      - name: Test native installer process detection
+        working-directory: app
+        env:
+          WARCARDS_REQUIRE_INSTALLER_TESTS: "1"
+        run: node --test test/installerProcess.test.ts
       # Free code signing from SignPath Foundation (docs/CODE-SIGNING.md). These steps do nothing until the repository
       # variable SIGNPATH_ORGANIZATION_ID is set (Settings, Secrets and variables, Actions, Variables) and the secret
       # SIGNPATH_API_TOKEN exists. Each signing request must then be approved by hand in SignPath before the release goes on.

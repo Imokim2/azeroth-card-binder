@@ -82,9 +82,11 @@ const accountState = (result: PassReport["accounts"][number]["result"]): string 
     case "unreadable": return `Cannot read the saved data: ${result.reason}`;
     case "not-registered": return "Not registered: sign in with Discord";
     case "retry-later": return "The server could not be reached; trying again soon";
-    case "rejected": return `The server refused it (${result.code})`;
+    case "rejected": return result.code === "tape_position_mismatch"
+      ? "Your saved binder and Ranked supply are out of step. Your cards have been kept; check the selected game folder and saved-data backup."
+      : `The server refused it (${result.code})`;
     case "history-missing": return "Older events are missing from the saved data";
-    case "diverged": return "This is a new binder: it does not continue the one the server has";
+    case "diverged": return "This saved binder differs from the server record. Your cards have been kept.";
   }
 };
 

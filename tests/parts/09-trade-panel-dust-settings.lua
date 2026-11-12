@@ -17,11 +17,10 @@ test("the simple Trade panel filters whispers and moves cards only after both ac
     local c = ACB.tradeView.controls
     c.partner:SetText("Bob")
     c.choose:OnClick()
-    c.search:SetText("Defias Pillager")
-    c.search:OnTextChanged()
-    local give = assert(c.rows[1].key)
+    local give = "npc:589"
+    ACB.openCard(give)
     local before, takeBefore = saved.counts[give], saved.counts["npc:573"] or 0
-    c.rows[1]:OnClick()
+    ACB.binderView.tradeButton:OnClick()
     instance = 36
     c.start:OnClick()
     equal(#sent, 0)

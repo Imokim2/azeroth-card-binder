@@ -178,7 +178,7 @@ function ACB.addPackMethods(collection, ctx)
         if self:packAvailable(zone) < 1 then return nil, "This pack is in your trade. Remove it or cancel the trade before opening it." end
         local ranked = saved.mode == "ranked"
         if ranked and not ACB.tapeHolds(saved, info.size) then
-            return nil, ("A Ranked pack needs %d roll tape entries. Type /reload so the companion app can bring more, or switch to Casual."):format(info.size)
+            return nil, ("A Ranked pack needs %d roll tape entries. %s"):format(info.size, ACB.rankedPauseReason(saved))
         end
         if ledger then ledger:flushRun() end
         ACB.activateDropBalance(saved, ledger)

@@ -13,7 +13,9 @@ local function peers(aCounts, bCounts)
     local function id() serial = serial + 1 return "simple-" .. serial end
     local function deliver(target, peer, message)
         wireLog[#wireLog + 1] = message
-        if not drops[message:sub(1, 1)] then target:receive(peer, message) end
+        if not drops[message:sub(1, 1)] then
+            if target:receive(peer, message) then target:join() end -- simulate accepting the invitation
+        end
         return true
     end
     a = ACB.newTrade(aCounts, function() return 1 end, id,
@@ -158,35 +160,47 @@ test("gift inventory events contain only the real transfer and gift history surv
     equal(valid, true)
 end)
 
-test("incoming gift requests open the actual binder without a Listen step", function()
+test("incoming gifts wait for invitation acceptance before opening the trade or sending a reply", function()
     local realPrepare, realSend = ACB.prepareTrade, C_ChatInfo.SendAddonMessage
     local opened
     ACB.prepareTrade = function(peer) opened = peer realPrepare(peer) end
     C_ChatInfo.SendAddonMessage = function() return 0 end
+    AzerothCardBinderWindow:Hide()
+    ACB.tradeView:Hide()
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "I|incoming-gift-ui|npc:639|g", "WHISPER", "Harry Dexter")
+    equal(opened, nil)
+    equal(AzerothCardBinderWindow:IsShown(), false)
+    equal(ACB.tradeView:IsShown(), false)
+    equal(AzerothCardBinderTradeNotice:IsShown(), true)
+    equal(ACB.tradeView.controls.accept.enabled, false)
+    local oldDistance = ACB.tradeDistanceOk
+    ACB.tradeDistanceOk = function() return true end
+    AzerothCardBinderTradeNotice.accept:OnClick()
+    ACB.tradeDistanceOk = oldDistance
     equal(opened, "harry-dexter")
-    equal(AzerothCardBinderWindow:IsShown(), true)
+    equal(AzerothCardBinderWindow:IsShown(), false)
+    equal(ACB.tradeView:IsShown(), true)
     equal(ACB.tradeView.controls.accept.enabled, true)
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "X|incoming-gift-ui", "WHISPER", "Harry Dexter")
     ACB.prepareTrade, C_ChatInfo.SendAddonMessage = realPrepare, realSend
 end)
 
-test("the card picker searches by name and the offered card always represents just one copy", function()
+test("the card slot opens a binder selection and the offered card represents just one copy", function()
     local saved = { counts = { ["npc:639"] = 3 }, shiny = {}, history = {} }
     local trade = ACB.newTrade(saved.counts, function() return 10 end, function() return "ui-picker" end,
         function() return true end, function() return true end)
     local realPrepare = ACB.prepareTrade
+    local realPick, choose, canPick = ACB.selectTradeCard
+    ACB.selectTradeCard = function(callback, allowed) choose, canPick = callback, allowed end
     local view = ACB.createTradeView(UIParent, saved, trade)
     local c = view.controls
-    c.choose:OnClick()
-    c.search:SetText("VanCleef")
-    c.search:OnTextChanged()
-    equal(c.rows[1].key, "npc:639")
-    assert(c.rows[1].text:find("3 owned", 1, true))
-    c.rows[1]:OnClick()
+    c.slot:OnClick()
+    assert(choose and canPick())
+    choose("npc:639")
     equal(c.mine.owned, 1, "the player is offering one copy, not every owned copy")
     equal(c.mine.countBadge:IsShown(), false)
     ACB.prepareTrade = realPrepare
+    ACB.selectTradeCard = realPick
 end)
 
 test("a gift invitation opens the window with an empty local side and an Accept button", function()
@@ -195,6 +209,7 @@ test("a gift invitation opens the window with an empty local side and an Accept 
         function() return true end, function() return true end)
     local view = ACB.createTradeView(UIParent, saved, trade)
     equal(trade:receive("harry-dexter", "I|ui-gift|npc:639|g"), true)
+    assert(trade:join())
     view:refresh()
     equal(view.controls.choose.enabled, false)
     equal(view.controls.accept.enabled, true)
