@@ -5,7 +5,7 @@ import { setup } from "./harness.ts";
 test("the homepage introduces the project and the setup pages do not advertise unpublished downloads", async () => {
   const env = setup();
   const home = await (await env.call("/")).text();
-  assert.match(home, /ILLUSTRATED BINDER PREVIEW/);
+  assert.match(home, /Binder illustration/);
   for (const path of ["/download", "/help", "/faq", "/ladder", "/wanted", "/status"]) assert.ok(home.includes(`href="${path}"`), path);
   const download = await (await env.call("/download")).text();
   assert.match(download, /Public downloads are not available yet/);
