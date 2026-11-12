@@ -17,6 +17,16 @@ function fakeCache() {
 
 const BASE = "https://cache.test";
 
+test("retired wanted routes bypass old edge-cached lists", async () => {
+  const { cache, store } = fakeCache();
+  for (const path of ["/wanted", "/v1/wanted"]) {
+    const request = new Request(BASE + path);
+    store.set(request.url, new Response("old wanted data", {headers:{"cache-control":"public, max-age=60"}}));
+    const response = await withEdgeCache(request, cache, async () => new Response("retired", {headers:{"cache-control":"no-store"}}), () => {});
+    assert.equal(await response.text(), "retired");
+  }
+});
+
 // The real API behind the cache, counting how often it is actually asked.
 function front() {
   const env = setup();
@@ -44,7 +54,7 @@ test("a public answer is worked out once and then served from the cache, with th
   assert.equal(runs(), 1, "the API ran once for two requests");
   assert.equal(store.size, 1);
   // Other public routes and pages are shared the same way.
-  for (const path of ["/v1/firsts", "/v1/wanted", "/v1/releases", "/ladder", "/wanted", "/", "/download", "/privacy"]) {
+  for (const path of ["/v1/firsts", "/v1/releases", "/ladder", "/", "/download", "/privacy"]) {
     assert.equal((await get(path)).headers.get("x-cache"), "miss", path + " first");
     assert.equal((await get(path)).headers.get("x-cache"), "hit", path + " second");
   }
