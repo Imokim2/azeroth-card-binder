@@ -36,6 +36,7 @@ function updateNote(updates) {
   if (!updates) return "";
   const addon = updates.addon, app = updates.app;
   if (addon.installed === null) return "The add-on was not found in the game folder. Install it, then use /reload in the game.";
+  if (addon.rankedPaused) return "The add-on (" + addon.installed + ") is too old for Ranked: no new roll tape will be given until you update to " + addon.latest + ". Casual still works.";
   if (addon.state === "required") return "The add-on (" + addon.installed + ") is too old. Update to " + addon.latest + " so your Ranked cards keep counting.";
   if (addon.reloadNeeded) return "The add-on was updated to " + addon.installed + ". Use /reload in the game, or restart it, to start using it.";
   if (addon.state === "update") return "Add-on " + addon.latest + " is available (you have " + addon.installed + "). Update it from the Download page, then use /reload in the game.";
@@ -121,6 +122,13 @@ function render(status) {
   const note = updateNote(updates);
   $("update-note").hidden = !note;
   $("update-note").textContent = note;
+  const can = status.canUpdate || { addon: false, app: false };
+  $("update-actions").hidden = !(can.addon || can.app);
+  $("update-addon").hidden = !can.addon;
+  $("update-app").hidden = !can.app;
+  $("update-addon").disabled = $("update-app").disabled = !!status.updating || status.busy;
+  $("update-addon").textContent = status.updating === "addon" ? "Updating…" : "Update add-on" + (status.newer && status.newer.addon ? " to " + status.newer.addon : "");
+  $("update-app").textContent = status.updating === "app" ? "Updating…" : "Update companion" + (status.newer && status.newer.app ? " to " + status.newer.app : "");
   $("tape").textContent = status.tapeEntries === null ? (status.accounts.some((entry) => entry.mode === "ranked") ? "Awaiting sync" : "Casual mode") : status.tapeEntries.toLocaleString();
   $("sync-now").disabled = !ready || status.busy || !!status.problem || status.needsNewBinder;
 
@@ -145,6 +153,8 @@ if (demo && demos[demo[1]]) {
   $("find-game").addEventListener("click", () => api.findGame());
   $("choose-folder").addEventListener("click", () => api.chooseGameFolder());
   $("sync-now").addEventListener("click", () => api.syncNow());
+  $("update-addon").addEventListener("click", () => api.updateAddon());
+  $("update-app").addEventListener("click", () => api.updateApp());
   $("new-binder-button").addEventListener("click", () => api.startNewBinder());
   $("delete-data").addEventListener("click", () => api.deleteMyData());
   $("start-at-login").addEventListener("change", (event) => api.setStartAtLogin(event.target.checked));

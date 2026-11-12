@@ -207,7 +207,14 @@ function applyEvent(state, event, catalog, strict = false) {
 function replay(events, catalog, start = newState(), options = {}) {
     const state = copyState(start);
     for (let index = 0; index < events.length; index++) {
-        const rule = applyEvent(state, events[index], catalog, options.strict === true);
+        // An old "ranked" switch is let through for a new upload only when the very next event is another mode switch: nothing
+        // was rolled under the first kind of Ranked, which the server could not check. (A player who switched to Ranked on the
+        // old add-on and then updated has one of these in their history, written before the update.) Any roll that follows it
+        // without a switch is still refused.
+        const event = events[index];
+        const next = events[index + 1];
+        const quiet = event.kind === "mode" && event.key === "ranked" && next !== undefined && next.kind === "mode";
+        const rule = applyEvent(state, event, catalog, options.strict === true && !quiet);
         if (rule) return { ok: false, error: "rule", rule, index };
     }
     return { ok: true, state };

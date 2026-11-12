@@ -23,6 +23,7 @@ export const ERRORS = {
   rule_broken: { status: 422, message: "The events describe a binder that cannot exist." },
   tape_invalid: { status: 422, message: "A ranked drop does not match the roll tape." },
   client_too_old: { status: 426, message: "Update the companion app." },
+  addon_too_old: { status: 426, message: "Update the add-on to keep rolling for Ranked." },
   internal: { status: 500, message: "Something went wrong on our side." },
   registration_closed: { status: 503, message: "Registration is not open yet." },
   ranked_unavailable: { status: 503, message: "Ranked play is not open yet." },

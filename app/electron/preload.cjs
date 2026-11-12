@@ -13,6 +13,8 @@ contextBridge.exposeInMainWorld("warcards", {
   startNewBinder: () => ipcRenderer.invoke("startNewBinder"),
   deleteMyData: () => ipcRenderer.invoke("deleteMyData"),
   setStartAtLogin: (on) => ipcRenderer.invoke("setStartAtLogin", on === true),
+  updateAddon: () => ipcRenderer.invoke("updateAddon"),
+  updateApp: () => ipcRenderer.invoke("updateApp"),
   onStatus: (listener) => {
     const handler = (_event, status) => listener(status);
     ipcRenderer.on("status", handler);

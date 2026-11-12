@@ -5,10 +5,11 @@
 // The window can only ask the controller for a fixed list of things, through the preload script; it has no access to
 // Node, files or the network, and it cannot open other pages.
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, safeStorage, session, shell, Tray } from "electron";
+import { spawn } from "node:child_process";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { SERVERS } from "../src/config.ts";
+import { DEFAULT_SERVER, SERVERS } from "../src/config.ts";
 import { Controller } from "../src/controller.ts";
 import type { Status } from "../src/controller.ts";
 import { encryptedFileStore } from "../src/secrets.ts";
@@ -100,7 +101,7 @@ async function main(): Promise<void> {
       encrypt: (text) => safeStorage.encryptStringAsync(text),
       decrypt: async (bytes) => (await safeStorage.decryptStringAsync(Buffer.from(bytes))).result,
     }),
-    server: process.env["WARCARDS_SERVER"] ?? SERVERS.staging,
+    server: process.env["WARCARDS_SERVER"] ?? SERVERS[DEFAULT_SERVER],
     version, catalogVersion,
     open: (url) => {
       // Only Discord's own sign-in page is ever opened.
@@ -119,6 +120,14 @@ async function main(): Promise<void> {
     now: () => Math.floor(Date.now() / 1000),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     applyStartAtLogin: (on) => app.setLoginItemSettings({ openAtLogin: on }),
+    // Updates: the controller checks every download against the signed manifest before anything is installed or run.
+    download: (url) => fetch(url, { redirect: "follow" }),
+    runInstaller: (path) => {
+      // The installer closes this app if it must, and opens the new one when it is done.
+      spawn(path, ["/S", "--force-run"], { detached: true, stdio: "ignore" }).unref();
+      quitting = true;
+      app.quit();
+    },
     commonFolders: [
       "C:\\Program Files (x86)", "C:\\Program Files", "C:\\Games", "C:\\Blizzard", "D:\\Games", "D:\\Program Files (x86)", "D:\\", "E:\\Games",
     ],
@@ -135,6 +144,8 @@ async function main(): Promise<void> {
   ipcMain.handle("startNewBinder", () => controller.startNewBinder());
   ipcMain.handle("deleteMyData", () => controller.deleteMyData());
   ipcMain.handle("setStartAtLogin", (_event, on: unknown) => controller.setStartAtLogin(on === true));
+  ipcMain.handle("updateAddon", () => controller.updateAddon());
+  ipcMain.handle("updateApp", () => controller.updateApp());
 
   window = createWindow();
   // Listen for the page loading before anything else is awaited, so the event cannot be missed.

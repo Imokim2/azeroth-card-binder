@@ -55,3 +55,49 @@ test("/acb version says what is installed and what is newest", function()
     assert(text:find("up to date", 1, true), text)
     ACB.sync, GetAddOnMetadata = keepSync, keep
 end)
+
+test("an add-on older than the server accepts rolls no Ranked cards, and says why; Casual is not affected", function()
+    local saved = AzerothCardBinderDB
+    local keep = { ACB.sync, GetAddOnMetadata, saved.mode, saved.tape }
+    local entries = {}
+    for index = 1, 40 do entries[index] = ("%016x"):format(index * 977) end
+    ACB.sync = { tape = { start = 1, entries = entries }, releases = { latestAddon = "0.5.0", minAddon = "0.4.0" } }
+    saved.tape = { next = 1 }
+    -- Up to date: the tape is there to use.
+    GetAddOnMetadata = function() return "0.4.0" end
+    equal(ACB.addonTooOld(), false)
+    equal(ACB.tapeLeft(saved), 40)
+    assert(ACB.takeTape(saved), "an entry is handed out")
+    equal(saved.tape.next, 2)
+    -- Too old: nothing is handed out, nothing is used up, and the tape looks empty.
+    GetAddOnMetadata = function() return "0.3.9" end
+    equal(ACB.addonTooOld(), true)
+    equal(ACB.takeTape(saved), nil)
+    equal(saved.tape.next, 2, "no entry was used up")
+    equal(ACB.tapeHolds(saved, 5), false)
+    equal(ACB.tapeLeft(saved), 0)
+    -- A version that is not known, or a file with no versions in it, never pauses anything.
+    GetAddOnMetadata = nil
+    equal(ACB.addonTooOld(), false)
+    GetAddOnMetadata = function() return "0.3.9" end
+    ACB.sync = { tape = { start = 1, entries = entries } }
+    equal(ACB.addonTooOld(), false)
+    ACB.sync, GetAddOnMetadata, saved.mode, saved.tape = keep[1], keep[2], keep[3], keep[4]
+end)
+
+test("a Ranked attempt on an old add-on is held back with its own message, and Casual still rolls", function()
+    local saved = AzerothCardBinderDB
+    local keep = { ACB.sync, GetAddOnMetadata, saved.mode, saved.tape }
+    local entries = {}
+    for index = 1, 40 do entries[index] = ("%016x"):format(index * 977) end
+    ACB.sync = { tape = { start = 1, entries = entries }, releases = { latestAddon = "0.5.0", minAddon = "0.4.0" } }
+    GetAddOnMetadata = function() return "0.3.9" end
+    saved.tape = { next = 1 }
+    local text = said(function()
+        local collection = ACB.newCollection({ counts = {}, achievements = {}, mode = "ranked", tape = { next = 1 }, misses = {} },
+            function() return 1 end, print, function() end)
+        collection:roll("Creature-0-1-0-0-589-OLDADDON01", "loot")
+    end)
+    assert(text:find("older than the server accepts", 1, true), text)
+    ACB.sync, GetAddOnMetadata, saved.mode, saved.tape = keep[1], keep[2], keep[3], keep[4]
+end)
