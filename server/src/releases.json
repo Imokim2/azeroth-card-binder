@@ -1,1 +1,4 @@
-{ "manifest": null, "signature": null }
+{
+  "manifest": "{\"format\":1,\"issuedAt\":1794487838,\"app\":{\"version\":\"0.3.0\",\"url\":\"https://github.com/Imokim2/azeroth-card-binder/releases/download/v0.5.0/World-of-Warcards-Setup-0.3.0.exe\",\"sha256\":\"cf7b249225393a9d9f11bbc485e3867d414f6280d1d7995133abf43f7de2e63f\",\"size\":121247605,\"notes\":\"First public release: install add-on and companion updates from the window, binder viewer and trading, packs.\"},\"addon\":{\"version\":\"0.5.0\",\"url\":\"https://github.com/Imokim2/azeroth-card-binder/releases/download/v0.5.0/AzerothCardBinder-0.5.0.zip\",\"sha256\":\"291ac1b8af3ab200b99b2e867c8a6972afb254cb2213278ea45127d03cb0c8fe\",\"size\":2100631,\"notes\":\"First public release: update alerts, binder viewer, trading from wanted cards, Ranked pause for old add-ons.\"}}",
+  "signature": "8f6d85d38185c9bd95c53cd254c8c557668f1b96747b148f668e85383e1b79d9084bedd0303fe006e39e751c2c6004fbf7538a70bb55ad1eef3258b6e1e43903"
+}
