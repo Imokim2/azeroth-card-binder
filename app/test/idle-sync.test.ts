@@ -60,7 +60,7 @@ async function fixture() {
 
 test("a day idle makes no requests; a saved-file rewrite still syncs without manual input", { timeout: 10_000 }, async (t) => {
   const f = await fixture(), observed = observe();
-  let stop: (() => void) | undefined;
+  let stop: (() => Promise<void>) | undefined;
   try {
     t.mock.timers.enable({ apis: ["setInterval"] });
     const engine = new Engine({ install: f.install, client: f.client, playerId: f.playerId, quietMs: 20, onReport: observed.onReport });
@@ -77,12 +77,12 @@ test("a day idle makes no requests; a saved-file rewrite still syncs without man
     assert.equal(saved.accounts[0]?.result.status, "synced");
     assert.equal(saved.standings, "fresh", "community data refreshes when a real save wakes the app");
     assert.equal(saved.wroteSync, true);
-  } finally { stop?.(); t.mock.timers.reset(); await f.cleanup(); }
+  } finally { await stop?.(); t.mock.timers.reset(); await f.cleanup(); }
 });
 
 test("a save arriving during an upload is queued and reaches the server without a polling timer", { timeout: 10_000 }, async () => {
   const f = await fixture(), observed = observe(), entered = deferred<void>(), release = deferred<void>();
-  let held = false, stop: (() => void) | undefined;
+  let held = false, stop: (() => Promise<void>) | undefined;
   try {
     const client: ClientOptions = { ...f.client, fetch: async (url, init) => {
       const response = await f.client.fetch(url, init);
@@ -99,12 +99,12 @@ test("a save arriving during an upload is queued and reaches the server without 
     assert.equal(second.accounts[0]?.result.status, "synced");
     assert.equal(f.env.raw.prepare("SELECT COUNT(*) AS n FROM batches").get()?.["n"], 2);
     assert.equal(f.calls.filter((call) => call === "POST /v1/ledger").length, 2);
-  } finally { release.resolve(); stop?.(); await f.cleanup(); }
+  } finally { release.resolve(); await stop?.(); await f.cleanup(); }
 });
 
 test("Ranked data retries without another save, backs off after failures and stops after recovery", { timeout: 10_000 }, async (t) => {
   const f = await fixture(), observed = observe();
-  let stop: (() => void) | undefined;
+  let stop: (() => Promise<void>) | undefined;
   try {
     const issued = await fetchTape(f.client);
     if (issued.status !== "tape") throw new Error("fixture has no tape");
@@ -133,7 +133,35 @@ test("Ranked data retries without another save, backs off after failures and sto
     t.mock.timers.tick(3_600_000); await flush();
     assert.equal(observed.reports.length, 3);
     assert.equal(f.calls.length, count, "successful recovery returns to idle");
-  } finally { stop?.(); t.mock.timers.reset(); await f.cleanup(); }
+  } finally { await stop?.(); t.mock.timers.reset(); await f.cleanup(); }
+});
+
+test("stopping waits for the current upload and prevents queued saves from starting another pass", { timeout: 10_000 }, async () => {
+  const f = await fixture(), entered = deferred<void>(), release = deferred<void>();
+  let stop: (() => Promise<void>) | undefined;
+  try {
+    const client: ClientOptions = { ...f.client, fetch: async (url, init) => {
+      const response = await f.client.fetch(url, init);
+      if (new URL(url).pathname === "/v1/ledger") { entered.resolve(); await release.promise; }
+      return response;
+    } };
+    const engine = new Engine({ install: f.install, client, playerId: f.playerId, quietMs: 20 });
+    stop = engine.start();
+    await entered.promise;
+    f.write(2);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    let stopped = false;
+    const finished = stop().then(() => { stopped = true; });
+    await flush();
+    assert.equal(stopped, false, "the active upload has not finished yet");
+    release.resolve();
+    await finished;
+    assert.equal(stopped, true);
+    assert.match(await readFile(f.install.syncPath, "utf8"), /ACB\.sync =/);
+    assert.equal(f.calls.filter((call) => call === "POST /v1/ledger").length, 1);
+    await flush();
+    assert.equal(f.calls.filter((call) => call === "POST /v1/ledger").length, 1);
+  } finally { release.resolve(); await stop?.(); await f.cleanup(); }
 });
 
 test("saved-file passes keep update checks for six hours while manual restart can check immediately", { timeout: 10_000 }, async () => {

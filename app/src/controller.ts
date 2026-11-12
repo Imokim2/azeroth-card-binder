@@ -91,7 +91,7 @@ export class Controller {
   #settings: Settings = { gameFolder: null, visibility: "public", playerId: null, startAtLogin: false };
   #identity: Identity | null = null;
   #engine: Engine | null = null;
-  #stopEngine: (() => void) | null = null;
+  #stopEngine: (() => Promise<void>) | null = null;
   #listeners = new Set<(status: Status) => void>();
   #problem: string | null = null;
   #message: string | null = null;
@@ -166,7 +166,7 @@ export class Controller {
   }
 
   async stop(): Promise<void> {
-    this.#stopEngine?.();
+    await this.#stopEngine?.();
     this.#stopEngine = null;
     this.#engine = null;
   }
@@ -176,7 +176,7 @@ export class Controller {
   }
 
   async #restartEngine(): Promise<void> {
-    this.#stopEngine?.();
+    await this.#stopEngine?.();
     this.#stopEngine = null;
     this.#engine = null;
     const options = this.#options();
