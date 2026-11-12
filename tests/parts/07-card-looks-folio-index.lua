@@ -91,6 +91,7 @@ test("pop-ups queue, fade away, play a sound and can be turned off", function()
     equal(played[1], 22) -- a shiny always gets the top sound
     ACB.showToast(ACB.cards["npc:589"], { count = 2 })
     equal(#played, 1) -- the second waits its turn
+    clock = clock + 10 -- the sound clock advances with the simulated toast animation
     toast.OnUpdate(toast, 10)
     equal(toast:IsShown(), true)
     equal(played[2], 33) -- common cards use the plainest sound

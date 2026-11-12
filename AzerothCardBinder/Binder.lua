@@ -106,6 +106,7 @@ function ACB.initUI(saved, trade)
     end
 
     function ACB.open(destination)
+        if not frame:IsShown() and ACB.playSound then ACB.playSound("binder") end
         if tabs[destination] then
             mode = destination
         elseif type(destination) == "number" and ACB.pages[destination] and #ACB.pages[destination].cards > 0 then

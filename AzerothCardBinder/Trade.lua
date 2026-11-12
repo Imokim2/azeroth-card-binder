@@ -101,6 +101,7 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed, saved)
         session.expires = now() + 120
         local give, take = ACB.cards[session.give], ACB.cards[session.take]
         if apply(session.give, session.take, session.peer, session.id) then
+            if ACB.playSound then ACB.playSound("trade") end
             self.status = ("Trade complete. You gave %s and received %s."):format(give.name, take.name)
         else
             self.status = "The trade could not finish because the card you offered is no longer in your binder."

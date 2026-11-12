@@ -155,7 +155,7 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     local checks = {}
     ACB.open("settings")
     for _, widget in ipairs(widgets) do
-        if widget.template == "UICheckButtonTemplate" then checks[#checks + 1] = widget end
+        if widget.template == "UICheckButtonTemplate" and widget.settingGroup == "general" then checks[#checks + 1] = widget end
     end
     equal(#checks, #ACB.settings)
     for index, setting in ipairs(ACB.settings) do

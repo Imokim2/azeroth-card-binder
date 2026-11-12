@@ -39,10 +39,12 @@ GGET IsShiftKeyDown
 GGET Menu
 GGET Minimap
 GGET PlaySound
+GGET PlaySoundFile
 GGET ReloadUI
 GGET SELECTED_CHAT_FRAME
 GGET SOUNDKIT
 GGET SlashCmdList
+GGET StopSound
 GGET TooltipDataProcessor
 GGET UIParent
 GGET UISpecialFrames

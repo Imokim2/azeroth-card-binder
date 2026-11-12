@@ -10,25 +10,6 @@ local FONT = "Fonts\\FRIZQT__.TTF"
 local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
 local SHINY = { 0.55, 0.92, 1 }
 
--- Sound kits by rarity. The first name this client knows is used; a missing name is simply skipped.
-local soundNames = {
-    common = { "IG_QUEST_LIST_COMPLETE" },
-    rare = { "UI_RAID_LOOT_TOAST_LESSER_ITEM_WON", "IG_QUEST_LIST_COMPLETE" },
-    epic = { "UI_EPICLOOT_TOAST", "IG_QUEST_LIST_COMPLETE" },
-    legendary = { "UI_LEGENDARY_LOOT_TOAST", "UI_EPICLOOT_TOAST", "IG_QUEST_LIST_COMPLETE" },
-}
-
-function ACB.playToastSound(rarity, shiny)
-    if not (PlaySound and SOUNDKIT) then return end
-    for _, name in ipairs(soundNames[shiny and "legendary" or rarity] or soundNames.common) do
-        local id = SOUNDKIT[name]
-        if id then
-            pcall(PlaySound, id)
-            return id
-        end
-    end
-end
-
 local function headline(info)
     if info.crafted then return "CRAFTED WITH DUST", gold end
     if info.trade then return "RECEIVED IN TRADE", gold end
@@ -38,6 +19,7 @@ local function headline(info)
 end
 
 function ACB.initToast(saved)
+    ACB.initSounds(saved)
     local queue, current = {}, nil
 
     local frame = CreateFrame("Button", "AzerothCardBinderToast", UIParent, "BackdropTemplate")
@@ -99,7 +81,7 @@ function ACB.initToast(saved)
             frame:SetAlpha(0)
             frame:SetScale(0.85)
             frame:Show()
-            ACB.playToastSound("legendary", false)
+            ACB.playSound("set_complete")
             return
         end
         card.frame:Show()
@@ -120,7 +102,7 @@ function ACB.initToast(saved)
         frame:SetAlpha(0)
         frame:SetScale(0.85)
         frame:Show()
-        ACB.playToastSound(entry.rarity, info.shiny)
+        ACB.playCardSound(entry, info)
     end
 
     frame:SetScript("OnUpdate", function(self, delta)
@@ -157,7 +139,8 @@ function ACB.initToast(saved)
 
     -- Show a card that was just found. `info` says whether it is new, a duplicate, shiny or from a trade.
     function ACB.showToast(entry, info)
-        if saved.popups == false or not entry then return end
+        if not entry then return end
+        if saved.popups == false then ACB.playCardSound(entry, info) return end
         queue[#queue + 1] = { card = entry, info = info or {} }
         if current then
             if #queue > MAX_QUEUE then table.remove(queue, 1) end
@@ -168,7 +151,8 @@ function ACB.initToast(saved)
 
     -- Show that a whole set has been finished and which title it earned.
     function ACB.showSetToast(page, reward)
-        if saved.popups == false or not page then return end
+        if not page then return end
+        if saved.popups == false then ACB.playSound("set_complete") return end
         queue[#queue + 1] = { set = page, reward = reward, total = #page.cards }
         if current then
             if #queue > MAX_QUEUE then table.remove(queue, 1) end

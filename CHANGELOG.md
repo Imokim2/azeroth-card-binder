@@ -6,6 +6,9 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## 0.6.0 — 2026-11-12
 
+- **Sound pass:** 13 small original cues for card finds, duplicates, shiny/rarity reveals, pack opening/flips, completed trades and windows. Settings → Sounds has a master mute and separate pickup, pack, trade/gift and window switches, plus preview/stop controls. Pop-ups are independent. Flip all plays one best-card reward instead of overlapping fanfares. Game SFX volume remains in control.
+- Face-down pack cards now use painted gold-and-blue card-back artwork matching the card-stack icon, including its glowing diamond. Model/background preloading and flip behavior remain active underneath.
+
 - The satchel now uses the game's metal bag-frame layout, native empty-slot/quality artwork and a compact grey interior with rounded controls. A custom painted gold-and-blue card-stack icon replaces the pouch on the launcher and pack slots. The window has a native close button and retains the pack/trade behavior.
 
 - **Warcards Satchel:** a separate bag-style inventory with stack counts and pages. Its button sits above the keyring, falling back to the bag controls or bottom right on custom layouts. `/acb bag` and `/acb satchel` also open it. Right-click a pack to use the existing reveal screen.

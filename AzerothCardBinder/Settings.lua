@@ -4,7 +4,7 @@ local _, ACB = ...
 -- until a player touches it the default applies. The same switches are still available as slash commands.
 ACB.settings = {
     { key = "popups", name = "Card pop-ups", default = true,
-        note = "Show a pop-up, with a sound, when you find a card." },
+        note = "Show a pop-up when you find a card. Audio has separate controls under Sounds." },
     { key = "hints", name = "Tooltip hints", default = true,
         note = "Add your card status to creature and node tooltips." },
     { key = "zoneBar", name = "Zone card bar", default = true,
@@ -21,8 +21,16 @@ ACB.settings = {
         note = "Critters and other creatures with nothing to loot still get their chance when you kill them while targeting them." },
 }
 
+ACB.soundSettings = {
+    { key = "sounds", name = "Enable addon sounds", default = true, note = "Master switch. Sounds respect the game's sound-effects volume." },
+    { key = "pickupSounds", name = "Card pickup sounds", default = true, note = "Card finds, duplicates, crafting and set completions." },
+    { key = "packSounds", name = "Pack sounds", default = true, note = "Pack finds, opening, card flips and pack reveals." },
+    { key = "tradeSounds", name = "Trade and gift sounds", default = true, note = "One confirmation when a trade or gift completes." },
+    { key = "windowSounds", name = "Window sounds", default = true, note = "Subtle paper and leather when opening the binder or satchel." },
+}
 local byKey = {}
 for _, setting in ipairs(ACB.settings) do byKey[setting.key] = setting end
+for _, setting in ipairs(ACB.soundSettings) do byKey[setting.key] = setting end
 
 function ACB.settingOn(saved, setting)
     if type(setting) == "string" then setting = byKey[setting] end
@@ -35,6 +43,7 @@ end
 function ACB.setSetting(saved, key, on)
     if not byKey[key] then return false end
     saved[key] = on == true
+    if byKey[key] and (key == "sounds" or key:find("Sounds$")) and ACB.stopSounds then ACB.stopSounds() end
     return true
 end
 

@@ -117,7 +117,11 @@ function ACB.initSatchel(saved, collection, trade)
     end end
     local view = ACB.createSatchel(saved)
     ACB.satchel = view
-    function ACB.openSatchel() view:refresh(); view.frame:SetShown(not view.frame:IsShown()) end
+    function ACB.openSatchel()
+        local opening = not view.frame:IsShown()
+        view:refresh(); view.frame:SetShown(opening)
+        if opening and ACB.playSound then ACB.playSound("binder") end
+    end
     local launcher = CreateFrame("Button", "AzerothCardBinderSatchelButton", UIParent, "BackdropTemplate")
     launcher:SetSize(34, 34)
     launcher:SetFrameStrata("MEDIUM")

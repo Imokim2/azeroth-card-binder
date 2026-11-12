@@ -43,6 +43,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
             return false
         end
         s.applied = true
+        if ACB.playSound then ACB.playSound("trade") end
         local out, into = ACB.tradeItem(s.give), ACB.tradeItem(s.take)
         close(s, out and into and ("Trade complete. You received %s."):format(into.name)
             or out and ("Gift sent: %s."):format(out.name) or ("Gift received: %s."):format(into.name))

@@ -1,5 +1,9 @@
 # Credits
 
+## Original interface assets
+
+The custom card-stack icon and card back were generated for this project; prompts and texture integration are recorded in [docs/SATCHEL-ART.md](docs/SATCHEL-ART.md). The short custom audio cues are original synthesized sound design with no recorded samples; their source is [tools/make-sounds.py](tools/make-sounds.py), with playback details in [docs/SOUNDS.md](docs/SOUNDS.md). Native frame artwork and sound-kit fallbacks are referenced from the installed game and are not copied into this addon.
+
 This project is free software under the GNU General Public License, version 3 or (at your option) any later version: see `LICENSE`. That fits the data below, which is built from GPL-licensed sources.
 
 ## Creature catalog

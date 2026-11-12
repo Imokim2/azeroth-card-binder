@@ -31,6 +31,7 @@ CardModels.lua
 CardArt.lua
 CardText.lua
 Cards.lua
+Sounds.lua
 Toast.lua
 Hints.lua
 ZoneBar.lua
@@ -47,6 +48,7 @@ EditionView.lua
 Folio.lua
 UiKit.lua
 CardStudio.lua
+SoundSettingsView.lua
 SettingsView.lua
 LeaderboardView.lua
 WantedView.lua
