@@ -13,6 +13,9 @@ export type Player = {
   createdAt: number;
   epoch: number; // how many times the player has started a new binder
   resetAt: number | null;
+  // Set when the people who run the service reset the binder: a history whose first event is not after this time (seconds) is refused,
+  // so the player's old binder cannot be uploaded again. Cleared by a restore.
+  barredBefore: number | null;
 };
 
 export interface PlayerStore {
@@ -125,7 +128,9 @@ export type AdminPlayerRow = {
 };
 export type AdminPlayerDetail = {
   playerId: string; createdAt: number; status: "active" | "banned"; visibility: Visibility; epoch: number; resetAt: number | null;
-  hasDiscord: boolean; archivedBinders: number; keys: { active: number; revoked: number };
+  hasDiscord: boolean; barredBefore: number | null; keys: { active: number; revoked: number };
+  // Binders put aside by a restart or a reset, newest first, that a restore could bring back.
+  archives: { archiveId: string; displayName: string; epoch: number; batches: number; cardsOwned: number; scoreTenths: number | null; lastUpload: number | null }[];
   characters: { name: string; realm: string; firstSeen: number; lastSeen: number }[];
   score: { displayName: string; scoreTenths: number; uniqueCards: number; setsDone: number; attempts: number; rulesVersion: number; updatedAt: number } | null;
   binder: { mode: string; cardsOwned: number; headSeq: number; casualDrops: number; updatedAt: number } | null;
@@ -141,6 +146,10 @@ export interface AdminStore {
   search(text: string, limit: number): Promise<AdminPlayerRow[]>;
   detail(playerId: string): Promise<AdminPlayerDetail | null>;
   record(entry: AuditEntry): Promise<void>;
+  // Archive the player's binder and refuse its old history from now on. False when there is no such player or no binder.
+  adminReset(playerId: string, archivedId: string, at: number): Promise<boolean>;
+  // Bring an archived binder of this player back as the current one (the current one is archived in its place). False when either does not exist.
+  restoreBinder(playerId: string, archiveId: string, newArchiveId: string): Promise<boolean>;
   // The newest entries first.
   audit(limit: number): Promise<AuditEntry[]>;
 }

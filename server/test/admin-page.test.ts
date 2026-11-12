@@ -223,3 +223,34 @@ test("cancelling the reason asks nothing of the server, and deleting needs the p
   assert.equal((env.raw.prepare("SELECT COUNT(*) AS n FROM players WHERE id = ?").get(playerId) as { n: number }).n, 0);
   assert.equal(view.ids["player"]!.children.length, 0, "the page of a deleted player is gone");
 });
+
+test("a binder is reset from the player's page, appears as an archived binder, and a restore brings it back", async () => {
+  const { env, playerId, fetchImpl } = await withFlag("Mallory");
+  const view = page(fetchImpl, true, ["Edited the file", "Reset was a mistake"]);
+  await view.signIn(ADMIN_TOKEN);
+  view.ids["tab-players"]!.fire("click");
+  await settle();
+  view.ids["players"]!.children[0]!.fire("click");
+  await settle();
+  const card = () => view.ids["player"]!.children[0]!;
+  const binders = () => (env.raw.prepare("SELECT COUNT(*) AS n FROM ledger_state WHERE player_id = ?").get(playerId) as { n: number }).n;
+  assert.equal(binders(), 1);
+  assert.equal(card().find((node) => node.textContent === "Restore this binder...").length, 0, "nothing to restore yet");
+  card().find((node) => node.textContent === "Reset their binder...")[0]!.fire("click");
+  await settle();
+  assert.match(view.prompts[0]!, /^Reset Mallory-Realm Name's binder\? It is put aside, not deleted/);
+  assert.equal(binders(), 0, "the binder was put aside");
+  assert.match(view.ids["message"]!.textContent, /^Reset Mallory-Realm Name's binder\./);
+  assert.equal(card().find((node) => node.textContent === "Reset their binder...").length, 0, "no binder left to reset");
+  assert.match(card().textContent, /Old history refused: anything written before/);
+  card().find((node) => node.textContent === "Restore this binder...")[0]!.fire("click");
+  await settle();
+  assert.match(view.prompts[1]!, /^Bring this binder back for Mallory-Realm Name\?/);
+  assert.equal(binders(), 1, "the binder is back");
+  assert.match(view.ids["message"]!.textContent, /^Restored the binder/);
+  assert.equal(card().find((node) => node.textContent === "Restore this binder...").length, 0);
+  view.ids["tab-activity"]!.fire("click");
+  await settle();
+  assert.match(view.ids["audit"]!.textContent, /reset-binder - .*: Edited the file/);
+  assert.match(view.ids["audit"]!.textContent, /restore-binder - .*: Reset was a mistake - binder /);
+});

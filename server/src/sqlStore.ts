@@ -12,16 +12,19 @@ import type { AdminPlayerDetail, AdminPlayerRow, AdminStore, AuditEntry, Derived
 import type { LedgerEvent } from "./ledger.ts";
 import { gunzip } from "./gzip.ts";
 
-type PlayerRow = { id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number; epoch: number; reset_at: number | null };
+type PlayerRow = { id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number; epoch: number; reset_at: number | null; barred_before: number | null };
 
 const toPlayer = (row: PlayerRow): Player => ({
-  id: row.id, discordId: row.discord_id, status: row.status, visibility: row.visibility, createdAt: row.created_at, epoch: row.epoch, resetAt: row.reset_at,
+  id: row.id, discordId: row.discord_id, status: row.status, visibility: row.visibility, createdAt: row.created_at, epoch: row.epoch, resetAt: row.reset_at, barredBefore: row.barred_before,
 });
 
 // A key that already belongs to another account, or one that was revoked and can never be used again.
 export class KeyUnavailable extends Error {}
 
-const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at, p.epoch, p.reset_at";
+const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at, p.epoch, p.reset_at, p.barred_before";
+
+// What belongs to one binder and moves with it when the binder is archived or restored.
+const BINDER_TABLES = ["batches", "drops", "ledger_state", "scores", "characters", "tapes", "flags", "trades", "set_completions", "trade_taint"];
 
 export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore, WantedStore, ReportStore, AdminStore {
   readonly #db: Db;
@@ -111,7 +114,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     if (!found) throw new Error("no such player");
     // The old record moves to a private player of its own with no Discord link and no key, so it can never be listed or
     // uploaded to; the player keeps their keys and begins again with an empty chain.
-    const moved = ["batches", "drops", "ledger_state", "scores", "characters", "tapes", "flags", "trades", "set_completions", "trade_taint"];
+    const moved = BINDER_TABLES;
     await this.#db.batch([
       {
         sql: "INSERT INTO players (id, discord_id, created_at, status, visibility, epoch, reset_at, archived_from) VALUES (?, NULL, ?, 'active', 'private', ?, NULL, ?)",
@@ -545,12 +548,14 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     const like = "%" + text.toLowerCase().replace(/[!%_]/g, "!$&") + "%";
     const ids = (await this.#db.all<{ id: string }>(
       `SELECT p.id FROM players p WHERE p.archived_from IS NULL AND (? = '' OR p.id = ?
-         OR EXISTS (SELECT 1 FROM scores s WHERE s.player_id = p.id AND lower(s.display_name) LIKE ? ESCAPE '!')
-         OR EXISTS (SELECT 1 FROM characters c WHERE c.player_id = p.id AND (lower(c.name) LIKE ? ESCAPE '!' OR lower(c.name || ' ' || c.realm) LIKE ? ESCAPE '!')))
+         OR EXISTS (SELECT 1 FROM scores s WHERE s.player_id IN (SELECT p.id UNION SELECT a.id FROM players a WHERE a.archived_from = p.id) AND lower(s.display_name) LIKE ? ESCAPE '!')
+         OR EXISTS (SELECT 1 FROM characters c WHERE c.player_id IN (SELECT p.id UNION SELECT a.id FROM players a WHERE a.archived_from = p.id) AND (lower(c.name) LIKE ? ESCAPE '!' OR lower(c.name || ' ' || c.realm) LIKE ? ESCAPE '!')))
        ORDER BY p.created_at DESC, p.id DESC LIMIT ?`, [text, text.toUpperCase(), like, like, like, limit])).map((row) => row.id);
     if (ids.length === 0) return [];
     const rows = await this.#db.all<{ id: string; status: "active" | "banned"; visibility: Visibility; created_at: number; display_name: string | null; score: number | null }>(
-      `SELECT p.id, p.status, p.visibility, p.created_at, s.display_name, s.score FROM players p LEFT JOIN scores s ON s.player_id = p.id
+      `SELECT p.id, p.status, p.visibility, p.created_at, s.score,
+         COALESCE(s.display_name, (SELECT s2.display_name FROM players a JOIN scores s2 ON s2.player_id = a.id WHERE a.archived_from = p.id ORDER BY a.epoch DESC LIMIT 1)) AS display_name
+       FROM players p LEFT JOIN scores s ON s.player_id = p.id
        WHERE p.id IN (${ids.map(() => "?").join(", ")})`, ids);
     const characters = await this.charactersOf(ids);
     return ids.flatMap((id) => {
@@ -561,8 +566,8 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
   }
 
   async detail(playerId: string): Promise<AdminPlayerDetail | null> {
-    const account = (await this.#db.all<{ id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number; epoch: number; reset_at: number | null }>(
-      "SELECT id, discord_id, status, visibility, created_at, epoch, reset_at FROM players WHERE id = ? AND archived_from IS NULL", [playerId]))[0];
+    const account = (await this.#db.all<{ id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number; epoch: number; reset_at: number | null; barred_before: number | null }>(
+      "SELECT id, discord_id, status, visibility, created_at, epoch, reset_at, barred_before FROM players WHERE id = ? AND archived_from IS NULL", [playerId]))[0];
     if (!account) return null;
     const one = async <T>(sql: string): Promise<T | undefined> => (await this.#db.all<T>(sql, [playerId]))[0];
     const count = async (sql: string) => (await one<{ n: number }>(sql))?.n ?? 0;
@@ -578,7 +583,8 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     return {
       playerId, createdAt: account.created_at, status: account.status, visibility: account.visibility, epoch: account.epoch, resetAt: account.reset_at,
       hasDiscord: account.discord_id !== null,
-      archivedBinders: await count("SELECT COUNT(*) AS n FROM players WHERE archived_from = ?"),
+      barredBefore: account.barred_before,
+      archives: await this.#archivesOf(playerId),
       keys: { active: keys.find((row) => row.status === "active")?.n ?? 0, revoked: keys.find((row) => row.status === "revoked")?.n ?? 0 },
       characters: await this.#db.all<{ name: string; realm: string; firstSeen: number; lastSeen: number }>(
         "SELECT name, realm, first_seen AS firstSeen, last_seen AS lastSeen FROM characters WHERE player_id = ? ORDER BY last_seen DESC, name, realm", [playerId]),
@@ -589,6 +595,53 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       flags,
       reportsAbout: await count("SELECT COUNT(*) AS n FROM reports WHERE target_id = ?"),
     };
+  }
+
+  // The admin's reset: the player's binder goes to a private archive exactly as when they start over themselves, and their old
+  // history is refused afterwards (barred_before), because their add-on still holds it and would otherwise upload it again.
+  // False when there is no such player or they have no binder to archive.
+  async adminReset(playerId: string, archivedId: string, at: number): Promise<boolean> {
+    const account = (await this.#db.all<{ created_at: number; epoch: number }>("SELECT created_at, epoch FROM players WHERE id = ? AND archived_from IS NULL", [playerId]))[0];
+    if (!account || (await this.#db.all("SELECT 1 AS found FROM ledger_state WHERE player_id = ?", [playerId])).length === 0) return false;
+    await this.#db.batch([
+      { sql: "INSERT INTO players (id, discord_id, created_at, status, visibility, epoch, reset_at, archived_from) VALUES (?, NULL, ?, 'active', 'private', ?, NULL, ?)", params: [archivedId, account.created_at, account.epoch, playerId] },
+      ...BINDER_TABLES.map((table) => ({ sql: `UPDATE ${table} SET player_id = ? WHERE player_id = ?`, params: [archivedId, playerId] })),
+      // reset_at stays empty: the player's own once-a-day limit on starting over is about their choices, not ours.
+      { sql: "UPDATE players SET epoch = epoch + 1, reset_at = NULL, barred_before = ? WHERE id = ?", params: [at, playerId] },
+    ]);
+    return true;
+  }
+
+  // Put an archived binder back as the player's current one. Whatever binder they have now is archived in its turn (so nothing is
+  // lost and this can be undone the same way), and the player's epoch goes back to the one the restored binder was written under,
+  // so its roll tape and chain carry on as they were. False when the player or the archive (theirs) does not exist.
+  async restoreBinder(playerId: string, archiveId: string, newArchiveId: string): Promise<boolean> {
+    const account = (await this.#db.all<{ created_at: number; epoch: number }>("SELECT created_at, epoch FROM players WHERE id = ? AND archived_from IS NULL", [playerId]))[0];
+    const archive = (await this.#db.all<{ epoch: number }>("SELECT epoch FROM players WHERE id = ? AND archived_from = ?", [archiveId, playerId]))[0];
+    if (!account || !archive) return false;
+    const empty = BINDER_TABLES.map((table) => `NOT EXISTS (SELECT 1 FROM ${table} WHERE player_id = ?)`).join(" AND ");
+    await this.#db.batch([
+      { sql: "INSERT INTO players (id, discord_id, created_at, status, visibility, epoch, reset_at, archived_from) VALUES (?, NULL, ?, 'active', 'private', ?, NULL, ?)", params: [newArchiveId, account.created_at, account.epoch, playerId] },
+      ...BINDER_TABLES.map((table) => ({ sql: `UPDATE ${table} SET player_id = ? WHERE player_id = ?`, params: [newArchiveId, playerId] })),
+      ...BINDER_TABLES.map((table) => ({ sql: `UPDATE ${table} SET player_id = ? WHERE player_id = ?`, params: [playerId, archiveId] })),
+      { sql: "UPDATE players SET epoch = ?, reset_at = NULL, barred_before = NULL WHERE id = ?", params: [archive.epoch, playerId] },
+      { sql: "DELETE FROM players WHERE id = ?", params: [archiveId] },
+      // If there was nothing to put aside, do not leave an empty archive behind.
+      { sql: `DELETE FROM players WHERE id = ? AND ${empty}`, params: [newArchiveId, ...BINDER_TABLES.map(() => newArchiveId)] },
+    ]);
+    return true;
+  }
+
+  async #archivesOf(playerId: string): Promise<AdminPlayerDetail["archives"]> {
+    const rows = await this.#db.all<{ id: string; epoch: number }>("SELECT id, epoch FROM players WHERE archived_from = ? ORDER BY epoch DESC, created_at DESC, id DESC", [playerId]);
+    return Promise.all(rows.map(async (row) => {
+      const one = async <T>(sql: string): Promise<T | undefined> => (await this.#db.all<T>(sql, [row.id]))[0];
+      const uploads = await one<{ n: number; last: number | null }>("SELECT COUNT(*) AS n, MAX(received_at) AS last FROM batches WHERE player_id = ?");
+      const state = await one<{ state_json: string }>("SELECT state_json FROM ledger_state WHERE player_id = ?");
+      const score = await one<{ score: number; display_name: string }>("SELECT score, display_name FROM scores WHERE player_id = ?");
+      const counts = state ? (JSON.parse(state.state_json) as LedgerState).counts : {};
+      return { archiveId: row.id, displayName: score?.display_name ?? "", epoch: row.epoch, batches: uploads?.n ?? 0, cardsOwned: Object.values(counts).filter((owned) => owned > 0).length, scoreTenths: score?.score ?? null, lastUpload: uploads?.last ?? null };
+    }));
   }
 
   async record(entry: AuditEntry): Promise<void> {

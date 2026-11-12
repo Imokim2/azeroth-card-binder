@@ -356,6 +356,33 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return json(200, { playerId, deleted: true }, { "cache-control": "no-store" });
   }
 
+  // Reset a player's binder (it is archived, not lost: a restore brings it back). The body repeats the player id.
+  async function adminReset(request: Request, playerId: string): Promise<Response> {
+    const actor = await requireAdmin(request);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    if (body?.["confirm"] !== playerId) throw new ApiError("bad_request", { field: "confirm" });
+    const reason = body["reason"];
+    if (reason !== undefined && (typeof reason !== "string" || reason.length > 200)) throw new ApiError("bad_request", { field: "reason" });
+    if (!(await deps.admin.detail(playerId))) throw new ApiError("not_found");
+    if (!(await deps.admin.adminReset(playerId, newId(deps.now() * 1000), deps.now()))) throw new ApiError("bad_request", { field: "binder", reason: "nothing to reset" });
+    await audit(actor, "reset-binder", playerId, typeof reason === "string" ? reason : "");
+    return json(200, { playerId, reset: true }, { "cache-control": "no-store" });
+  }
+
+  // Bring one of the player's archived binders back as the current one.
+  async function adminRestore(request: Request, playerId: string): Promise<Response> {
+    const actor = await requireAdmin(request);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    if (body?.["confirm"] !== playerId) throw new ApiError("bad_request", { field: "confirm" });
+    const archiveId = body["archiveId"];
+    if (typeof archiveId !== "string" || !/^[0-9A-Z]{26}$/.test(archiveId)) throw new ApiError("bad_request", { field: "archiveId" });
+    const reason = body["reason"];
+    if (reason !== undefined && (typeof reason !== "string" || reason.length > 200)) throw new ApiError("bad_request", { field: "reason" });
+    if (!(await deps.admin.restoreBinder(playerId, archiveId, newId(deps.now() * 1000)))) throw new ApiError("not_found");
+    await audit(actor, "restore-binder", playerId, (typeof reason === "string" && reason ? reason + " - " : "") + "binder " + archiveId);
+    return json(200, { playerId, restored: archiveId }, { "cache-control": "no-store" });
+  }
+
   async function adminAudit(request: Request, url: URL): Promise<Response> {
     await requireAdmin(request);
     const asked = Number(url.searchParams.get("limit") ?? 100);
@@ -529,6 +556,8 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const reviewMatch = /^\/v1\/admin\/flags\/([0-9A-Za-z]{1,40})$/.exec(url.pathname);
     const banMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/ban$/.exec(url.pathname);
     const deleteMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/delete$/.exec(url.pathname);
+    const resetMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/reset$/.exec(url.pathname);
+    const restoreMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/restore$/.exec(url.pathname);
     const adminPlayerMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})$/.exec(url.pathname);
     const chosen =
       url.pathname === "/" ? allow("site-home", ["GET"], async () => html(200, landingPage()))
@@ -562,6 +591,8 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/admin/rebuild" ? allow("admin-rebuild", ["POST"], () => adminRebuild(request))
       : banMatch ? allow("admin-ban", ["POST"], () => adminBan(request, banMatch[1] as string))
       : deleteMatch ? allow("admin-delete-player", ["POST"], () => adminDelete(request, deleteMatch[1] as string))
+      : resetMatch ? allow("admin-reset-binder", ["POST"], () => adminReset(request, resetMatch[1] as string))
+      : restoreMatch ? allow("admin-restore-binder", ["POST"], () => adminRestore(request, restoreMatch[1] as string))
       : adminPlayerMatch ? allow("admin-player", ["GET"], () => adminPlayer(request, adminPlayerMatch[1] as string))
       : url.pathname === "/v1/admin/players" ? allow("admin-players", ["GET"], () => adminPlayers(request, url))
       : url.pathname === "/v1/admin/audit" ? allow("admin-audit", ["GET"], () => adminAudit(request, url))

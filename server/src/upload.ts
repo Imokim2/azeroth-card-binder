@@ -106,6 +106,10 @@ export async function acceptUpload(
     return { ackSeq: stored.head.seq, ackHash: stored.head.hash, accepted: 0, duplicate: false };
   }
 
+  // A binder the service reset: the add-on still holds the old history and would put it back. A new binder starts after the reset.
+  const opening = events[0] as { t?: unknown };
+  if (player.barredBefore !== null && stored.head.seq === 0 && typeof opening.t === "number" && opening.t <= player.barredBefore) throw new ApiError("binder_reset");
+
   const first = events[0] as { seq?: unknown };
   const last = events[events.length - 1] as { seq?: unknown; h?: unknown };
   if (Number.isSafeInteger(first.seq) && Number.isSafeInteger(last.seq) && (first.seq as number) <= stored.head.seq) {

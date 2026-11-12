@@ -192,6 +192,26 @@ export const ADMIN_SCRIPT = `
     } catch (error) { say("Could not delete: " + error.message, "bad"); }
   }
 
+  async function resetBinder(player, name) {
+    var reason = window.prompt("Reset " + name + "'s binder? It is put aside, not deleted, and can be restored. They come off the ladder, and their old history is refused until they start a new binder. Why? (kept in the activity record; OK to go ahead, Cancel to stop)", "");
+    if (reason === null) return;
+    try {
+      await api("/v1/admin/players/" + encodeURIComponent(player.playerId) + "/reset", { method: "POST", body: JSON.stringify({ confirm: player.playerId, reason: reason.slice(0, 200) }) });
+      await openPlayer(player.playerId);
+      say("Reset " + name + "'s binder. It is in their archived binders.", "good");
+    } catch (error) { say("Could not reset the binder: " + error.message, "bad"); }
+  }
+
+  async function restoreBinder(player, name, archive) {
+    var reason = window.prompt("Bring this binder back for " + name + "? Their current binder, if they have one, is put aside instead and can be restored in turn. Why? (kept in the activity record; OK to go ahead, Cancel to stop)", "");
+    if (reason === null) return;
+    try {
+      await api("/v1/admin/players/" + encodeURIComponent(player.playerId) + "/restore", { method: "POST", body: JSON.stringify({ confirm: player.playerId, archiveId: archive.archiveId, reason: reason.slice(0, 200) }) });
+      await openPlayer(player.playerId);
+      say("Restored the binder for " + name + ".", "good");
+    } catch (error) { say("Could not restore the binder: " + error.message, "bad"); }
+  }
+
   async function openPlayer(id) {
     var box = $("player");
     box.replaceChildren();
@@ -199,20 +219,31 @@ export const ADMIN_SCRIPT = `
     var player;
     try { player = (await api("/v1/admin/players/" + encodeURIComponent(id))).player; }
     catch (error) { say("Could not load the player: " + error.message, "bad"); return; }
-    var name = player.score ? player.score.displayName : "(no name yet)";
+    var name = player.score ? player.score.displayName : (player.archives.length && player.archives[0].displayName) || "(no name yet)";
     var card = el("section", "card");
     var title = el("h2", "", name);
     title.appendChild(el("span", "tag " + (player.status === "banned" ? "confirmed" : "cleared"), player.status));
     card.appendChild(title);
     line(card, "Player id", player.playerId);
     line(card, "Joined", when(player.createdAt) + " - " + player.visibility + " - signed in with Discord: " + (player.hasDiscord ? "yes" : "no"));
-    line(card, "Keys", player.keys.active + " active, " + player.keys.revoked + " revoked - binders restarted: " + player.epoch + (player.archivedBinders ? " (" + plural(player.archivedBinders, "archived binder", "archived binders") + ")" : ""));
+    line(card, "Keys", player.keys.active + " active, " + player.keys.revoked + " revoked - binder restarts: " + player.epoch);
     card.appendChild(el("h3", "", "Characters"));
     if (!player.characters.length) line(card, "None", "no upload yet");
     player.characters.forEach(function (character) { card.appendChild(el("p", "meta", character.name + " (" + character.realm + ") - first seen " + when(character.firstSeen) + ", last " + when(character.lastSeen))); });
     card.appendChild(el("h3", "", "Score and binder"));
     if (player.score) line(card, "Score", (player.score.scoreTenths / 10).toFixed(1) + " points - " + plural(player.score.uniqueCards, "card", "cards") + ", " + plural(player.score.setsDone, "set", "sets") + ", " + plural(player.score.attempts, "attempt", "attempts") + " - rules version " + player.score.rulesVersion + ", updated " + when(player.score.updatedAt));
     if (player.binder) line(card, "Binder", player.binder.mode + " mode - " + plural(player.binder.cardsOwned, "card owned", "cards owned") + " - Casual drops: " + player.binder.casualDrops + " - last upload " + when(player.binder.updatedAt));
+    card.appendChild(el("h3", "", "Archived binders"));
+    if (!player.archives.length) line(card, "None", "no binder has been put aside");
+    player.archives.forEach(function (archive) {
+      var archiveRow = el("div", "row");
+      archiveRow.appendChild(el("p", "meta", plural(archive.cardsOwned, "card", "cards") + ", " + plural(archive.batches, "upload", "uploads") + ", last " + when(archive.lastUpload) + (archive.scoreTenths !== null ? ", " + (archive.scoreTenths / 10).toFixed(1) + " points" : "") + " - epoch " + archive.epoch + " - " + archive.archiveId));
+      var restoreButton = el("button", "", "Restore this binder...");
+      restoreButton.addEventListener("click", function () { restoreBinder(player, name, archive); });
+      archiveRow.appendChild(restoreButton);
+      card.appendChild(archiveRow);
+    });
+    if (player.barredBefore) line(card, "Old history refused", "anything written before " + when(player.barredBefore) + " (cleared by a restore)");
     line(card, "Uploads", plural(player.uploads.batches, "batch", "batches") + (player.uploads.batches ? ", from " + when(player.uploads.first) + " to " + when(player.uploads.last) : ""));
     line(card, "Trades", player.trades.matched + " matched, " + player.trades.open + " open, " + player.trades.unmatched + " unmatched");
     card.appendChild(el("h3", "", "Flags and reports"));
@@ -226,13 +257,16 @@ export const ADMIN_SCRIPT = `
     var reportsButton = el("button", "", "Read the reports");
     var banButton = el("button", "danger", "Ban...");
     var unbanButton = el("button", "", "Unban");
+    var resetButton = el("button", "danger", "Reset their binder...");
     var deleteButton = el("button", "danger", "Delete their data...");
     reportsButton.addEventListener("click", function () { showReports(player.playerId, reports, reportsButton); });
     banButton.addEventListener("click", function () { setBan(player, name, true); });
     unbanButton.addEventListener("click", function () { setBan(player, name, false); });
+    resetButton.addEventListener("click", function () { resetBinder(player, name); });
     deleteButton.addEventListener("click", function () { deletePlayer(player, name); });
     row.appendChild(reportsButton);
     if (player.status === "banned") row.appendChild(unbanButton); else row.appendChild(banButton);
+    if (player.binder) row.appendChild(resetButton);
     row.appendChild(deleteButton);
     card.appendChild(row);
     card.appendChild(reports);

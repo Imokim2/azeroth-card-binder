@@ -135,7 +135,7 @@ test("flag decisions and rebuilds are recorded too, in order, with a limit on ho
   assert.equal(all[1]!["detail"], "limit 10");
   assert.equal(((await (await get(env, "/v1/admin/audit?limit=1")).json()) as { entries: Body[] }).entries.length, 1);
   // A failure to write the record is logged and does not undo or fail the action.
-  env.deps.admin = { ...env.store, record: async () => { throw new Error("disk full"); }, audit: env.store.audit.bind(env.store), search: env.store.search.bind(env.store), detail: env.store.detail.bind(env.store) };
+  env.deps.admin = { ...env.store, record: async () => { throw new Error("disk full"); }, audit: env.store.audit.bind(env.store), search: env.store.search.bind(env.store), detail: env.store.detail.bind(env.store), adminReset: env.store.adminReset.bind(env.store), restoreBinder: env.store.restoreBinder.bind(env.store) };
   assert.equal((await post(env, `/v1/admin/players/${alice.id}/ban`, { banned: false })).status, 200);
   assert.ok(env.logs.some((entry) => entry["msg"] === "audit write failed"));
 });
