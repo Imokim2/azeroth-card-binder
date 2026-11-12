@@ -21,7 +21,13 @@ Cloudflare's free Workers plan gives each request **10 ms of CPU time** (waiting
 
 Even if Cloudflare's runtime were two or three times faster than this PC, the tape requests and a larger Ranked upload would still be over 10 ms. On the free plan they would be cut off with an error, which for Ranked means **no new roll tape and refused uploads**.
 
-## How many players?
+## New saved-progress mode (prepared source)
+
+The companion now uses saved-file events instead of periodic network polling. The leaderboard updates after a game save or catch-up upload of newly saved progress, and otherwise stays cached locally. Wanted lists stay in the addon; there is no web board or companion wanted upload/download. See [LOW-COST-SYNC.md](LOW-COST-SYNC.md) for behaviour, verification and rollout.
+
+This removes idle polling rather than merely slowing it down. An idle-day test makes zero additional requests after a successful pass. These client savings require users to install the new companion; the public installer still has its earlier behaviour. Actual card validation/history storage remains a cost. The historical calculations below are heavy-use examples, not the expected bill for this new mode.
+
+## Previous polling model (for comparison)
 
 Two changes keep the load down however many people play (12 Nov 2026): public answers are **shared at the edge** for a minute or five (`server/src/cache.ts`: the ladder, firsts, wanted board, public player pages, site pages and release announcement are worked out once, not once per request), and the companion app **asks for standings every 30 minutes** (it was 5) and **asks for roll tape only when the add-on is running low** (it was every pass).
 

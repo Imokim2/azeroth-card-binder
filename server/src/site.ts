@@ -115,13 +115,13 @@ export function privacyPage(contact?: string): string {
 <li><strong>Your characters' names and realms</strong>, taken from your history.</li>
 <li><strong>Your history</strong>: every card found, crafted, recycled and traded, with times, the trade partner's character name and the trade id.</li>
 <li><strong>Your score</strong> and when it last changed.</li>
-<li><strong>The cards you are looking for</strong> (your wanted list), only if you are public. A private player's list is not kept.</li>
+<li><strong>Legacy wanted lists</strong> uploaded by older companion versions may remain in your account data. Current companions keep wanted lists in game; they are not published on this site.</li>
 <li><strong>Reports</strong> you send about other players (the character's name, a reason and a short note you wrote) and reports other players sent about you. Only the people who run the service read them; they are not shown to anyone else, and they are erased with the rest when you delete your data.</li>
 <li><strong>Counts the server needs to check play</strong>: attempts per card, random-number positions used, and any fair-play flags with a reviewer's note.</li>
 </ul>
 
 <h2>What is shown to others</h2>
-<p>Only if you chose <strong>public</strong> when you signed up: your character name and realm, your rank and score, your sets finished, the cards in your binder and the cards you are looking for, on this site and with a "verified" mark beside your name in the game. A <strong>private</strong> player is stored but never listed.</p>
+<p>Only if you chose <strong>public</strong> when you signed up: your character name and realm, your rank and score, your sets finished, the cards in your binder, on this site and with a "verified" mark beside your name in the game. A <strong>private</strong> player is stored but never listed.</p>
 
 <h2>What is not collected</h2>
 <p>Nothing about what is on your screen, in the game's memory or in your chat. The companion app reads one file the game writes and writes one file the add-on reads. It does not touch the game process or its network traffic.</p>
@@ -143,29 +143,6 @@ export function privacyPage(contact?: string): string {
 <h2>Where it lives</h2>
 <p>On Cloudflare (Workers and D1). Secrets are kept as Worker secrets, never in the project's code.</p></article>
 `, "/privacy");
-}
-
-// What public players are looking for: the most wanted cards first, then each player's list. Names and card names only.
-export function wantedPage(entries: { playerId: string; displayName: string; cards: string[]; updatedAt: number }[], catalog: Catalog): string {
-  const wantedBy = new Map<string, string[]>();
-  for (const entry of entries) for (const key of entry.cards) wantedBy.set(key, [...(wantedBy.get(key) ?? []), entry.displayName]);
-  const ranked = [...wantedBy.entries()].filter(([key]) => catalog.cards[key]).sort((a, b) => b[1].length - a[1].length || (catalog.cards[a[0]]?.name ?? "").localeCompare(catalog.cards[b[0]]?.name ?? ""));
-  const cardRows = ranked.map(([key, names]) => {
-    const card = catalog.cards[key]!;
-    const rarity = ["common", "rare", "epic", "legendary"].includes(card.rarity) ? card.rarity : "common";
-    return `<tr><td class="${rarity}">${escapeHtml(card.name)}</td><td class="num">${names.length}</td><td>${names.map(escapeHtml).join(", ")}</td></tr>`;
-  }).join("\n");
-  const cards = ranked.length > 0
-    ? `<table><caption class="empty">Cards players are looking for</caption>\n<thead><tr><th>Card</th><th class="num">Wanted by</th><th>Who</th></tr></thead>\n<tbody>\n${cardRows}\n</tbody></table>`
-    : `<div class="panel empty-state"><span class="empty-symbol" aria-hidden="true">◇</span><div><h2>No wanted cards yet</h2><p class="empty">Nobody has listed a card they are looking for yet. Mark the cards you want in your binder and sync with public visibility to share your list.</p></div></div>`;
-  const people = entries.map((entry) => `<details><summary>${escapeHtml(entry.displayName)}: ${entry.cards.length} card${entry.cards.length === 1 ? "" : "s"}</summary><ul>${entry.cards.flatMap((key) => (catalog.cards[key] ? [`<li>${escapeHtml(catalog.cards[key]!.name)}</li>`] : [])).join("")}</ul></details>`).join("\n");
-  return layout("Wanted: World of Warcards", `
-<div class="page-heading"><h1>Wanted cards</h1>
-<p class="lede">See which cards other players want. To arrange a swap, contact them in game, target them and open the Trade tab. Mark cards as wanted in your binder and sync with public visibility to add your own list.</p></div><div class="page-content">
-${cards}
-<h2>By player</h2>
-${people || '<p class="empty">No lists yet.</p>'}</div>
-`, "/wanted");
 }
 
 export function notFoundPage(): string {

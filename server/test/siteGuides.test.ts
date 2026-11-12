@@ -6,7 +6,7 @@ test("the homepage introduces the project and the setup pages do not advertise u
   const env = setup();
   const home = await (await env.call("/")).text();
   assert.match(home, /Binder illustration/);
-  for (const path of ["/download", "/help", "/faq", "/ladder", "/wanted", "/status"]) assert.ok(home.includes(`href="${path}"`), path);
+  for (const path of ["/download", "/help", "/faq", "/ladder", "/status"]) assert.ok(home.includes(`href="${path}"`), path);
   const download = await (await env.call("/download")).text();
   assert.match(download, /Public downloads are not available yet/);
   assert.match(download, /currently unsigned/);
