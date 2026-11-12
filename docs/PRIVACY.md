@@ -24,7 +24,7 @@ Nothing about what is on your screen, in the game's memory or in your chat. The 
 ## Your choices
 
 - Choose public or private when you register, and change it by signing in again.
-- Delete your data from the server at any time with **Delete my data…** in the companion app: your record, ledger, characters, Discord link and any archived binders are erased and cannot be recovered. Your cards in the game and the files on your computer are not touched. You can sign up again later, from nothing. (A banned account's record is kept, so a ban cannot be undone by deleting the account.)
+- Delete your data from the server at any time with **Delete my data…** in the companion app: your record, ledger, characters, Discord link and any archived binders are erased from the live service at once. Copies kept for recovery after a mistake age out on their own: Cloudflare's recovery history lasts 7 days and our own daily copies are kept for 14. Your cards in the game and the files on your computer are not touched. You can sign up again later, from nothing. (A banned account's record is kept, so a ban cannot be undone by deleting the account.)
 - A banned player is hidden, not deleted, so that a ban cannot be dodged by starting again.
 
 ## Technical logs

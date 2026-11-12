@@ -76,11 +76,14 @@ export function entriesAreSafe(names: string[]): boolean {
   return names.every((name) => name.startsWith(ADDON_NAME + "/") && !name.includes("\\") && !name.includes(":") && !name.split("/").includes(".."));
 }
 
-async function files(folder: string, base = folder): Promise<string[]> {
+// Every regular file under a folder, as "a/b.lua". With `noLinks`, a link anywhere is an error: an unpacked update must hold
+// plain files only, so nothing in it can point out of the folder it is copied from.
+async function files(folder: string, base = folder, noLinks = false): Promise<string[]> {
   const out: string[] = [];
   for (const entry of await readdir(folder, { withFileTypes: true })) {
     const full = join(folder, entry.name);
-    if (entry.isDirectory()) out.push(...(await files(full, base)));
+    if (noLinks && entry.isSymbolicLink()) throw new Error("the add-on file holds a link");
+    if (entry.isDirectory()) out.push(...(await files(full, base, noLinks)));
     else if (entry.isFile()) out.push(relative(base, full).split(sep).join("/"));
   }
   return out;
@@ -109,7 +112,7 @@ export async function installAddon(zip: string, gameRoot: string, backups: strin
     if (extracted.status !== 0) throw new Error("the add-on file could not be unpacked");
     const fresh = join(scratch, ADDON_NAME);
     if ((await tocVersion(fresh)) !== expectedVersion) throw new Error("the add-on file is not the version the release says");
-    const incoming = await files(fresh);
+    const incoming = await files(fresh, fresh, true);
     let existing: string[] = [];
     try {
       if ((await stat(target)).isDirectory()) existing = await files(target);
