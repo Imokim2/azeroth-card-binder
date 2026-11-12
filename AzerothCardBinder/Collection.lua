@@ -1,5 +1,11 @@
 local _, ACB = ...
 
+function ACB.tradeItem(key) return ACB.cards[key] or (ACB.packItem and ACB.packItem(key)) end
+function ACB.itemCount(saved, key)
+    local pack = ACB.packItem and ACB.packItem(key)
+    return pack and (saved.packs and saved.packs[pack.zone] or 0) or (saved.counts[key] or 0)
+end
+
 -- How many recently rolled sources are remembered in the saved file.
 ACB.rolledMemory = 2000
 
@@ -37,7 +43,7 @@ end
 function ACB.tradeHistory(saved)
     local lines = {}
     for _, entry in ipairs(saved.history or {}) do
-        local out, into = ACB.cards[entry.give], ACB.cards[entry.take]
+        local out, into = ACB.tradeItem(entry.give), ACB.tradeItem(entry.take)
         if out or into then
             local stamp = entry.time and (date and date("%d %b %H:%M", entry.time) or tostring(entry.time)) or ""
             local action = out and into and (out.name .. " for " .. into.name)
@@ -66,7 +72,7 @@ end
 -- Attempts without a drop so far, and the attempt that is certain to drop, for a catalog card.
 function ACB.luck(saved, card)
     card = ACB.baseCard(card)
-    local rate = ACB.rates[card.rank]
+    local rate = ACB.dropRate(card, saved.balancedDrops)
     local factor = ACB.stackFactor or 0
     local limit = factor > 0 and 1 + math.ceil((10000 - rate) / (rate * factor)) or nil
     return (saved.misses and saved.misses[card.key]) or 0, limit
@@ -80,7 +86,7 @@ end
 function ACB.luckText(saved, card, showEmpty)
     local misses = ACB.luck(saved, card)
     if misses == 0 and not showEmpty then return end
-    local chance = ACB.chanceAfter(ACB.rates[card.rank], misses)
+    local chance = ACB.dropChance(ACB.baseCard(card), misses, saved.balancedDrops)
     if chance >= 10000 then return "Next attempt guaranteed" end
     return ("Next attempt: %g%%"):format(chance / 100)
 end
@@ -103,6 +109,14 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     found = found or function() end
     completed = completed or function() end
     local collection = { saved = saved, rolled = {} }
+    local function cardLink(card, shiny)
+        return ACB.cardLink and ACB.cardLink(card, shiny) or card.name
+    end
+    -- Only called for a committed acquisition, never while restoring or displaying a binder.
+    function collection:cardAdded(card, info, message)
+        report(message or ("Added %s to your binder (x%d)."):format(cardLink(card, info.shiny), info.count))
+        if self.announcements then self.announcements:add(card, info) end
+    end
     local function record(...)
         if ledger then return ledger:record(...) end
     end
@@ -159,7 +173,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             log("Already rolled: " .. card.name .. " (" .. origin .. ")")
             return
         end
-        if ACB.editions[card.key] then ACB.activateEditions(saved, ledger) end
+        ACB.activateDropBalance(saved, ledger)
+        if ACB.editions[card.key] and (not card.critter or saved.balancedDrops) then ACB.activateEditions(saved, ledger) end
 
         -- In Ranked mode every attempt uses the next entry of the server's tape. With none left, rolling pauses.
         local ranked = saved.mode == "ranked"
@@ -178,11 +193,10 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         end
         remember(guid)
         -- Ranked uses the card's listed rate, so the server can recheck every drop without seeing the creature.
-        local threshold = ranked and ACB.rates[card.rank] or ACB.rates[observedRank] or ACB.rates[card.rank]
         saved.misses = saved.misses or {}
-        -- Every miss raises the chance of the next attempt, and a drop starts it over.
+        -- Each profile decides when protection rises; a drop starts it over.
         local misses = ACB.luck(saved, card)
-        local chance = ACB.chanceAfter(threshold, misses)
+        local chance = ACB.dropChance(card, misses, saved.balancedDrops, not ranked and observedRank or nil)
         local guaranteed = chance >= 10000
         -- A certain drop needs no roll; a Casual roll is drawn only when it is needed.
         local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= chance
@@ -205,7 +219,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             end
             if packWin then
                 if ranked and ledger then ledger:flushRun() end -- the pack belongs to this attempt, so the run ends with it
-                self:addPack(card, tapeIndex)
+                self:addPack(card, tapeIndex, entry)
             end
             return false
         end
@@ -213,7 +227,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         if ranked and ledger then ledger:flushRun() end
 
         if saved.editionDrops and ACB.editions[card.key] then
-            card = ACB.pickEdition(card, ranked and ACB.editionRoll(entry) or random(1, ACB.editionDenominator))
+            card = ACB.pickEdition(card, ranked and ACB.editionRoll(entry) or random(1, ACB.editionDenominator), saved.balancedDrops)
         end
 
         local counts = saved.counts
@@ -227,10 +241,10 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         end
         if shiny then saved.shiny[card.key] = true end
         record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex })
-        if packWin then self:addPack(card, tapeIndex) end
+        if packWin then self:addPack(card, tapeIndex, entry) end
         -- A drop rolled with this computer's own random numbers cannot be rechecked by the server.
         if not ranked then saved.casualDrops = (saved.casualDrops or 0) + 1 end
-        report(("%s: %s (x%d)"):format(shiny and "Shiny card found" or "Card found", card.name, counts[card.key]))
+        self:cardAdded(card, { count = counts[card.key], shiny = shiny })
         checkAchievements(card)
         found(card, { count = counts[card.key], first = counts[card.key] == 1, shiny = shiny })
         return true
@@ -241,24 +255,42 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     -- `partner` and `tradeId` identify the trade in the ledger; both players hold the same trade id.
     function collection:swap(give, take, partner, tradeId)
         local counts = saved.counts
-        local out, into = ACB.cards[give], ACB.cards[take]
+        local out, into = ACB.tradeItem(give), ACB.tradeItem(take)
         if (not out and not into) or (give and not out) or (take and not into)
-            or give == take or (out and (counts[give] or 0) < 1) then return false end
+            or give == take or (out and ACB.itemCount(saved, give) < 1) then return false end
+        if ledger then ledger:flushRun() end
+        local function transfer(kind, item, delta)
+            if item.pack then
+                saved.packs = saved.packs or {}
+                local count = (saved.packs[item.zone] or 0) + delta
+                saved.packs[item.zone] = count > 0 and count or nil
+                record(kind, item.key, { count = count, partner = partner, trade = tradeId })
+            else
+                local before = counts[item.key] or 0
+                counts[item.key] = before + delta
+                record(kind, item.key, { before = before, partner = partner, trade = tradeId })
+                if counts[item.key] == 0 then counts[item.key] = nil end
+            end
+        end
         if out then
-            counts[give] = counts[give] - 1
-            record("tradeOut", give, { before = counts[give] + 1, partner = partner, trade = tradeId })
-            if counts[give] == 0 then counts[give] = nil end
+            transfer("tradeOut", out, -1)
         end
         if into then
-            local before = counts[take] or 0
-            counts[take] = before + 1
-            record("tradeIn", take, { before = before, partner = partner, trade = tradeId })
-            report(out and ("Traded %s for %s"):format(out.name, into.name) or ("Received %s as a gift."):format(into.name))
-            checkAchievements(into)
-            found(into, { count = counts[take], first = counts[take] == 1, trade = true })
+            transfer("tradeIn", into, 1)
+            local received = into.pack and into.name or cardLink(into, false)
+            local message = out and ("Traded %s for %s"):format(out.name, received) or ("Received %s as a gift."):format(received)
+            if into.pack then
+                report(message)
+                if self.onPack then self.onPack(into.page, saved.packs[into.zone], into) end
+            else
+                self:cardAdded(into, { count = counts[take], trade = true }, message)
+                checkAchievements(into)
+                found(into, { count = counts[take], first = counts[take] == 1, trade = true })
+            end
         else
             report(("Gifted %s."):format(out.name))
         end
+        if ACB.refreshSatchel then ACB.refreshSatchel() end
         return true
     end
 
@@ -278,6 +310,10 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     -- Spend dust on a card that is not in the binder yet. It is a plain copy, never shiny.
     function collection:craft(key)
         local card = ACB.cards[key]
+        if saved.balancedDrops and card and card.dropProfile and card.dropProfile.noCraft then
+            report("This elusive card must be found or traded for.")
+            return false
+        end
         if not card or card.baseKey or (saved.counts[key] or 0) > 0 then return false end
         local _, cost = ACB.dustFor(card)
         if (saved.dust or 0) < cost then return false end
@@ -285,7 +321,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         saved.counts[key] = 1
         record("craft", key, { before = 0, dust = -cost })
         if saved.misses then saved.misses[key] = nil end
-        report(("Crafted %s for %d Binder Dust (%d left)"):format(card.name, cost, saved.dust))
+        self:cardAdded(card, { count = 1, crafted = true },
+            ("Crafted %s for %d Binder Dust (%d left)"):format(cardLink(card, false), cost, saved.dust))
         checkAchievements(card)
         found(card, { count = 1, first = true, crafted = true })
         return true

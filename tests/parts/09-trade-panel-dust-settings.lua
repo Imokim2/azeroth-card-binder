@@ -106,7 +106,7 @@ test("the folio shows kills since the last drop and a dust button that recycles 
 
     saved.counts["npc:639"], saved.misses["npc:639"], saved.dust = 2, 37, 0
     assert(ACB.openCard("npc:639"))
-    widgetWithText(("Loot attempts: %d / %d"):format(37, limit))
+    widgetWithText("Collected")
     widgetWithText("Binder Dust: 0")
     local recycle = widgetWithText(("Recycle a spare: +%d dust"):format(yield))
     equal(recycle.parent.enabled, true)
@@ -131,7 +131,7 @@ test("the folio shows kills since the last drop and a dust button that recycles 
 
     -- A gathering node counts gathers, not kills.
     ACB.openCard("node:1731")
-    widgetWithText(("Gather attempts: %d / %d"):format(0, select(2, ACB.luck(saved, ACB.cards["node:1731"]))))
+    widgetWithText("COLLECTION STATUS")
     equal(ACB.openCard("npc:99999"), false)
     saved.dust, saved.misses["npc:639"], saved.counts["npc:639"], saved.counts["npc:590"] = unpack(keep, 1, 4)
     ACB.open("collection")
@@ -155,7 +155,7 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     local checks = {}
     ACB.open("settings")
     for _, widget in ipairs(widgets) do
-        if widget.template == "UICheckButtonTemplate" then checks[#checks + 1] = widget end
+        if widget.template == "UICheckButtonTemplate" and widget.settingGroup == "general" then checks[#checks + 1] = widget end
     end
     equal(#checks, #ACB.settings)
     for index, setting in ipairs(ACB.settings) do

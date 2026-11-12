@@ -19,45 +19,63 @@ function ACB.createSettingsView(frame, saved)
     settingsView:SetBackdropColor(0.13, 0.09, 0.07, 1)
     settingsView:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
     label(settingsView, "GameFontNormalLarge", 32, 20, brass, "Settings")
+    local general = CreateFrame("Frame", nil, settingsView)
+    general:SetAllPoints(settingsView)
+    local audio = ACB.createSoundSettingsView(settingsView, saved)
+    audio:Hide()
+    local generalTab, soundTab
+    local function selectAudio(on)
+        general:SetShown(not on)
+        audio:SetShown(on)
+        if not on then ACB.stopSounds() end
+        generalTab:SetEnabled(on)
+        soundTab:SetEnabled(not on)
+        settingsView:refresh()
+    end
+    generalTab = button(settingsView, "General", 640, 16, 104, function() selectAudio(false) end)
+    soundTab = button(settingsView, "Sounds", 754, 16, 104, function() selectAudio(true) end)
+    generalTab:SetEnabled(false)
     local checks = {}
     for index, setting in ipairs(ACB.settings) do
-        local y = 62 + (index - 1) * 36
-        local check = CreateFrame("CheckButton", nil, settingsView, "UICheckButtonTemplate")
+        local y = 62 + (index - 1) * 32
+        local check = CreateFrame("CheckButton", nil, general, "UICheckButtonTemplate")
+        check.settingGroup = "general"
         check:SetPoint("TOPLEFT", 30, -y)
         check:SetSize(30, 30)
         check:SetScript("OnClick", function(self)
             ACB.setSetting(saved, setting.key, self:GetChecked() == true)
             ACB.refresh()
         end)
-        label(settingsView, "GameFontNormal", 70, y + 2, parchment, setting.name)
-        label(settingsView, "GameFontHighlightSmall", 70, y + 20, muted, setting.note)
+        label(general, "GameFontNormal", 70, y + 2, parchment, setting.name)
+        label(general, "GameFontHighlightSmall", 70, y + 18, muted, setting.note)
         checks[setting.key] = check
     end
-    local titleY = 62 + #ACB.settings * 36 + 6
-    label(settingsView, "GameFontNormal", 32, titleY + 6, parchment, "Title shown in player tooltips")
-    button(settingsView, "Previous title", 290, titleY, 110, function()
+    local titleY = 62 + #ACB.settings * 32 + 6
+    label(general, "GameFontNormal", 32, titleY + 6, parchment, "Title shown in player tooltips")
+    button(general, "Previous title", 290, titleY, 110, function()
         ACB.cycleTitle(saved, -1)
         ACB.refresh()
     end)
-    local titleName = label(settingsView, "GameFontHighlight", 406, titleY + 6, gold, "")
+    local titleName = label(general, "GameFontHighlight", 406, titleY + 6, gold, "")
     titleName:SetWidth(170)
     titleName:SetJustifyH("CENTER")
-    button(settingsView, "Next title", 582, titleY, 110, function()
+    button(general, "Next title", 582, titleY, 110, function()
         ACB.cycleTitle(saved, 1)
         ACB.refresh()
     end)
-    button(settingsView, "Test pop-up", 32, titleY + 48, 130, function() SlashCmdList.AZEROTHCARDBINDER("popup test") end)
-    button(settingsView, "Open diagnostics log", 172, titleY + 48, 170, function() SlashCmdList.AZEROTHCARDBINDER("log") end)
-    button(settingsView, "Card design studio", 512, titleY + 48, 170, function() ACB.openCardStudio() end)
+    button(general, "Test pop-up", 32, titleY + 48, 130, function() SlashCmdList.AZEROTHCARDBINDER("popup test") end)
+    button(general, "Open diagnostics log", 172, titleY + 48, 170, function() SlashCmdList.AZEROTHCARDBINDER("log") end)
+    button(general, "Card design studio", 512, titleY + 48, 170, function() ACB.openCardStudio() end)
     -- Casual uses this computer's random numbers and does not count for the ladder; Ranked uses the server's tape.
-    local modeButton = button(settingsView, "Switch to Ranked", 352, titleY + 48, 150, function()
+    local modeButton = button(general, "Switch to Ranked", 352, titleY + 48, 150, function()
         SlashCmdList.AZEROTHCARDBINDER("mode " .. (saved.mode == "ranked" and "casual" or "ranked"))
     end)
-    label(settingsView, "GameFontHighlightSmall", 32, titleY + 90, muted,
-        "Everything here is also a slash command: /acb popup, hints, privacy, diag, boss and title.")
-    local verification = label(settingsView, "GameFontHighlightSmall", 32, titleY + 118, muted, "")
+    label(general, "GameFontHighlightSmall", 32, titleY + 90, muted,
+        "Quick controls: /acb popup, hints, privacy, diag, boss, title and announce.")
+    local verification = label(general, "GameFontHighlightSmall", 32, titleY + 118, muted, "")
 
     function settingsView:refresh()
+        audio:refresh()
         for _, setting in ipairs(ACB.settings) do checks[setting.key]:SetChecked(ACB.settingOn(saved, setting)) end
         titleName:SetText(saved.title or "No title shown")
         modeButton:SetText(saved.mode == "ranked" and "Switch to Casual" or "Switch to Ranked")
@@ -67,5 +85,7 @@ function ACB.createSettingsView(frame, saved)
             verification:SetTextColor(unpack(verified and muted or { 0.9, 0.45, 0.35 }))
         end
     end
+    settingsView:SetScript("OnHide", function() ACB.stopSounds() end)
+    settingsView.soundControls = audio.controls
     return settingsView
 end

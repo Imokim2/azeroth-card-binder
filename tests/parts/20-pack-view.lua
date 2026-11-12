@@ -30,7 +30,7 @@ test("the window lists the packs you hold, and says so when there are none", fun
     ACB.refreshPackButton()
     assert(textOf("Packs (2)"), "the binder's button shows how many")
     ACB.packView:refreshList()
-    assert(textOf(("%s Pack   x2"):format(ZONE_TITLE)), "the zone's pack is listed with its count")
+    assert(textOf(("Pack: %s  /  Epic  /  x2"):format(ZONE_TITLE)), "the zone's pack is listed with its count")
     saved.packs, saved.mode = keep[1], keep[2]
     ACB.packView.frame:Hide()
 end)
@@ -91,11 +91,11 @@ test("opening a pack shakes it, bursts it, deals five cards face down, and each 
     view:flipAll()
     run(view, 3)
     equal(view:flipped(), 5)
-    assert(textOf("That's all five. They are in your binder."), "told they are all in")
+    assert(textOf("Added to your binder."), "told they are all in")
     -- Done goes back to the list, with the other pack still there.
     view:finish()
     equal(view.phase, "list")
-    assert(textOf(("%s Pack   x1"):format(ZONE_TITLE)), "the remaining pack is listed")
+    assert(textOf(("Pack: %s  /  Epic  /  x1"):format(ZONE_TITLE)), "the remaining pack is listed")
     saved.packs, saved.mode, saved.casualDrops = keep[1], keep[2], keep[3]
     view.frame:Hide()
 end)
@@ -132,7 +132,7 @@ test("a Ranked pack with too little tape says why and keeps the pack", function(
     ACB.openPacks()
     view:openZone(ZONE_CODE)
     equal(view.phase, "list")
-    equal(saved.packs[ZONE_CODE], 1)
+    equal(ACB.packList(saved)[1].count, 1)
     assert(textOf("A Ranked pack needs 5 roll tape entries. Type /reload so the companion app can bring more, or switch to Casual."), "the reason is shown")
     ACB.sync.tape = keepTape
     saved.packs, saved.mode = keep[1], keep[2]
@@ -147,7 +147,7 @@ test("a pack found in the game raises the button's count and tells chat", functi
     print = function(text) lines[#lines + 1] = text end
     ACB.collection:addPack(ACB.cards["npc:589"], nil)
     print = realPrint
-    equal(saved.packs[ZONE_CODE], 1)
+    equal(ACB.packList(saved)[1].count, 1)
     assert(textOf("Packs (1)"), "the count is on the button")
     assert(table.concat(lines, "\n"):find("Card pack found"), table.concat(lines, "\n"))
     saved.packs, saved.mode = keep[1], keep[2]

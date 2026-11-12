@@ -316,6 +316,7 @@ local function initialize()
         if ACB.refresh then ACB.refresh() end
     end, ledger)
     ACB.collection = collection
+    collection.announcements = ACB.newCardAnnouncements(saved, log)
     -- Kills with nothing to loot (critters and the like): see Kills.lua.
     kills = ACB.newKillWatcher(collection, {
         now = GetTime, units = { "target", "mouseover", "focus" }, log = log,
@@ -342,7 +343,7 @@ local function initialize()
         if done then ACB.logTrade(saved, give, take, peer, time(), report) end
         ACB.refresh()
         return done
-    end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.tradeDistanceOk(saved, peer) end)
+    end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.tradeDistanceOk(saved, peer) end, saved)
     -- Start a trade giving one card; the other player's window opens by itself (TradeSession.lua).
     function ACB.startTrade(peer, give)
         trade:start(peer, give, false)
@@ -359,6 +360,7 @@ local function initialize()
     end
     ACB.initUI(saved, trade)
     ACB.initPacks(saved, collection)
+    ACB.initSatchel(saved, collection, trade)
     ACB.initLauncher(saved)
     ACB.initToast(saved)
     ACB.initHints(saved)

@@ -1,0 +1,219 @@
+{
+  "tiers": [
+    {
+      "entry": "0000270f00000000",
+      "tier": "common",
+      "found": true
+    },
+    {
+      "entry": "0000270f000a8750",
+      "tier": "common",
+      "found": true
+    },
+    {
+      "entry": "0000270f000aae60",
+      "tier": "rare",
+      "found": true
+    },
+    {
+      "entry": "0000270f000e57e0",
+      "tier": "rare",
+      "found": true
+    },
+    {
+      "entry": "0000270f000e7ef0",
+      "tier": "epic",
+      "found": true
+    },
+    {
+      "entry": "0000270f000f1b30",
+      "tier": "epic",
+      "found": true
+    }
+  ],
+  "gift": {
+    "giver": {
+      "events": [
+        {
+          "seq": 1,
+          "t": 1000,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "mode",
+          "key": "packs2",
+          "count": 0,
+          "prev": "00000000000000000000000000000000",
+          "h": "2c5ea9dc51ec0c5a0755160a8d4e747f"
+        },
+        {
+          "seq": 2,
+          "t": 1010,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Alice-RealmName",
+          "kind": "packFind",
+          "key": "WF:rare",
+          "count": 1,
+          "prev": "2c5ea9dc51ec0c5a0755160a8d4e747f",
+          "h": "bcf98ce0c38d8e9e4b9ccf107e44c492"
+        },
+        {
+          "seq": 3,
+          "t": 1020,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "bob-realmname",
+          "trade": "pack-gift-vector",
+          "char": "Alice-RealmName",
+          "kind": "tradeOut",
+          "key": "pack:WF:rare",
+          "count": 0,
+          "prev": "bcf98ce0c38d8e9e4b9ccf107e44c492",
+          "h": "ec78d51a92c9e7ae25bb98adfc59222c"
+        }
+      ],
+      "head": {
+        "seq": 3,
+        "hash": "ec78d51a92c9e7ae25bb98adfc59222c"
+      },
+      "finalState": {
+        "counts": {},
+        "dust": 0,
+        "shiny": {},
+        "sets": {},
+        "mode": "casual",
+        "lastTape": 0,
+        "lastT": 1020,
+        "exact": false,
+        "packs": {},
+        "packZone": "",
+        "packLeft": 0,
+        "packFound": 0,
+        "lastAttempt": {
+          "key": "",
+          "tape": 0
+        },
+        "tieredPacks": true
+      }
+    },
+    "recipient": {
+      "events": [
+        {
+          "seq": 1,
+          "t": 1000,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "alice-realmname",
+          "trade": "pack-gift-vector",
+          "char": "Bob-RealmName",
+          "kind": "tradeIn",
+          "key": "pack:WF:rare",
+          "count": 1,
+          "prev": "00000000000000000000000000000000",
+          "h": "782904a7b5800e9a930269e3fc166a31"
+        },
+        {
+          "seq": 2,
+          "t": 1010,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Bob-RealmName",
+          "kind": "packOpen",
+          "key": "WF:rare",
+          "count": 0,
+          "prev": "782904a7b5800e9a930269e3fc166a31",
+          "h": "6b50c9f8f3ab3f4d757d1371398fd23f"
+        },
+        {
+          "seq": 3,
+          "t": 1020,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Bob-RealmName",
+          "kind": "packCard",
+          "key": "npc:589",
+          "count": 1,
+          "prev": "6b50c9f8f3ab3f4d757d1371398fd23f",
+          "h": "f98be0b4d0d77f6a8d968556abc2db6d"
+        },
+        {
+          "seq": 4,
+          "t": 1030,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Bob-RealmName",
+          "kind": "packCard",
+          "key": "npc:590",
+          "count": 1,
+          "prev": "f98be0b4d0d77f6a8d968556abc2db6d",
+          "h": "32f33634ea1c5f4fab49651dbdf07ef1"
+        },
+        {
+          "seq": 5,
+          "t": 1040,
+          "dust": 0,
+          "shiny": 0,
+          "tape": 0,
+          "partner": "",
+          "trade": "",
+          "char": "Bob-RealmName",
+          "kind": "packCard",
+          "key": "npc:589",
+          "count": 2,
+          "prev": "32f33634ea1c5f4fab49651dbdf07ef1",
+          "h": "d43b645d31162ec56574e36c08818a55"
+        }
+      ],
+      "head": {
+        "seq": 5,
+        "hash": "d43b645d31162ec56574e36c08818a55"
+      },
+      "finalState": {
+        "counts": {
+          "npc:589": 2,
+          "npc:590": 1
+        },
+        "dust": 0,
+        "shiny": {},
+        "sets": {},
+        "mode": "casual",
+        "lastTape": 0,
+        "lastT": 1040,
+        "exact": false,
+        "packs": {},
+        "packZone": "WF",
+        "packLeft": 0,
+        "packFound": 0,
+        "lastAttempt": {
+          "key": "",
+          "tape": 0
+        },
+        "packOutputs": {
+          "WF:rare": {
+            "npc:589": 2,
+            "npc:590": 1
+          }
+        },
+        "packType": "WF:rare"
+      }
+    }
+  }
+}

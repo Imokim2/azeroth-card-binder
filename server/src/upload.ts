@@ -13,7 +13,7 @@ import type { IngestStore, Player, TapeStore, TradeStore } from "./store.ts";
 import { checkTape, tapeKey, tapeOwner } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4]; // 4 adds edition-aware drops and the editions1 activation marker
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6]; // 6 adds trade-only pack:<zone> keys
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -97,6 +97,15 @@ export async function acceptUpload(
 
   const stored = await deps.ingest.load(player.id);
   const events = upload.events;
+  if (upload.specVersion < 6 && (stored.state.packOutputs || stored.state.tieredPacks || events.some(event =>
+    String(event["key"]).startsWith("pack:") || event["key"] === "packs2" ||
+    ((event["kind"] === "packFind" || event["kind"] === "packOpen") && String(event["key"]).includes(":"))))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
+  if (upload.specVersion < 5 && (stored.state.balance === 1 || events.some((event) =>
+    (event["kind"] === "mode" && event["key"] === "chase1") || deps.catalog.cards[String(event["key"])]?.balanceOnly))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
   // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.
   if (upload.tapeIndex > (await deps.tapes.issuedEnd(player.id)) + 1 && upload.tapeIndex > 1) {
     throw new ApiError("tape_invalid", { reason: "next", index: events.length });
@@ -157,7 +166,12 @@ export async function acceptUpload(
   })) flags.push({ id: newId(deps.now() * 1000), ...flag });
   const attempts = Object.values(upload.snapshot.attempts).reduce((sum, value) => sum + value, 0);
   // Copies that came from trades the other player never confirmed do not count (roadmap C5).
-  const score = scoreOf(deps.catalog, played.state, await deps.trades.excluded(player.id));
+  const excluded = await deps.trades.excluded(player.id);
+  // New incoming packs are pending matching until maintenance sees both uploads.
+  for (const event of events) if (event["kind"] === "tradeIn" && String(event["key"]).startsWith("pack:")) {
+    const key = String(event["key"]); excluded[key] = (excluded[key] || 0) + 1;
+  }
+  const score = scoreOf(deps.catalog, played.state, excluded);
   // The trade halves and finished sets in this batch, for matching and the firsts feed.
   const trades = tradeRowsOf(events);
   const completions = completionsOf(events);

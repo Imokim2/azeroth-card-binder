@@ -17,6 +17,18 @@ const rollOf = (entry) => (parseInt(entry.slice(0, 8), 16) % 10000) + 1;
 // 1 when the attempt that used this entry found a pack.
 const packValue = (entry, shinyOdds) => (Math.floor(secondHalf(entry) / shinyOdds) % PACK_ODDS) + 1;
 const packFound = (entry, shinyOdds) => packValue(entry, shinyOdds) === 1;
+const PACK_TIERS = { common: 1, rare: 3, epic: 5 };
+function packInfo(catalog, id) {
+    if (typeof id !== 'string') return null;
+    const match = /^([A-Z][A-Z0-9]*)(?::(common|rare))?$/.exec(id);
+    if (!match || !catalog.sets.some(set => set.code === match[1])) return null;
+    const tier = match[2] || 'epic';
+    return { id, zone: match[1], tier, size: PACK_TIERS[tier] };
+}
+function packTier(entry, shinyOdds) {
+    const draw = Math.floor(secondHalf(entry) / shinyOdds / PACK_ODDS) % 100;
+    return draw < 70 ? 'common' : draw < 95 ? 'rare' : 'epic';
+}
 
 const byNumber = (a, b) => (Number(a.split(":")[1]) - Number(b.split(":")[1])) || (a < b ? -1 : a > b ? 1 : 0);
 
@@ -35,7 +47,7 @@ function packPools(catalog, zone) {
 
 // The card a tape entry gives from a zone's pack: the rarity from the roll, then a card of that rarity from the rest.
 // Only whole numbers are used, so every implementation gets the same answer. Returns the card key, or null for an unknown zone.
-function packPick(catalog, zone, entry, shinyOdds) {
+function packPick(catalog, zone, entry, shinyOdds, balanced = false) {
     const pools = packPools(catalog, zone);
     if (pools.length === 0) return null;
     const total = pools.reduce((sum, pool) => sum + pool.weight, 0);
@@ -46,7 +58,15 @@ function packPick(catalog, zone, entry, shinyOdds) {
         upTo += pool.weight * 10000;
         if (scaled < upTo) { chosen = pool; break; }
     }
-    return chosen.cards[Math.floor(secondHalf(entry) / shinyOdds) % chosen.cards.length];
+    const draw = Math.floor(secondHalf(entry) / shinyOdds);
+    if (!balanced) return chosen.cards[draw % chosen.cards.length];
+    const weights = chosen.cards.map(key => catalog.cards[key].dropProfile?.packWeight ?? 100);
+    let index = draw % weights.reduce((sum, weight) => sum + weight, 0);
+    for (let i = 0; i < chosen.cards.length; i++) {
+        index -= weights[i];
+        if (index < 0) return chosen.cards[i];
+    }
+    return null;
 }
 
-module.exports = { PACK_ODDS, PACK_SIZE, PACK_RARITIES, packValue, packFound, packPools, packPick };
+module.exports = { PACK_ODDS, PACK_SIZE, PACK_RARITIES, PACK_TIERS, packInfo, packTier, packValue, packFound, packPools, packPick };

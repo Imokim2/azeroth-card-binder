@@ -4,7 +4,7 @@
 -- Run from the repository root: luajit tests/tools/play-ledger.lua
 local addon = "AzerothCardBinder"
 local ACB = {}
-for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "Editions.lua", "Achievements.lua",
+for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "DropRates.lua", "Editions.lua", "Achievements.lua",
     "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Updates.lua", "Tape.lua", "Collection.lua", "SavedData.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
@@ -13,6 +13,7 @@ time = function() clock = clock + 5 return clock end
 
 local saved = {}
 local _, upgraded = ACB.cleanSavedData(saved)
+saved.balancedDrops = false -- preserve the pre-chase event fixture
 local ledger = ACB.newLedger(saved, time, function() return "Alice-RealmName" end)
 ledger:begin(upgraded)
 -- Every roll is a drop, and every first copy is shiny, so each kind of event is easy to produce.

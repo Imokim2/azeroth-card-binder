@@ -3,7 +3,7 @@
 // to be tuned in the beta. Rules version 1.
 import type { Catalog, LedgerState } from "./shared.ts";
 import { baseCardKey } from "./shared.ts";
-import { chanceAfter } from "./stack.ts";
+import { profileChance, profileFor } from "../../packages/shared/src/drops.js";
 
 export const LUCK_REVIEW = 4; // -log10(p) at which a flag opens for review
 export const LUCK_HOLD = 6; // -log10(p) at which the player is held off the ladder until reviewed
@@ -15,7 +15,11 @@ const MIN_WINDOW_SECONDS = 600; // a rate is judged only over uploads at least t
 // after a drop wins with probability chanceAfter(rate, k - 1). Without a stack a card would drop with probability
 // `rate` each attempt. The wait T for a drop has mean m and variance v, and over n attempts the drop count is about
 // normal with mean n/m and variance n*v/m^3 (renewal theory).
-export function dropModel(rate: number, stackFactor: number): { perAttempt: number; variancePerAttempt: number } {
+const models = new Map<string, { perAttempt: number; variancePerAttempt: number }>();
+export function dropModel(rate: number, stackFactor: number, style = "stack"): { perAttempt: number; variancePerAttempt: number } {
+  const key = `${rate}|${stackFactor}|${style}`;
+  const cached = models.get(key);
+  if (cached) return cached;
   if (rate <= 0) return { perAttempt: 0, variancePerAttempt: 0 };
   let mean = 0;
   let second = 0;
@@ -23,11 +27,14 @@ export function dropModel(rate: number, stackFactor: number): { perAttempt: numb
   for (let k = 0; k < 1_000_000; k++) {
     mean += survive;
     second += (2 * k + 1) * survive;
-    survive *= 1 - chanceAfter(rate, k, stackFactor) / 10000;
+    survive *= 1 - profileChance({ rate, style }, k, stackFactor) / 10000;
     if (survive < 1e-15) break;
   }
   const variance = Math.max(second - mean * mean, 0);
-  return { perAttempt: 1 / mean, variancePerAttempt: variance / (mean * mean * mean) };
+  const model = { perAttempt: 1 / mean, variancePerAttempt: variance / (mean * mean * mean) };
+  if (models.size >= 2048) models.clear();
+  models.set(key, model);
+  return model;
 }
 
 // Upper tail of the standard normal distribution.
@@ -43,14 +50,15 @@ function normalTail(z: number): number {
 
 // How lucky the player's drops are: -log10 of the chance of at least this many drops from this many attempts.
 // 0 or less means ordinary luck; 4 means about 1 in 10,000. Uses lifetime attempts and the drops stored for each card.
-export function luckScore(catalog: Catalog, attempts: Record<string, number>, drops: Record<string, number>): number {
+export function luckScore(catalog: Catalog, attempts: Record<string, number>, drops: Record<string, number>, balanced = false): number {
   let mean = 0;
   let variance = 0;
   let observed = 0;
   for (const [key, count] of Object.entries(attempts)) {
     const card = catalog.cards[key];
     if (!card || count < 1) continue;
-    const model = dropModel(catalog.rates[card.rank] ?? 0, catalog.stackFactor);
+    const profile = profileFor(catalog, key, balanced);
+    const model = dropModel(profile.rate, catalog.stackFactor, profile.style);
     mean += count * model.perAttempt;
     variance += count * model.variancePerAttempt;
   }
@@ -71,7 +79,9 @@ export function integrityFlags(args: {
 }): Flag[] {
   const flags: Flag[] = [];
   const open = new Set(args.openKinds);
-  const luck = luckScore(args.catalog, args.attempts, args.drops);
+  const balanced = args.state.balance === 1;
+  const luck = luckScore(args.catalog, balanced ? args.state.balanceAttempts || {} : args.attempts,
+    balanced ? args.state.balanceDrops || {} : args.drops, balanced);
   // Luck a reviewer has already cleared is not flagged again until it grows by two more orders of magnitude.
   const worth = luck >= (args.clearedLuck ?? 0) + (args.clearedLuck ? 2 : 0);
   if (luck >= LUCK_HOLD && worth && !open.has("luck-hold")) flags.push({ kind: "luck-hold", notes: `luck ${luck.toFixed(1)}` });

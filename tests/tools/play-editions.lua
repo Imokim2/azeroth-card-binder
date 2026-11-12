@@ -1,11 +1,12 @@
 -- Actual addon inventory/ledger scenario used by server edition integration tests.
 local addon, ACB = "AzerothCardBinder", {}
-for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "Editions.lua",
+for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "DropRates.lua", "Editions.lua",
     "Achievements.lua", "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Updates.lua", "Tape.lua", "Collection.lua", "Packs.lua", "SavedData.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 local clock = 1700000000
 local saved = ACB.cleanSavedData({})
+saved.balancedDrops = false -- spec-4 legacy fixture; spec-5 has a separate real-addon scenario
 local ledger = ACB.newLedger(saved, function() clock = clock + 1; return clock end, function() return "Alice-RealmName" end)
 ledger:begin(true)
 local collection = ACB.newCollection(saved, function(_, high)

@@ -15,7 +15,7 @@ end)
 
 test("eight dungeon bosses have two collectible editions outside ordinary set slots", function()
     local families, variants = 0, 0
-    for _, family in pairs(ACB.editions) do
+    for _, family in pairs(ACB.editions) do if not family[1].critter then
         families = families + 1
         equal(#family, 3)
         for index = 2, 3 do
@@ -26,7 +26,7 @@ test("eight dungeon bosses have two collectible editions outside ordinary set sl
             equal(card.presentation.animated, index == 3)
             for _, slot in ipairs(ACB.pages[card.page].cards) do assert(slot.key ~= card.key) end
         end
-    end
+    end end
     equal(families, 8)
     equal(variants, 16)
     equal(ACB.cards["edition:48322"].editionTitle, "Dream Eater")
@@ -51,8 +51,9 @@ test("collectible editions record exact inventory, trade it and recycle only tha
     equal(saved.counts["npc:4832"], 1)
     equal(ACB.familyCount(saved.counts, ACB.cards["npc:4832"]), 3)
     equal(ACB.familySpares(saved.counts, ACB.cards["npc:4832"]), 0)
-    equal(saved.ledger[1].key, "editions1")
-    equal(saved.ledger[2].key, "edition:48321")
+    equal(saved.ledger[1].key, "chase1")
+    equal(saved.ledger[2].key, "editions1")
+    equal(saved.ledger[3].key, "edition:48321")
     equal(collection:roll(guid(4832, "still-1"), "loot"), nil)
     equal(collection:recycle("edition:48321"), false)
     equal(collection:craft("edition:48292"), false)

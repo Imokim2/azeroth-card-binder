@@ -29,6 +29,11 @@ local parts = {
     "22-collectible-editions",
     "23-simple-trades-and-gifts",
     "24-updates",
+    "25-drop-balance",
+    "26-satchel",
+    "27-pack-tiers",
+    "28-sounds-and-card-backs",
+    "29-card-announcements",
 }
 
 local source, ranges, line = {}, {}, 1

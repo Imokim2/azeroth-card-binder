@@ -20,10 +20,8 @@ function ACB.hintLines(saved, card)
         local shiny = saved.shiny and saved.shiny[card.key] and ", shiny" or ""
         lines[1] = { ("Card: in your binder (x%d%s)"):format(count, shiny), 0.54, 0.80, 0.61 }
     else
-        lines[1] = { ("Card: not in your binder yet (%g%% chance)"):format(ACB.rates[card.rank] / 100), 1, 0.82, 0 }
+        lines[1] = { "Card: not in your binder yet", 1, 0.82, 0 }
     end
-    local luck = ACB.luckText(saved, card)
-    if luck then lines[#lines + 1] = { luck, 0.65, 0.61, 0.54 } end
     if count == 0 and saved.wanted and saved.wanted[card.key] then
         lines[#lines + 1] = { "On your wanted list", 0.55, 0.92, 1 }
     end

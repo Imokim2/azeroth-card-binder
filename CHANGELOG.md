@@ -18,6 +18,35 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 - **`node tools/smoke.js`** checks a running server after a deploy: health, the signed release and its downloads, every public page and its safety headers, and that the admin doors are shut (`--deep` also checks the files' SHA-256).
 Nothing yet.
 
+- Website copy is more direct, the public Ranked page contains player rules only, and GitHub has a banner, gallery placeholders and a CurseForge launch draft.
+
+## 0.6.0 — 2026-11-12
+
+- **Sound pass:** 13 small original cues for card finds, duplicates, shiny/rarity reveals, pack opening/flips, completed trades and windows. Settings → Sounds has a master mute and separate pickup, pack, trade/gift and window switches, plus preview/stop controls. Pop-ups are independent. Flip all plays one best-card reward instead of overlapping fanfares. Game SFX volume remains in control.
+- Face-down pack cards now use painted gold-and-blue card-back artwork matching the card-stack icon, including its glowing diamond. Model/background preloading and flip behavior remain active underneath.
+
+- The satchel now uses the game's metal bag-frame layout, native empty-slot/quality artwork and a compact grey interior with rounded controls. A custom painted gold-and-blue card-stack icon replaces the pouch on the launcher and pack slots. The window has a native close button and retains the pack/trade behavior.
+
+- **Warcards Satchel:** a separate bag-style inventory with stack counts and pages. Its button sits above the keyring, falling back to the bag controls or bottom right on custom layouts. `/acb bag` and `/acb satchel` also open it. Right-click a pack to use the existing reveal screen.
+- Zone packs are named **Pack: Westfall**, **Pack: Blackfathom Deeps**, and so on. Common packs contain 1 card, Rare packs 3 and Epic packs 5. Tier and card count appear separately; pack rarity does not guarantee card rarity. Existing unopened packs remain five-card Epic packs.
+- Packs can be traded for cards or other packs, or gifted, one per offer. Both players accept. An offered pack stays reserved, preventing it from also being opened. These are addon-owned items: native bags, mail, auction house and gold payments are not integrated.
+- Companion/server 0.4.0, ledger specification 6. Matching server checks validate pack tiers and transfers, and trace opened contents through subsequent trades for Ranked eligibility. Casual pack finds themselves count as unverified provenance. See [satchel rollout notes](docs/runbooks/SATCHEL.md); no remote deployment or installer release is performed by this source change.
+
+
+
+- Stable individual drop rates across all 3,423 base cards. Most retain the current pace; uncommon discoveries take longer, and a small chase group uses slower odds. Bosses, epic/legendary enemies, rare spawns and gathering retain immediate protection. Chase mobs and critters use a late protection ramp with a guaranteed ceiling.
+- Thirty-one exceptionally rare critters gain separate collectible, deliberately excessive face-close-up editions. Existing cards and variants remain owned, with no additional ordinary set slots.
+- Exact odds, attempt counters and protection percentages are hidden in normal binder pages and tooltips. Protection and diagnostic logging remain active.
+- Chase cards cannot be crafted and have lower within-rarity pack weights, so their scarcity also matters when opening packs.
+- Historical drops keep their old rules up to a recorded policy marker, and existing pity carries over. Update all components together; see [the rollout notes](docs/runbooks/DROP-BALANCE.md). This source change does not deploy the server.
+- Full-binder message capacity now includes collectible editions, preventing larger binders from running out of response parts.
+
+
+- **A review page for the people who run the service.** `/admin` lists the open flags (players the checks held back), the reports about each player, and buttons to clear, confirm, ban and unban, over the existing admin routes. The admin token is typed in and kept in the page's memory only; the page runs one script that the content security policy pins by hash, and shows everything from the server as text.
+- **Public wording.** The help and FAQ pages describe the public release (real downloads, the unsigned-installer warning, GitHub for reports), and bug-report and idea templates ask for the details that help (`/acb version`, the companion version, `/acb log`).
+- **`node tools/smoke.js`** checks a running server after a deploy: health, the signed release and its downloads, every public page and its safety headers, and that the admin doors are shut (`--deep` also checks the files' SHA-256).
+Nothing yet.
+
 ## 0.5.0 - 2026-11-12
 
 - **First public release.** Add-on 0.5.0 with companion app 0.3.0 (the companion's own version is separate from the add-on's).

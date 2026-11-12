@@ -3,8 +3,8 @@ test("tooltip hints say whether a card is owned and where to find it", function(
     local card = ACB.cards["npc:589"]
     saved.counts["npc:589"], saved.misses["npc:589"] = nil, 120
     local lines = ACB.hintLines(saved, card)
-    equal(lines[1][1], "Card: not in your binder yet (1% chance)")
-    equal(lines[2][1], "Next attempt guaranteed")
+    equal(lines[1][1], "Card: not in your binder yet")
+    equal(#lines, 1, "the tooltip does not reveal odds or pity")
     saved.counts["npc:589"] = 2
     equal(ACB.hintLines(saved, card)[1][1], "Card: in your binder (x2)")
     saved.counts["npc:589"], saved.misses["npc:589"] = nil, nil
@@ -15,7 +15,7 @@ test("tooltip hints say whether a card is owned and where to find it", function(
     local added = {}
     local tip = { AddLine = function(_, text) added[#added + 1] = text end, Show = ignore }
     hintCallbacks[1](tip, { guid = guid(589, "tip") })
-    equal(added[1], "Card: not in your binder yet (1% chance)")
+    equal(added[1], "Card: not in your binder yet")
     added = {}
     hintCallbacks[1](tip, { guid = guid(99999, "unknown") })
     hintCallbacks[1](tip, { guid = secret })
@@ -150,7 +150,7 @@ test("shift-click drafts a link and the recipient opens the exact card with loca
         -- The first match is your own binder; the window for another player's binder is built after it.
         if not pocket and widget.text == edwin.name and widget.parent.OnClick then pocket = widget.parent end
         if not detail and widget.OnMouseUp and widget.OnMouseDown and widget.scale == 1.32 then detail = widget end
-        if not stats and widget.text == "BASE DROP CHANCE" then stats = widget.parent end
+        if not stats and widget.text == "COLLECTION STATUS" then stats = widget.parent end
     end
     assert(pocket and detail and stats)
     saved.counts[edwin.key], saved.shiny[edwin.key] = 1, true

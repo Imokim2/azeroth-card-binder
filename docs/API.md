@@ -14,9 +14,11 @@ Version 1, served under `/v1`. The server is `server/`; the ledger and signing r
 
 | App | Server API | Ledger spec | Add-on saved-data schema |
 |---|---|---|---|
-| 0.1.x | `/v1` | 2–4 (current app: 4) | 2 |
+| 0.1.x–0.2.x | `/v1` | 2–4 | 2 |
+| 0.3.x | `/v1` | 5 (server retains 2–4 for legacy histories) | 2 |
+| 0.4.x | `/v1` | 6 (server retains 2–5 for legacy histories) | 2 |
 
-The server rejects uploads whose `specVersion` it does not support (`client_too_old`). It supports versions 2, 3 and 4. Version 3 adds packs; version 4 adds collectible editions and the `editions1` activation marker. Old chain hashes remain valid. Edition events require version 4; the companion app now uploads version 4. All components need the matching generated catalog. The table gains a row with every release that changes one of the columns.
+The server rejects uploads whose `specVersion` it does not support (`client_too_old`). It supports versions 2–6. Version 3 adds packs; version 4 adds collectible editions and `editions1`; version 5 adds per-card drop profiles and `chase1`; version 6 adds pack tiers (`packs2`) and trade-only pack keys. Old chain hashes remain valid. After `chase1`, uploads require at least version 5; after tier activation or incoming pack trades they require version 6, including empty syncs. All components need the matching generated catalog. Update the addon, companion and server together.
 
 ## Endpoints
 

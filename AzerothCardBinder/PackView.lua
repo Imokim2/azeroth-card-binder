@@ -29,6 +29,14 @@ function ACB.createPackView(saved)
     local frame = kit.window("AzerothCardBinderPacks", WINDOW_W, WINDOW_H, "Card packs", false)
     frame:SetFrameStrata("FULLSCREEN_DIALOG")
     local view = { frame = frame, phase = "list", t = 0, slots = {}, results = nil }
+    local function notify(result)
+        if result.announced then return end
+        result.announced = true
+        if ACB.collection and ACB.collection.cardAdded then
+            ACB.collection:cardAdded(result.card, result,
+                ("From the pack: %s (x%d). Added to your binder."):format(ACB.cardLink(result.card, result.shiny), result.count))
+        end
+    end
 
     local status = label(frame, "GameFontHighlight", 40, 56, gold, "")
     status:SetWidth(720)
@@ -37,7 +45,7 @@ function ACB.createPackView(saved)
     local list = CreateFrame("Frame", nil, frame)
     list:SetAllPoints(frame)
     local note = label(list, "GameFontHighlightSmall", 40, 84, muted,
-        "Any enemy you defeat has a 1 in 500 chance to drop a pack. A pack holds five cards from the zone it dropped in: common cards are common, rare ones rarer, legendary ones rarest.")
+        "Zone packs come in Common (1 card), Rare (3 cards) and Epic (5 cards). Open your Warcards Satchel with /acb bag to see every stack.")
     note:SetWidth(720)
     local empty = label(list, "GameFontNormal", 40, 150, parchment, "")
     empty:SetWidth(720)
@@ -87,13 +95,11 @@ function ACB.createPackView(saved)
         slot.back = CreateFrame("Button", nil, stage, "BackdropTemplate")
         slot.back:SetSize(CARD_W, CARD_H)
         slot.back:SetPoint("TOPLEFT", stage, "TOPLEFT", left, -SLOT_TOP)
-        backdrop(slot.back, "Interface\\Buttons\\WHITE8X8", 3)
-        slot.back:SetBackdropColor(0.20, 0.13, 0.09, 1)
-        slot.back:SetBackdropBorderColor(0.78, 0.63, 0.42, 1)
-        local mark = slot.back:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
-        mark:SetPoint("CENTER")
-        mark:SetTextColor(unpack(brass))
-        mark:SetText("Warcards")
+        slot.backTexture = slot.back:CreateTexture(nil, "ARTWORK")
+        slot.backTexture:SetAllPoints(slot.back)
+        slot.backTexture:SetTexture(ACB.folioArt .. "CardBack.tga")
+        -- Portrait artwork occupies 256 x 358 inside a power-of-two texture.
+        slot.backTexture:SetTexCoord(0, 1, 0, 358 / 512)
         slot.back:SetScript("OnClick", function() view:flip(index) end)
         slot.back:Hide()
         -- The face: a card, in a frame that clips it so it can be uncovered from the middle outwards.
@@ -122,7 +128,7 @@ function ACB.createPackView(saved)
         for index, row in ipairs(rows) do
             local entry = packs[index]
             row.zone = entry and entry.zone
-            row.text:SetText(entry and ("%s Pack   x%d"):format(entry.page.title, entry.count) or "")
+            row.text:SetText(entry and ("Pack: %s  /  %s  /  x%d"):format(entry.page.title, ACB.packTiers[entry.tier].name, entry.count) or "")
             row.button:SetShown(entry ~= nil)
             row.text:SetShown(entry ~= nil)
         end
@@ -135,28 +141,35 @@ function ACB.createPackView(saved)
         return zone and zone.top or { 0.36, 0.22, 0.11 }, zone and zone.bottom or { 0.07, 0.04, 0.03 }
     end
 
-    function view:start(results, page)
+    function view:start(results, page, item)
         self.results, self.page, self.phase, self.t = results, page, "shake", 0
+        self.soundBatch = nil
+        if ACB.playSound then ACB.playSound("pack_anticipate") end
+        self.left = (WINDOW_W - (#results * CARD_W + (#results - 1) * GAP)) / 2
         local top = colors(page)
         art:SetBackdropColor(top[1] * 0.6 + 0.06, top[2] * 0.6 + 0.05, top[3] * 0.6 + 0.04, 1)
-        artTitle:SetText(page.title .. " Pack")
+        artTitle:SetText("Pack: " .. page.title)
+        artFoot:SetText(("%s / %d card%s"):format(item and ACB.packTiers[item.tier].name or "Epic", #results, #results == 1 and "" or "s"))
+        art:SetBackdropBorderColor(unpack(item and ACB.packTiers[item.tier].color or gold))
         art:SetScale(1)
         art:SetAlpha(1)
         art:Show()
         for index, slot in ipairs(self.slots) do
-            slot.state, slot.t, slot.delay = "down", 0, 0
+            local result = results[index]
+            slot.state, slot.t, slot.delay = result and "down" or "unused", 0, 0
             slot.back:Hide()
             slot.back:SetAlpha(0)
             -- Keep the actual faces shown and effectively transparent so the client can load them
             -- throughout the opening animation, before the player turns a card over.
             slot.holder:SetWidth(CARD_W)
             slot.holder:SetAlpha(0.001)
-            slot.holder:Show()
+            slot.holder:SetShown(result ~= nil)
+            slot.caption:SetShown(result ~= nil)
+            slot.holder:SetPoint("TOPLEFT", stage, "TOPLEFT", self.left + (index - 1) * (CARD_W + GAP), -SLOT_TOP)
+            slot.caption:SetPoint("TOPLEFT", stage, "TOPLEFT", self.left + (index - 1) * (CARD_W + GAP), -(SLOT_TOP + CARD_H + 8))
             slot.back:SetWidth(CARD_W)
-            local result = results[index]
-            slot.card:set(result.card, result.count, result.shiny, false)
+            if result then slot.card:set(result.card, result.count, result.shiny, false) end
             slot.caption:SetText("")
-            slot.back:SetBackdropBorderColor(0.78, 0.63, 0.42, 1)
         end
         hint:SetText("")
         status:SetText("")
@@ -175,12 +188,21 @@ function ACB.createPackView(saved)
 
     function view:flipAll()
         local wait = 0
+        -- One musical reward for the best remaining card, with paper for each flip.
+        local batch = { remaining = 0, cue = nil, slots = {} }
         for _, slot in ipairs(self.slots) do
+            if self.results[slot.index] and (slot.state == "down" or slot.state == "flipping") then
+                local result = self.results[slot.index]
+                local cue = ACB.cardSound(result.card, { count = result.count, first = result.first, shiny = result.shiny })
+                if cue and (not batch.cue or ACB.soundPriority(cue) > ACB.soundPriority(batch.cue)) then batch.cue = cue end
+                batch.slots[slot.index], batch.remaining = true, batch.remaining + 1
+            end
             if slot.state == "down" then
                 slot.delay = wait
                 wait = wait + FLIP_ALL_STEP
             end
         end
+        self.soundBatch = batch.remaining > 0 and batch or nil
         for _, slot in ipairs(self.slots) do
             if slot.state == "down" then self:flip(slot.index) end
         end
@@ -207,7 +229,10 @@ function ACB.createPackView(saved)
         if self.phase == "shake" then
             local p = clamp(self.t / SHAKE)
             art:SetPoint("CENTER", stage, "TOPLEFT", WINDOW_W / 2 + math.sin(self.t * 55) * (2 + 9 * p), -(SLOT_TOP + CARD_H / 2) + math.sin(self.t * 43) * 2 * p)
-            if self.t >= SHAKE then self.phase, self.t = "burst", 0 end
+            if self.t >= SHAKE then
+                self.phase, self.t = "burst", 0
+                if ACB.playSound then ACB.playSound("pack_burst") end
+            end
         elseif self.phase == "burst" then
             local p = clamp(self.t / BURST)
             art:SetScale(1 + 0.6 * p)
@@ -215,15 +240,17 @@ function ACB.createPackView(saved)
             if self.t >= BURST then
                 art:Hide()
                 self.phase, self.t = "deal", 0
-                for _, slot in ipairs(self.slots) do slot.back:SetAlpha(0) slot.back:Show() end
+                for _, slot in ipairs(self.slots) do slot.back:SetAlpha(0) slot.back:SetShown(slot.state ~= "unused") end
             end
         elseif self.phase == "deal" then
             for index, slot in ipairs(self.slots) do
+                if slot.state ~= "unused" then
                 local p = clamp((self.t - (index - 1) * DEAL_STEP) / DEAL_TIME)
                 slot.back:SetAlpha(p)
-                slot.back:SetPoint("TOPLEFT", stage, "TOPLEFT", SLOT_LEFT + (index - 1) * (CARD_W + GAP), -SLOT_TOP + (1 - p) * 40)
+                slot.back:SetPoint("TOPLEFT", stage, "TOPLEFT", self.left + (index - 1) * (CARD_W + GAP), -SLOT_TOP + (1 - p) * 40)
+                end
             end
-            if self.t >= (SLOTS - 1) * DEAL_STEP + DEAL_TIME then
+            if self.t >= (#self.results - 1) * DEAL_STEP + DEAL_TIME then
                 self.phase, self.t = "reveal", 0
                 hint:SetText("Click a card to turn it over.")
                 flipAll:Show()
@@ -239,6 +266,7 @@ function ACB.createPackView(saved)
                     else
                         if slot.back:IsShown() then
                             slot.back:Hide()
+                            if ACB.playSound then ACB.playSound("paper", "packs") end
                             slot.holder:SetAlpha(1)
                             slot.card:refreshPortrait()
                             slot.card.art:show(slot.card.entry.zone, true)
@@ -249,12 +277,22 @@ function ACB.createPackView(saved)
                         slot.state = "up"
                         slot.holder:SetWidth(CARD_W)
                         local result = self.results[slot.index]
+                        notify(result)
                         local text, color = caption(slot, result)
                         slot.caption:SetText(text)
                         slot.caption:SetTextColor(unpack(color))
-                        if ACB.playToastSound then ACB.playToastSound(result.card.rarity, result.shiny) end
-                        if self:flipped() == SLOTS then
-                            hint:SetText("That's all five. They are in your binder.")
+                        local batch = self.soundBatch
+                        if batch and batch.slots[slot.index] then
+                            batch.slots[slot.index], batch.remaining = nil, batch.remaining - 1
+                            if batch.remaining == 0 then
+                                if batch.cue then ACB.playSound(batch.cue, "packs") end
+                                self.soundBatch = nil
+                            end
+                        else
+                            ACB.playCardSound(result.card, { count = result.count, first = result.first, shiny = result.shiny }, "packs")
+                        end
+                        if self:flipped() == #self.results then
+                            hint:SetText("Added to your binder.")
                             flipAll:Hide()
                         end
                     end
@@ -271,22 +309,16 @@ function ACB.createPackView(saved)
             status:SetText(why or "That pack could not be opened.")
             return
         end
-        self:start(results, ACB.pageOfZone(zone))
+        local item = ACB.packItem("pack:" .. zone)
+        self:start(results, item.page, item)
+        if ACB.refreshSatchel then ACB.refreshSatchel() end
         if ACB.refresh then ACB.refresh() end
     end
 
     -- Back to the list. Cards that were never turned over are told to chat, so closing early loses nothing.
     function view:finish()
         if self.phase ~= "list" and self.results then
-            local unseen = {}
-            for index, slot in ipairs(self.slots) do
-                if slot.state ~= "up" then unseen[#unseen + 1] = self.results[index] end
-            end
-            if #unseen > 0 and ACB.say then
-                local names = {}
-                for _, result in ipairs(unseen) do names[#names + 1] = result.card.name .. (result.shiny and " (shiny)" or "") end
-                ACB.say("From the pack: " .. table.concat(names, ", ") .. ". They are in your binder.")
-            end
+            for _, result in ipairs(self.results) do notify(result) end
             if ACB.refreshZoneBar then ACB.refreshZoneBar() end
         end
         self.phase, self.results = "list", nil
@@ -311,10 +343,16 @@ function ACB.initPacks(saved, collection)
         view.frame:Show()
         view:refreshList()
     end
+    function ACB.openPack(zone)
+        view.frame:Show()
+        view:openZone(zone)
+        if ACB.refreshSatchel then ACB.refreshSatchel() end
+    end
     collection.packsEnabled = true
-    collection.onPack = function(page, count)
-        if ACB.playToastSound then ACB.playToastSound("epic", false) end
+    collection.onPack = function(page, count, item)
+        if ACB.playSound then ACB.playSound("pack_found", "packs") end
         if ACB.refreshPackButton then ACB.refreshPackButton() end
+        if ACB.refreshSatchel then ACB.refreshSatchel() end
         if view.frame:IsShown() and view.phase == "list" then view:refreshList() end
         if ACB.refresh then ACB.refresh() end
     end
