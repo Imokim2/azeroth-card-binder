@@ -116,8 +116,10 @@ async function smoke({ base, get = fetch, key = embeddedKey(), deep = false }) {
 
   await check("the admin doors are shut without the token", async () => {
     for (const route of ["/v1/admin/flags", "/v1/admin/reports", "/v1/admin/players", "/v1/admin/audit", "/v1/admin/me"]) {
-      const response = await get(base + route);
-      need(response.status === 401 || response.status === 404, `${route} answered ${response.status}`);
+      // Without following redirects: with Cloudflare Access in front, an unsigned request is sent to its sign-in page, which is shut too.
+      const response = await get(base + route, { redirect: "manual" });
+      const toAccess = response.status >= 300 && response.status < 400 && /^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com\//i.test(response.headers.get("location") ?? "");
+      need(response.status === 401 || response.status === 404 || toAccess, `${route} answered ${response.status}`);
     }
   });
 
