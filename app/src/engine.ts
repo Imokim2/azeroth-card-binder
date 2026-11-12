@@ -196,10 +196,11 @@ export class Engine {
 
   // No network polling while idle. File saves trigger work; a change during an upload queues one more pass.
   // Only failed required work is retried, backing off from a minute to half an hour and respecting Retry-After.
-  start(): () => void {
+  start(): () => Promise<void> {
     const { install } = this.#options;
     let stopped = false, active = false, queued = false, queuedSave = false, failures = 0;
     let retry: ReturnType<typeof setTimeout> | undefined;
+    let pending: Promise<void> = Promise.resolve();
     const scheduleRetry = (afterMs: number): void => {
       failures++;
       const backoff = Math.min(1_800_000, 60_000 * 2 ** Math.min(failures - 1, 5));
@@ -210,7 +211,7 @@ export class Engine {
       if (active) { queued = true; queuedSave = queuedSave || saved; return; }
       if (retry) { clearTimeout(retry); retry = undefined; }
       active = true;
-      void this.syncOnce({ saved }).then((report) => {
+      pending = this.syncOnce({ saved }).then((report) => {
         if (stopped) return;
         const wait = report.accounts.flatMap((account) => (account.result.status === "retry-later" ? [account.result.afterMs] : []));
         if (report.retryAfterMs !== undefined) wait.push(report.retryAfterMs);
@@ -233,6 +234,7 @@ export class Engine {
       if (retry) clearTimeout(retry);
       if (timer) clearInterval(timer);
       for (const stop of stops) stop();
+      return pending;
     };
   }
 }
