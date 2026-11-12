@@ -43,7 +43,7 @@ test("the ladder page lists ranked players, links to them, and says plainly when
 test("pages carry safety headers, load nothing from anywhere else and run no script", async () => {
   const env = setup();
   await rankedPlayer(env, "Alice");
-  for (const path of ["/", "/ladder", "/wanted", "/download", "/help", "/faq", "/fair-play", "/privacy"]) {
+  for (const path of ["/", "/ladder", "/wanted", "/download", "/help", "/faq", "/fair-play", "/privacy", "/code-signing-policy"]) {
     const { response, text } = await page(env, path);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-security-policy") ?? "", /default-src 'none'/);
@@ -51,7 +51,11 @@ test("pages carry safety headers, load nothing from anywhere else and run no scr
     assert.equal(response.headers.get("x-frame-options"), "DENY");
     assert.equal(response.headers.get("cache-control"), "public, max-age=60");
     assert.ok(!/<script/i.test(text), `${path} has a script`);
-    assert.ok(!/(src|href)="https?:/i.test(text), `${path} loads or links to another site`);
+    // Nothing is ever loaded from another site; the only links out go to the project's own GitHub (issues, releases, downloads).
+    assert.ok(!/src="https?:/i.test(text), `${path} loads something from another site`);
+    // (and, on the code signing policy page, to the code signing service it names)
+    const allowed = ["https://github.com/Imokim2/azeroth-card-binder", "https://github.com/Imokim2", "https://github.com/harrydexter18-afk", "https://signpath.io", "https://signpath.org"];
+    assert.ok(![...text.matchAll(/href="(https?:[^"]*)"/gi)].some((link) => !allowed.some((prefix) => (link[1] as string).startsWith(prefix))), `${path} links to another site`);
     assert.match(text, /not affiliated with or endorsed by Blizzard/);
     assert.match(text, /<meta name="viewport"/);
   }

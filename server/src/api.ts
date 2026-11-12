@@ -9,7 +9,8 @@ import type { Releases } from "./releases.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
 import { binderSets, fairPlayPage, ladderPage, notFoundPage, playerPage, privacyPage, wantedPage } from "./site.ts";
-import { downloadPage, faqPage, helpPage, landingPage, statusBadge, statusPage } from "./sitePages.ts";
+import { codeSigningPage, downloadPage, faqPage, helpPage, landingPage, statusBadge, statusPage } from "./sitePages.ts";
+import { ADMIN_HTML, scriptHash } from "./adminPage.ts";
 import { rebuild } from "./rebuild.ts";
 import { acceptReports, parseReports } from "./reports.ts";
 import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, ReportStore, TapeStore, TradeStore, Visibility, WantedStore } from "./store.ts";
@@ -381,6 +382,19 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return json(200, { reports }, { "cache-control": "no-store" });
   }
 
+  // The review screen. It holds no data and no secret, so it needs no token to load; every call it makes does. With no admin
+  // token configured it does not exist, like the routes it uses. Not cached, not indexed, and it may run only its own script.
+  async function adminScreen(): Promise<Response> {
+    if (!deps.adminToken) throw new ApiError("not_found");
+    return new Response(ADMIN_HTML(), {
+      headers: {
+        "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow",
+        "content-security-policy": `default-src 'none'; script-src 'sha256-${await scriptHash()}'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+        "x-content-type-options": "nosniff", "x-frame-options": "DENY", "referrer-policy": "no-referrer",
+      },
+    });
+  }
+
   async function wantedBoard(): Promise<Response> {
     const entries = await deps.wanted.board(100);
     return json(200, { generatedAt: deps.now(), players: entries.map((entry) => ({ playerId: entry.playerId, displayName: entry.displayName, characters: entry.characters, cards: entry.cards, updatedAt: entry.updatedAt })) }, { "cache-control": `public, max-age=${PUBLIC_CACHE_SECONDS}` });
@@ -463,6 +477,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/status/badge.svg" ? allow("site-status-badge", ["GET"], () => siteStatus(true))
       : url.pathname === "/wanted" ? allow("site-wanted", ["GET"], siteWanted)
       : url.pathname === "/fair-play" ? allow("site-fair-play", ["GET"], async () => html(200, fairPlayPage()))
+      : url.pathname === "/code-signing-policy" ? allow("site-code-signing", ["GET"], async () => html(200, codeSigningPage()))
       : url.pathname === "/privacy" ? allow("site-privacy", ["GET"], async () => html(200, privacyPage()))
       : pageMatch ? allow("site-player", ["GET"], () => sitePlayer(pageMatch[1] as string))
       : url.pathname === "/v1/health" ? allow("health", ["GET"], health)
@@ -476,6 +491,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/firsts" ? allow("firsts", ["GET"], firsts)
       : url.pathname === "/v1/wanted" ? allow("wanted", ["GET", "POST"], () => (method === "POST" ? setWanted(request) : wantedBoard()))
       : url.pathname === "/v1/report" ? allow("report", ["POST"], () => report(request))
+      : url.pathname === "/admin" ? allow("admin-screen", ["GET"], adminScreen)
       : url.pathname === "/v1/admin/reports" ? allow("admin-reports", ["GET"], () => adminReports(request, url))
       : url.pathname === "/v1/admin/flags" ? allow("admin-flags", ["GET"], () => adminFlags(request, url))
       : reviewMatch ? allow("admin-review", ["POST"], () => adminReview(request, reviewMatch[1] as string))

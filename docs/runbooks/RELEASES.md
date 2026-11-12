@@ -66,6 +66,7 @@ Give players time first: announce the new version (step 4 and 5), wait a week or
 
 ## Checks before announcing
 
+- `node tools/smoke.js --env staging` passes (and `node tools/smoke.js` for production once deployed; add `--deep` to download the release files and check their SHA-256).
 - `node tools/release-manifest.js verify` says the signature is good.
 - The staging app (built with the real key) offers the update, installs the add-on, and `/acb version` in the game shows the
   new version after `/reload`.

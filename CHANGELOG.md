@@ -26,6 +26,11 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 - Full-binder message capacity now includes collectible editions, preventing larger binders from running out of response parts.
 
 
+- **Code signing preparation.** A code signing policy page (`/code-signing-policy`, linked from every page's footer) says where signing stands and who approves a release, `docs/CODE-SIGNING.md` checks the project against SignPath Foundation's free programme for open-source projects and drafts the application, and the release workflow has steps that sign the installer through SignPath once the repository variable `SIGNPATH_ORGANIZATION_ID` is set. Nothing is signed yet.
+- **A review page for the people who run the service.** `/admin` lists the open flags (players the checks held back), the reports about each player, and buttons to clear, confirm, ban and unban, over the existing admin routes. The admin token is typed in and kept in the page's memory only; the page runs one script that the content security policy pins by hash, and shows everything from the server as text.
+- **Public wording.** The help and FAQ pages describe the public release (real downloads, the unsigned-installer warning, GitHub for reports), and bug-report and idea templates ask for the details that help (`/acb version`, the companion version, `/acb log`).
+- **`node tools/smoke.js`** checks a running server after a deploy: health, the signed release and its downloads, every public page and its safety headers, and that the admin doors are shut (`--deep` also checks the files' SHA-256).
+Nothing yet.
 
 ## 0.5.0 - 2026-11-12
 
