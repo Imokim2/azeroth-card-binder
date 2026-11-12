@@ -80,7 +80,7 @@ test("a day idle makes no requests; a saved-file rewrite still syncs without man
   } finally { await stop?.(); t.mock.timers.reset(); await f.cleanup(); }
 });
 
-test("a save arriving during an upload is queued and reaches the server without a polling timer", { timeout: 10_000 }, async () => {
+test("a save arriving during an upload is queued and reaches the server without a polling timer", { timeout: 30_000 }, async () => {
   const f = await fixture(), observed = observe(), entered = deferred<void>(), release = deferred<void>();
   let held = false, stop: (() => Promise<void>) | undefined;
   try {

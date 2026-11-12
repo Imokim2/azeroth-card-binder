@@ -1,6 +1,18 @@
 local _, ACB = ...
 ACB.satchelIcon = ACB.folioArt .. "CardStack.tga"
 
+function ACB.nativeBagSlotSize()
+    local native = _G.ContainerFrame1Item1
+    local combined = _G.ContainerFrameCombinedBags
+    local pool = combined and (combined.itemButtonPool or combined.ItemButtonPool)
+    if pool and pool.EnumerateActive then for button in pool:EnumerateActive() do native = button break end end
+    local size = native and ACB.read(ACB.safe(native.GetWidth, native), "number") or 36
+    local scale = native and ACB.read(ACB.safe(native.GetEffectiveScale, native), "number")
+    local rootScale = ACB.read(ACB.safe(UIParent.GetEffectiveScale, UIParent), "number")
+    if scale and rootScale and rootScale > 0 then size = size * scale / rootScale end
+    return math.max(32, math.min(60, size or 36))
+end
+
 -- Visual bag chrome only: no native inventory scripts, IDs or secure bag buttons.
 -- HeldBagLayout is the game's own small-portrait metal bag frame.
 function ACB.createSatchelWindow()
@@ -8,6 +20,9 @@ function ACB.createSatchelWindow()
     frame:SetSize(320, 346)
     frame:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -34, 104)
     frame:SetFrameStrata("DIALOG")
+    -- Keep the entire bag above the binder's deepest card/model layers.
+    frame:SetFrameLevel(300)
+    ACB.safe(frame.SetToplevel, frame, true)
     frame:SetClampedToScreen(true)
     frame:SetMovable(true)
     frame:EnableMouse(true)
@@ -35,9 +50,19 @@ function ACB.createSatchelWindow()
     background:SetTexture("Interface\\FrameGeneral\\UI-Background-Rock")
     background:SetVertexColor(.55, .55, .55, .98)
     local portrait = frame:CreateTexture(nil, "ARTWORK")
-    portrait:SetSize(40, 40)
-    portrait:SetPoint("TOPLEFT", 1, 7)
+    portrait:SetSize(36, 36)
+    portrait:SetPoint("TOPLEFT", 2, 3)
     portrait:SetTexture(ACB.satchelIcon)
+    if frame.CreateMaskTexture and portrait.AddMaskTexture then
+        local mask = frame:CreateMaskTexture(nil, "ARTWORK")
+        mask:SetAllPoints(portrait)
+        mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask")
+        portrait:AddMaskTexture(mask)
+        frame.portraitMask = mask
+    else
+        -- The round launcher art also works on clients without texture masks.
+        portrait:SetTexture(ACB.folioArt .. "Launcher.tga")
+    end
     local header = CreateFrame("Frame", nil, frame)
     header:SetAllPoints(frame)
     header:SetFrameLevel(chrome:GetFrameLevel() + 2)
@@ -84,7 +109,7 @@ end
 function ACB.styleSatchelSlot(slot)
     local background = slot:CreateTexture(nil, "BACKGROUND")
     background:SetAllPoints(slot)
-    background:SetTexture("Interface\\Buttons\\UI-EmptySlot")
+    background:SetTexture("Interface\\PaperDoll\\UI-Backpack-EmptySlot")
     local border = slot:CreateTexture(nil, "OVERLAY")
     border:SetPoint("TOPLEFT", -2, 2)
     border:SetPoint("BOTTOMRIGHT", 2, -2)

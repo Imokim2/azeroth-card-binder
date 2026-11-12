@@ -43,7 +43,7 @@ test("satchel skin uses native bag chrome and custom card artwork without bindin
     view:refresh()
     equal(view.frame.nativeBagSkin, true)
     equal(view.frame.chrome, applied)
-    equal(view.frame.portrait.texture, ACB.satchelIcon)
+    equal(view.frame.portrait.texture, ACB.folioArt .. "Launcher.tga") -- fake client has no mask API
     equal(view.slots[1].icon.texture, ACB.satchelIcon)
     equal(view.slots[1].qualityBorder:IsShown(), true)
     equal(view.slots[1].qualityBorder.vertex[3], ACB.packTiers.rare.color[3])

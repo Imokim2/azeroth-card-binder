@@ -131,7 +131,6 @@ function render(status) {
   $("update-addon").disabled = $("update-app").disabled = !!status.updating || status.busy;
   $("update-addon").textContent = status.updating === "addon" ? "Updating…" : "Update add-on" + (status.newer && status.newer.addon ? " to " + status.newer.addon : "");
   $("update-app").textContent = status.updating === "app" ? "Updating…" : "Update companion" + (status.newer && status.newer.app ? " to " + status.newer.app : "");
-  $("tape").textContent = status.tapeEntries === null ? (status.accounts.some((entry) => entry.mode === "ranked") ? "Awaiting sync" : "Casual mode") : status.tapeEntries.toLocaleString();
   $("sync-now").disabled = !ready || status.busy || !!status.problem || status.needsNewBinder;
 
   const message = $("message");

@@ -1,6 +1,6 @@
 {
   "name": "warcards-app",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -52,7 +52,8 @@
       "icon": "assets/icon.png"
     },
     "nsis": {
-      "oneClick": true,
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
       "perMachine": false,
       "deleteAppDataOnUninstall": false,
       "shortcutName": "World of Warcards",

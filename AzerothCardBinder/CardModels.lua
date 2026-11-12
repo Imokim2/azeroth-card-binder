@@ -27,103 +27,117 @@ local function loadModel(model, entry)
     end
 end
 
--- Reuse one portrait behind the parchment. Keeping it shown lets the client load
--- later portraits without allocating a model frame for every card in the set.
+-- Retain one model per unique creature/node in the selected set. Clearing a
+-- single scratch model immediately after loading let the client evict it again.
+-- Four requests run together; completed frames keep their resources while hidden.
 function ACB.createPortraitLoader(parent, paper)
-    local model = CreateFrame("PlayerModel", nil, parent)
-    model:SetSize(128, 104)
-    model.acbPortraitLoader = true
-    model:SetAlpha(0.001)
-    model:SetPoint("CENTER", paper)
-    model:SetFrameLevel(parent:GetFrameLevel())
-    model:Hide()
-    safe(model.SetKeepModelOnHide, model, true)
-
-    local warmed = {}
-    local cards, sourceCards, pending, nextSlot, remaining, retries, retryCards
-    local elapsedSinceRequest = 0
-    local function idle()
-        pending = nil
-        model:Hide()
-        safe(model.ClearModel, model)
+    local driver = CreateFrame("Frame", nil, parent)
+    driver.acbPortraitLoader, driver.models = true, {}
+    driver:SetAllPoints(parent)
+    driver:SetFrameLevel(parent:GetFrameLevel())
+    driver:Hide()
+    local source, queue, nextSlot, active = nil, {}, 1, 0
+    local function ready(model)
+        local file = ACB.read(safe(model.GetModelFileID, model), "number")
+        return file and file > 0 and (not model.entry.profession or file == model.entry.model)
     end
-
-    model:SetScript("OnUpdate", function(_, elapsed)
-        elapsedSinceRequest = elapsedSinceRequest + elapsed
-        if not cards or elapsedSinceRequest < 0.08 then return end
-        if pending then
-            local file = ACB.read(safe(model.GetModelFileID, model), "number")
-            if file and file > 0 and (not pending.profession or file == pending.model) and elapsedSinceRequest >= 0.25 then
-                warmed[pending.key] = true
-            elseif elapsedSinceRequest < 3 then
-                return
-            elseif not retries[pending.key] then
-                -- A slow or unavailable model gets one more turn after the rest of
-                -- the set, instead of starving the queue or being cached as ready.
-                retries[pending.key] = true
-                retryCards[#retryCards + 1] = pending
-            end
-        end
-        if remaining == 0 and #retryCards > 0 then
-            cards, nextSlot, remaining = retryCards, 1, #retryCards
-            retryCards = {}
-        end
-        while remaining > 0 do
-            local entry = cards[nextSlot]
-            nextSlot, remaining = nextSlot % #cards + 1, remaining - 1
-            if not warmed[entry.key] and (not entry.profession or entry.model) then
-                safe(model.ClearModel, model)
-                pending, elapsedSinceRequest = entry, 0
-                loadModel(model, entry)
-                return
-            end
-        end
-        idle()
-    end)
-
-    return function(entries, first, last)
-        if sourceCards == entries and model:IsShown() then return end
-        idle()
-        cards, sourceCards = entries, entries
-        if not cards then return end
-        retries, retryCards = {}, {}
-        first, last = first or 1, last or 0
-        remaining = #cards - math.max(0, last - first + 1)
-        if remaining <= 0 then return end
-        nextSlot, elapsedSinceRequest = last % #cards + 1, 0
+    local function request(model)
+        model.age, model.active = 0, true
+        active = active + 1
         model:Show()
+        loadModel(model, model.entry)
+    end
+    driver:SetScript("OnUpdate", function(_, elapsed)
+        for _, model in ipairs(driver.models) do
+            if model.active then
+                model.age = model.age + elapsed
+                if (ready(model) and model.age >= .2) or model.age >= 3 then
+                    model.active = false
+                    active = active - 1
+                    model:Hide()
+                    if not ready(model) and not model.retried then
+                        model.retried = true
+                        queue[#queue + 1] = model
+                    end
+                end
+            end
+        end
+        while active < 4 and nextSlot <= #queue do
+            local model = queue[nextSlot]
+            nextSlot = nextSlot + 1
+            request(model)
+        end
+        if active == 0 and nextSlot > #queue then driver:Hide() end
+    end)
+    return function(entries)
+        if source == entries and entries then
+            if nextSlot <= #queue or active > 0 then
+                driver:Show()
+                for _, model in ipairs(driver.models) do if model.active then model:Show() end end
+            end
+            return
+        end
+        driver:Hide()
+        for _, model in ipairs(driver.models) do model:Hide() end
+        if not entries then return end
+        for _, model in ipairs(driver.models) do
+            model.active = false
+            safe(model.ClearModel, model)
+        end
+        source, queue, nextSlot, active = entries, {}, 1, 0
+        local seen, count = {}, 0
+        for _, entry in ipairs(entries) do
+            local key = entry.profession and entry.model or ("npc:" .. entry.id)
+            if key and not seen[key] then
+                seen[key], count = true, count + 1
+                local model = driver.models[count]
+                if not model then
+                    model = CreateFrame("PlayerModel", nil, driver)
+                    model:SetSize(128, 104)
+                    model:SetPoint("CENTER", paper)
+                    -- Opaque parchment covers this normally rendered loader.
+                    -- Near-zero alpha can prevent the engine from rendering/loading it.
+                    model:SetFrameLevel(parent:GetFrameLevel())
+                    safe(model.SetKeepModelOnHide, model, true)
+                    driver.models[count] = model
+                end
+                model.entry, model.retried, model.active = entry, false, false
+                queue[#queue + 1] = model
+            end
+        end
+        if #queue > 0 then driver:Show() end
     end
 end
 
 -- Hidden pages and pack faces can receive their entry before the client starts
 -- loading a model. Retry on visibility, with a bounded fallback for missed callbacks.
 function ACB.watchCardModel(card, update, canLoad)
-    local elapsed, attempts, key, settled = 0, 0
+    local elapsed, attempts, key, settled, passes = 0, 0, nil, false, 0
     local function ready(model)
         local file = ACB.read(safe(model.GetModelFileID, model), "number")
         return file and file > 0 and (not card.entry.profession or file == card.entry.model)
     end
     safe(card.model.SetScript, card.model, "OnModelLoaded", function(model)
         update(model)
-        settled = card.entry and ready(model)
+        elapsed, passes, settled = 0, 0, false
     end)
     local function resume(model)
-        elapsed, attempts, key, settled = 0, 0, card.modelFor, false
+        elapsed, attempts, key, settled, passes = 0, 0, card.modelFor, false, 0
         if not card.entry or card.entry.key ~= card.modelFor or not canLoad() then return end
         if not ready(model) then loadModel(model, card.entry) end
         update(model)
-        settled = ready(model)
     end
     card.model:SetScript("OnShow", resume)
     card.model:SetScript("OnUpdate", function(model, dt)
         if not card.entry or not canLoad() then return end
-        if key ~= card.modelFor then elapsed, attempts, key, settled = 0, 0, card.modelFor, false end
+        if key ~= card.modelFor then elapsed, attempts, key, settled, passes = 0, 0, card.modelFor, false, 0 end
         if settled or attempts >= 2 then return end
         elapsed = elapsed + dt
-        if elapsed < 1 then return end
+        if elapsed < (passes < 2 and .2 or 1) then return end
         elapsed = 0
         update(model)
-        if ready(model) then settled = true return end
+        passes = passes + 1
+        if ready(model) then settled = passes >= 2 return end
         attempts = attempts + 1
         loadModel(model, card.entry)
     end)
@@ -138,12 +152,6 @@ end
 local function poseCreature(model, entry, facing, presentation, animate)
     presentation = presentation or ACB.cardPresentation(entry)
     local preset = presentation.pose
-    if not pcall(model.SetPortraitZoom, model, preset.zoom) then
-        safe(model.SetCamDistanceScale, model, 0.8)
-    end
-    safe(model.SetFacing, model, facing)
-    safe(model.SetPosition, model, preset.x or 0, preset.y or 0, preset.z or -0.05)
-
     local animation = preset.animation
     local supported = ACB.read(safe(model.HasAnimation, model, animation), "boolean")
     if not supported then
@@ -154,13 +162,25 @@ local function poseCreature(model, entry, facing, presentation, animate)
             end
         end
     end
+    local playing = false
     if supported and animate and presentation.animated and type(model.SetAnimation) == "function" then
         safe(model.SetPaused, model, false)
-        if pcall(model.SetAnimation, model, animation, 0) then return true, animation end
+        playing = pcall(model.SetAnimation, model, animation, 0)
     end
-    if supported and pcall(model.FreezeAnimation, model, animation, 0, preset.frame) then return false, animation end
-    if not pcall(model.FreezeAnimation, model, STAND, 0, 0) then safe(model.SetPaused, model, true) end
-    return false
+    if not playing then
+        if not (supported and pcall(model.FreezeAnimation, model, animation, 0, preset.frame)) then
+            animation = STAND
+            if not pcall(model.FreezeAnimation, model, STAND, 0, 0) then safe(model.SetPaused, model, true) end
+        end
+    end
+    -- Pose first, then reset and apply the camera. Its bounds must come from the
+    -- same frozen frame in both thumbnails and the detail, including late loads.
+    safe(model.SetCamera, model, 0)
+    safe(model.SetCamDistanceScale, model, 1.05)
+    if not pcall(model.SetPortraitZoom, model, preset.zoom) then safe(model.SetCamDistanceScale, model, .8) end
+    safe(model.SetPosition, model, preset.x or 0, preset.y or 0, preset.z or -.05)
+    safe(model.SetFacing, model, facing)
+    return playing, animation
 end
 
 ACB.loadCardModel, ACB.setModelFinish, ACB.poseCreature = loadModel, setModelFinish, poseCreature

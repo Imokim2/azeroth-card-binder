@@ -327,20 +327,22 @@ test("a portrait assigned on a hidden page retries on show and tolerates a misse
     equal(card.model.creature, nil, "a loaded portrait is never requested again by the watcher")
 end)
 
-test("portrait warming retries unavailable models once without blocking the rest of the set", function()
+test("portrait warming retries failed models once, deduplicates editions and retains successful loads", function()
     local start = #widgets
     local warm = ACB.createPortraitLoader(UIParent, UIParent)
-    local loader = widgets[start + 1]
-    local cards = { ACB.cards["npc:639"], ACB.cards["npc:573"] }
-    warm(cards)
-    loader:OnUpdate(0.1)
-    equal(loader.creature, 639)
-    loader:OnUpdate(3.1)
-    equal(loader.creature, 573)
-    loader:OnUpdate(3.1)
-    equal(loader.creature, 639)
-    loader:OnUpdate(3.1)
-    equal(loader.creature, 573)
-    loader:OnUpdate(3.1)
-    equal(loader:IsShown(), false)
+    local driver = widgets[start + 1]
+    warm({ ACB.cards["npc:639"], ACB.cards["edition:6391"], ACB.cards["npc:573"] })
+    driver:OnUpdate(.1)
+    equal(#driver.models, 2, "editions share their creature resource")
+    local loaded, unavailable = driver.models[1], driver.models[2]
+    loaded.fileID = 12345
+    driver:OnUpdate(.3)
+    equal(loaded:IsShown(), false)
+    equal(loaded.fileID, 12345)
+    driver:OnUpdate(3.1)
+    equal(unavailable.retried, true)
+    equal(unavailable:IsShown(), true)
+    driver:OnUpdate(3.1)
+    equal(driver:IsShown(), false)
+    equal(loaded.fileID, 12345)
 end)

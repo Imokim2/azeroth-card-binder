@@ -69,36 +69,31 @@ test("cards draw for missing, owned and gathering entries", function()
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
 end)
 
-test("opening an index or set warms portraits, waits for slow models and stops outside the collection", function()
+test("opening a set preloads four portraits together, retains loaded models and stops outside the collection", function()
     local cards = ACB.pages[2].cards
-    local loader
-    for _, widget in ipairs(widgets) do
-        if widget.acbPortraitLoader then loader = widget break end
+    local driver
+    for _, widget in ipairs(widgets) do if widget.acbPortraitLoader then driver = widget break end end
+    assert(driver)
+    ACB.openCard(cards[1].key)
+    equal(driver:IsShown(), true)
+    driver:OnUpdate(.1)
+    for slot = 1, 4 do
+        equal(driver.models[slot].creature, cards[slot].id)
+        equal(driver.models[slot].keepModel, true)
+        driver.models[slot].fileID = 1000 + slot
     end
-    assert(loader)
-    ACB.open("index")
-    equal(loader:IsShown(), true)
+    driver:OnUpdate(.25)
+    for slot = 1, 4 do
+        equal(driver.models[slot].fileID, 1000 + slot, "completed models are retained instead of cleared")
+        equal(driver.models[slot]:IsShown(), false)
+    end
+    equal(driver.models[5].creature, cards[5].id)
+    ACB.open("wanted"); driver.parent:OnHide()
+    equal(driver:IsShown(), false)
+    equal(driver.models[1].fileID, 1001, "closing the collection keeps loaded resources")
     ACB.openCard(cards[1].key)
-    equal(loader:IsShown(), true)
-    equal(loader.creature, nil)
-    loader:OnUpdate(0.08)
-    equal(loader.creature, cards[5].id)
-    loader:OnUpdate(0.2)
-    equal(loader.creature, cards[5].id) -- still waiting on the first model
-    loader.fileID = 123456
-    loader:OnUpdate(0.25)
-    equal(loader.creature, cards[6].id)
-    loader:OnUpdate(3.1)
-    equal(loader.creature, cards[7].id) -- one missing model cannot block the queue
-    ACB.open("wanted")
-    loader.parent:OnHide() -- hiding a parent dispatches this in the live client
-    equal(loader:IsShown(), false)
-    equal(loader.creature, nil)
-    ACB.openCard(cards[1].key)
-    loader:OnUpdate(0.08)
-    equal(loader.creature, cards[6].id) -- card 5 already loaded, card 6 can retry
-    loader.parent:OnHide() -- closing the binder dispatches this on the live client
-    equal(loader:IsShown(), false)
+    equal(driver:IsShown(), true)
+    driver.parent:OnHide()
 end)
 
 test("missing models appear in the pocket and detail and regain colour when collected", function()

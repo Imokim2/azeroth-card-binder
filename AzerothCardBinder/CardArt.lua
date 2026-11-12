@@ -121,7 +121,7 @@ local function newArt(parent, width, height)
         local desaturate = not found
         for _, tile in ipairs(self.tiles) do tile:Hide() end
         self.base:Hide()
-        local backdrop = ACB.zones[zoneKey].backdrop
+        local backdrop = ACB.cardBackdrop and ACB.cardBackdrop(zoneKey) or ACB.zones[zoneKey].backdrop
         if backdrop and ACB.read(safe(self.base.SetTexture, self.base, ACB.folioArt .. backdrop), "boolean") then
             self.base:SetTexCoord(0, 1, 0, 1)
             self.base:SetDesaturated(desaturate)

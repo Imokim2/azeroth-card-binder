@@ -1,6 +1,6 @@
 local _, ACB = ...
 
--- Trading distance, like the game's own trading: with the setting on (Settings tab), a trade needs the partner targeted and
+-- Trading distance, like the game's own trading: a trade needs the partner targeted and
 -- within about 11 yards. This is a nicety of play, not a safeguard: the add-on is the only thing that can check it, and
 -- the server verifies every trade from both players' histories regardless.
 
@@ -39,13 +39,16 @@ end
 
 -- May a trade with this player go ahead? True, or false and what to tell the player.
 function ACB.tradeDistanceOk(saved, peer)
-    if not ACB.settingOn(saved, "tradeRange") then return true end
     local unit = ACB.partnerUnit(peer)
     if not unit then
         return false, "Target your trade partner first. As in the game, trading works within about 11 yards."
     end
     -- If the game cannot say how far away they are (the call is missing or refuses), the trade is allowed.
     local near = ACB.read(ACB.safe(CheckInteractDistance, unit, TRADE_DISTANCE), "boolean")
-    if near == false then return false, "Your partner is too far away. Move within about 11 yards." end
+    if near == false then
+        local message = "Your partner is too far away. Move within about 11 yards."
+        if UIErrorsFrame and UIErrorsFrame.AddMessage then UIErrorsFrame:AddMessage(message, 1, .4, .25) end
+        return false, message
+    end
     return true
 end

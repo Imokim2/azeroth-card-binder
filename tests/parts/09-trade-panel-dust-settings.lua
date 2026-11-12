@@ -1,5 +1,7 @@
 test("the simple Trade panel filters whispers and moves cards only after both accept and finish", function()
     local saved, sent = AzerothCardBinderDB, {}
+    local oldDistance = ACB.tradeDistanceOk
+    ACB.tradeDistanceOk = function() return true end -- this test isolates the whisper protocol
     local tradesBefore, range = saved.tradeCount, saved.tradeRange
     saved.tradeRange = false
     Enum = { SendAddonMessageResult = { Success = 0, AddOnMessageLockdown = 11 } }
@@ -51,6 +53,7 @@ test("the simple Trade panel filters whispers and moves cards only after both ac
     equal(saved.counts[give] or 0, before - 1)
     equal(saved.counts["npc:573"], takeBefore + 1)
     saved.tradeRange = range
+    ACB.tradeDistanceOk = oldDistance
 end)
 
 test("binder dust recycles spares, keeps the last copy, and crafts a missing card once", function()
@@ -144,7 +147,7 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     local keepRange = saved.tradeRange
     saved.tradeRange = nil
     equal(ACB.settingOn(saved, "popups"), true) -- on until switched off
-    equal(ACB.settingOn(saved, "tradeRange"), true) -- the trading distance is on until switched off
+    equal(ACB.setSetting(saved, "tradeRange", false), false) -- range is standard behaviour
     equal(ACB.settingOn(saved, "diagnostics"), false) -- off until switched on
     equal(ACB.setSetting(saved, "nonsense", true), false)
     equal(ACB.setSetting(saved, "hints", false), true)
@@ -169,7 +172,7 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     equal(saved.popups, false)
     checks[5].checked = true
     checks[5]:OnClick()
-    equal(saved.diagnostics, true)
+    equal(saved.announceCards, true)
     -- The slash command flips the same switch and the open tab follows.
     SlashCmdList.AZEROTHCARDBINDER("hints")
     equal(saved.hints, false)
@@ -188,17 +191,11 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     saved.titles, saved.title = {}, nil
     equal(ACB.cycleTitle(saved, 1), nil)
     saved.titles = { [first] = true }
-    local function click(label)
-        for _, widget in ipairs(widgets) do
-            if widget.text == label and widget.OnClick then widget:OnClick() return end
+    for _, widget in ipairs(widgets) do
+        if widget.OnClick and widget.parent and widget.parent.parent and widget.parent.parent == AzerothCardBinderWindow then
+            assert(widget.text ~= "Test pop-up" and widget.text ~= "Next title" and widget.text ~= "Open diagnostics log")
         end
-        error("button not found: " .. label)
     end
-    click("Next title")
-    equal(saved.title, first)
-    click("Previous title")
-    equal(saved.title, nil)
-    click("Test pop-up")
 
     saved.popups, saved.hints, saved.inspectable, saved.diagnostics, saved.bossTrial, saved.title, saved.titles = unpack(keep, 1, 7)
     saved.tradeRange = keepRange

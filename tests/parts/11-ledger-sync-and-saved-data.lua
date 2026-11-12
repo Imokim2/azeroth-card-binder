@@ -240,7 +240,7 @@ test("damaged ledger fields in the saved file are repaired or caught, never a cr
     equal(#again.rolledGuids, 2)
 end)
 
-test("the Settings tab and /acb verify report whether the binder is verified", function()
+test("support /acb verify reports whether the binder is verified", function()
     local original = ACB.ledger
     local saved = {}
     local ledger, collection = open(saved)
@@ -255,18 +255,12 @@ test("the Settings tab and /acb verify report whether the binder is verified", f
     -- The counts line reads the add-on's own saved file (the one the slash command was set up with).
     assert(joined:find("Mode: %a+%. Cards owned: %d+%. Attempts counted: %d+"), joined)
 
-    local function settingsLine()
-        ACB.open("settings")
-        for _, widget in ipairs(widgets) do
-            if type(widget.text) == "string" and widget.text:find("^Binder ") and widget.text:find("/acb verify") then
-                return widget.text
-            end
-        end
-    end
-    assert((settingsLine() or "none"):find("^Binder verified: 1 changes"), tostring(settingsLine()))
     saved.counts["npc:589"] = 50
-    assert((settingsLine() or "none"):find("^Binder unverified: card counts or dust do not match the history"),
-        tostring(settingsLine()))
+    lines = {}
+    print = function(text) lines[#lines + 1] = text end
+    SlashCmdList.AZEROTHCARDBINDER("verify")
+    print = realPrint
+    assert(table.concat(lines, "\n"):find("Binder unverified: card counts or dust do not match the history", 1, true))
     ACB.ledger = original
 end)
 

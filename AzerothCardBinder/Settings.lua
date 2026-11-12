@@ -11,14 +11,6 @@ ACB.settings = {
         note = "Takes the reputation bar's place (in green) to show the cards you own in the zone or dungeon you are in." },
     { key = "inspectable", name = "Let others view my binder", default = true,
         note = "Other players using the add-on can ask to see which cards you own." },
-    { key = "diagnostics", name = "Record diagnostics", default = false,
-        note = "Keep a trace of loot rolls for bug reports. Open it with /acb log." },
-    { key = "bossTrial", name = "VanCleef completion trial", default = false,
-        note = "A testing option for the Deadmines boss roll. Leave it off unless asked." },
-    { key = "tradeRange", name = "Trading distance", default = true,
-        note = "Trades need your partner targeted and within about 11 yards, like the game's own trading." },
-    { key = "killRolls", name = "Cards from kills you can't loot", default = true,
-        note = "Critters and other creatures with nothing to loot still get their chance when you kill them while targeting them." },
     { key = "announceCards", name = "Announce cards in chat", default = true,
         note = "Share card finds in group chat, or /say when solo. Your private clickable card messages always stay on." },
 }
@@ -33,6 +25,9 @@ ACB.soundSettings = {
 local byKey = {}
 for _, setting in ipairs(ACB.settings) do byKey[setting.key] = setting end
 for _, setting in ipairs(ACB.soundSettings) do byKey[setting.key] = setting end
+-- Diagnostics remain available to support through slash commands, outside player settings.
+byKey.diagnostics = { key = "diagnostics", default = false }
+byKey.bossTrial = { key = "bossTrial", default = false }
 
 function ACB.settingOn(saved, setting)
     if type(setting) == "string" then setting = byKey[setting] end
