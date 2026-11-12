@@ -25,6 +25,8 @@ Even if Cloudflare's runtime were two or three times faster than this PC, the ta
 
 Refills now add 10,000 entries at the existing 250-entry threshold, compatible with installed companions. This reduces refill interruptions during long sessions, without adding polling. The API reuses new entries for both commitment and response, removing their previous duplicate HMAC calculation. Existing entries and binder history are untouched. A response is roughly 190 KB of JSON plus a little metadata. The older measurements above and cost examples below are not current-buffer benchmarks; rerun the benchmark before using them for forecasts.
 
+The updated local benchmark on 12 Nov 2026 measured roughly 414 ms wall time to derive 10,000 entries, 457 ms for a first full tape request, and 420 ms for a repeated request. JSON is about 190 KB. These are desktop Node/in-memory SQLite timings, not Cloudflare CPU billing or a production latency promise. Ranked samples of 27–174 attempts took about 11–12 ms locally; larger save uploads remain proportional to the attempts checked.
+
 ## New saved-progress mode (companion 0.4.0)
 
 The companion now uses saved-file events instead of periodic network polling. The leaderboard updates after a game save or catch-up upload of newly saved progress, and otherwise stays cached locally. Wanted lists stay in the addon; there is no web board or companion wanted upload/download. See [LOW-COST-SYNC.md](LOW-COST-SYNC.md) for behaviour, verification and rollout.
