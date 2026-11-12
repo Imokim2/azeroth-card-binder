@@ -28,22 +28,29 @@ end
 
 function ACB.createSatchel(saved)
     local frame = ACB.createSatchelWindow()
-    local view = { frame = frame, slots = {}, page = 1 }
+    local size, gap = ACB.nativeBagSlotSize(), 6
+    local gridWidth = COLUMNS * size + (COLUMNS - 1) * gap
+    local width = math.max(320, gridWidth + 44)
+    local gridBottom = 65 + 4 * size + 3 * gap
+    local noteY, navY, tradeY = gridBottom + 16, gridBottom + 40, gridBottom + 77
+    frame:SetSize(width, tradeY + 37)
+    local view = { frame = frame, slots = {}, page = 1, slotSize = size }
     local summary = kit.label(frame, "GameFontHighlightSmall", 20, 40, kit.muted, "")
-    kit.label(frame, "GameFontHighlightSmall", 20, 253, kit.muted, "Right-click a pack to open it.")
+    kit.label(frame, "GameFontHighlightSmall", 20, noteY, kit.muted, "Right-click a pack to open it.")
     local selected, pages
-    local pageText = kit.centered(frame, "GameFontHighlightSmall", 283, kit.muted, 100)
+    local pageText = kit.centered(frame, "GameFontHighlightSmall", navY + 7, kit.muted, 100)
     local back, more, offer
     for index = 1, PAGE_SIZE do
         local slot = CreateFrame("Button", nil, frame, "BackdropTemplate")
-        slot:SetSize(40, 40)
-        slot:SetPoint("TOPLEFT", 20 + ((index - 1) % COLUMNS) * 46, -(65 + math.floor((index - 1) / COLUMNS) * 46))
+        slot:SetSize(size, size)
+        slot:SetPoint("TOPLEFT", (width - gridWidth) / 2 + ((index - 1) % COLUMNS) * (size + gap),
+            -(65 + math.floor((index - 1) / COLUMNS) * (size + gap)))
         ACB.styleSatchelSlot(slot)
         slot:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
         slot:RegisterForClicks("LeftButtonUp", "RightButtonUp")
         local icon = slot:CreateTexture(nil, "ARTWORK")
         icon:SetPoint("TOPLEFT", 2, -2)
-        icon:SetSize(36, 36)
+        icon:SetSize(size - 4, size - 4)
         icon:SetTexture(ACB.satchelIcon)
         local count = slot:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
         count:SetPoint("BOTTOMRIGHT", -3, 3)
@@ -76,12 +83,12 @@ function ACB.createSatchel(saved)
         slot:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
         view.slots[index] = slot
     end
-    back = ACB.satchelButton(frame, "Previous", 16, 276, 82, function() view.page = view.page - 1 view:refresh() end)
-    more = ACB.satchelButton(frame, "Next", 222, 276, 82, function() view.page = view.page + 1 view:refresh() end)
-    offer = ACB.satchelButton(frame, "Trade selected pack", 16, 309, 182, function()
+    back = ACB.satchelButton(frame, "Previous", 20, navY, 82, function() view.page = view.page - 1 view:refresh() end)
+    more = ACB.satchelButton(frame, "Next", width - 102, navY, 82, function() view.page = view.page + 1 view:refresh() end)
+    offer = ACB.satchelButton(frame, "Trade selected pack", 20, tradeY, width - 150, function()
         if selected and ACB.prepareTrade then ACB.prepareTrade(nil, "pack:" .. selected) end
     end)
-    ACB.satchelButton(frame, "Binder", 208, 309, 96, function() ACB.open() end)
+    ACB.satchelButton(frame, "Binder", width - 120, tradeY, 100, function() ACB.open() end)
     function view:refresh()
         local list, total = ACB.packList(saved)
         pages = math.max(1, math.ceil(#list / PAGE_SIZE))
@@ -131,14 +138,18 @@ function ACB.initSatchel(saved, collection, trade)
     rim:SetTexture("Interface\\Common\\WhiteIconFrame")
     launcher:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
     launcher:RegisterForClicks("LeftButtonUp")
-    launcher:SetScript("OnClick", ACB.openSatchel)
+    launcher:SetMovable(true)
+    launcher:SetClampedToScreen(true)
+    launcher:RegisterForDrag("LeftButton")
+    local moved = false
+    launcher:SetScript("OnClick", function() if not moved and not IsShiftKeyDown() then ACB.openSatchel() end end)
     local count = launcher:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
     count:SetPoint("BOTTOMRIGHT", -2, 2)
     launcher:SetScript("OnEnter", function(self)
         if not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:AddLine("Warcards Satchel", 1, .82, 0)
-        GameTooltip:AddLine("Your sealed card packs. Click to open.", .94, .88, .75)
+        GameTooltip:AddLine("Click to open. Shift-drag to move.", .94, .88, .75)
         GameTooltip:Show()
     end)
     launcher:SetScript("OnLeave", function() if GameTooltip then GameTooltip:Hide() end end)
@@ -148,9 +159,33 @@ function ACB.initSatchel(saved, collection, trade)
             if _G[name] and _G[name]:IsShown() then anchor = _G[name] break end
         end
         launcher:ClearAllPoints()
-        if anchor then launcher:SetPoint("BOTTOMRIGHT", anchor, "TOPRIGHT", 0, 5)
+        local point = saved.satchelButtonPosition
+        if type(point) == "table" and type(point.x) == "number" and type(point.y) == "number"
+            and point.x == point.x and point.y == point.y and math.abs(point.x) < 10000 and math.abs(point.y) < 10000 then
+            launcher:SetPoint("CENTER", UIParent, "BOTTOMLEFT", point.x, point.y)
+        elseif anchor then launcher:SetPoint("BOTTOMRIGHT", anchor, "TOPRIGHT", 0, 5)
         else launcher:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -10, 68) end
     end
+    launcher:SetScript("OnDragStart", function()
+        if not IsShiftKeyDown() then return end
+        moved = true
+        if GameTooltip then GameTooltip:Hide() end
+        launcher:StartMoving()
+    end)
+    launcher:SetScript("OnDragStop", function()
+        launcher:StopMovingOrSizing()
+        if not moved then return end
+        local x, y = launcher:GetCenter()
+        local rootScale = UIParent:GetEffectiveScale()
+        if x and y and rootScale and rootScale > 0 then
+            local scale = launcher:GetEffectiveScale() / rootScale
+            saved.satchelButtonPosition = { x = x * scale, y = y * scale }
+        end
+        position()
+        moved = false
+    end)
+    function ACB.resetSatchelButton() saved.satchelButtonPosition = nil position() end
+    view.launcher = launcher
     launcher:RegisterEvent("PLAYER_ENTERING_WORLD")
     launcher:RegisterEvent("UI_SCALE_CHANGED")
     launcher:SetScript("OnEvent", position)

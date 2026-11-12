@@ -316,7 +316,11 @@ function ACB.createCard(parent, previewUnowned, share, options)
             stopInteraction()
             if entry and self:IsMouseOver() then share(entry) end
         end)
-        frame:SetScript("OnHide", stopInteraction)
+        frame:SetScript("OnHide", function()
+            stopInteraction()
+            swayPhase = 0
+            if card.presentation then card.facing = card.presentation.pose.facing end
+        end)
     end
 
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
@@ -328,6 +332,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
         if self.entry ~= entry then
             stopInteraction()
             swayPhase, modelReady = 0, false
+            self.motionPaused = false
         end
         self.entry, self.owned, self.shiny = entry, count, shiny
         local presentation = ACB.cardPresentation(entry, options.presentation)

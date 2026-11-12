@@ -329,7 +329,7 @@ local function initialize()
         rank = function(unit) return apiValue("string", UnitClassification, unit) end,
         tapDenied = function(unit) return apiValue("boolean", UnitIsTapDenied, unit) == true end,
         inCombat = function() return apiValue("boolean", UnitAffectingCombat, "player") == true end,
-        enabled = function() return ACB.settingOn(saved, "killRolls") end,
+        enabled = function() return true end,
         refresh = function() if ACB.refresh then ACB.refresh() end end,
     })
     collection:restoreAchievements()
@@ -411,6 +411,7 @@ local handlers = {
             local peer = normalizePeer(sender)
             local opened = trade:receive(peer, read(message, "string"))
             if opened and ACB.prepareTrade then ACB.prepareTrade(peer) end
+            if opened and ACB.notifyTrade then ACB.notifyTrade(peer, trade:active().gift) end
             ACB.refresh()
         else
             ACB.receiveView(normalizePeer(sender), read(message, "string"))

@@ -30,22 +30,34 @@ function ACB.initUI(saved, trade)
     local ladderView = ACB.createLadderView(frame, saved)
     local wantedView = ACB.createWantedView(frame, saved)
 
+    local invite = window("AzerothCardBinderTradeNotice", 360, 142, "Incoming trade")
+    invite:ClearAllPoints()
+    invite:SetPoint("TOP", UIParent, "TOP", 0, -95)
+    invite:SetFrameStrata("FULLSCREEN_DIALOG")
+    local inviteText = label(invite, "GameFontHighlight", 24, 49, parchment, "")
+    inviteText:SetWidth(312)
+    inviteText:SetHeight(36)
+    inviteText:SetWordWrap(true)
+    button(invite, "View trade", 24, 100, 145, function() invite:Hide(); ACB.open("trade") end)
+    button(invite, "Decline", 183, 100, 145, function() trade:cancel(); invite:Hide(); ACB.refresh() end)
+    local invitePeer, inviteTime
+    function ACB.notifyTrade(peer, gift)
+        invitePeer, inviteTime = peer, 0
+        inviteText:SetText(peer .. (gift and " sent you a gift." or " wants to trade cards or packs."))
+        if ACB.playSound then ACB.playSound("trade") end
+        invite:Show()
+    end
+    invite:SetScript("OnUpdate", function(_, elapsed)
+        inviteTime = (inviteTime or 0) + elapsed
+        local session = trade:active()
+        if inviteTime > 15 or not session or session.peer ~= invitePeer or session.closed or session.applied then invite:Hide() end
+    end)
+
     local tabs = {}
     for index, destination in ipairs({ "index", "collection", "trade", "achievements", "ladder", "wanted", "settings" }) do
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
-    -- Card packs: how many are held, and a way to open them (PackView.lua).
-    local packButton = button(frame, "Packs", nil, nil, 110, function()
-        if ACB.openSatchel then ACB.openSatchel() elseif ACB.openPacks then ACB.openPacks() end
-    end)
-    packButton:SetSize(110, 22)
-    packButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -222, -24)
-    function ACB.refreshPackButton()
-        local _, total = ACB.packList(saved)
-        packButton:SetText(total > 0 and ("Packs (%d)"):format(total) or "Packs")
-    end
-    ACB.refreshPackButton()
     local titleMark = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     titleMark:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -56, -54)
     titleMark:SetTextColor(unpack(brass))
@@ -54,7 +66,6 @@ function ACB.initUI(saved, trade)
     regionMark:SetJustifyH("LEFT")
 
     function ACB.refresh()
-        ACB.refreshPackButton()
         if not frame:IsShown() then return end
         for destination, control in pairs(tabs) do
             local active = destination == mode

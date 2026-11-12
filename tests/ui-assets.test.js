@@ -41,3 +41,14 @@ test('custom icon and portrait card back ship in client-readable power-of-two TG
         assert.ok(data.length >= 18 + width * height * 4, name);
     }
 });
+
+test('all six new environment paintings are uncompressed 512px client textures', () => {
+    for (const name of ['Snow', 'Desert', 'Swamp', 'Ruins', 'Volcano', 'Coast']) {
+        const data = fs.readFileSync(path.join(root, 'Art', 'Scenery', name + '.tga'));
+        assert.equal(data[2], 2, name);
+        assert.equal(data.readUInt16LE(12), 512, name);
+        assert.equal(data.readUInt16LE(14), 512, name);
+        assert.equal(data[16], 24, name);
+        assert.ok(data.length >= 18 + 512 * 512 * 3, name);
+    }
+});

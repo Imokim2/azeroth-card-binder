@@ -351,7 +351,6 @@ function ACB.initPacks(saved, collection)
     collection.packsEnabled = true
     collection.onPack = function(page, count, item)
         if ACB.playSound then ACB.playSound("pack_found", "packs") end
-        if ACB.refreshPackButton then ACB.refreshPackButton() end
         if ACB.refreshSatchel then ACB.refreshSatchel() end
         if view.frame:IsShown() and view.phase == "list" then view:refreshList() end
         if ACB.refresh then ACB.refresh() end

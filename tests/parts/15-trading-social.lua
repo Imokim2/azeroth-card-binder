@@ -150,7 +150,7 @@ test("/acb ask finds the card and the player, by name or from your target", func
     UnitFullName, UnitIsPlayer = oldFull, oldPlayer
 end)
 
-test("the trading distance: the partner must be targeted and within about 11 yards, unless the setting is off", function()
+test("trading always checks nearby partners, including when an old saved range switch is off", function()
     local saved = { tradeRange = true }
     local oldFull, oldPlayer, oldNear = UnitFullName, UnitIsPlayer, CheckInteractDistance
     local who, near = "Bob", true
@@ -192,7 +192,7 @@ test("the trading distance: the partner must be targeted and within about 11 yar
     equal((ACB.tradeDistanceOk(saved, "bob-realmname")), true)
     saved.tradeRange = false
     UnitFullName = function(unit) if unit == "player" then return "Alice", "Realm Name" end end
-    equal(ACB.tradeDistanceOk(saved, "bob-realmname"), true)
+    equal(ACB.tradeDistanceOk(saved, "bob-realmname"), false)
     -- If the game cannot say how far away someone is, the trade is allowed rather than blocked for no reason.
     saved.tradeRange = true
     UnitFullName = function(unit) if unit == "player" then return "Alice", "Realm Name" end return "Bob", "RealmName" end
@@ -266,6 +266,8 @@ test("another player's binder opens as the binder's own pages, filled with their
 end)
 
 test("on a card they are looking for, Trade starts the swap: you pick a card from their binder and the offer is sent", function()
+    local oldDistance = ACB.tradeDistanceOk
+    ACB.tradeDistanceOk = function() return true end
     local saved = AzerothCardBinderDB
     local keepCounts = { saved.counts["npc:589"], saved.tradeRange }
     saved.counts["npc:589"], saved.tradeRange = 2, false
@@ -322,6 +324,7 @@ test("on a card they are looking for, Trade starts the swap: you pick a card fro
     end
     C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult = originalSend, originalCodes
     saved.counts["npc:589"], saved.tradeRange = keepCounts[1], keepCounts[2]
+    ACB.tradeDistanceOk = oldDistance
     ACB.heardWanted = nil
     ACB.refresh()
 end)

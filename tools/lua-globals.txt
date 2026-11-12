@@ -49,6 +49,7 @@ GGET SendChatMessage
 GGET SlashCmdList
 GGET StopSound
 GGET TooltipDataProcessor
+GGET UIErrorsFrame
 GGET UIParent
 GGET UISpecialFrames
 GGET UnitAffectingCombat

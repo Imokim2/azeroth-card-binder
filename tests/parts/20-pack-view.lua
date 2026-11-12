@@ -27,8 +27,7 @@ test("the window lists the packs you hold, and says so when there are none", fun
     equal(AzerothCardBinderPacks:IsShown(), true)
     assert(textOf("You have no card packs."), "an empty list says so")
     saved.packs = { [ZONE_CODE] = 2 }
-    ACB.refreshPackButton()
-    assert(textOf("Packs (2)"), "the binder's button shows how many")
+    ACB.refreshSatchel()
     ACB.packView:refreshList()
     assert(textOf(("Pack: %s  /  Epic  /  x2"):format(ZONE_TITLE)), "the zone's pack is listed with its count")
     saved.packs, saved.mode = keep[1], keep[2]
@@ -148,8 +147,7 @@ test("a pack found in the game raises the button's count and tells chat", functi
     ACB.collection:addPack(ACB.cards["npc:589"], nil)
     print = realPrint
     equal(ACB.packList(saved)[1].count, 1)
-    assert(textOf("Packs (1)"), "the count is on the button")
     assert(table.concat(lines, "\n"):find("Card pack found"), table.concat(lines, "\n"))
     saved.packs, saved.mode = keep[1], keep[2]
-    ACB.refreshPackButton()
+    ACB.refreshSatchel()
 end)

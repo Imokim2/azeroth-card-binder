@@ -175,8 +175,6 @@ end)
 test("the setting is listed, and on by default", function()
     local found
     for _, setting in ipairs(ACB.settings) do if setting.key == "killRolls" then found = setting end end
-    assert(found, "killRolls setting")
-    equal(found.default, true)
-    equal(ACB.settingOn({}, "killRolls"), true)
-    equal(ACB.settingOn({ killRolls = false }, "killRolls"), false)
+    equal(found, nil, "critter rolls are standard behaviour, outside Settings")
+    equal(ACB.setSetting({}, "killRolls", false), false)
 end)

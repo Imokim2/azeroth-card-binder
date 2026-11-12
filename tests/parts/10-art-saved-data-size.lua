@@ -1,4 +1,6 @@
 test("artwork falls back from the journal to loading screens to the zone a dungeon sits in", function()
+    local packaged = ACB.cardBackdrop
+    ACB.cardBackdrop = nil -- exercise client-art fallback when no bundled painting is selected
     local function artFor(slug)
         local entry = ACB.pages[ACB.pageForPlace[slug]].cards[1]
         local card = ACB.createCard(UIParent)
@@ -34,6 +36,7 @@ test("artwork falls back from the journal to loading screens to the zone a dunge
     equal(art.tiles[2].texture, 9004)
     equal(ACB.zones.maraudon.parent, "Desolace")
     for slug in pairs(ACB.instanceZones) do assert(ACB.zones[slug], "every instance names a place that exists: " .. slug) end
+    ACB.cardBackdrop = packaged
 end)
 
 test("saved data cleaning drops what the add-on cannot use, keeps the rest, and is repeatable", function()

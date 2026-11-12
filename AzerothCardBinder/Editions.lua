@@ -60,6 +60,12 @@ for _, row in ipairs(content) do
             entry.serial = base.serial .. "/A" .. slot
             entry.editionWeight = slot == 1 and 150 or 50 -- 15% still, 5% animated, 80% Signature
             entry.presentation = row[slot + 3]
+            -- Keep the authored action and crop distinct without turning faces
+            -- away from the camera or pushing them sideways out of the window.
+            entry.presentation.facing = entry.presentation.facing * .45
+            entry.presentation.y = 0
+            entry.presentation.z = -.05
+            if entry.presentation.zoom > .72 then entry.presentation.zoom = .72 end
             entry.presentation.animated = slot == 2
             ACB.cards[entry.key] = entry
             family[#family + 1] = entry

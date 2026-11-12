@@ -38,7 +38,7 @@ test("authored animated editions play only on an owned detail, and pause or fall
     equal(card.playing, true)
     equal(card.model.animation, 126)
     equal(card.model.frozen, nil)
-    equal(card.facing, -1.65)
+    equal(card.facing, -1.65 * .45)
     card.frame:OnUpdate(3.3)
     equal(card.model.animation, 126)
     card.frame:OnMouseDown("RightButton")
@@ -117,14 +117,15 @@ test("every collectible edition has a substantially different camera and action 
         local base = ACB.portraitPreset(family[1])
         for slot = 2, 3 do
             local entry, pose = family[slot], family[slot].presentation
-            assert(math.abs(pose.facing - base.facing) >= .9, entry.name .. " needs a different viewpoint")
-            assert(math.abs(pose.zoom - base.zoom) >= .2, entry.name .. " needs a different crop")
+            assert(math.abs(pose.facing) <= .85, entry.name .. " must keep the face visible")
+            equal(pose.y, 0, "editions stay centred")
+            assert(math.abs(pose.zoom - base.zoom) >= .08, entry.name .. " needs a different crop")
             assert(pose.animation ~= base.animation, entry.name .. " must use a different action")
             assert(pose.composition and pose.frame >= 400)
             for _, fallback in ipairs(pose.fallbacks) do assert(fallback ~= base.animation) end
             checked = checked + 1
         end
-        assert(math.abs(family[2].presentation.facing - family[3].presentation.facing) > 2)
+        assert(math.abs(family[2].presentation.facing - family[3].presentation.facing) > .9)
         assert(family[2].presentation.animation ~= family[3].presentation.animation)
     end end
     equal(checked, 16)
