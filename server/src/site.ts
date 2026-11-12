@@ -63,37 +63,39 @@ export function binderSets(catalog: Catalog, counts: Record<string, number>, shi
   return sets.sort((a, b) => b.owned / b.total - a.owned / a.total || b.owned - a.owned || a.title.localeCompare(b.title));
 }
 
-export const fairPlayHeadings = ["How Ranked works", "What the server checks", "What happens when something looks wrong", "What this cannot promise", "Trading", "Starting over"] as const;
+export const fairPlayHeadings = ["Playing Ranked", "Play fairly", "Trading and gifts", "Reviews and restrictions", "Starting a new binder", "Report a problem"] as const;
 
 export function fairPlayPage(): string {
-  return layout("Fair play: World of Warcards", `
-<article class="prose page-content"><h1>Fair play</h1>
-<p class="lede">How we check Ranked collections, handle trades and review suspected cheating.</p>
+  return layout("Ranked rules — World of Warcards", `
+<article class="prose page-content"><h1>Ranked rules</h1>
+<p class="lede">Collect through normal play, trade fairly and keep your collection genuine.</p>
 
-<h2>How Ranked works</h2>
-<p>Only <strong>Ranked</strong> play counts for the ladder. In Casual mode the game uses your own computer's random numbers, which nobody else can check, so a player with even one Casual drop is not listed. In Ranked mode the server issues the random numbers, and the add-on uses them in order, one for every attempt, win or lose. The server can therefore recompute every drop you claim.</p>
-<p>Every card found, crafted, recycled or traded is written to an append-only history, chained together so that no entry can be changed or removed after the server has seen it.</p>
+<h2>Playing Ranked</h2>
+<p>Only <strong>Ranked</strong> play counts for the ladder. Choose Ranked before you start collecting and keep the companion app running to sync your progress. A binder containing Casual drops is not eligible for the Ranked ladder.</p>
+<p>Your collection must be public to appear on the website’s ladder. Keep your addon and companion app up to date.</p>
 
-<h2>What the server checks</h2>
+<h2>Play fairly</h2>
 <ul>
-<li><strong>Collection history:</strong> an upload is rejected if its history has gaps, repeated entries or changes to entries the server has already received.</li>
-<li><strong>The rules:</strong> the history must describe a binder that can exist (for example, dust paid for a craft must match, and a set can only be finished once every card is held).</li>
-<li><strong>Ranked rolls:</strong> each drop must match a roll the server supplied, used in the right order with the recorded attempts.</li>
-<li><strong>Luck:</strong> the chance of seeing as many drops as you did from as many attempts as you made. Very unlikely results are looked at by a person.</li>
-<li><strong>Pace:</strong> attempts faster than a person could plausibly play, and very large collections from brand new accounts, are looked at.</li>
+<li>Earn cards through normal gameplay and use the addon’s own collecting, crafting and trading features.</li>
+<li>Do not edit your collection, create cards outside the addon’s normal features or submit false progress.</li>
+<li>Do not use modified software, bots or scripts to gain an unfair collecting advantage.</li>
+<li>Do not deliberately exploit bugs, duplicate cards or help someone else pass off an altered collection as genuine.</li>
+<li>If you find a bug, report it. Do not keep using it to gain cards or share instructions for abusing it.</li>
 </ul>
 
-<h2>What happens when something looks wrong</h2>
-<p>Most checks raise a <em>flag</em> rather than refusing anything. A person reviews flags. The most serious one hides a player from the ladder until it has been reviewed, and nothing is deleted. A reviewer can clear a flag (you were just lucky) or confirm it. Luck that has been cleared is not flagged again until it becomes far more extreme. An appeals contact will be published before any prizes are given.</p>
+<h2>Trading and gifts</h2>
+<p>Use the addon’s trade window for exchanges and gifts. Both players must agree to what is offered and complete the trade normally. Both players should sync afterwards.</p>
+<p>Cards received through a trade must also be eligible for Ranked play. A trade that is incomplete or under review may not count towards your score. Do not use other accounts or arranged trades to get around these rules.</p>
 
-<h2>What this cannot promise</h2>
-<p>The addon runs on your computer, and its saved data is a text file you can edit. The server receives that saved history; it cannot watch what happens in the game. Cheating cannot be made impossible. Someone who modifies the addon can still read upcoming rolls, but skipped rolls must be accounted for by recorded attempts, and the server checks whether that pace of play is plausible. These checks have limits, which is why suspicious collections also need a person to review them.</p>
+<h2>Reviews and restrictions</h2>
+<p>Collections may be reviewed to keep the ladder fair. A collection can be temporarily hidden while a review is taking place. Confirmed cheating can lead to removal from the ladder or a ban from the service.</p>
+<p>If you think your collection has been restricted by mistake, contact the project maintainers. Include your character name, addon version and the message you received. Do not post private account files in a public report.</p>
 
-<h2>Trading</h2>
-<p>A trade has two halves, one from each player, and both must agree. A half that nobody confirms within a week stops counting. A card that came from a player with Casual drops, directly or through other players, does not count for whoever received it.</p>
+<h2>Starting a new binder</h2>
+<p>If you want to move from Casual to Ranked, type <code>/acb newbinder</code> in game and read the confirmation carefully. Starting again resets your collection progress. Wait for the companion app to confirm the new binder, then choose Ranked before collecting any cards.</p>
 
-<h2>Starting over</h2>
-<p>A new binder can be started once a day. The old one stays on record, stops counting, and the new one gets new random numbers from its first drop.</p></article>
+<h2>Report a problem</h2>
+<p>For bugs and questions, use the <a href="https://github.com/Imokim2/azeroth-card-binder/issues/new/choose">GitHub issue tracker</a>. For a security issue or an exploit, follow the repository’s <a href="https://github.com/Imokim2/azeroth-card-binder/blob/main/SECURITY.md">private reporting instructions</a>.</p></article>
 `, "/fair-play");
 }
 
