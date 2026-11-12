@@ -18,15 +18,15 @@ export function ladderPage(entries: LadderEntry[], firsts: First[]): string {
     `<tr><td class="num">${entry.rank}</td><td><a href="/player/${escapeHtml(entry.playerId)}">${escapeHtml(entry.displayName)}</a></td><td class="num">${(entry.scoreTenths / 10).toFixed(1)}</td><td class="num">${entry.uniqueCards}</td><td class="num">${entry.setsDone}</td></tr>`).join("\n");
   const table = entries.length > 0
     ? `<table class="ladder-table"><caption class="empty">The top ${entries.length} ranked players</caption>\n<thead><tr><th class="num">#</th><th>Player</th><th class="num">Points</th><th class="num">Cards</th><th class="num">Sets</th></tr></thead>\n<tbody>\n${rows}\n</tbody></table>`
-    : `<div class="panel empty-state"><span class="empty-symbol" aria-hidden="true">◇</span><div><h2>A place for the first adventurers.</h2><p class="empty">Nobody is on the ladder yet. Only players whose every drop was rolled in Ranked mode are listed. <a href="/help#companion">Connect your collection</a> to get started.</p></div></div>`;
+    : `<div class="panel empty-state"><span class="empty-symbol" aria-hidden="true">◇</span><div><h2>No Ranked collections yet</h2><p class="empty">Nobody is on the ladder yet. Only players whose every drop was rolled in Ranked mode are listed. <a href="/help#companion">Connect your collection</a> to get started.</p></div></div>`;
   const first = firsts.length > 0
     ? `<ul>${firsts.map((row) => `<li><strong>${escapeHtml(row.title)}</strong>: <a href="/player/${escapeHtml(row.playerId)}">${escapeHtml(row.displayName)}</a> <span class="copies">${date(row.at)}</span></li>`).join("")}</ul>`
     : `<p class="empty">No set has been finished yet.</p>`;
   return layout("World of Warcards: the ladder", `
-<div class="page-heading"><p class="eyebrow">THE COLLECTOR’S CORNER</p><h1>The ladder</h1>
-<p class="lede">Explore public collections and follow the first collectors to complete a set. Only <a href="/fair-play">Ranked</a> play counts for the ladder.</p></div><div class="page-content">
+<div class="page-heading"><h1>The ladder</h1>
+<p class="lede">Compare public Ranked collections and see who finished each set first. Only <a href="/fair-play">Ranked</a> play counts towards these scores.</p></div><div class="page-content">
 ${table}
-<div class="subheading"><h2>First to finish a set</h2><span>Collection milestones, recorded as they happen.</span></div>
+<div class="subheading"><h2>First to finish a set</h2></div>
 ${first}</div>
 `, "/ladder");
 }
@@ -40,8 +40,8 @@ export function playerPage(player: { displayName: string; rank: number; scoreTen
         `<li class="${["common", "rare", "epic", "legendary"].includes(card.rarity) ? card.rarity : "common"}${card.shiny ? " shiny" : ""}">${escapeHtml(card.name)}${card.copies > 1 ? ` <span class="copies">x${card.copies}</span>` : ""}</li>`).join("")}</ul></details>`).join("\n")
     : `<p class="empty">No cards yet.</p>`;
   return layout(`${player.displayName} on World of Warcards`, `
-<div class="page-heading"><p class="eyebrow">A COLLECTOR'S BINDER</p><h1>${escapeHtml(player.displayName)}</h1>
-<p class="lede">Last updated ${date(player.updatedAt)}. This is a read-only view of the binder the server has on record.</p></div><div class="page-content">
+<div class="page-heading"><h1>${escapeHtml(player.displayName)}</h1>
+<p class="lede">Last synced ${date(player.updatedAt)}. Cards and counts shown here come from this player’s saved binder.</p></div><div class="page-content">
 ${stats}
 <h2>Binder</h2>
 ${list}
@@ -67,8 +67,8 @@ export const fairPlayHeadings = ["How Ranked works", "What the server checks", "
 
 export function fairPlayPage(): string {
   return layout("Fair play: World of Warcards", `
-<article class="prose page-content"><p class="eyebrow">A COLLECTION YOU CAN TRUST</p><h1>Fair play</h1>
-<p class="lede">A card collecting ladder only means something if the numbers can be trusted. Here is how that is attempted, and where it stops.</p>
+<article class="prose page-content"><h1>Fair play</h1>
+<p class="lede">How we check Ranked collections, handle trades and review suspected cheating.</p>
 
 <h2>How Ranked works</h2>
 <p>Only <strong>Ranked</strong> play counts for the ladder. In Casual mode the game uses your own computer's random numbers, which nobody else can check, so a player with even one Casual drop is not listed. In Ranked mode the server issues the random numbers, and the add-on uses them in order, one for every attempt, win or lose. The server can therefore recompute every drop you claim.</p>
@@ -76,9 +76,9 @@ export function fairPlayPage(): string {
 
 <h2>What the server checks</h2>
 <ul>
-<li><strong>The chain:</strong> any broken link rejects the upload. No gaps, no repeats.</li>
+<li><strong>Collection history:</strong> an upload is rejected if its history has gaps, repeated entries or changes to entries the server has already received.</li>
 <li><strong>The rules:</strong> the history must describe a binder that can exist (for example, dust paid for a craft must match, and a set can only be finished once every card is held).</li>
-<li><strong>The random numbers:</strong> every Ranked drop must match the number the server issued for it, in order, and be affordable in attempts.</li>
+<li><strong>Ranked rolls:</strong> each drop must match a roll the server supplied, used in the right order with the recorded attempts.</li>
 <li><strong>Luck:</strong> the chance of seeing as many drops as you did from as many attempts as you made. Very unlikely results are looked at by a person.</li>
 <li><strong>Pace:</strong> attempts faster than a person could plausibly play, and very large collections from brand new accounts, are looked at.</li>
 </ul>
@@ -87,7 +87,7 @@ export function fairPlayPage(): string {
 <p>Most checks raise a <em>flag</em> rather than refusing anything. A person reviews flags. The most serious one hides a player from the ladder until it has been reviewed, and nothing is deleted. A reviewer can clear a flag (you were just lucky) or confirm it. Luck that has been cleared is not flagged again until it becomes far more extreme. An appeals contact will be published before any prizes are given.</p>
 
 <h2>What this cannot promise</h2>
-<p>A game add-on runs on your computer and its saved data is a text file you can edit. The server never sees the game, only what the app says. Cheating cannot be made impossible, only bounded, visible and not worth it. A person who modifies the add-on can still read ahead in their random numbers, but skipped numbers have to be explained by plausible attempts, and attempts are limited to what a person could do in an hour. Their advantage is bounded, not zero. Seasons and human review exist for that reason.</p>
+<p>The addon runs on your computer, and its saved data is a text file you can edit. The server receives that saved history; it cannot watch what happens in the game. Cheating cannot be made impossible. Someone who modifies the addon can still read upcoming rolls, but skipped rolls must be accounted for by recorded attempts, and the server checks whether that pace of play is plausible. These checks have limits, which is why suspicious collections also need a person to review them.</p>
 
 <h2>Trading</h2>
 <p>A trade has two halves, one from each player, and both must agree. A half that nobody confirms within a week stops counting. A card that came from a player with Casual drops, directly or through other players, does not count for whoever received it.</p>
@@ -101,8 +101,8 @@ export const privacyHeadings = ["What is stored", "What is shown to others", "Wh
 
 export function privacyPage(): string {
   return layout("Privacy: World of Warcards", `
-<article class="prose page-content"><p class="eyebrow">YOUR COLLECTION. YOUR CHOICE.</p><h1>Privacy</h1>
-<p class="lede">What the service holds about you, what other people see, and how to remove it.</p>
+<article class="prose page-content"><h1>Privacy</h1>
+<p class="lede">What we store when you use the companion app, what other players can see and how to delete your data.</p>
 
 <h2>What is stored</h2>
 <ul>
@@ -149,11 +149,11 @@ export function wantedPage(entries: { playerId: string; displayName: string; car
   }).join("\n");
   const cards = ranked.length > 0
     ? `<table><caption class="empty">Cards players are looking for</caption>\n<thead><tr><th>Card</th><th class="num">Wanted by</th><th>Who</th></tr></thead>\n<tbody>\n${cardRows}\n</tbody></table>`
-    : `<div class="panel empty-state"><span class="empty-symbol" aria-hidden="true">◇</span><div><h2>Every collection has a missing piece.</h2><p class="empty">Nobody has listed a card they are looking for yet. Mark the cards you want in your binder and sync with public visibility to share your list.</p></div></div>`;
+    : `<div class="panel empty-state"><span class="empty-symbol" aria-hidden="true">◇</span><div><h2>No wanted cards yet</h2><p class="empty">Nobody has listed a card they are looking for yet. Mark the cards you want in your binder and sync with public visibility to share your list.</p></div></div>`;
   const people = entries.map((entry) => `<details><summary>${escapeHtml(entry.displayName)}: ${entry.cards.length} card${entry.cards.length === 1 ? "" : "s"}</summary><ul>${entry.cards.flatMap((key) => (catalog.cards[key] ? [`<li>${escapeHtml(catalog.cards[key]!.name)}</li>`] : [])).join("")}</ul></details>`).join("\n");
   return layout("Wanted: World of Warcards", `
-<div class="page-heading"><p class="eyebrow">A GOOD TRADE STARTS HERE</p><h1>Wanted cards</h1>
-<p class="lede">Find the missing piece for someone's collection. Arrange a swap in the game: target the other player and use the Trade tab. Public players can share their wanted list here and clear it at any time.</p></div><div class="page-content">
+<div class="page-heading"><h1>Wanted cards</h1>
+<p class="lede">See which cards other players want. To arrange a swap, contact them in game, target them and open the Trade tab. Mark cards as wanted in your binder and sync with public visibility to add your own list.</p></div><div class="page-content">
 ${cards}
 <h2>By player</h2>
 ${people || '<p class="empty">No lists yet.</p>'}</div>
@@ -161,5 +161,5 @@ ${people || '<p class="empty">No lists yet.</p>'}</div>
 }
 
 export function notFoundPage(): string {
-  return layout("Not found: World of Warcards", `<div class="page-heading"><p class="eyebrow">A PATH LESS TRAVELLED</p><h1>Not found</h1><p class="lede">There is nothing at this address. The page may be private or no longer available.</p><div class="actions"><a class="button primary" href="/">Back to home</a><a class="button" href="/ladder">Explore the ladder</a></div></div>`, "");
+  return layout("Not found: World of Warcards", `<div class="page-heading"><h1>Page not found</h1><p class="lede">There is nothing at this address. The page may be private or no longer available.</p><div class="actions"><a class="button primary" href="/">Back to home</a><a class="button" href="/ladder">View the ladder</a></div></div>`, "");
 }
