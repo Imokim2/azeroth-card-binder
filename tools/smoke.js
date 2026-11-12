@@ -115,7 +115,7 @@ async function smoke({ base, get = fetch, key = embeddedKey(), deep = false }) {
   }
 
   await check("the admin doors are shut without the token", async () => {
-    for (const route of ["/v1/admin/flags", "/v1/admin/reports"]) {
+    for (const route of ["/v1/admin/flags", "/v1/admin/reports", "/v1/admin/players", "/v1/admin/audit", "/v1/admin/me"]) {
       const response = await get(base + route);
       need(response.status === 401 || response.status === 404, `${route} answered ${response.status}`);
     }

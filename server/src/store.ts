@@ -117,6 +117,34 @@ export interface ModerationStore {
   setBanned(playerId: string, banned: boolean): Promise<boolean>;
 }
 
+// The admin panel (docs/runbooks/ADMIN.md): finding a player, looking at everything held about one, and the record of what
+// the reviewers did. Reading only, except for the audit record. Banning is in ModerationStore, deleting in PlayerStore.
+export type AdminPlayerRow = {
+  playerId: string; displayName: string; status: "active" | "banned"; visibility: Visibility; createdAt: number;
+  characters: string[]; scoreTenths: number | null;
+};
+export type AdminPlayerDetail = {
+  playerId: string; createdAt: number; status: "active" | "banned"; visibility: Visibility; epoch: number; resetAt: number | null;
+  hasDiscord: boolean; archivedBinders: number; keys: { active: number; revoked: number };
+  characters: { name: string; realm: string; firstSeen: number; lastSeen: number }[];
+  score: { displayName: string; scoreTenths: number; uniqueCards: number; setsDone: number; attempts: number; rulesVersion: number; updatedAt: number } | null;
+  binder: { mode: string; cardsOwned: number; headSeq: number; casualDrops: number; updatedAt: number } | null;
+  uploads: { batches: number; first: number | null; last: number | null };
+  trades: { open: number; matched: number; unmatched: number };
+  flags: FlagRecord[];
+  reportsAbout: number;
+};
+export type AuditEntry = { id: string; at: number; actor: string; action: string; target: string; detail: string };
+export interface AdminStore {
+  // Players (not archived binders) whose id, display name or a character's name matches the text, newest first; with no text,
+  // the newest players.
+  search(text: string, limit: number): Promise<AdminPlayerRow[]>;
+  detail(playerId: string): Promise<AdminPlayerDetail | null>;
+  record(entry: AuditEntry): Promise<void>;
+  // The newest entries first.
+  audit(limit: number): Promise<AuditEntry[]>;
+}
+
 // Rebuilding everything derived from the stored batches (roadmap D8).
 export type Derived = {
   state: LedgerState; drops: Record<string, number>; score: { score: number; uniqueCards: number; setsDone: number };

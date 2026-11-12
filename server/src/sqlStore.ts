@@ -8,7 +8,7 @@ import type { LedgerState } from "./shared.ts";
 import { StoreConflict } from "./store.ts";
 import { peerName } from "./names.ts";
 import type { BoardEntry, Commit, IngestStore, IssuedTape, LeaderboardStore, Player, PlayerStore, StoredLedger, TapeStore, TradeStore, Visibility } from "./store.ts";
-import type { Derived, FlagRecord, ModerationStore, RebuildStore, ReportRecord, ReportStore, WantedEntry, WantedStore } from "./store.ts";
+import type { AdminPlayerDetail, AdminPlayerRow, AdminStore, AuditEntry, Derived, FlagRecord, ModerationStore, RebuildStore, ReportRecord, ReportStore, WantedEntry, WantedStore } from "./store.ts";
 import type { LedgerEvent } from "./ledger.ts";
 import { gunzip } from "./gzip.ts";
 
@@ -23,7 +23,7 @@ export class KeyUnavailable extends Error {}
 
 const PLAYER_COLUMNS = "p.id, p.discord_id, p.status, p.visibility, p.created_at, p.epoch, p.reset_at";
 
-export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore, WantedStore, ReportStore {
+export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, TapeStore, TradeStore, ModerationStore, RebuildStore, WantedStore, ReportStore, AdminStore {
   readonly #db: Db;
   constructor(db: Db) {
     this.#db = db;
@@ -540,6 +540,66 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
        AND (s.score > ? OR (s.score = ? AND s.updated_at < ?) OR (s.score = ? AND s.updated_at = ? AND s.player_id < ?))`,
       [row.score, row.score, row.updated_at, row.score, row.updated_at, row.player_id]);
     return { entry: toEntry(row), rank: (ahead[0]?.n ?? 0) + 1 };
+  }
+  async search(text: string, limit: number): Promise<AdminPlayerRow[]> {
+    const like = "%" + text.toLowerCase().replace(/[!%_]/g, "!$&") + "%";
+    const ids = (await this.#db.all<{ id: string }>(
+      `SELECT p.id FROM players p WHERE p.archived_from IS NULL AND (? = '' OR p.id = ?
+         OR EXISTS (SELECT 1 FROM scores s WHERE s.player_id = p.id AND lower(s.display_name) LIKE ? ESCAPE '!')
+         OR EXISTS (SELECT 1 FROM characters c WHERE c.player_id = p.id AND (lower(c.name) LIKE ? ESCAPE '!' OR lower(c.name || ' ' || c.realm) LIKE ? ESCAPE '!')))
+       ORDER BY p.created_at DESC, p.id DESC LIMIT ?`, [text, text.toUpperCase(), like, like, like, limit])).map((row) => row.id);
+    if (ids.length === 0) return [];
+    const rows = await this.#db.all<{ id: string; status: "active" | "banned"; visibility: Visibility; created_at: number; display_name: string | null; score: number | null }>(
+      `SELECT p.id, p.status, p.visibility, p.created_at, s.display_name, s.score FROM players p LEFT JOIN scores s ON s.player_id = p.id
+       WHERE p.id IN (${ids.map(() => "?").join(", ")})`, ids);
+    const characters = await this.charactersOf(ids);
+    return ids.flatMap((id) => {
+      const row = rows.find((candidate) => candidate.id === id);
+      return row ? [{ playerId: id, displayName: row.display_name ?? "", status: row.status, visibility: row.visibility, createdAt: row.created_at,
+        characters: characters[id] ?? [], scoreTenths: row.score }] : [];
+    });
+  }
+
+  async detail(playerId: string): Promise<AdminPlayerDetail | null> {
+    const account = (await this.#db.all<{ id: string; discord_id: string | null; status: "active" | "banned"; visibility: Visibility; created_at: number; epoch: number; reset_at: number | null }>(
+      "SELECT id, discord_id, status, visibility, created_at, epoch, reset_at FROM players WHERE id = ? AND archived_from IS NULL", [playerId]))[0];
+    if (!account) return null;
+    const one = async <T>(sql: string): Promise<T | undefined> => (await this.#db.all<T>(sql, [playerId]))[0];
+    const count = async (sql: string) => (await one<{ n: number }>(sql))?.n ?? 0;
+    const keys = await this.#db.all<{ status: string; n: number }>("SELECT status, COUNT(*) AS n FROM keys WHERE player_id = ? GROUP BY status", [playerId]);
+    const score = await one<{ display_name: string; score: number; unique_cards: number; sets_done: number; attempts: number; rules_version: number; updated_at: number }>(
+      "SELECT display_name, score, unique_cards, sets_done, attempts, rules_version, updated_at FROM scores WHERE player_id = ?");
+    const state = await one<{ head_seq: number; state_json: string; casual_drops: number; updated_at: number }>(
+      "SELECT head_seq, state_json, casual_drops, updated_at FROM ledger_state WHERE player_id = ?");
+    const parsed = state ? (JSON.parse(state.state_json) as LedgerState) : null;
+    const uploads = await one<{ n: number; first: number | null; last: number | null }>("SELECT COUNT(*) AS n, MIN(received_at) AS first, MAX(received_at) AS last FROM batches WHERE player_id = ?");
+    const trades = await this.#db.all<{ state: "open" | "matched" | "unmatched"; n: number }>("SELECT state, COUNT(*) AS n FROM trades WHERE player_id = ? GROUP BY state", [playerId]);
+    const flags = (await this.flags("all", 500)).filter((flag) => flag.playerId === playerId);
+    return {
+      playerId, createdAt: account.created_at, status: account.status, visibility: account.visibility, epoch: account.epoch, resetAt: account.reset_at,
+      hasDiscord: account.discord_id !== null,
+      archivedBinders: await count("SELECT COUNT(*) AS n FROM players WHERE archived_from = ?"),
+      keys: { active: keys.find((row) => row.status === "active")?.n ?? 0, revoked: keys.find((row) => row.status === "revoked")?.n ?? 0 },
+      characters: await this.#db.all<{ name: string; realm: string; firstSeen: number; lastSeen: number }>(
+        "SELECT name, realm, first_seen AS firstSeen, last_seen AS lastSeen FROM characters WHERE player_id = ? ORDER BY last_seen DESC, name, realm", [playerId]),
+      score: score ? { displayName: score.display_name, scoreTenths: score.score, uniqueCards: score.unique_cards, setsDone: score.sets_done, attempts: score.attempts, rulesVersion: score.rules_version, updatedAt: score.updated_at } : null,
+      binder: state && parsed ? { mode: parsed.mode, cardsOwned: Object.values(parsed.counts).filter((owned) => owned > 0).length, headSeq: state.head_seq, casualDrops: state.casual_drops, updatedAt: state.updated_at } : null,
+      uploads: { batches: uploads?.n ?? 0, first: uploads?.first ?? null, last: uploads?.last ?? null },
+      trades: { open: trades.find((row) => row.state === "open")?.n ?? 0, matched: trades.find((row) => row.state === "matched")?.n ?? 0, unmatched: trades.find((row) => row.state === "unmatched")?.n ?? 0 },
+      flags,
+      reportsAbout: await count("SELECT COUNT(*) AS n FROM reports WHERE target_id = ?"),
+    };
+  }
+
+  async record(entry: AuditEntry): Promise<void> {
+    await this.#db.batch([{
+      sql: "INSERT INTO admin_audit (id, at, actor, action, target, detail) VALUES (?, ?, ?, ?, ?, ?)",
+      params: [entry.id, entry.at, entry.actor, entry.action, entry.target, entry.detail],
+    }]);
+  }
+
+  async audit(limit: number): Promise<AuditEntry[]> {
+    return this.#db.all<AuditEntry>("SELECT id, at, actor, action, target, detail FROM admin_audit ORDER BY at DESC, rowid DESC LIMIT ?", [limit]);
   }
 }
 
