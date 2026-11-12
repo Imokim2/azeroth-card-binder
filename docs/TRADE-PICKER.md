@@ -1,5 +1,7 @@
 # Choosing a trade offer
 
+Addon 0.6.4 uses the binder's leather window skin, the same parchment asset and shared ink/sepia colours for both offer panels and history. The pack picker follows the same scheme. Layout leaves room for the binder-style title and close control.
+
 An incoming I message creates a pending invitation. It sends no offer reply, opens no trade/binder and cannot accept a transfer until the recipient chooses Accept invitation. Decline cancels through the existing protocol; unanswered sessions expire. Joining and accepting an item remain separate actions. Duplicate messages do not reopen invitations.
 
 The Trade tab and context-menu actions open a separate Card trade window. Clicking your card slot or Choose card opens the existing searchable binder in front, using FULLSCREEN_DIALOG while picking. The normal collection/index and edition controls remain available. Add to trade appears below the selected card on the right page and is enabled only for an owned exact card. Choosing it changes one offered copy and closes the binder, restoring its normal frame level/strata and showing the trade. Back to trade or closing the binder leaves the offer unchanged. A replaced, closed or locked session invalidates the picker. Choose pack retains a separate pack list. Gift recipients cannot add an unexpected return item.

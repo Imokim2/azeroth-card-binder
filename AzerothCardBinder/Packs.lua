@@ -176,6 +176,9 @@ function ACB.addPackMethods(collection, ctx)
         local held = saved.packs and saved.packs[zone] or 0
         if not page or held < 1 then return nil, "You have no pack for that zone." end
         if self:packAvailable(zone) < 1 then return nil, "This pack is in your trade. Remove it or cancel the trade before opening it." end
+        if saved == AzerothCardBinderDB and ACB.ensureCollectionMode and not ACB.ensureCollectionMode() then
+            return nil, "Choose Ranked or Casual before opening a pack. Your pack has been kept."
+        end
         local ranked = saved.mode == "ranked"
         if ranked and not ACB.tapeHolds(saved, info.size) then
             return nil, ("A Ranked pack needs %d roll tape entries. %s"):format(info.size, ACB.rankedPauseReason(saved))

@@ -43,6 +43,7 @@ function updateNote(updates, gameFolder) {
 }
 
 function render(status) {
+  status = { ...status, busy: status.busy || status.repairing === true };
   const ready = status.signedIn && status.gameFolder !== null;
   const accountIssues = status.accounts.some((entry) => /Cannot|refused|missing|Not registered|could not be reached|differs|out of step/.test(entry.state));
   const attention = status.problem || status.needsNewBinder || accountIssues;
@@ -99,8 +100,8 @@ function render(status) {
     name.className = "name";
     name.textContent = entry.account;
     const mode = document.createElement("span");
-    mode.className = "mode" + (entry.mode === "ranked" ? " ranked" : "");
-    mode.textContent = entry.mode === "ranked" ? "Ranked" : entry.mode === "casual" ? "Casual" : "?";
+    mode.className = "mode" + (entry.mode === "ranked" || entry.setupReady ? " ranked" : "");
+    mode.textContent = entry.setupReady ? "Ranked setup" : entry.mode === "ranked" ? "Ranked" : entry.mode === "casual" ? "Casual" : "?";
     left.append(name, mode);
     const state = document.createElement("span");
     state.className = "state" + (/^(Synced|Up to date)/.test(entry.state) ? " good" : /Cannot|refused|missing|Not registered|could not be reached|differs|out of step/.test(entry.state) ? " bad" : "");
@@ -132,6 +133,9 @@ function render(status) {
   $("update-addon").textContent = status.updating === "addon" ? "Installing…" : (updates && updates.addon.installed === null ? "Install addon" : "Update addon") + (status.newer && status.newer.addon ? " to " + status.newer.addon : "");
   $("update-app").textContent = status.updating === "app" ? "Updating…" : "Update companion" + (status.newer && status.newer.app ? " to " + status.newer.app : "");
   $("sync-now").disabled = !ready || status.busy || !!status.problem;
+  $("repair-sync").hidden = !ready || (!accountIssues && !status.needsNewBinder && !status.repairing);
+  $("repair-sync").disabled = status.busy || status.repairing === true;
+  $("repair-sync").textContent = status.repairing ? "Checking repair…" : "Repair sync";
 
   const message = $("message");
   message.hidden = !status.message;
@@ -158,6 +162,7 @@ if (demo && demos[demo[1]]) {
   $("find-game").addEventListener("click", () => api.findGame());
   $("choose-folder").addEventListener("click", () => api.chooseGameFolder());
   $("sync-now").addEventListener("click", () => api.syncNow());
+  $("repair-sync").addEventListener("click", () => api.repairSync());
   $("update-addon").addEventListener("click", () => api.updateAddon());
   $("check-updates").addEventListener("click", () => api.checkForUpdates());
   $("update-app").addEventListener("click", () => api.updateApp());

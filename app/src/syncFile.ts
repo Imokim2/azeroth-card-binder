@@ -16,6 +16,8 @@ export type SyncData = {
   // What the server says is the newest add-on and the oldest it accepts (x.y.z), so the add-on can say when it is out of date.
   releases?: { latestAddon: string; minAddon: string };
   rankedIssue?: "binder-mismatch" | "position-mismatch";
+  companionReady?: boolean;
+  rankedSetups?: string[]; // local binder nonces eligible for the fresh-binder Ranked default
 };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
@@ -55,6 +57,11 @@ export function syncFileText(data: SyncData): string {
   const standing = (entry: Standing, index: number) =>
     `        { rank = ${whole(entry.rank, "rank")}, name = ${luaString(entry.name, "name")}, score = ${whole(entry.score, "score")}, cards = ${whole(entry.cards, "cards")}, sets = ${whole(entry.sets, "sets")} }, -- ${index + 1}`;
   const extra: string[] = [];
+  if (data.companionReady === true) extra.push("    companionReady = true,");
+  if (data.rankedSetups) {
+    if (data.rankedSetups.length > 100 || data.rankedSetups.some(id => !/^[0-9a-f]{32}$/.test(id))) throw new Error("invalid Ranked setup pairing");
+    extra.push(`    rankedSetups = { ${data.rankedSetups.map(id => '"' + id + '"').join(", ")} },`);
+  }
   if (data.rankedIssue) {
     if (!["binder-mismatch", "position-mismatch"].includes(data.rankedIssue)) throw new Error("unknown Ranked sync issue");
     extra.push(`    rankedIssue = "${data.rankedIssue}",`);

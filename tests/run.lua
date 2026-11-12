@@ -36,6 +36,7 @@ local parts = {
     "29-card-announcements",
     "30-ui-polish",
     "31-trade-picker",
+    "32-collection-mode",
 }
 
 local source, ranges, line = {}, {}, 1

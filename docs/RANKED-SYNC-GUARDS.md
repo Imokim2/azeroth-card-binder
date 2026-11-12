@@ -1,5 +1,19 @@
 # Ranked supply and saved history
 
+## Guided setup and recovery (addon 0.6.4, companion 0.4.4)
+
+New untouched binders can start in Ranked after the companion has checked their saved history and supplied usable rolls. A local setup nonce must match the companion's ready list, so an unrelated/stale Sync.lua is not enough. The addon still cannot inspect a companion process; this is a file-based setup handshake. A deliberately chosen Casual mode is respected. Existing Casual/legacy collections are not relabelled. The first live card roll or pack opening waits for a mode choice when setup is incomplete. Ranked never silently falls back to Casual. The mode remains visible in the binder, and switching away from Ranked asks for confirmation.
+
+The engine retries failed sync-file replacements with backoff and returns to idle after recovery. Cached acknowledgements, supply and metadata allow this local repair without new polling requests. A new history conflict brings the companion window into view once and offers Repair sync. Ordinary sync rebuilding does not modify saved progress. The deliberate start-over action is kept separate and collapsed.
+
+After a complete head is acknowledged, the companion retains up to five local save copies per WoW account in its own binder-backups directory. Identical heads are not overwritten. Copies survive ordinary companion updates and do not add network traffic. A failure to save a recovery copy leaves the game save unchanged and does not block syncing.
+
+Repair sync first rebuilds transport state. If a conflict remains, it compares the game's .bak and the retained copies with the authenticated server export. A candidate must match the exact current server head, mode, tape position, inventory, shiny cards, packs, sets, dust and Casual-drop count; its chain and local checksum must validate. Every current card, pack, title, achievement and attempt must survive, and any current history must be a prefix of the server record. Newer, forked, unreadable or incomplete current data is never overwritten automatically.
+
+Restoration requires explicit approval and a verified closed game. Server and local data are checked again after approval. The current file, existing .bak and verified source are copied aside before an atomic replacement. Current preferences, wanted list, reports and layout are retained. The game's .bak is not overwritten. A WoW process prevents restoring; a failed process query is treated as unsafe. No reset/delete endpoint is used. Missing proof, multiple conflicting accounts or lost history remain an explicit support/recovery case; no cards or ledger events are invented.
+
+Checks cover paired/unpaired fresh setup, explicit Casual choice, no first accidental Casual drop, mode-switch confirmation, cache-only write recovery, retained-backup restoration, source retention, game/file races, declined approval, native Lua validation of restored data and the absence of reset/delete requests.
+
 The server issues a separate roll tape for each registered player/binder epoch. It is not a shared pool across the community. Refills now add 10,000 attempts at the existing 250-entry threshold. Misses use entries too; finding a pack reuses the attempt entry and opening a pack uses one entry per card. Supply reaches the game through Data/Sync.lua on UI reload or launch. It cannot be injected into a running addon without reloading.
 
 A saved position earlier than the supplied start is not exhaustion. During investigation, the inspected local file had next=1 while Sync.lua started at 96 with 905 entries. Files reflect the last game save, not live game memory. The app now detects empty/short histories against cached acknowledgements and probes once on a cold start when no events remain. A fully pruned matching head is accepted; a same-position different hash is refused. A zero server acknowledgement is cached internally but is not written as a pruning instruction.

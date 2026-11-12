@@ -49,6 +49,8 @@ test("a binder mismatch remains visible while manual sync is available to check 
   value.accounts[0]!.state = "This saved binder differs from the server record. Your cards have been kept.";
   s.draw(value);
   assert.equal(s.elements.get("new-binder")!.hidden, false);
+  assert.equal(s.elements.get("repair-sync")!.hidden, false);
+  assert.equal(s.elements.get("repair-sync")!.disabled, false);
   assert.equal(s.elements.get("sync-now")!.disabled, false);
   assert.equal(s.elements.get("sync-state")!.textContent, "Needs attention");
   value.needsNewBinder = false;

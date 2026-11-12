@@ -1,5 +1,6 @@
 test("UI and SavedVariables initialize through ADDON_LOADED", function()
     emit("ADDON_LOADED", addon)
+    ACB.modeChoicePrompt.casual:OnClick() -- the simulated player deliberately chooses Casual for these UI checks
     -- The older tests trade without standing next to anyone; the trading distance has its own tests (15-trading-social.lua).
     AzerothCardBinderDB.tradeRange = false
     equal(AzerothCardBinderDB.counts.invalid, nil)

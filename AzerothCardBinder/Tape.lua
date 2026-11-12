@@ -78,7 +78,7 @@ end
 -- the events that follow. Returns true, or false and the reason.
 function ACB.setMode(saved, ledger, mode)
     if mode ~= "casual" and mode ~= "ranked" then return false, "The mode is casual or ranked." end
-    if saved.mode == mode then return true end
+    if saved.mode == mode then saved.modeChoice = mode return true end
     ledger:flushRun()
     if mode == "ranked" then
         if saved.legacy then
@@ -87,8 +87,12 @@ function ACB.setMode(saved, ledger, mode)
         if not ledger:check() then
             return false, "Your binder is unverified, so it cannot play Ranked."
         end
+        if (saved.casualDrops or 0) > 0 then
+            return false, "Your cards are safe, but this binder contains Casual cards and cannot count for Ranked. Keep it in Casual; a new Ranked collection must be started separately."
+        end
     end
     saved.mode = mode
+    saved.modeChoice = mode
     if mode == "ranked" then
         -- Ranked writes down every attempt (docs/LEDGER-SPEC.md, section 8.1). The event names the last tape entry used so
         -- far, and every card starts its run of misses again, so the server can follow each chance from zero.
