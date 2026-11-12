@@ -21,7 +21,7 @@ Cloudflare's free Workers plan gives each request **10 ms of CPU time** (waiting
 
 Even if Cloudflare's runtime were two or three times faster than this PC, the tape requests and a larger Ranked upload would still be over 10 ms. On the free plan they would be cut off with an error, which for Ranked means **no new roll tape and refused uploads**.
 
-## New saved-progress mode (prepared source)
+## New saved-progress mode (companion 0.4.0)
 
 The companion now uses saved-file events instead of periodic network polling. The leaderboard updates after a game save or catch-up upload of newly saved progress, and otherwise stays cached locally. Wanted lists stay in the addon; there is no web board or companion wanted upload/download. See [LOW-COST-SYNC.md](LOW-COST-SYNC.md) for behaviour, verification and rollout.
 

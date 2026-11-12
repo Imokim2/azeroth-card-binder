@@ -27,6 +27,6 @@ The older 300-requests-per-user/day examples in CAPACITY.md are historical heavy
 
 ## Rollout and verification
 
-Removing the website board and retiring its feeds can deploy on the current public server line. Client traffic savings require a new companion installer; do not claim that already-installed companions have changed. No installer or release tag is created by this source change, and the pending 0.6.0 server minimum must not be deployed before matching signed downloads exist.
+Companion 0.4.0 includes this mode, published with addon 0.6.0 for the group test. Client traffic savings require installing that companion update; already-installed 0.3.0 companions retain their previous polling. The matching signed downloads must exist before deploying the server’s raised minimum versions. Website wanted-board retirement was deployed earlier on the compatible public server line.
 
 Automated tests cover a simulated idle day with zero requests, a file-change sync, queued writes during an upload, required-refill recovery with backoff, update caching, retained leaderboard display, no companion wanted requests, direct addon wanted sharing and retirement of cached web wanted data.

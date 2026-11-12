@@ -1,7 +1,8 @@
 # Releasing: companion app, add-on and server
 
-How an update reaches players, and how to publish one. The companion app checks the server every half hour
-(`GET /v1/releases`). It tells the player when the app or the add-on is out of date, and can install either one with a
+How an update reaches players, and how to publish one. Companion 0.4.0 checks at startup, on manual Sync and at most once
+per six hours during saved-progress syncs (`GET /v1/releases`), with no periodic network polling while idle. Older companions
+retain their previous schedule until updated. It tells the player when the app or the add-on is out of date, and can install either one with a
 click, but only from a release that was **signed with our release key**: the app trusts nothing else.
 
 ## What stands behind it
@@ -51,7 +52,7 @@ The first installer players run has to carry the key, so do this before anything
    cd server; npx wrangler deploy --env staging
    ```
    `GET /v1/releases` should now show the new versions and a `signed` block.
-6. Players see the update in the companion window within half an hour. **Update add-on** downloads the zip, checks it,
+6. Players see the update after a release check; **Sync now** or restarting the companion checks immediately. **Update add-on** downloads the zip, checks it,
    keeps the old copy in the app's data folder (`addon-backups`), installs it and says to `/reload`. **Update companion**
    asks first, then downloads the installer and runs it; the app closes and opens again.
 

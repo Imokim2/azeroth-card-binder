@@ -4,7 +4,7 @@
 
 ## Before the group starts
 
-- Give everyone the same candidate addon and companion builds, with the matching test server. Record their versions, catalog and commit in the test notes. The latest sync savings require the new companion; the public 0.3.0 installer does not contain them.
+- Give everyone the same candidate addon and companion builds, with the matching test server. Record their versions, catalog and commit in the test notes. The current candidate is addon 0.6.0 and companion/server 0.4.0. The sync savings require companion 0.4.0; older 0.3.0 installs retain their previous polling until updated.
 - Test both a fresh install and an upgrade with an existing collection. Keep backups; moving to 1.0 must not reset players’ collections.
 - Use two or more separate player accounts for trades, gifts, binder viewing and wanted lists.
 
