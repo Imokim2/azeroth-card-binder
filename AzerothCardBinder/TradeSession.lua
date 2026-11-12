@@ -201,7 +201,14 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed)
         if s.cancelPending then transmit(s, "K|" .. s.id)
         elseif s.decision == "commit" then transmit(s, packet(s, "F"))
         elseif s.sentConfirm then transmit(s, packet(s, "A"))
-        else offer(s, s.initiator and not s.connected) end
+        else
+            if s.initiator and not s.connected then
+                -- Nobody has answered the invitation: it may be a player of the other faction (see Link.lua).
+                s.silent = (s.silent or 0) + 1
+                if s.silent == 3 and ACB.forceLink then ACB.forceLink(s.peer) end
+            end
+            offer(s, s.initiator and not s.connected)
+        end
         return true
     end
 end

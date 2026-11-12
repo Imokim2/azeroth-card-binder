@@ -23,6 +23,7 @@ GGET EventRegistry
 GGET GameTooltip
 GGET GetAddOnMetadata
 GGET GetBuildInfo
+GGET GetChannelName
 GGET GetCursorPosition
 GGET GetFileIDFromPath
 GGET GetInstanceInfo
@@ -36,6 +37,7 @@ GGET InCombatLockdown
 GGET IsInInstance
 GGET IsMouseButtonDown
 GGET IsShiftKeyDown
+GGET JoinTemporaryChannel
 GGET Menu
 GGET Minimap
 GGET PlaySound
@@ -48,6 +50,7 @@ GGET UIParent
 GGET UISpecialFrames
 GGET UnitAffectingCombat
 GGET UnitClassification
+GGET UnitFactionGroup
 GGET UnitFullName
 GGET UnitGUID
 GGET UnitIsDeadOrGhost

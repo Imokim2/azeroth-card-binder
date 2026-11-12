@@ -53,6 +53,10 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "whisperform space" or cmd == "whisperform hyphen" then
             saved.whisperForm = cmd:match("%a+$")
             report("Whispers to other players are now addressed as " .. (saved.whisperForm == "hyphen" and "First-Second." or "First Second."))
+        elseif cmd == "crossfaction" then
+            ACB.setSetting(saved, "crossFaction", not ACB.settingOn(saved, "crossFaction"))
+            if ACB.settingOn(saved, "crossFaction") then ACB.joinLink() end
+            report("Cross-faction trading " .. ACB.linkStatus())
         elseif cmd == "privacy" then
             saved.inspectable = saved.inspectable == false
             report("Other players " .. (saved.inspectable == false and "can no longer" or "can now") .. " view your binder.")
@@ -159,7 +163,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, studio, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, version, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, studio, packs, dust, link, view, ask, crossfaction, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, version, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

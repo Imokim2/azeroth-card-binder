@@ -230,74 +230,14 @@ local function encounterEvent(event, id, name, difficulty, success)
     end
 end
 
-local function normalizePeer(name)
-    name = read(name, "string")
-    if not name or #name > 100 then return end
-    name = name:match("^%s*(.-)%s*$")
-    -- Forever has no realms: a character has two names ("Filfred Whizzlebang"), which the game's own whisper box
-    -- shows with a space. Both that and the "Name-Realm" form are accepted, and both become "name-realm" inside.
-    local character, realm = name:match("^([^%-]+)%-(.+)$")
-    if not character then character, realm = name:match("^(%S+)%s+(%S+)$") end
-    if not character then
-        character, realm = name, apiValue("string", GetNormalizedRealmName)
-    end
-    if not realm or character == "" or character:find("[%c%s%p%d]") or realm:find("[%c|]") then return end
-    realm = realm:gsub("[%s'%-]", "")
-    if realm == "" or realm:find("[%p]") then return end
-    return (character .. "-" .. realm):lower()
-end
-
--- The name the game wants a whisper sent to: "First Second", as its own whisper box shows it (or "First-Second",
--- chosen with /acb whisperform hyphen if that turns out to be what a server needs).
-local function whisperTarget(peer)
-    if saved and saved.whisperForm == "hyphen" then return peer end
-    local first, second = peer:match("^([^%-]+)%-(.+)$")
-    if not first then return peer end
-    return first:gsub("^%l", string.upper) .. " " .. second:gsub("^%l", string.upper)
-end
-
-local function sendAddon(prefix, peer, message)
-    if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then
-        return false, "Trading and sharing are available outdoors and out of combat."
-    end
-    if not C_ChatInfo or type(C_ChatInfo.SendAddonMessage) ~= "function"
-        or apiValue("boolean", C_ChatInfo.IsAddonMessagePrefixRegistered, prefix) == false then
-        return false, "Addon whisper registration is unavailable."
-    end
-    -- The addon whisper result is authoritative. The general chat flags can be unavailable.
-    local target = whisperTarget(peer)
-    local result = apiValue("number", C_ChatInfo.SendAddonMessage, prefix, message, "WHISPER", target)
-    log(("whisper %s to %s (%s): result %s, restricted %s, registered %s"):format(prefix, target, tostring(message):sub(1, 12),
-        tostring(result), tostring(apiValue("boolean", C_ChatInfo.AreOutgoingAddonChatMessagesRestricted)),
-        tostring(apiValue("boolean", C_ChatInfo.IsAddonMessagePrefixRegistered, prefix))))
-    local codes = Enum and Enum.SendAddonMessageResult
-    if result ~= nil and codes then
-        if result == codes.Success then return true end
-        if result == codes.AddOnMessageLockdown then return false, "Forever is blocking addon whispers right now." end
-        if result == codes.TargetOffline then return false, "That player is offline or unavailable for addon whispers." end
-        if result == codes.AddonMessageThrottle then return false, "Too many addon whispers. Try again in a moment." end
-    end
-    if apiValue("boolean", C_ChatInfo.AreOutgoingAddonChatMessagesRestricted) == true then
-        return false, "This realm is blocking outgoing addon whispers."
-    end
-    return false, "Addon whisper could not be sent. Check the partner name and retry."
-end
-
-local function sendTrade(peer, message) return sendAddon(ACB.tradePrefix, peer, message) end
-local function sendView(peer, message) return sendAddon(ACB.viewPrefix, peer, message) end
-
-function ACB.tradePeer(text)
-    local peer = normalizePeer(text)
-    local name, realm = UnitFullName("player")
-    name, realm = read(name, "string"), read(realm, "string")
-    local own = name and normalizePeer(realm and realm ~= "" and (name .. "-" .. realm) or name)
-    if own and peer and peer ~= own then return peer end
-end
+local function sendTrade(peer, message) return ACB.sendLinked(ACB.tradePrefix, peer, message) end
+local function sendView(peer, message) return ACB.sendLinked(ACB.viewPrefix, peer, message) end
 
 local function initialize()
     saved = ACB.tableOrEmpty(AzerothCardBinderDB)
     AzerothCardBinderDB = saved
     saved.addonVersion = ACB.addonVersion() -- the companion app reads it, to tell when a newer one is installed but not loaded
+    ACB.initLink(saved, log) -- names, whispers and the cross-faction channel (Link.lua)
     local _, upgraded = ACB.cleanSavedData(saved)
     local ledger = ACB.newLedger(saved, time, ACB.characterName)
     ledger:begin(upgraded)
@@ -394,24 +334,26 @@ local handlers = {
         if kills then kills:reset() end
     end,
     CHAT_MSG_ADDON = function(prefix, message, channel, sender)
-        local kind = read(prefix, "string")
+        local kind, route = read(prefix, "string"), read(channel, "string")
         -- Any addon whisper is logged, ours or another addon's: it shows whether this game delivers them at all.
-        if kind == ACB.tradePrefix or kind == ACB.viewPrefix or read(channel, "string") == "WHISPER" then
-            log(("received %s on %s from %s: %s"):format(tostring(kind), tostring(read(channel, "string")),
+        if route ~= "CHANNEL" and (kind == ACB.tradePrefix or kind == ACB.viewPrefix or route == "WHISPER") then
+            log(("received %s on %s from %s: %s"):format(tostring(kind), tostring(route),
                 tostring(read(sender, "string")), tostring(read(message, "string")):sub(1, 12)))
         end
-        if (kind ~= ACB.tradePrefix and kind ~= ACB.viewPrefix) or read(channel, "string") ~= "WHISPER" then return end
+        if (kind ~= ACB.tradePrefix and kind ~= ACB.viewPrefix) or (route ~= "WHISPER" and route ~= "CHANNEL") then return end
         if apiValue("boolean", IsInInstance) ~= false or apiValue("boolean", InCombatLockdown) ~= false then
             log("ignored: in an instance or in combat")
             return
         end
+        local peer = ACB.normalizePeer(sender)
+        message = ACB.receiveLinked(peer, read(message, "string"), route, kind) -- by whisper, or by the cross-faction channel
+        if not message then return end
         if kind == ACB.tradePrefix then
-            local peer = normalizePeer(sender)
-            local opened = trade:receive(peer, read(message, "string"))
+            local opened = trade:receive(peer, message)
             if opened and ACB.prepareTrade then ACB.prepareTrade(peer) end
             ACB.refresh()
         else
-            ACB.receiveView(normalizePeer(sender), read(message, "string"))
+            ACB.receiveView(peer, message)
         end
     end,
 }

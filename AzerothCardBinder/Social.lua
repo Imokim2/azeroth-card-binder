@@ -171,6 +171,12 @@ function ACB.initSocial(saved, send, now, after, report)
             -- Say something if nothing comes back, instead of leaving the player looking at nothing.
             after(NO_ANSWER_AFTER, function()
                 if pending[peer] == window and not heard[peer] then
+                    -- Whispers do not cross factions: ask once more, by the cross-faction channel as well.
+                    if ACB.forceLink(peer) then
+                        report(("No answer from %s by whisper. Trying the cross-faction link..."):format(peer))
+                        send(peer, "Q")
+                        return
+                    end
                     report(("No answer from %s yet. They need this add-on, to be online, outdoors and out of combat, and to allow viewing (Settings)."):format(peer))
                 end
             end)

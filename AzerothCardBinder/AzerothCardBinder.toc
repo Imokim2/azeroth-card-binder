@@ -37,6 +37,7 @@ Settings.lua
 Social.lua
 Swaps.lua
 Updates.lua
+Link.lua
 Inspector.lua
 Requests.lua
 Reports.lua

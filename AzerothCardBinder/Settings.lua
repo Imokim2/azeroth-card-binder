@@ -17,6 +17,8 @@ ACB.settings = {
         note = "A testing option for the Deadmines boss roll. Leave it off unless asked." },
     { key = "tradeRange", name = "Trading distance", default = true,
         note = "Trades need your partner targeted and within about 11 yards, like the game's own trading." },
+    { key = "crossFaction", name = "Cross-faction trading", default = true,
+        note = "Trade with the other faction through a quiet chat channel, since whispers can't cross factions. Off: whispers only." },
     { key = "killRolls", name = "Cards from kills you can't loot", default = true,
         note = "Critters and other creatures with nothing to loot still get their chance when you kill them while targeting them." },
 }

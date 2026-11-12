@@ -29,6 +29,7 @@ local parts = {
     "22-collectible-editions",
     "23-simple-trades-and-gifts",
     "24-updates",
+    "25-cross-faction",
 }
 
 local source, ranges, line = {}, {}, 1
