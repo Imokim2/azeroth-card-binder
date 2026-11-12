@@ -6,5 +6,5 @@ local _, ACB = ...
 -- It also carries the roll tape for Ranked mode and, for the Ladder tab, the standings: `leaderboard` (the top 100,
 -- each { rank, name, score, cards, sets } with score in tenths of a point), `you` (the same without a name), `verified`
 -- (a set of ranked characters, "name-realmname") and `firsts` (who finished each set first). `wanted` is the board of what
--- public players are looking for, and `reportsDone` the set of report tokens the server has taken (see Reports.lua).
+-- public players are looking for, and `reportsDone` the set of report tokens the server has taken (see Reports.lua). `releases` holds the newest add-on version and the oldest one the server accepts (see Updates.lua).
 ACB.sync = { syncVersion = 0, acks = {} }

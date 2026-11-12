@@ -13,6 +13,8 @@ export type SyncData = {
   wanted?: { name: string; characters: string[]; cards: string[] }[];
   // Tokens of the reports the server has taken, so the add-on can forget them.
   reportsDone?: string[];
+  // What the server says is the newest add-on and the oldest it accepts (x.y.z), so the add-on can say when it is out of date.
+  releases?: { latestAddon: string; minAddon: string };
 };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
@@ -79,6 +81,10 @@ export function syncFileText(data: SyncData): string {
     if (data.reportsDone.length > 200) throw new Error("too many report tokens");
     for (const token of data.reportsDone) if (!/^[0-9a-z]{6,40}$/.test(token)) throw new Error("a report token is not a token");
     extra.push("    reportsDone = {", ...data.reportsDone.map((token) => `        ["${token}"] = true,`), "    },");
+  }
+  if (data.releases) {
+    for (const version of [data.releases.latestAddon, data.releases.minAddon]) if (!/^\d{1,4}\.\d{1,4}\.\d{1,4}$/.test(version)) throw new Error("a release version is not x.y.z");
+    extra.push(`    releases = { latestAddon = "${data.releases.latestAddon}", minAddon = "${data.releases.minAddon}" },`);
   }
   return [
     "local _, ACB = ...",

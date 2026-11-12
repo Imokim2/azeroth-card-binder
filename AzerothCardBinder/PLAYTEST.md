@@ -56,6 +56,10 @@ Move more than about 11 yards away before accepting: the addon should ask you to
 
 Right-click a player and choose **View their binder**: below the sets it should list useful spares, and **Offer a trade** should open Trade with their name. Open a missing card and click **Ask target**, or type `/acb ask target CardName`: they should see your request only if they own it, with repeated requests limited politely.
 
+## Update alerts
+
+Type `/acb version`: chat should say which add-on version you run (it should match the .toc) and, once the companion app has synced, the newest version and the oldest accepted one. With the companion app running and a newer add-on announced by the server, you should see "Add-on x.y.z is available" in chat a few seconds after logging in, and the companion window should list the add-on version and say an update is available. After copying a newer add-on into the game folder without restarting the game, the companion window should say to /reload.
+
 ## Viewing a binder and trading from it
 
 Two players, both with this version, outdoors and out of combat. (1) Right-click the other player and choose **View their binder** (or `/acb view First Second`): their binder should open as the normal binder pages, with the title "Name's Binder". Check the Index, Collection and **Wanted** tabs. (2) On the **Wanted** tab press **Trade** on a card of theirs that you own: their binder should open, with **Cancel pick** in the top row. Select a card of theirs: its panel should show **Get this one for my ...**. Press it to send the offer. (3) The other player should get a chat line and, on the Trade tab, **Accept offer** and **Decline**. Accept: both sides should end with the swapped cards and a line in the trade history. Also try Decline (the first player is told), and let an offer sit for two minutes. Please say how the new window looks (the 940 pixel width on your screen, the list of your cards, the wanted tab).

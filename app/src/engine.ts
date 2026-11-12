@@ -6,7 +6,7 @@
 // whole on every pass, so a crash, a restart or a failed request cannot leave the two out of step.
 import { readBinder, BinderFileError } from "./binderFile.ts";
 import type { Binder } from "./binderFile.ts";
-import { fetchStandings, fetchTape, sendReports, syncBinder, uploadWanted } from "./client.ts";
+import { fetchReleases, fetchStandings, fetchTape, sendReports, syncBinder, uploadWanted } from "./client.ts";
 import type { PendingReport } from "./binderFile.ts";
 import type { ClientOptions, Outcome, Standings } from "./client.ts";
 import { readText, watchSettled, writeFileAtomic } from "./files.ts";
@@ -14,6 +14,8 @@ import type { Install } from "./files.ts";
 import { LuaSyntaxError } from "./luaTable.ts";
 import { syncFileText } from "./syncFile.ts";
 import type { Ack } from "./syncFile.ts";
+import { compareVersions, readAddonVersion, updateReport } from "./versions.ts";
+import type { Releases, UpdateReport } from "./versions.ts";
 
 export type EngineOptions = {
   install: Install;
@@ -23,6 +25,7 @@ export type EngineOptions = {
   standingsEveryMs?: number; // at most this often (default five minutes)
   quietMs?: number; // how long the game's file must stay unchanged before it is read (default 1.5 seconds)
   everyMs?: number; // a pass on a timer even with no change, to refill the tape and refresh standings (default ten minutes)
+  releasesEveryMs?: number; // how often to ask the server which versions are current (default half an hour)
   log?: (message: string) => void;
   onReport?: (report: PassReport) => void; // told after every pass, whoever asked for it
 };
@@ -39,6 +42,7 @@ export type PassReport = {
   tape: { start: number; count: number } | { status: string } | null;
   standings: "fresh" | "kept" | "unavailable";
   wroteSync: boolean;
+  updates: UpdateReport; // whether the app and the add-on are out of date
 };
 
 export class Engine {
@@ -48,6 +52,8 @@ export class Engine {
   #tape: { start: number; entries: string[] } | undefined;
   #standings: Standings | undefined;
   #standingsAt = 0;
+  #releases: Releases | undefined; // the versions the server last announced
+  #releasesAt = 0;
   #wantedSent: string | null = null; // the wanted list the server last accepted, so it is only sent when it changes
   #reportsDone: string[] = []; // tokens of reports the server has settled, newest last; written to Sync.lua for the add-on
 
@@ -76,6 +82,7 @@ export class Engine {
     let anyRanked = false;
     const wanted = new Set<string>();
     const reports = new Map<string, PendingReport>();
+    let running: string | null = null; // the oldest add-on version that last wrote an account's file
     for (const file of install.savedFiles) {
       let binder: Binder;
       try {
@@ -86,6 +93,7 @@ export class Engine {
         continue;
       }
       if (binder.mode === "ranked") anyRanked = true;
+      if (binder.addonVersion && (running === null || compareVersions(binder.addonVersion, running) < 0)) running = binder.addonVersion;
       for (const key of binder.wanted) wanted.add(key);
       for (const report of binder.reports) reports.set(report.token, report);
       const result = await syncBinder(client, binder, this.#acks.get(file.account) ?? null);
@@ -136,9 +144,19 @@ export class Engine {
       }
     }
 
+    // Which versions are current: asked every so often, and kept when the server cannot be reached.
+    if (!this.#releases || now - this.#releasesAt >= (this.#options.releasesEveryMs ?? 1_800_000)) {
+      const reply = await fetchReleases(client);
+      if (reply.status === "releases") {
+        this.#releases = reply.releases;
+        this.#releasesAt = now;
+      }
+    }
+    const updates = updateReport(client.clientVersion, this.#releases, await readAddonVersion(install.root), running);
+
     // Sync.lua is always written whole from what is known now.
     const written = await this.#writeSync(client.now());
-    const report: PassReport = { accounts, tape, standings, wroteSync: written };
+    const report: PassReport = { accounts, tape, standings, wroteSync: written, updates };
     this.#options.onReport?.(report);
     return report;
   }
@@ -146,6 +164,7 @@ export class Engine {
   async #writeSync(syncedAt: number): Promise<boolean> {
     const text = syncFileText({
       syncedAt, acks: [...this.#acks.values()], reportsDone: this.#reportsDone,
+      ...(this.#releases ? { releases: { latestAddon: this.#releases.addon.latest, minAddon: this.#releases.addon.min } } : {}),
       ...(this.#tape ? { tape: this.#tape } : {}),
       ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts, wanted: this.#standings.wanted } : {}),
     });

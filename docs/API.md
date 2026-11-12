@@ -28,6 +28,10 @@ The public HTML website is served outside `/v1`: `/` introduces the project, `/l
 
 `200 { ok: true, db: true, version, catalogVersion }` when the database answers a query; `503 { ok: false, db: false, version }` when it does not. Never cached. Use this for uptime checks.
 
+### `GET /v1/releases`
+
+`200 { app: { latest, min }, addon: { latest, min } }`, every version as `x.y.z`. `latest` is the newest release of the companion app and of the add-on; `min` the oldest still accepted (the app's is the `minClient` that other routes enforce; the add-on's is not enforced yet). The companion app asks at start-up and every few hours, and tells the player when either is out of date. Public, cached for 5 minutes, not rate-limited more than other routes. The versions are Worker variables (`MIN_CLIENT`, `LATEST_APP`, `LATEST_ADDON`, `MIN_ADDON` in `server/wrangler.toml`), changed by a release, not by code.
+
 ### `POST /v1/register`
 
 Links a public key to a Discord account. Body: `{ key, visibility, sentAt, identityToken, proof }`.

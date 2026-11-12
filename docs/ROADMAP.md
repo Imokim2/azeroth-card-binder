@@ -203,7 +203,7 @@ Launch checklist: policy checks done; privacy page live; data-deletion route wor
 ### Phase F: long-run operations (never finished)
 
 - **Game patches.** When Forever patches: re-run the catalog pipeline (`fetch-reactions`, `build-catalog`, `build-nodes`), review the diff report, ship a new `catalogVersion`. New cards never change old scores; score changes need a `rulesVersion` bump and a recompute.
-- **Releases.** Increase the add-on, app and API versions together; keep a compatibility table; the server rejects clients below `minClient` with a plain message.
+- **Releases.** Increase the add-on, app and API versions together; keep a compatibility table; the server rejects clients below `minClient` with a plain message. **Update alerts are built** (the server's `/v1/releases`, the app and add-on saying when they are out of date, 12 Nov 2026); not built: the app updating itself, installing the add-on for the player, and pausing Ranked for an old add-on.
 - **Backups.** Nightly D1 export to file storage, restored in a test environment once a month.
 - **Monitoring.** Uptime check, error rate, write counts against the plan limit, parse-failure rate from the app.
 - **Costs.** Review monthly; set a spending alert.

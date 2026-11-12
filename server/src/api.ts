@@ -40,6 +40,9 @@ export type Deps = {
   log: Logger;
   health: () => Promise<void>; // throws when the database cannot be reached
   minClient: string; // the oldest companion app version still accepted, as x.y.z
+  // The newest and the oldest accepted version of the add-on, and the newest companion app (the oldest is minClient), as
+  // x.y.z. Served by /v1/releases so the app can say what is out of date. Absent: nothing is announced.
+  releases?: { latestApp: string; latestAddon: string; minAddon: string };
   version: string; // this server's version, shown by /v1/health
   // Turns the Discord sign-in the app obtained into a Discord account id, or null. Absent until registration opens.
   identity?: { verify(token: string): Promise<string | null> };
@@ -377,6 +380,15 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return html(200, wantedPage(entries, deps.catalog));
   }
 
+  // What is current: the app and add-on versions. Public and cacheable; the app asks at start-up and now and then.
+  function releases(): Response {
+    const known = deps.releases;
+    return json(200, {
+      app: { latest: known?.latestApp ?? deps.minClient, min: deps.minClient },
+      addon: { latest: known?.latestAddon ?? "0.0.0", min: known?.minAddon ?? "0.0.0" },
+    }, { "cache-control": "public, max-age=300" });
+  }
+
   async function health(): Promise<Response> {
     try {
       await deps.health();
@@ -442,6 +454,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/privacy" ? allow("site-privacy", ["GET"], async () => html(200, privacyPage()))
       : pageMatch ? allow("site-player", ["GET"], () => sitePlayer(pageMatch[1] as string))
       : url.pathname === "/v1/health" ? allow("health", ["GET"], health)
+      : url.pathname === "/v1/releases" ? allow("releases", ["GET"], async () => releases())
       : url.pathname === "/v1/register" ? allow("register", ["POST"], () => register(request))
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
