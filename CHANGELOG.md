@@ -4,6 +4,11 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+Nothing yet.
+
+## 0.5.0 - 2026-11-12
+
+- **First public release.** Add-on 0.5.0 with companion app 0.3.0 (the companion's own version is separate from the add-on's).
 - **Public downloads.** The website's download page now shows the addon ZIP and the companion installer, with sizes and SHA-256 checksums, as soon as a signed release names them, and links to the project's GitHub releases page once `RELEASES_URL` is set. Pushing a `v*` tag builds both files and publishes a GitHub release (`.github/workflows/release.yml`). The installer file is now named `World-of-Warcards-Setup-<version>.exe`. The project is licensed GPL-3.0-or-later (`LICENSE`), with a public README and `SECURITY.md`.
 - **Backups.** `tools/backup-db.js` takes a checked copy of the database outside Cloudflare, keeps the newest 14 and refuses a folder inside the repository; `docs/runbooks/BACKUPS.md` explains Cloudflare's point-in-time restore, the daily schedule and how to restore. The privacy page now says that deleted data leaves backup copies as they age out (7 and 14 days).
 - **A player who went Ranked on the old add-on and then updated can sync again.** The old Ranked switch written before the update is accepted when another mode switch follows it directly (nothing was rolled under it); a roll after it, or it alone, is still refused.
