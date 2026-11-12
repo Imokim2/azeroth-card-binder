@@ -140,7 +140,14 @@ export async function installAddon(zip: string, gameRoot: string, backups: strin
     } catch (error) {
       if (backup) {
         for (const name of await files(target).catch(() => [] as string[])) if (name !== SYNC_FILE) await rm(join(target, ...name.split("/")), { force: true });
-        await cp(backup, target, { recursive: true, force: true });
+        // A sync may have finished while the update was running. Restore code
+        // without overwriting its newer acknowledgements or Ranked supply.
+        for (const name of await files(backup)) {
+          if (name === SYNC_FILE) continue;
+          const destination = join(target, ...name.split("/"));
+          await mkdir(dirname(destination), { recursive: true });
+          await cp(join(backup, ...name.split("/")), destination);
+        }
       }
       throw error;
     }

@@ -30,6 +30,15 @@
     </section>
 
     <div id="problem" class="banner" role="alert" hidden></div>
+    <section id="update-prompt" class="attention" aria-labelledby="update-title" hidden>
+      <div><p class="eyebrow">UPDATES</p><h2 id="update-title">An update is ready.</h2>
+        <p id="update-note" role="status"></p>
+        <div id="update-actions" class="buttons">
+          <button id="update-app" class="primary" hidden>Update companion</button>
+          <button id="update-addon" hidden>Update addon</button>
+        </div>
+      </div>
+    </section>
     <section id="new-binder" class="attention" aria-labelledby="new-binder-title" hidden>
       <div>
         <p class="eyebrow">COLLECTION CHANGED</p>
@@ -100,18 +109,15 @@
       </section>
     </main>
 
-    <p id="update-note" class="message" role="status" hidden></p>
-    <div id="update-actions" class="sync-actions" hidden>
-      <button id="update-addon" class="primary" hidden>Update add-on</button>
-      <button id="update-app" class="primary" hidden>Update companion</button>
-    </div>
     <p id="message" class="message" role="status" hidden></p>
     <footer>
+      <button id="check-updates" class="link">Check for updates</button>
       <label class="startup-choice"><input type="checkbox" id="start-at-login"> Start with Windows</label>
       <button id="export-data" class="link" hidden>Download my data…</button>
       <button id="delete-data" class="link" hidden>Delete my account data…</button>
       <span id="version" class="version"></span>
     </footer>
+    <p id="update-check-message" class="note" role="status" hidden></p>
     <p class="fan-note">A fan-made companion for World of Warcraft: Forever.</p>
   </div>
   <script src="renderer.js"></script>

@@ -37,6 +37,7 @@ function showWindow(): void {
   if (window.isMinimized()) window.restore();
   window.show();
   window.focus();
+  if (controller) void controller.checkForUpdates(false);
 }
 
 function createWindow(): BrowserWindow {
@@ -46,6 +47,7 @@ function createWindow(): BrowserWindow {
     webPreferences: { preload: join(appRoot, "electron", "preload.cjs"), contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: false },
   });
   created.removeMenu();
+  created.on("focus", () => { if (controller) void controller.checkForUpdates(false); });
   // The window shows only our own page: no navigation, no new windows, no permissions.
   created.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
   created.webContents.on("will-navigate", (event) => event.preventDefault());
@@ -71,6 +73,7 @@ function buildTray(): void {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: "Open World of Warcards", click: showWindow },
     { label: "Sync now", click: () => void controller.syncNow() },
+    { label: "Check for updates", click: () => { showWindow(); void controller.checkForUpdates(); } },
     { type: "separator" },
     { label: "Quit", click: () => { quitting = true; app.quit(); } },
   ]));
@@ -116,7 +119,7 @@ async function main(): Promise<void> {
       const answer = await dialog.showMessageBox(window as BrowserWindow, { type: "warning", buttons: [button, "Cancel"], defaultId: 1, cancelId: 1, title: "World of Warcards", message });
       return answer.response === 0;
     },
-    fetch: (url, init) => fetch(url, init as RequestInit),
+    fetch: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(15_000) }),
     now: () => Math.floor(Date.now() / 1000),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     applyStartAtLogin: (on) => app.setLoginItemSettings({ openAtLogin: on }),
@@ -153,6 +156,7 @@ async function main(): Promise<void> {
   ipcMain.handle("setStartAtLogin", (_event, on: unknown) => controller.setStartAtLogin(on === true));
   ipcMain.handle("updateAddon", () => controller.updateAddon());
   ipcMain.handle("updateApp", () => controller.updateApp());
+  ipcMain.handle("checkForUpdates", () => controller.checkForUpdates());
 
   window = createWindow();
   // Listen for the page loading before anything else is awaited, so the event cannot be missed.
@@ -175,7 +179,7 @@ async function main(): Promise<void> {
     } else {
       // Start hidden in the tray when everything is already set up; otherwise show the window to finish setting up.
       const status = controller.status();
-      if (!status.signedIn || !status.gameFolder || status.problem) showWindow();
+      if (!status.signedIn || !status.gameFolder || status.problem || status.canUpdate.app || status.canUpdate.addon) showWindow();
     }
   }
 }

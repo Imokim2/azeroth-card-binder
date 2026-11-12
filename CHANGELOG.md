@@ -4,6 +4,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+## 0.6.2 — 2026-11-12 (companion 0.4.2)
+
+- The companion checks for updates on launch before sign-in or game-folder setup. If a signed update is available it opens the window with a prominent prompt for the companion and/or addon. Installation stays a player choice; companion updates ask before closing and restarting.
+- Added Check for updates in the window and tray. Manual checks work independently of collection syncing. The launch response is shared with the sync engine, with no extra idle polling. Network requests have a timeout and failed checks leave setup usable.
+- Both available versions are shown together, instead of one update message hiding the other. The addon bundle retains the 0.6.1 polish changes.
+
 ## 0.6.1 — 2026-11-12 (companion 0.4.1)
 
 - Satchel slots use the native bag button size and scale, with the native empty-bag texture. Shift-drag moves its launcher; General settings can reset its position. The circular header portrait is masked and aligned, and the entire satchel stays above the binder.

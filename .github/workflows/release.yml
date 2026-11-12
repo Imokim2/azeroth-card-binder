@@ -46,6 +46,7 @@ jobs:
         working-directory: app
         run: |
           npm ci
+          node --test test/updatePreservation.test.ts
           npm run dist
       # Free code signing from SignPath Foundation (docs/CODE-SIGNING.md). These steps do nothing until the repository
       # variable SIGNPATH_ORGANIZATION_ID is set (Settings, Secrets and variables, Actions, Variables) and the secret

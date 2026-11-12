@@ -32,27 +32,25 @@ function ago(seconds) {
 }
 
 // What to tell the player about versions: the add-on first, since it decides whether their cards count, then the app.
-function updateNote(updates) {
+function updateNote(updates, gameFolder) {
   if (!updates) return "";
-  const addon = updates.addon, app = updates.app;
-  if (addon.installed === null) return "The add-on was not found in the game folder. Install it, then use /reload in the game.";
-  if (addon.rankedPaused) return "The add-on (" + addon.installed + ") is too old for Ranked: no new roll tape will be given until you update to " + addon.latest + ". Casual still works.";
-  if (addon.state === "required") return "The add-on (" + addon.installed + ") is too old. Update to " + addon.latest + " so your Ranked cards keep counting.";
-  if (addon.reloadNeeded) return "The add-on was updated to " + addon.installed + ". Use /reload in the game, or restart it, to start using it.";
-  if (addon.state === "update") return "Add-on " + addon.latest + " is available (you have " + addon.installed + "). Update it from the Download page, then use /reload in the game.";
-  if (app.state === "required") return "This companion (" + app.version + ") is too old. Install " + app.latest + " to keep syncing.";
-  if (app.state === "update") return "Companion " + app.latest + " is available (you have " + app.version + ").";
-  return "";
+  const addon = updates.addon, app = updates.app, notes = [];
+  if (app.state === "required" || app.state === "update") notes.push("Companion " + app.latest + " is available (you have " + app.version + "). Installing it will close and restart the companion.");
+  if (gameFolder && addon.installed === null) notes.push("The addon is not installed in your game folder. Install it below, then restart the game or use /reload.");
+  else if (addon.state === "required" || addon.state === "update") notes.push("Addon " + addon.latest + " is available (you have " + addon.installed + "). After installing, restart the game or use /reload.");
+  else if (addon.reloadNeeded) notes.push("Addon " + addon.installed + " is installed. Restart the game or use /reload to load it.");
+  return notes.join(" ");
 }
 
 function render(status) {
   const ready = status.signedIn && status.gameFolder !== null;
   const accountIssues = status.accounts.some((entry) => /Cannot|refused|missing|Not registered|could not be reached/.test(entry.state));
   const attention = status.problem || status.needsNewBinder || accountIssues;
+  const hasUpdate = status.canUpdate && (status.canUpdate.app || status.canUpdate.addon);
   const synced = ready && status.lastSyncAt !== null && status.accounts.length > 0 && !attention;
   const pill = $("pill");
-  pill.className = "pill " + (status.problem ? "bad" : attention || status.busy || !synced ? "warn" : "ok");
-  pill.textContent = attention ? "Needs attention" : status.busy ? "Working…" : synced ? "Up to date" : ready ? "Ready to sync" : "Setup needed";
+  pill.className = "pill " + (status.problem ? "bad" : attention || status.busy || hasUpdate || !synced ? "warn" : "ok");
+  pill.textContent = attention ? "Needs attention" : status.busy || status.updating ? "Working…" : hasUpdate ? "Update available" : synced ? "Up to date" : ready ? "Ready to sync" : "Setup needed";
   $("overview-title").textContent = attention ? "Your connection needs attention." : status.busy ? "Updating your companion." : synced ? "Your binder is up to date." : ready ? "Ready for your first sync." : "Set up your companion.";
   $("overview-description").textContent = attention ? "Review the message below to continue syncing your collection."
     : synced ? "Your latest saved collection has been synced."
@@ -121,15 +119,17 @@ function render(status) {
   const updates = status.updates || null;
   $("addon-version").textContent = !updates ? "–" : updates.addon.installed === null ? "Not found"
     : updates.addon.installed + (updates.addon.state === "required" ? " (too old)" : updates.addon.state === "update" ? " (update available)" : "");
-  const note = updateNote(updates);
+  const note = updateNote(updates, status.gameFolder);
+  $("update-prompt").hidden = !note && !hasUpdate;
+  $("update-title").textContent = hasUpdate || !updates?.addon.reloadNeeded ? "An update is ready." : "Restart the game to load your addon.";
   $("update-note").hidden = !note;
   $("update-note").textContent = note;
   const can = status.canUpdate || { addon: false, app: false };
   $("update-actions").hidden = !(can.addon || can.app);
   $("update-addon").hidden = !can.addon;
   $("update-app").hidden = !can.app;
-  $("update-addon").disabled = $("update-app").disabled = !!status.updating || status.busy;
-  $("update-addon").textContent = status.updating === "addon" ? "Updating…" : "Update add-on" + (status.newer && status.newer.addon ? " to " + status.newer.addon : "");
+  $("update-addon").disabled = $("update-app").disabled = !!status.updating || status.busy || !!status.checkingUpdates;
+  $("update-addon").textContent = status.updating === "addon" ? "Installing…" : (updates && updates.addon.installed === null ? "Install addon" : "Update addon") + (status.newer && status.newer.addon ? " to " + status.newer.addon : "");
   $("update-app").textContent = status.updating === "app" ? "Updating…" : "Update companion" + (status.newer && status.newer.app ? " to " + status.newer.app : "");
   $("sync-now").disabled = !ready || status.busy || !!status.problem || status.needsNewBinder;
 
@@ -138,6 +138,10 @@ function render(status) {
   message.textContent = status.message || "";
   $("start-at-login").checked = status.startAtLogin;
   $("start-at-login").disabled = status.busy;
+  $("check-updates").disabled = !!status.checkingUpdates || !!status.updating;
+  $("check-updates").textContent = status.checkingUpdates ? "Checking for updates…" : "Check for updates";
+  $("update-check-message").hidden = !status.updateCheckMessage;
+  $("update-check-message").textContent = status.updateCheckMessage || "";
   $("version").textContent = "Version " + status.version;
 }
 
@@ -155,6 +159,7 @@ if (demo && demos[demo[1]]) {
   $("choose-folder").addEventListener("click", () => api.chooseGameFolder());
   $("sync-now").addEventListener("click", () => api.syncNow());
   $("update-addon").addEventListener("click", () => api.updateAddon());
+  $("check-updates").addEventListener("click", () => api.checkForUpdates());
   $("update-app").addEventListener("click", () => api.updateApp());
   $("new-binder-button").addEventListener("click", () => api.startNewBinder());
   $("export-data").addEventListener("click", () => api.exportMyData());
