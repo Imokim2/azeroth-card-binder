@@ -30,12 +30,33 @@ Rough figures per player with the companion app open all day (estimates, from ho
 | | Before | Now |
 |---|---|---|
 | Requests a day | about 1,400 | about 300 |
-| Database rows read for standings | a few hundred per refresh, per player | the ladder is recomputed at most once a minute for everyone: about 0.7 million rows a day in total, whether there are 10 players or 10,000 |
+| Database rows read for standings | a few hundred per refresh, per player | shared for each cache key at each edge location until expiry; actual reads depend on geography, cache misses and the number of players returned |
 | Rows written | 100 to 300 a day (uploads) | the same |
 
 **Free plan, Casual only:** the 100,000 requests a day allowance now lasts for roughly 300 players with the app open all day, or about 800 at 8 hours a day; the daily row-write allowance (about 100,000) is the next limit, at some hundreds of players. **Free plan, Ranked: still none**, because tape requests need more than 10 ms of CPU (above).
 
-**Paid plan, Ranked:** it works. The CPU limit is 30 seconds a request against our heaviest request of about 60 ms; the database allowances are far above what we use; and the cost is small. As a rough guide, 5,000 active players at 300 requests a day each is 45 million requests a month: the plan includes 10 million, the rest costs about $0.30 per million, so around $10 more, plus a few cents of CPU time and database use. Expect something like $15 a month at that size, far less while it is small.
+**Paid plan:** the measured requests fit comfortably within the default per-request CPU allowance. That is not a load test or a guarantee of the monthly bill. The old estimate of about $15/month for 5,000 users is plausible under modest CPU/database use, but "a few cents of CPU" is not a safe blanket assumption.
+
+## Monthly cost scenarios
+
+Prices checked against [Workers pricing](https://developers.cloudflare.com/workers/platform/pricing/) and [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/) on 12 November 2026. Figures below are USD before tax, payment fees, domain renewal, backups and extra storage. They describe usage, not registered accounts.
+
+Workers Paid starts at $5/month, including 10 million requests and 30 million CPU milliseconds. Additional usage costs $0.30 per million requests and $0.02 per million CPU milliseconds. D1 includes 25 billion rows read, 50 million rows written and 5 GB of storage per month; extra writes cost $1/million and extra storage $0.75/GB-month. Index maintenance can increase billed rows written.
+
+For an illustrative all-day usage scenario, assume each active user makes 300 requests/day for 30 days, dynamic requests average 7 ms of billed CPU, and each user causes 100–300 **billed** D1 row writes/day. The 7 ms is an example, not a measured production average, and the row-write range is a planning assumption. Actual metered usage must replace both.
+
+| Daily active users | Requests/month | Workers including example CPU | D1 write overage | Combined example/month |
+|---|---:|---:|---:|---:|
+| 1,000 | 9 million | $5.66 | $0 | about $6 |
+| 5,000 | 45 million | $21.20 | $0 | about $21 |
+| 50,000 | 450 million | $199.40 | $100–400 | about $300–600 |
+| 100,000 | 900 million | $397.40 | $250–850 | about $650–1,250 |
+
+The calculation is `$5 + max(0, requests - 10m) / 1m × $0.30 + max(0, requests × average CPU ms - 30m) / 1m × $0.02`, plus D1 overages. Read charges are omitted from the example because the assumed cached public load is below the included allowance; this is not a promise about all per-player history reads. Storage is also additional. At eight hours of activity a day rather than 24, the example's request/CPU component for 5,000 users is about $8, assuming proportional traffic. Already-issued clients can retain their older polling behaviour until updated.
+
+Cache hits can greatly reduce computation and database reads, but do not necessarily remove Worker request charges. The current Cache API wrapper still runs inside the Worker. Costs also depend on replay/history size, not just how often the app polls. Measure the average and high-percentile deployed CPU, actual request totals, D1 rows read/written and storage growth rather than extrapolating the desktop wall-clock benchmark as billing data.
+
+Set billing/usage alerts before a wide launch. Alerts notify; they are not a guaranteed hard spending cap. Do not upgrade plans or change paid services as part of adding the support button. If growth reaches tens of thousands of active players, load-test upload bursts and database capacity, and review history retention and partitioning before assuming the present architecture will scale indefinitely. Each paid D1 database has a fixed 10 GB maximum and processes queries on a single thread; the current one-database design will need capacity planning as histories grow. See [D1 limits](https://developers.cloudflare.com/d1/platform/limits/).
 
 ## What to do
 

@@ -5,6 +5,7 @@ import type { ErrorCode } from "./errors.ts";
 import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import type { Catalog } from "./shared.ts";
 import { downloadsFrom, releasesPageFrom } from "./releases.ts";
+import { paypalSupport } from "./support.ts";
 import type { Releases } from "./releases.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
@@ -48,6 +49,7 @@ export type Deps = {
   releases?: Releases;
   releasesUrl?: string; // the public page of the project's releases (GitHub), once there is one: the download page links to it
   privacyEmail?: string; // where people can write about their data, once there is an address (the privacy page shows it)
+  supportPayPalAccount?: string; // configured server-side; /support redirects to this recipient on PayPal
   version: string; // this server's version, shown by /v1/health
   // Turns the Discord sign-in the app obtained into a Discord account id, or null. Absent until registration opens.
   identity?: { verify(token: string): Promise<string | null> };
@@ -492,6 +494,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/download" ? allow("site-download", ["GET"], async () => html(200, downloadPage({ ...downloadsFrom(deps.releases), releasesUrl: releasesPageFrom(deps.releasesUrl) })))
       : url.pathname === "/help" ? allow("site-help", ["GET"], async () => html(200, helpPage()))
       : url.pathname === "/faq" ? allow("site-faq", ["GET"], async () => html(200, faqPage()))
+      : url.pathname === "/support" ? allow("site-support", ["GET"], async () => paypalSupport(deps.supportPayPalAccount))
       : url.pathname === "/status" ? allow("site-status", ["GET"], () => siteStatus())
       : url.pathname === "/status/badge.svg" ? allow("site-status-badge", ["GET"], () => siteStatus(true))
       : url.pathname === "/wanted" ? allow("site-wanted", ["GET"], siteWanted)
