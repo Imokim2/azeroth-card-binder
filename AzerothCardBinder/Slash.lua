@@ -93,6 +93,8 @@ function ACB.initSlash(saved, tools)
                 report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))
             end
             if ACB.refreshZoneBar then ACB.refreshZoneBar() end
+        elseif cmd == "bag" or cmd == "satchel" then
+            if ACB.openSatchel then ACB.openSatchel() end
         elseif cmd == "packs" or cmd == "pack" then
             if ACB.openPacks then ACB.openPacks() end
         elseif cmd == "report" or cmd:match("^report%s") then

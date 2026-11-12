@@ -3,7 +3,7 @@
 // an entry they have not been given. Roll and shiny values follow the spec and the shared vectors exactly.
 import { sha256Hex, toHex } from "../../packages/shared/src/crypto.ts";
 import type { LedgerEvent } from "./ledger.ts";
-import { packPick, packValue, baseCardKey, pickEdition } from "./shared.ts";
+import { packPick, packValue, baseCardKey, pickEdition, packInfo, packTier } from "./shared.ts";
 import type { Catalog, LedgerState } from "./shared.ts";
 import { chanceFor } from "../../packages/shared/src/drops.js";
 
@@ -50,9 +50,11 @@ export async function checkTape(args: {
   let lastTape = args.stateBefore.lastTape;
   let editions = args.stateBefore.editions === true;
   let balanced = args.stateBefore.balance === 1;
+  let tiered = args.stateBefore.tieredPacks === true;
   let zone = args.stateBefore.packZone ?? ""; // the zone of the pack being opened (it can span two uploads)
   const entryAt = (position: number): Promise<string> => tapeEntry(args.key, args.playerId, position);
   for (const [index, event] of args.events.entries()) {
+    if (event.kind === "mode" && event.key === "packs2") { tiered = true; continue; }
     if (event.kind === "mode" && event.key === "chase1") { balanced = true; continue; }
     if (event.kind === "mode" && event.key === "editions1") { editions = true; continue; }
     if (event.kind === "mode" && event.key === "ranked2") {
@@ -63,12 +65,13 @@ export async function checkTape(args: {
     // Packs (spec 8.2). A pack is found only on an entry that says so; opening one names the zone, and each of its five
     // cards must be exactly what its entry gives from that zone, shiny flag included.
     if (event.kind === "packOpen") {
-      zone = event.key;
+      zone = packInfo(args.catalog, event.key)?.zone || event.key;
       lastTape = event.tape;
       continue;
     }
     if (event.kind === "packFind") {
       if (event.tape > 0 && packValue(await entryAt(event.tape), args.catalog.shinyOdds) !== 1) return { failure: { reason: "pack", index } };
+      if (event.tape > 0 && tiered && packInfo(args.catalog, event.key)?.tier !== packTier(await entryAt(event.tape), args.catalog.shinyOdds)) return { failure: { reason: "pack", index } };
       continue;
     }
     if (event.kind === "packCard") {

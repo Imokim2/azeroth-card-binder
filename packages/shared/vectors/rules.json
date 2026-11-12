@@ -452,7 +452,8 @@
       "lastAttempt": {
         "key": "npc:12129",
         "tape": 6
-      }
+      },
+      "packType": "OSL"
     },
     "snapshot": {
       "counts": {

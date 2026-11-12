@@ -22,6 +22,7 @@ const PACK_SIZE = 5;
 // misses a binder kept before attempts were written down. Afterwards no gap is allowed at all.
 const BASELINE_GAP = 2000;
 const { familyCount } = require("./editions.js");
+const { packInfo } = require("./packs.js");
 
 function newState() {
     return {
@@ -38,15 +39,23 @@ const copyState = (state) => ({
     ...(state.editions === true ? { editions: true } : {}),
     ...(state.balance === 1 ? { balance: 1, balanceAttempts: { ...(state.balanceAttempts || {}) },
         balanceDrops: { ...(state.balanceDrops || {}) }, balanceReady: { ...(state.balanceReady || {}) } } : {}),
+    ...(state.packOutputs ? { packOutputs: Object.fromEntries(Object.entries(state.packOutputs).map(([zone, cards]) => [zone, { ...cards }])) } : {}),
+    ...(state.packType ? { packType: state.packType } : {}),
+    ...(state.tieredPacks ? { tieredPacks: true } : {}),
 });
 
 // Returns the name of the rule an event breaks, or null. Mutates `state` only when the event is fine.
 function applyEvent(state, event, catalog, strict = false) {
     if (event.t < state.lastT) return "time";
     const card = catalog.cards[event.key];
-    const before = state.counts[event.key] || 0;
+    const isPackKey = event.key.startsWith("pack:");
+    const pack = isPackKey ? packInfo(catalog, event.key.slice(5)) : null;
+    const packZone = pack?.id;
+    const packTrade = isPackKey && (event.kind === "tradeIn" || event.kind === "tradeOut");
+    if (packTrade && !pack) return "unknown-set";
+    const before = packTrade ? state.packs[packZone] || 0 : state.counts[event.key] || 0;
     const isCardEvent = event.kind !== "set" && event.kind !== "mode" && event.kind !== "packFind" && event.kind !== "packOpen";
-    if (isCardEvent && !card) return "unknown-card";
+    if (isCardEvent && !card && !packTrade) return "unknown-card";
     if (card && card.baseKey && (event.kind === "miss" || event.kind === "craft")) return "edition";
     if (card && card.baseKey && !state.editions && (event.kind === "drop" || event.kind === "packCard")) return "edition";
     if (card && card.balanceOnly && state.balance !== 1 && (event.kind === "drop" || event.kind === "packCard")) return "balance";
@@ -87,13 +96,15 @@ function applyEvent(state, event, catalog, strict = false) {
         case "packFind": {
             // A pack found on the attempt just written down: it belongs to that creature's zone. `count` is the packs held
             // of that zone afterwards.
-            if (!catalog.sets.some((entry) => entry.code === event.key)) return "unknown-set";
+            const info = packInfo(catalog, event.key);
+            if (!info) return "unknown-set";
+            if (!state.tieredPacks && info.tier !== "epic") return "pack";
             const held = state.packs[event.key] || 0;
             if (event.count !== held + 1) return "pack";
             if (state.mode === "ranked2") {
                 const last = catalog.cards[state.lastAttempt.key];
                 if (event.tape < 1 || event.tape !== state.lastAttempt.tape || event.tape <= state.packFound) return "tape";
-                if (!last || last.profession || last.set !== event.key) return "pack";
+                if (!last || last.profession || last.set !== info.zone) return "pack";
                 state.packFound = event.tape;
             } else if (event.tape !== 0) {
                 return "tape";
@@ -102,7 +113,8 @@ function applyEvent(state, event, catalog, strict = false) {
             break;
         }
         case "packOpen": {
-            if (!catalog.sets.some((entry) => entry.code === event.key)) return "unknown-set";
+            const info = packInfo(catalog, event.key);
+            if (!info) return "unknown-set";
             const held = state.packs[event.key] || 0;
             if (held < 1 || event.count !== held - 1) return "pack";
             if (state.mode === "ranked2") {
@@ -111,8 +123,9 @@ function applyEvent(state, event, catalog, strict = false) {
                 return "tape";
             }
             if (held === 1) delete state.packs[event.key]; else state.packs[event.key] = held - 1;
-            state.packZone = event.key;
-            state.packLeft = PACK_SIZE;
+            state.packZone = info.zone;
+            state.packType = info.id;
+            state.packLeft = info.size;
             break;
         }
         case "packCard": {
@@ -127,6 +140,12 @@ function applyEvent(state, event, catalog, strict = false) {
             if (event.shiny === 1) state.shiny[event.key] = true;
             if (event.tape > 0) state.lastTape = event.tape;
             state.packLeft -= 1;
+            // Once packs have been received, preserve a conservative dependency from
+            // that zone's pack trades to their opened cards, including later trades.
+            if (state.packOutputs?.[state.packType || state.packZone]) {
+                const outputs = state.packOutputs[state.packType || state.packZone];
+                outputs[event.key] = (outputs[event.key] || 0) + 1;
+            }
             break;
         }
         case "craft": {
@@ -148,6 +167,10 @@ function applyEvent(state, event, catalog, strict = false) {
         case "tradeIn": {
             if (event.count !== before + 1) return "trade";
             if (event.partner === "" || event.trade === "") return "trade";
+            if (packTrade) {
+                state.packOutputs ||= {};
+                state.packOutputs[packZone] ||= {};
+            }
             break;
         }
         case "set": {
@@ -159,6 +182,11 @@ function applyEvent(state, event, catalog, strict = false) {
             break;
         }
         case "mode": {
+            if (event.key === "packs2") {
+                if (event.count !== 0 || state.tieredPacks) return "mode";
+                state.tieredPacks = true;
+                break;
+            }
             if (event.key === "chase1") {
                 if (event.count !== 0 || state.balance === 1) return "mode";
                 state.balance = 1;
@@ -194,7 +222,9 @@ function applyEvent(state, event, catalog, strict = false) {
             if (event.kind === "drop") state.balanceDrops[source] = (state.balanceDrops[source] || 0) + 1;
         } else if (event.kind === "drop") state.balanceReady[source] = true;
     }
-    if (isCardEvent && event.kind !== "miss") counts[event.key] = event.count;
+    if (packTrade) {
+        if (event.count === 0) delete state.packs[packZone]; else state.packs[packZone] = event.count;
+    } else if (isCardEvent && event.kind !== "miss") counts[event.key] = event.count;
     const dust = state.dust + event.dust;
     if (dust < 0) return "dust";
     state.dust = dust;

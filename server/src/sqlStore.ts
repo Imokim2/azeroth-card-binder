@@ -404,7 +404,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
   async excluded(playerId: string): Promise<Record<string, number>> {
     const rows = await this.#db.all<{ card_key: string; n: number }>(
       `SELECT t.card_key, COUNT(*) AS n FROM trades t WHERE t.player_id = ? AND t.direction = 'in'
-       AND (t.state = 'unmatched' OR ${FROM_CASUAL}
+       AND (t.state = 'unmatched' OR (t.card_key LIKE 'pack:%' AND t.state != 'matched') OR ${FROM_CASUAL}
             OR EXISTS (SELECT 1 FROM trade_taint x WHERE x.player_id = t.player_id AND x.seq = t.seq)) GROUP BY t.card_key`, [playerId]);
     return Object.fromEntries(rows.map((row) => [row.card_key, row.n]));
   }
@@ -416,9 +416,12 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
                AND o.player_id != t.player_id AND o.partner = t.char AND o.char = t.partner LIMIT 1) AS source
        FROM trades t WHERE t.direction = 'in'`);
     const casual = await this.#db.all<{ player_id: string }>("SELECT player_id FROM ledger_state WHERE casual_drops > 0");
+    const packed = await this.#db.all<{ player_id: string; state_json: string }>("SELECT player_id, state_json FROM ledger_state WHERE state_json LIKE '%\"packOutputs\"%'");
     return {
       halves: halves.map((row) => ({ playerId: row.player_id, seq: row.seq, key: row.card_key, state: row.state, source: row.source })),
       casualPlayers: casual.map((row) => row.player_id),
+      outputs: packed.flatMap(row => Object.entries((JSON.parse(row.state_json) as LedgerState).packOutputs || {})
+        .map(([zone, cards]) => ({ playerId: row.player_id, zone, keys: Object.keys(cards) }))),
     };
   }
 

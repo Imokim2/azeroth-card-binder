@@ -12,7 +12,10 @@ local function side(parent, x, caption)
     centered(frame, "GameFontNormal", 12, kit.brass, 260):SetText(caption)
     local card = ACB.createCard(frame)
     card.frame:SetPoint("TOP", frame, "TOP", 0, -35)
-    return { frame = frame, card = card,
+    local pack = ACB.createPackItemView(frame, ACB.cardWidth, ACB.cardHeight)
+    pack.frame:SetPoint("TOP", frame, "TOP", 0, -35)
+    pack.frame:Hide()
+    return { frame = frame, card = card, pack = pack,
         empty = centered(frame, "GameFontHighlight", 112, kit.muted, 244),
         accepted = centered(frame, "GameFontNormal", 267, kit.muted, 260),
         note = centered(frame, "GameFontHighlightSmall", 290, kit.muted, 266) }
@@ -55,8 +58,8 @@ function ACB.createTradeView(parent, saved, trade)
         gift = value
         refresh()
     end
-    local tradeMode = button(box, "Trade cards", 20, 42, 140, function() setMode(false) end)
-    local giftMode = button(box, "Gift a card", 168, 42, 140, function() setMode(true) end)
+    local tradeMode = button(box, "Trade items", 20, 42, 140, function() setMode(false) end)
+    local giftMode = button(box, "Send a gift", 168, 42, 140, function() setMode(true) end)
     local modeNote = label(box, "GameFontHighlightSmall", 324, 49, kit.muted, "")
     modeNote:SetWidth(296)
     local mine, theirs = side(box, 20, "YOU GIVE"), side(box, 330, "YOU RECEIVE")
@@ -69,7 +72,7 @@ function ACB.createTradeView(parent, saved, trade)
     end
 
     -- A searchable list replaces cycling through every owned card with arrows.
-    local picker = kit.window("AzerothCardBinderTradeCards", 480, 420, "Choose a card", false)
+    local picker = kit.window("AzerothCardBinderTradeCards", 480, 420, "Choose a card or pack", false)
     local search = CreateFrame("EditBox", nil, picker, "InputBoxTemplate")
     search:SetPoint("TOPLEFT", 38, -56)
     search:SetSize(404, 26)
@@ -77,7 +80,7 @@ function ACB.createTradeView(parent, saved, trade)
     search:SetMaxLetters(80)
     search:SetScript("OnEscapePressed", function() picker:Hide() end)
     local rows, page, pages = {}, 1, 1
-    local empty = label(picker, "GameFontHighlight", 30, 94, kit.muted, "No matching cards.")
+    local empty = label(picker, "GameFontHighlight", 30, 94, kit.muted, "No matching cards or packs.")
     local pageLabel = centered(picker, "GameFontHighlightSmall", 377, kit.muted, 160)
     local back, more
     local function listCards()
@@ -87,6 +90,10 @@ function ACB.createTradeView(parent, saved, trade)
                 if (saved.counts[card.key] or 0) > 0 and card.name:lower():find(query, 1, true) then cards[#cards + 1] = card end
             end
         end
+        for _, item in ipairs(ACB.packList(saved)) do
+            local pack = ACB.packItem("pack:" .. item.zone)
+            if (pack.name .. " " .. pack.page.title .. " pack " .. pack.tier):lower():find(query, 1, true) then cards[#cards + 1] = pack end
+        end
         table.sort(cards, function(a, b) return a.name == b.name and a.key < b.key or a.name < b.name end)
         pages = math.max(1, math.ceil(#cards / 9))
         page = math.max(1, math.min(pages, page))
@@ -95,7 +102,8 @@ function ACB.createTradeView(parent, saved, trade)
             local card = cards[(page - 1) * 9 + index]
             row.key = card and card.key
             row:SetShown(card ~= nil)
-            if card then row:SetText(("%s   (%d owned)"):format(card.name, saved.counts[card.key])) end
+            if card then row:SetText(("%s%s   (%d owned)"):format(card.name,
+                card.pack and (" / " .. ACB.packTiers[card.tier].name) or "", ACB.itemCount(saved, card.key))) end
         end
         pageLabel:SetText(("Page %d of %d"):format(page, pages))
         back:SetEnabled(page > 1)
@@ -111,7 +119,7 @@ function ACB.createTradeView(parent, saved, trade)
     back = button(picker, "Previous", 30, 370, 100, function() page = page - 1 listCards() end)
     more = button(picker, "Next", 350, 370, 100, function() page = page + 1 listCards() end)
     search:SetScript("OnTextChanged", function() page = 1 listCards() end)
-    local choose = button(mine.frame, "Choose card", 30, 230, 145, function()
+    local choose = button(mine.frame, "Choose item", 30, 230, 145, function()
         page = 1
         search:SetText("")
         listCards()
@@ -123,7 +131,7 @@ function ACB.createTradeView(parent, saved, trade)
     local accept = button(box, "Accept", 20, 426, 150, function() trade:confirm() refresh() end)
     local cancel = button(box, "Cancel", 180, 426, 120, function() trade:cancel() refresh() end)
     local history = button(box, "History", 510, 426, 110, function() showHistory = not showHistory refresh() end)
-    centered(box, "GameFontHighlightSmall", 463, kit.muted, 600):SetText("Stay close and out of combat. No cards move until both players accept.")
+    centered(box, "GameFontHighlightSmall", 463, kit.muted, 600):SetText("Stay close and out of combat. Both players must accept before anything moves.")
     local historyPanel = CreateFrame("Frame", nil, box, "BackdropTemplate")
     historyPanel:SetPoint("TOPLEFT", 20, -78)
     historyPanel:SetSize(600, 310)
@@ -141,7 +149,7 @@ function ACB.createTradeView(parent, saved, trade)
         local s = trade:active()
         local live = s ~= nil and s.modern and not s.closed
         if s and s.modern then gift = s.gift end
-        if not live and selected and (saved.counts[selected] or 0) == 0 then selected = nil end
+        if not live and selected and ACB.itemCount(saved, selected) == 0 then selected = nil end
         local give = selected
         if s then give = s.modern and s.give or nil end
         local take = s and s.modern and s.take
@@ -157,7 +165,7 @@ function ACB.createTradeView(parent, saved, trade)
         end
         mark(tradeMode, not gift)
         mark(giftMode, gift)
-        modeNote:SetText(gift and "One card. Nothing needed in return." or "Choose what each player gives.")
+        modeNote:SetText(gift and "One item. Nothing needed in return." or "Trade cards, packs, or one of each.")
         local editable = not showHistory and (not live or (not s.sentConfirm and not s.cancelPending and not s.decision))
             and not (live and gift and not s.initiator)
         choose:SetEnabled(editable)
@@ -165,22 +173,29 @@ function ACB.createTradeView(parent, saved, trade)
         remove:SetShown(not (live and gift and not s.initiator))
         remove:SetEnabled(editable and give ~= nil and not (live and gift))
         local function fill(panel, key, count, confirmed, emptyText)
-            panel.card.frame:SetShown(key ~= nil)
+            local item = key and ACB.tradeItem(key)
+            panel.card.frame:SetShown(item ~= nil and not item.pack)
+            panel.pack.frame:SetShown(item ~= nil and item.pack == true)
             panel.empty:SetText(emptyText)
             panel.empty:SetShown(key == nil)
-            if key then panel.card:set(ACB.cards[key], count, saved.shiny and saved.shiny[key] and panel == mine) end
+            if item then
+                if item.pack then panel.pack:set(item)
+                else panel.card:set(item, count, saved.shiny and saved.shiny[key] and panel == mine) end
+            end
             panel.accepted:SetText(confirmed and "Accepted" or "Not accepted")
             panel.accepted:SetTextColor(unpack(confirmed and kit.green or kit.muted))
             panel.frame:SetBackdropBorderColor(unpack(confirmed and kit.green or kit.goldDark))
         end
         -- The offer is one copy, even when the picker says several are owned.
         fill(mine, give, give and 1 or 0, live and s.sentConfirm or s and s.applied,
-            live and gift and not s.initiator and "Nothing. This card is a gift to you." or "No card chosen.\nClick Choose card to add one.")
+            live and gift and not s.initiator and "Nothing. This is a gift to you." or "Nothing chosen.\nClick Choose item to add a card or pack.")
         fill(theirs, take, 1, live and s.peerConfirmed or s and s.applied,
-            gift and "Nothing in return.\nThis is a gift." or "Nothing in return.\nNo card has been added.")
-        mine.note:SetText(give and (saved.counts[give] == 1 and "Your last copy. Giving it removes it from your binder."
+            gift and "Nothing in return.\nThis is a gift." or "Nothing has been added.")
+        local pack = give and ACB.packItem(give)
+        mine.note:SetText(give and (pack and "You are giving 1 sealed pack."
+            or ACB.itemCount(saved, give) == 1 and "Your last copy. Giving it removes it from your binder."
             or "You are giving 1 copy of this card.") or "")
-        theirs.note:SetText(take and "You will receive 1 copy of this card." or "")
+        theirs.note:SetText(take and (ACB.packItem(take) and "You will receive 1 sealed pack." or "You will receive 1 copy of this card.") or "")
         status:SetText(trade.status)
         accept:SetText(s and s.sentConfirm and "Accepted" or "Accept")
         accept:SetEnabled(not showHistory and trade:canAccept())
@@ -194,13 +209,15 @@ function ACB.createTradeView(parent, saved, trade)
         end
     end
 
-    function ACB.prepareTrade(name)
+    function ACB.prepareTrade(name, key)
         if type(name) == "string" and name ~= "" then partner:SetText(name:gsub("%-", " ")) end
+        if key and ACB.itemCount(saved, key) > 0 then selectCard(key) end
         showHistory = false
         ACB.open("trade")
     end
     -- Exposed to the offline UI checks and the layout preview, not saved data.
     view.controls = { partner = partner, start = start, gift = giftMode, trade = tradeMode, choose = choose,
-        accept = accept, cancel = cancel, search = search, rows = rows, picker = picker, mine = mine.card }
+        accept = accept, cancel = cancel, search = search, rows = rows, picker = picker, mine = mine.card,
+        minePack = mine.pack, theirPack = theirs.pack }
     return view
 end

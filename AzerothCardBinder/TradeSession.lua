@@ -2,13 +2,13 @@ local _, ACB = ...
 
 -- The simple trade/gift flow. Legacy O/R/C sessions remain readable by Trade.lua;
 -- I/U/A/F/D messages carry revisioned offers and a single coordinator's decision.
-function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed)
+function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, saved)
     local legacyReceive, legacyConfirm = trade.receive, trade.confirm
     local lastInvite, elapsed
     local terminal, terminalOrder = {}, {}
     local function wire(key) return key or "0" end
-    local function valid(key) return key == "0" or ACB.cards[key] ~= nil end
-    local function owns(key) return not key or (ACB.cards[key] and (counts[key] or 0) > 0) end
+    local function valid(key) return key == "0" or ACB.tradeItem(key) ~= nil end
+    local function owns(key) return not key or (ACB.tradeItem(key) and (saved and ACB.itemCount(saved, key) or counts[key] or 0) > 0) end
     local function current()
         local s = trade:active()
         return s and s.modern and s
@@ -39,11 +39,11 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed)
         if s.applied then return true end
         if not apply(s.give, s.take, s.peer, s.id) then
             s.failed = true
-            close(s, "Trade stopped. An offered card is no longer available.")
+            close(s, "Trade stopped. An offered item is no longer available.")
             return false
         end
         s.applied = true
-        local out, into = ACB.cards[s.give], ACB.cards[s.take]
+        local out, into = ACB.tradeItem(s.give), ACB.tradeItem(s.take)
         close(s, out and into and ("Trade complete. You received %s."):format(into.name)
             or out and ("Gift sent: %s."):format(out.name) or ("Gift received: %s."):format(into.name))
         return true
@@ -68,7 +68,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed)
     function trade:start(peer, key, gift)
         local old = self:active()
         if old and not old.applied and not old.closed then return end
-        if not peer or not owns(key) or (gift and not key) then self.status = "Choose a player and a card first." return end
+        if not peer or not owns(key) or (gift and not key) then self.status = "Choose a player and an item first." return end
         local ok, why = allowed(peer)
         if not ok then self.status = why return end
         local s = { modern = true, initiator = true, peer = peer, id = makeID(), give = key, gift = gift == true,
@@ -96,7 +96,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed)
         if not s or s.closed then self:reset("Trade cancelled.") return end
         if s.initiator then
             if s.decision == "commit" then transmit(s, packet(s, "F")) return end
-            close(s, "Trade cancelled. No cards were moved.")
+            close(s, "Trade cancelled. Nothing was moved.")
             s.cancelled = true
             transmit(s, "X|" .. s.id)
         else
@@ -145,8 +145,8 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed)
             s = { modern = true, peer = peer, id = id, take = key ~= "0" and key or nil, gift = mode == "g",
                 revision = 1, theirRevision = 1, connected = true, expires = now() + 120 }
             self.session = s
-            self.status = s.gift and "A gift for you. Check the card, then click Accept."
-                or "Choose a card, or leave your side empty to receive a gift."
+            self.status = s.gift and "A gift for you. Check the item, then click Accept."
+                or "Choose a card or pack, or leave your side empty to receive a gift."
             offer(s)
             return true
         end
@@ -186,9 +186,9 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed)
             else self:cancel() end
         elseif simple == "X" and not s.initiator and not s.applied then
             s.cancelled = true
-            close(s, "Trade cancelled. No cards were moved.")
+            close(s, "Trade cancelled. Nothing was moved.")
         elseif simple == "E" and s.initiator and not s.applied then
-            close(s, "Trade stopped. The other player's card is no longer available.")
+            close(s, "Trade stopped. The other player's item is no longer available.")
         end
     end
 

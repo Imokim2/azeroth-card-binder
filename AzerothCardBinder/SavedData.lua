@@ -119,7 +119,7 @@ local function cleanLedgerFields(saved)
     if type(saved.packs) == "table" then
         for zone, count in pairs(saved.packs) do
             if type(zone) == "string" and type(count) == "number" and count >= 1 and count == math.floor(count) and count <= 100000
-                and (not ACB.pageOfZone or ACB.pageOfZone(zone)) then
+                and (not ACB.packInfo or ACB.packInfo(zone)) then
                 packs[zone] = count
             end
         end
@@ -142,6 +142,7 @@ function ACB.cleanSavedData(saved)
     saved.schema = ACB.schema
     saved.editionDrops = true
     saved.balancedDrops = true
+    saved.tieredPacks = true
     saved.counts, saved.achievements = tableOrEmpty(saved.counts), tableOrEmpty(saved.achievements)
     saved.levels = nil -- levels were shown on cards in an earlier build and are no longer kept
     for key, count in pairs(saved.counts) do
@@ -166,7 +167,7 @@ function ACB.cleanSavedData(saved)
     for index = #saved.history, 1, -1 do
         local entry = saved.history[index]
         if type(entry) ~= "table" or (not entry.give and not entry.take)
-            or (entry.give and not ACB.cards[entry.give]) or (entry.take and not ACB.cards[entry.take]) then
+            or (entry.give and not ACB.tradeItem(entry.give)) or (entry.take and not ACB.tradeItem(entry.take)) then
             table.remove(saved.history, index)
         end
     end

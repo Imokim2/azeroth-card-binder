@@ -18,13 +18,20 @@ const MAX_ROUNDS = 50;
 
 // The received halves that are not trusted because of where the card came from. Halves that were never matched are not
 // listed (they are excluded for that reason elsewhere), but they do make their owner's copies of the card untrusted.
-export function computeTaint(halves: TradeHalf[], casualPlayers: string[]): { playerId: string; seq: number }[] {
+export type PackOutput = { playerId: string; zone: string; keys: string[] };
+export function computeTaint(halves: TradeHalf[], casualPlayers: string[], outputs: PackOutput[] = []): { playerId: string; seq: number }[] {
   const casual = new Set(casualPlayers);
   const untrusted = new Set<string>(); // "player|card": the player holds an untrusted copy of this card
-  for (const half of halves) if (half.state === "unmatched") untrusted.add(`${half.playerId}|${half.key}`);
+  for (const half of halves) if (half.state === "unmatched" || (half.key.startsWith("pack:") && half.state !== "matched")) untrusted.add(`${half.playerId}|${half.key}`);
   const tainted = new Map<string, { playerId: string; seq: number }>();
   for (let round = 0; round < MAX_ROUNDS; round++) {
     let changed = false;
+    for (const output of outputs) if (untrusted.has(`${output.playerId}|pack:${output.zone}`)) {
+      for (const key of output.keys) {
+        const id = `${output.playerId}|${key}`;
+        if (!untrusted.has(id)) { untrusted.add(id); changed = true; }
+      }
+    }
     for (const half of halves) {
       const id = `${half.playerId}:${half.seq}`;
       if (tainted.has(id) || half.source === null || half.state === "unmatched") continue;

@@ -13,9 +13,13 @@ export type Score = { score: number; uniqueCards: number; setsDone: number };
 // not count. A card whose copies were all excluded is not owned for scoring, and a set whose finishing rested on such
 // a card is not done.
 export function scoreOf(catalog: Catalog, state: LedgerState, excluded: Record<string, number> = {}): Score {
+  const effective = { ...excluded };
+  for (const [zone, outputs] of Object.entries(state.packOutputs || {})) {
+    if ((excluded[`pack:${zone}`] || 0) > 0) for (const [key, count] of Object.entries(outputs)) effective[key] = (effective[key] || 0) + count;
+  }
   let tenths = 0;
   let uniqueCards = 0;
-  const owned = (key: string): number => (state.counts[key] ?? 0) - (excluded[key] ?? 0);
+  const owned = (key: string): number => (state.counts[key] ?? 0) - (effective[key] ?? 0);
   const seen = new Set<string>();
   for (const key of Object.keys(state.counts)) {
     const card = catalog.cards[key];
@@ -34,7 +38,7 @@ export function scoreOf(catalog: Catalog, state: LedgerState, excluded: Record<s
     // unconfirmed trades takes the bonus away.
     if (!state.sets[set.code] || set.cards.some((key) => {
       const family = editionKeys(catalog, key);
-      return family.some((edition) => (excluded[edition] ?? 0) > 0) && family.every((edition) => owned(edition) < 1);
+      return family.some((edition) => (effective[edition] ?? 0) > 0) && family.every((edition) => owned(edition) < 1);
     })) continue;
     setsDone += 1;
     // A tenth of the set's points, in tenths of a point, is the set's points.

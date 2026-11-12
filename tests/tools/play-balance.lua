@@ -6,6 +6,7 @@ for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua",
 end
 local saved = ACB.cleanSavedData({})
 saved.balancedDrops = false
+saved.tieredPacks = false -- retain this spec-5 pack fixture
 local clock = 1700000000
 local ledger = ACB.newLedger(saved, function() clock = clock + 1; return clock end, function() return "Alice-RealmName" end)
 ledger:begin(true)

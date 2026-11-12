@@ -18,6 +18,7 @@ local function open(saved, random)
     local _, upgraded = ACB.cleanSavedData(saved)
     saved.editionDrops = false -- preserve the legacy histories here; editions have dedicated coverage
     saved.balancedDrops = false -- retain pre-chase history fixtures; balanced rolls have their own coverage
+    saved.tieredPacks = false -- retain pre-tier pack fixtures
     local ledger = newLedger(saved)
     ledger:begin(upgraded)
     local collection = ACB.newCollection(saved, random or function(low) return low end, ignore, ignore, nil, nil, ledger)

@@ -1,5 +1,11 @@
 local _, ACB = ...
 
+function ACB.tradeItem(key) return ACB.cards[key] or (ACB.packItem and ACB.packItem(key)) end
+function ACB.itemCount(saved, key)
+    local pack = ACB.packItem and ACB.packItem(key)
+    return pack and (saved.packs and saved.packs[pack.zone] or 0) or (saved.counts[key] or 0)
+end
+
 -- How many recently rolled sources are remembered in the saved file.
 ACB.rolledMemory = 2000
 
@@ -37,7 +43,7 @@ end
 function ACB.tradeHistory(saved)
     local lines = {}
     for _, entry in ipairs(saved.history or {}) do
-        local out, into = ACB.cards[entry.give], ACB.cards[entry.take]
+        local out, into = ACB.tradeItem(entry.give), ACB.tradeItem(entry.take)
         if out or into then
             local stamp = entry.time and (date and date("%d %b %H:%M", entry.time) or tostring(entry.time)) or ""
             local action = out and into and (out.name .. " for " .. into.name)
@@ -205,7 +211,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             end
             if packWin then
                 if ranked and ledger then ledger:flushRun() end -- the pack belongs to this attempt, so the run ends with it
-                self:addPack(card, tapeIndex)
+                self:addPack(card, tapeIndex, entry)
             end
             return false
         end
@@ -227,7 +233,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         end
         if shiny then saved.shiny[card.key] = true end
         record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex })
-        if packWin then self:addPack(card, tapeIndex) end
+        if packWin then self:addPack(card, tapeIndex, entry) end
         -- A drop rolled with this computer's own random numbers cannot be rechecked by the server.
         if not ranked then saved.casualDrops = (saved.casualDrops or 0) + 1 end
         report(("%s: %s (x%d)"):format(shiny and "Shiny card found" or "Card found", card.name, counts[card.key]))
@@ -241,24 +247,39 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     -- `partner` and `tradeId` identify the trade in the ledger; both players hold the same trade id.
     function collection:swap(give, take, partner, tradeId)
         local counts = saved.counts
-        local out, into = ACB.cards[give], ACB.cards[take]
+        local out, into = ACB.tradeItem(give), ACB.tradeItem(take)
         if (not out and not into) or (give and not out) or (take and not into)
-            or give == take or (out and (counts[give] or 0) < 1) then return false end
+            or give == take or (out and ACB.itemCount(saved, give) < 1) then return false end
+        if ledger then ledger:flushRun() end
+        local function transfer(kind, item, delta)
+            if item.pack then
+                saved.packs = saved.packs or {}
+                local count = (saved.packs[item.zone] or 0) + delta
+                saved.packs[item.zone] = count > 0 and count or nil
+                record(kind, item.key, { count = count, partner = partner, trade = tradeId })
+            else
+                local before = counts[item.key] or 0
+                counts[item.key] = before + delta
+                record(kind, item.key, { before = before, partner = partner, trade = tradeId })
+                if counts[item.key] == 0 then counts[item.key] = nil end
+            end
+        end
         if out then
-            counts[give] = counts[give] - 1
-            record("tradeOut", give, { before = counts[give] + 1, partner = partner, trade = tradeId })
-            if counts[give] == 0 then counts[give] = nil end
+            transfer("tradeOut", out, -1)
         end
         if into then
-            local before = counts[take] or 0
-            counts[take] = before + 1
-            record("tradeIn", take, { before = before, partner = partner, trade = tradeId })
+            transfer("tradeIn", into, 1)
             report(out and ("Traded %s for %s"):format(out.name, into.name) or ("Received %s as a gift."):format(into.name))
-            checkAchievements(into)
-            found(into, { count = counts[take], first = counts[take] == 1, trade = true })
+            if into.pack then
+                if self.onPack then self.onPack(into.page, saved.packs[into.zone]) end
+            else
+                checkAchievements(into)
+                found(into, { count = counts[take], first = counts[take] == 1, trade = true })
+            end
         else
             report(("Gifted %s."):format(out.name))
         end
+        if ACB.refreshSatchel then ACB.refreshSatchel() end
         return true
     end
 

@@ -91,7 +91,8 @@ export interface TradeStore {
   excluded(playerId: string): Promise<Record<string, number>>;
   // Every received trade half with the player who gave it, and the players who have unverified Casual drops: what is
   // needed to follow a card through several trades (src/taint.ts).
-  tradeGraph(): Promise<{ halves: { playerId: string; seq: number; key: string; state: "open" | "matched" | "unmatched"; source: string | null }[]; casualPlayers: string[] }>;
+   tradeGraph(): Promise<{ halves: { playerId: string; seq: number; key: string; state: "open" | "matched" | "unmatched"; source: string | null }[]; casualPlayers: string[];
+     outputs?: { playerId: string; zone: string; keys: string[] }[] }>;
   // Replace the list of untrusted halves. Returns the players whose list changed, so their scores can be put right.
   replaceTaint(rows: { playerId: string; seq: number }[]): Promise<string[]>;
   // Replace the score numbers after the excluded copies changed.

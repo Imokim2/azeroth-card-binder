@@ -6,7 +6,7 @@ ACB.tradePrefix = "AzerothBinder1"
 -- of their own (R), and each side confirms the exact pair (C). When a side has sent its confirmation
 -- and received the partner's, it applies the swap once through `apply`.
 -- `wanted` returns the cards the player is looking for, as a list of catalog keys.
-function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
+function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed, saved)
     local trade = { seen = {}, status = "Choose a player and a card, then click Start trade." }
     apply = apply or function() return true end
     -- `allowed(peer)` may say no, with a reason (the trading distance); with none given every trade may go ahead.
@@ -198,6 +198,6 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
         end
     end
 
-    if ACB.addTradeSession then ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed) end
+    if ACB.addTradeSession then ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, saved) end
     return trade
 end

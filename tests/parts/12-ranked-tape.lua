@@ -9,6 +9,7 @@ local function rankedBinder(entries, start, report)
     local saved = {}
     local _, upgraded = ACB.cleanSavedData(saved)
     saved.balancedDrops = false -- these fixtures exercise the legacy rank-rate tape contract
+    saved.tieredPacks = false
     local ledger = newLedger(saved)
     ledger:begin(upgraded)
     local collection = ACB.newCollection(saved, function() error("Ranked mode must not use the computer's random numbers") end,

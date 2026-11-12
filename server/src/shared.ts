@@ -31,6 +31,9 @@ export type LedgerState = {
   balanceAttempts?: Record<string, number>;
   balanceDrops?: Record<string, number>;
   balanceReady?: Record<string, boolean>;
+  packOutputs?: Record<string, Record<string, number>>;
+  packType?: string;
+  tieredPacks?: boolean;
   packs?: Record<string, number>; // packs held, by zone (set code)
   packZone?: string; // the zone of the pack being opened
   packLeft?: number; // cards still to come from it
@@ -51,6 +54,8 @@ export const snapshotDifferences = shared.snapshotDifferences as (
 
 export const PACK_SIZE = packs.PACK_SIZE as number;
 export const PACK_ODDS = packs.PACK_ODDS as number;
+export const packInfo = packs.packInfo as (catalog: Catalog, id: string) => { id: string; zone: string; tier: string; size: number } | null;
+export const packTier = packs.packTier as (entry: string, shinyOdds: number) => string;
 export const baseCardKey = editions.baseKey as (catalog: Catalog, key: string) => string;
 export const editionKeys = editions.editionKeys as (catalog: Catalog, key: string) => string[];
 export const familyCount = editions.familyCount as (catalog: Catalog, counts: Record<string, number>, key: string) => number;

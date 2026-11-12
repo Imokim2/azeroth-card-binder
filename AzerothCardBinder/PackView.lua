@@ -37,7 +37,7 @@ function ACB.createPackView(saved)
     local list = CreateFrame("Frame", nil, frame)
     list:SetAllPoints(frame)
     local note = label(list, "GameFontHighlightSmall", 40, 84, muted,
-        "Enemies can rarely drop a pack. Each pack holds five cards from the zone it dropped in. Some discoveries are much harder to find than others.")
+        "Zone packs come in Common (1 card), Rare (3 cards) and Epic (5 cards). Open your Warcards Satchel with /acb bag to see every stack.")
     note:SetWidth(720)
     local empty = label(list, "GameFontNormal", 40, 150, parchment, "")
     empty:SetWidth(720)
@@ -122,7 +122,7 @@ function ACB.createPackView(saved)
         for index, row in ipairs(rows) do
             local entry = packs[index]
             row.zone = entry and entry.zone
-            row.text:SetText(entry and ("%s Pack   x%d"):format(entry.page.title, entry.count) or "")
+            row.text:SetText(entry and ("Pack: %s  /  %s  /  x%d"):format(entry.page.title, ACB.packTiers[entry.tier].name, entry.count) or "")
             row.button:SetShown(entry ~= nil)
             row.text:SetShown(entry ~= nil)
         end
@@ -135,26 +135,32 @@ function ACB.createPackView(saved)
         return zone and zone.top or { 0.36, 0.22, 0.11 }, zone and zone.bottom or { 0.07, 0.04, 0.03 }
     end
 
-    function view:start(results, page)
+    function view:start(results, page, item)
         self.results, self.page, self.phase, self.t = results, page, "shake", 0
+        self.left = (WINDOW_W - (#results * CARD_W + (#results - 1) * GAP)) / 2
         local top = colors(page)
         art:SetBackdropColor(top[1] * 0.6 + 0.06, top[2] * 0.6 + 0.05, top[3] * 0.6 + 0.04, 1)
-        artTitle:SetText(page.title .. " Pack")
+        artTitle:SetText("Pack: " .. page.title)
+        artFoot:SetText(("%s / %d card%s"):format(item and ACB.packTiers[item.tier].name or "Epic", #results, #results == 1 and "" or "s"))
+        art:SetBackdropBorderColor(unpack(item and ACB.packTiers[item.tier].color or gold))
         art:SetScale(1)
         art:SetAlpha(1)
         art:Show()
         for index, slot in ipairs(self.slots) do
-            slot.state, slot.t, slot.delay = "down", 0, 0
+            local result = results[index]
+            slot.state, slot.t, slot.delay = result and "down" or "unused", 0, 0
             slot.back:Hide()
             slot.back:SetAlpha(0)
             -- Keep the actual faces shown and effectively transparent so the client can load them
             -- throughout the opening animation, before the player turns a card over.
             slot.holder:SetWidth(CARD_W)
             slot.holder:SetAlpha(0.001)
-            slot.holder:Show()
+            slot.holder:SetShown(result ~= nil)
+            slot.caption:SetShown(result ~= nil)
+            slot.holder:SetPoint("TOPLEFT", stage, "TOPLEFT", self.left + (index - 1) * (CARD_W + GAP), -SLOT_TOP)
+            slot.caption:SetPoint("TOPLEFT", stage, "TOPLEFT", self.left + (index - 1) * (CARD_W + GAP), -(SLOT_TOP + CARD_H + 8))
             slot.back:SetWidth(CARD_W)
-            local result = results[index]
-            slot.card:set(result.card, result.count, result.shiny, false)
+            if result then slot.card:set(result.card, result.count, result.shiny, false) end
             slot.caption:SetText("")
             slot.back:SetBackdropBorderColor(0.78, 0.63, 0.42, 1)
         end
@@ -215,15 +221,17 @@ function ACB.createPackView(saved)
             if self.t >= BURST then
                 art:Hide()
                 self.phase, self.t = "deal", 0
-                for _, slot in ipairs(self.slots) do slot.back:SetAlpha(0) slot.back:Show() end
+                for _, slot in ipairs(self.slots) do slot.back:SetAlpha(0) slot.back:SetShown(slot.state ~= "unused") end
             end
         elseif self.phase == "deal" then
             for index, slot in ipairs(self.slots) do
+                if slot.state ~= "unused" then
                 local p = clamp((self.t - (index - 1) * DEAL_STEP) / DEAL_TIME)
                 slot.back:SetAlpha(p)
-                slot.back:SetPoint("TOPLEFT", stage, "TOPLEFT", SLOT_LEFT + (index - 1) * (CARD_W + GAP), -SLOT_TOP + (1 - p) * 40)
+                slot.back:SetPoint("TOPLEFT", stage, "TOPLEFT", self.left + (index - 1) * (CARD_W + GAP), -SLOT_TOP + (1 - p) * 40)
+                end
             end
-            if self.t >= (SLOTS - 1) * DEAL_STEP + DEAL_TIME then
+            if self.t >= (#self.results - 1) * DEAL_STEP + DEAL_TIME then
                 self.phase, self.t = "reveal", 0
                 hint:SetText("Click a card to turn it over.")
                 flipAll:Show()
@@ -253,8 +261,8 @@ function ACB.createPackView(saved)
                         slot.caption:SetText(text)
                         slot.caption:SetTextColor(unpack(color))
                         if ACB.playToastSound then ACB.playToastSound(result.card.rarity, result.shiny) end
-                        if self:flipped() == SLOTS then
-                            hint:SetText("That's all five. They are in your binder.")
+                        if self:flipped() == #self.results then
+                            hint:SetText("Added to your binder.")
                             flipAll:Hide()
                         end
                     end
@@ -271,7 +279,9 @@ function ACB.createPackView(saved)
             status:SetText(why or "That pack could not be opened.")
             return
         end
-        self:start(results, ACB.pageOfZone(zone))
+        local item = ACB.packItem("pack:" .. zone)
+        self:start(results, item.page, item)
+        if ACB.refreshSatchel then ACB.refreshSatchel() end
         if ACB.refresh then ACB.refresh() end
     end
 
@@ -280,7 +290,7 @@ function ACB.createPackView(saved)
         if self.phase ~= "list" and self.results then
             local unseen = {}
             for index, slot in ipairs(self.slots) do
-                if slot.state ~= "up" then unseen[#unseen + 1] = self.results[index] end
+                if self.results[index] and slot.state ~= "up" then unseen[#unseen + 1] = self.results[index] end
             end
             if #unseen > 0 and ACB.say then
                 local names = {}
@@ -311,10 +321,16 @@ function ACB.initPacks(saved, collection)
         view.frame:Show()
         view:refreshList()
     end
+    function ACB.openPack(zone)
+        view.frame:Show()
+        view:openZone(zone)
+        if ACB.refreshSatchel then ACB.refreshSatchel() end
+    end
     collection.packsEnabled = true
     collection.onPack = function(page, count)
         if ACB.playToastSound then ACB.playToastSound("epic", false) end
         if ACB.refreshPackButton then ACB.refreshPackButton() end
+        if ACB.refreshSatchel then ACB.refreshSatchel() end
         if view.frame:IsShown() and view.phase == "list" then view:refreshList() end
         if ACB.refresh then ACB.refresh() end
     end

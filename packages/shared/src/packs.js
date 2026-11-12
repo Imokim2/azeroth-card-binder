@@ -17,6 +17,18 @@ const rollOf = (entry) => (parseInt(entry.slice(0, 8), 16) % 10000) + 1;
 // 1 when the attempt that used this entry found a pack.
 const packValue = (entry, shinyOdds) => (Math.floor(secondHalf(entry) / shinyOdds) % PACK_ODDS) + 1;
 const packFound = (entry, shinyOdds) => packValue(entry, shinyOdds) === 1;
+const PACK_TIERS = { common: 1, rare: 3, epic: 5 };
+function packInfo(catalog, id) {
+    if (typeof id !== 'string') return null;
+    const match = /^([A-Z][A-Z0-9]*)(?::(common|rare))?$/.exec(id);
+    if (!match || !catalog.sets.some(set => set.code === match[1])) return null;
+    const tier = match[2] || 'epic';
+    return { id, zone: match[1], tier, size: PACK_TIERS[tier] };
+}
+function packTier(entry, shinyOdds) {
+    const draw = Math.floor(secondHalf(entry) / shinyOdds / PACK_ODDS) % 100;
+    return draw < 70 ? 'common' : draw < 95 ? 'rare' : 'epic';
+}
 
 const byNumber = (a, b) => (Number(a.split(":")[1]) - Number(b.split(":")[1])) || (a < b ? -1 : a > b ? 1 : 0);
 
@@ -57,4 +69,4 @@ function packPick(catalog, zone, entry, shinyOdds, balanced = false) {
     return null;
 }
 
-module.exports = { PACK_ODDS, PACK_SIZE, PACK_RARITIES, packValue, packFound, packPools, packPick };
+module.exports = { PACK_ODDS, PACK_SIZE, PACK_RARITIES, PACK_TIERS, packInfo, packTier, packValue, packFound, packPools, packPick };

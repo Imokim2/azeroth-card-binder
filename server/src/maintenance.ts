@@ -14,7 +14,9 @@ export async function runMaintenance(deps: { ingest: IngestStore; trades: TradeS
   const matchedBack = affected.size;
   // Copies that came from Casual play, however many trades ago, do not count; that can change after a trade was recorded.
   const graph = await deps.trades.tradeGraph();
-  for (const playerId of await deps.trades.replaceTaint(computeTaint(graph.halves, graph.casualPlayers))) affected.add(playerId);
+  for (const playerId of await deps.trades.replaceTaint(computeTaint(graph.halves, graph.casualPlayers, graph.outputs))) affected.add(playerId);
+  // A newly matched pack may already have been opened; refresh its owner's score too.
+  for (const output of graph.outputs || []) affected.add(output.playerId);
   const expired = await deps.trades.expire(now - TRADE_GRACE_SECONDS);
   const counts = new Map<string, { in: number; out: number }>();
   const missing = new Map<string, number>(); // partners who uploaded since, and still lack their half of a trade

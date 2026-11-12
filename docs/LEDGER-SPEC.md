@@ -1,6 +1,18 @@
 # Ledger specification
 
-Version 5. Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds the `mode/chase1` marker for per-card drop profiles, protected chase cards and weighted packs. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 6. Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+
+## Pack tiers and trades (version 6)
+
+Pack IDs are `<zone>:common` (1 card), `<zone>:rare` (3 cards), or `<zone>` (Epic, 5 cards). The last keeps all legacy five-card packs intact without an inventory conversion. Only real catalog set codes and these canonical IDs are accepted. Player-facing names are always `Pack: <zone title>`; tier and size are separate labels.
+
+`mode/packs2` (count/dust/shiny/tape zero) is written once, after flushing misses, before the first new tiered pack find. Replay persists `tieredPacks=true`. Earlier pack finds retain their original five-card meaning. After this marker, the find entry's `floor(hex2 / shinyOdds / 500) mod 100` selects Common for 0–69, Rare for 70–94, and Epic for 95–99. It uses the digits above the existing pack-find remainder. The pack find chance remains 1/500. The server checks both the pack find and its tier. Each pack draws its own size in consecutive tape entries from its zone, with the existing within-rarity weights, edition and shiny rules; a tier does not promise particular card rarities.
+
+Trade-only keys `pack:<pack-ID>` are allowed in `tradeIn` and `tradeOut`. Their counts describe `state.packs[pack-ID]`, never card inventory; count changes by exactly one. They use the existing reciprocal identities, trade ID and matching process. Invalid zones, overspending, shiny/dust/tape fields, drops, crafting and recycling of pack keys are refused. The ordinary revisioned two-accept protocol handles one card or one pack on either side. The addon reserves the offered copy until trade completion/cancellation, including its cancellation wait, while unreserved spare packs remain openable.
+
+Replay uses `packType` to remember the full ID of an opened pack, and `packLeft` is 1, 3 or 5. When a pack is received, it initializes `packOutputs[pack-ID]`, then records subsequent packCard counts of that type. Pending, unmatched, Casual-origin or otherwise tainted pack trades exclude those outputs for Ranked scoring. Maintenance traces taint from packs to their opened cards and subsequent trades; when an honest pending pair matches, its outputs count again. This deliberately over-excludes when found and traded packs of the same type are mixed. Casual packFind events also constitute unverified provenance, even if they never drop a card or are traded before opening. Local integrity checks still cover card counts and dust; server replay is authoritative for pack counts.
+
+Specification 6 is required for `packs2`, tiered pack find/open IDs and pack trade keys; a collection that has used these cannot sync with an older companion. Legacy versions 2–5 remain replayable. See `satchel.json` and the Lua vectors for pack boundary/gift examples.
 
 ## Drop balance version 1
 
