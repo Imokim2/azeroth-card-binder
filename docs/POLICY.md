@@ -43,7 +43,7 @@ The creature data comes from a fan site that says it allows noncommercial use, a
 
 **Recommendation:** license the repository **GPL-3.0-or-later**, and say so in `CREDITS.md`. It matches the data's licence, it keeps the add-on source public as Blizzard's policy requires, and it still lets people use and learn from the code. The alternative (a permissive licence for the code and a separate licence for the generated data) is possible, but only worth the complexity if someone wants to reuse the code commercially.
 
-**Not decided:** the licence is the repository owner's choice, so no `LICENSE` file has been added. **To do:** choose, add `LICENSE`, and name the licence in the README and `CREDITS.md`. Ask a lawyer if the project grows beyond a hobby.
+**Decided (12 Nov 2026): GPL-3.0-or-later.** `LICENSE` holds the full text, and the README and `CREDITS.md` name it. The repository owner and the other contributors should each confirm they agree before the repository is made public. Ask a lawyer if the project grows beyond a hobby.
 
 ## Other points found
 
