@@ -307,3 +307,39 @@ test("minimap launcher toggles the fitted window and saves its drag position", f
     equal(launcher.point[5], 73)
     UIParent.width = 1200
 end)
+
+test("a portrait assigned on a hidden page retries on show and tolerates a missed load callback", function()
+    local card = ACB.createCard(UIParent, true)
+    local entry = ACB.cards["npc:639"]
+    card:set(entry, 1)
+    card.model.creature, card.model.fileID = nil, nil
+    card.model:OnShow()
+    equal(card.model.creature, entry.id, "visibility retries an unstarted request")
+    card.model.creature = nil
+    card.model:OnUpdate(1.1)
+    equal(card.model.creature, entry.id, "a slow request gets a bounded retry")
+    card.model.fileID, card.model.supportedAnimation = 12345, 17
+    card.model:OnUpdate(1.1)
+    equal(card.model.frozen[1], 17, "polling applies the pose if the callback was missed")
+    card.model.creature = nil
+    card.model:OnUpdate(10)
+    equal(card.model.creature, nil, "a loaded portrait is never requested again by the watcher")
+end)
+
+test("portrait warming retries unavailable models once without blocking the rest of the set", function()
+    local start = #widgets
+    local warm = ACB.createPortraitLoader(UIParent, UIParent)
+    local loader = widgets[start + 1]
+    local cards = { ACB.cards["npc:639"], ACB.cards["npc:573"] }
+    warm(cards)
+    loader:OnUpdate(0.1)
+    equal(loader.creature, 639)
+    loader:OnUpdate(3.1)
+    equal(loader.creature, 573)
+    loader:OnUpdate(3.1)
+    equal(loader.creature, 639)
+    loader:OnUpdate(3.1)
+    equal(loader.creature, 573)
+    loader:OnUpdate(3.1)
+    equal(loader:IsShown(), false)
+end)

@@ -164,7 +164,8 @@ function ACB.cleanSavedData(saved)
     end
     for index = #saved.history, 1, -1 do
         local entry = saved.history[index]
-        if type(entry) ~= "table" or not ACB.cards[entry.give] or not ACB.cards[entry.take] then
+        if type(entry) ~= "table" or (not entry.give and not entry.take)
+            or (entry.give and not ACB.cards[entry.give]) or (entry.take and not ACB.cards[entry.take]) then
             table.remove(saved.history, index)
         end
     end

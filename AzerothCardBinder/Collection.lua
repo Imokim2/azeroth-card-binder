@@ -38,9 +38,11 @@ function ACB.tradeHistory(saved)
     local lines = {}
     for _, entry in ipairs(saved.history or {}) do
         local out, into = ACB.cards[entry.give], ACB.cards[entry.take]
-        if out and into then
+        if out or into then
             local stamp = entry.time and (date and date("%d %b %H:%M", entry.time) or tostring(entry.time)) or ""
-            lines[#lines + 1] = ("%s   %s for %s   with %s"):format(stamp, out.name, into.name, entry.peer or "?")
+            local action = out and into and (out.name .. " for " .. into.name)
+                or out and ("Gifted " .. out.name) or ("Received " .. into.name .. " as a gift")
+            lines[#lines + 1] = ("%s   %s   with %s"):format(stamp, action, entry.peer or "?")
         end
     end
     return lines
@@ -239,16 +241,23 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     function collection:swap(give, take, partner, tradeId)
         local counts = saved.counts
         local out, into = ACB.cards[give], ACB.cards[take]
-        if not out or not into or (counts[give] or 0) < 1 then return false end
-        counts[give] = counts[give] - 1
-        record("tradeOut", give, { before = counts[give] + 1, partner = partner, trade = tradeId })
-        if counts[give] == 0 then counts[give] = nil end -- a card that is gone is simply not in the binder
-        local before = counts[take] or 0
-        counts[take] = before + 1
-        record("tradeIn", take, { before = before, partner = partner, trade = tradeId })
-        report(("Traded %s for %s (x%d)"):format(out.name, into.name, counts[take]))
-        checkAchievements(into)
-        found(into, { count = counts[take], first = counts[take] == 1, trade = true })
+        if (not out and not into) or (give and not out) or (take and not into)
+            or give == take or (out and (counts[give] or 0) < 1) then return false end
+        if out then
+            counts[give] = counts[give] - 1
+            record("tradeOut", give, { before = counts[give] + 1, partner = partner, trade = tradeId })
+            if counts[give] == 0 then counts[give] = nil end
+        end
+        if into then
+            local before = counts[take] or 0
+            counts[take] = before + 1
+            record("tradeIn", take, { before = before, partner = partner, trade = tradeId })
+            report(out and ("Traded %s for %s"):format(out.name, into.name) or ("Received %s as a gift."):format(into.name))
+            checkAchievements(into)
+            found(into, { count = counts[take], first = counts[take] == 1, trade = true })
+        else
+            report(("Gifted %s."):format(out.name))
+        end
         return true
     end
 

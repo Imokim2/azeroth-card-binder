@@ -59,6 +59,11 @@ function ACB.initSlash(saved, tools)
             report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
         elseif cmd == "bar" or cmd == "bar reset" or cmd == "bar debug" then
             if cmd == "bar debug" then
+                local place = ACB.currentPlaceName()
+                local index, owned, total = ACB.zoneProgress(saved, place)
+                report(("Zone: %s. Card bar: %s. %s"):format(place or "not available yet",
+                    ACB.settingOn(saved, "zoneBar") and "on" or "off",
+                    index and ("%s: %d / %d collected."):format(ACB.pages[index].title, owned, total) or "No matching card set."))
                 local slot, name = ACB.replacedBar()
                 report(slot and ("Replacing the bar: " .. tostring(name)) or "No bar to replace; the zone bar sits above the experience bar.")
                 for _, frame in ipairs({ "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer",
@@ -79,7 +84,8 @@ function ACB.initSlash(saved, tools)
                 end
             elseif cmd == "bar reset" then
                 saved.zoneBarSpot = nil
-                report("The zone card bar is back in the reputation bar's place.")
+                ACB.setSetting(saved, "zoneBar", true)
+                report("The zone card bar is on and its position has been reset.")
             else
                 ACB.setSetting(saved, "zoneBar", not ACB.settingOn(saved, "zoneBar"))
                 report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))

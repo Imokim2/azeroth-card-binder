@@ -7,14 +7,14 @@ ACB.tradePrefix = "AzerothBinder1"
 -- and received the partner's, it applies the swap once through `apply`.
 -- `wanted` returns the cards the player is looking for, as a list of catalog keys.
 function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
-    local trade = { seen = {}, status = "Choose a partner and a card to offer." }
+    local trade = { seen = {}, status = "Choose a player and a card, then click Start trade." }
     apply = apply or function() return true end
     -- `allowed(peer)` may say no, with a reason (the trading distance); with none given every trade may go ahead.
     allowed = allowed or function() return true end
 
     function trade:reset(status)
         self.session = nil
-        self.status = status or "Trade cleared. Choose a partner to start again."
+        self.status = status or "Choose a player and a card to start a new trade."
     end
 
     function trade:active()
@@ -198,5 +198,6 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed)
         end
     end
 
+    if ACB.addTradeSession then ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed) end
     return trade
 end

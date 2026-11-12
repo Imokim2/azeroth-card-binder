@@ -4,14 +4,46 @@ local _, ACB = ...
 -- Variants are outside page.cards so ordinary set completion never requires them.
 ACB.editions, ACB.editionDenominator = {}, 1000
 local content = {
-    { 639, "Defiant", "Blades Drawn", .56, .38, 25, .52, -.66, 17 },
-    { 646, "First Mate", "Hammerfall", .34, .36, 27, .30, -.55, 17 },
-    { 4275, "Moonlit", "Dark Invocation", .55, .42, 25, .52, -.35, 32 },
-    { 3887, "Restless", "Haunting", .52, -.40, 25, .49, .38, 0 },
-    { 3976, "The Commander", "Scarlet Steel", .56, .36, 27, .52, -.50, 17 },
-    { 3977, "Requiem", "Arise", .56, -.32, 25, .53, .38, 32 },
-    { 4832, "Twilight Vigil", "Dream Eater", .55, -.38, 25, .51, .40, 32 },
-    { 4829, "Ancient Depths", "Threefold Fury", .20, -.45, 0, .18, .35, 16 },
+    { 639, "Defiant", "Blades Drawn",
+        { zoom = .24, facing = 1.15, animation = 120, frame = 420, y = -.08, z = -.12,
+            fallbacks = { 115, 75 }, composition = "Wide side-on stealth crouch" },
+        { zoom = .34, facing = -1.65, animation = 126, frame = 650, y = .07, z = -.08,
+            fallbacks = { 87, 85 }, duration = 1.65, composition = "Opposite-side spinning blade attack" } },
+    { 646, "First Mate", "Hammerfall",
+        { zoom = .72, facing = 1.25, animation = 74, frame = 700, y = -.06, z = .06,
+            fallbacks = { 55, 28 }, composition = "Tight roaring profile" },
+        { zoom = .12, facing = -1.50, animation = 58, frame = 550, y = .08, z = -.16,
+            fallbacks = { 19, 18 }, duration = 2.1, composition = "Wide full-body hammer strike" } },
+    { 4275, "Moonlit", "Dark Invocation",
+        { zoom = .84, facing = 1.35, animation = 31, frame = 900, y = -.07, z = .06,
+            fallbacks = { 51, 52 }, composition = "Tight side-on spell preparation" },
+        { zoom = .22, facing = -1.40, animation = 53, frame = 650, y = .06, z = -.10,
+            fallbacks = { 33, 54 }, duration = 2.6, composition = "Wide directed spell cast" } },
+    { 3887, "Restless", "Haunting",
+        { zoom = .20, facing = -1.20, animation = 115, frame = 500, y = .06, z = -.14,
+            fallbacks = { 75, 66 }, composition = "Wide kneeling ghost portrait" },
+        { zoom = .78, facing = 1.65, animation = 74, frame = 750, y = -.06, z = .06,
+            fallbacks = { 55, 64 }, duration = 2.4, composition = "Tight spectral roar" } },
+    { 3976, "The Commander", "Scarlet Steel",
+        { zoom = .83, facing = 1.25, animation = 113, frame = 700, y = -.06, z = .05,
+            fallbacks = { 66, 55 }, composition = "Close commanding salute" },
+        { zoom = .23, facing = -1.60, animation = 58, frame = 600, y = .07, z = -.10,
+            fallbacks = { 19, 57 }, duration = 1.9, composition = "Wide sweeping weapon attack" } },
+    { 3977, "Requiem", "Arise",
+        { zoom = .22, facing = -1.30, animation = 115, frame = 500, y = .07, z = -.12,
+            fallbacks = { 75, 51 }, composition = "Wide kneeling prayer" },
+        { zoom = .82, facing = 1.55, animation = 54, frame = 850, y = -.07, z = .06,
+            fallbacks = { 125, 53 }, duration = 3.1, composition = "Tight arms-raised resurrection cast" } },
+    { 4832, "Twilight Vigil", "Dream Eater",
+        { zoom = .82, facing = -1.25, animation = 124, frame = 1100, y = .07, z = .05,
+            fallbacks = { 52, 31 }, composition = "Close channeling profile" },
+        { zoom = .20, facing = 1.65, animation = 125, frame = 950, y = -.07, z = -.12,
+            fallbacks = { 33, 54 }, duration = 2.75, composition = "Wide all-direction ritual channel" } },
+    { 4829, "Ancient Depths", "Threefold Fury",
+        { zoom = .12, facing = -1.35, animation = 74, frame = 850, y = .08, z = -.10,
+            fallbacks = { 55, 130 }, composition = "Side-on three-headed roar" },
+        { zoom = .02, facing = 1.65, animation = 130, frame = 650, y = -.08, z = -.18,
+            fallbacks = { 118, 16 }, duration = 2.8, composition = "Opposite wide creature-special attack" } },
 }
 for _, row in ipairs(content) do
     local base = ACB.cards["npc:" .. row[1]]
@@ -27,9 +59,8 @@ for _, row in ipairs(content) do
             entry.name = base.name .. " (" .. entry.editionTitle .. ")"
             entry.serial = base.serial .. "/A" .. slot
             entry.editionWeight = slot == 1 and 150 or 50 -- 15% still, 5% animated, 80% Signature
-            local offset = slot == 1 and 4 or 7
-            entry.presentation = { zoom = row[offset], facing = row[offset + 1], animation = row[offset + 2], frame = 18,
-                animated = slot == 2, duration = slot == 2 and 3.5 or nil }
+            entry.presentation = row[slot + 3]
+            entry.presentation.animated = slot == 2
             ACB.cards[entry.key] = entry
             family[#family + 1] = entry
         end

@@ -142,3 +142,24 @@ test("a name is always shown whole: it shrinks to fit, and only then breaks over
     ACB.fitText(reused, "font", "Hogger", 86, 11, 6.5)
     equal(reused.wrap, false)
 end)
+
+test("artwork requested before the map API is ready can replace its temporary gradient later", function()
+    local keep = { C_Map, GetFileIDFromPath, EJ_GetInstanceByIndex }
+    local ready = false
+    C_Map = {
+        GetMapChildrenInfo = function() return ready and { { name = "Late Zone", mapID = 42 } } or {} end,
+        GetMapArtLayers = function() return { { layerWidth = 1, layerHeight = 1, tileWidth = 1, tileHeight = 1 } } end,
+        GetMapArtLayerTextures = function() return { 8123 } end,
+    }
+    GetFileIDFromPath, EJ_GetInstanceByIndex = nil, nil
+    local late = { safe = ACB.safe, read = ACB.read, folioArt = ACB.folioArt,
+        zones = { pending = { name = "Late Zone", top = { .2, .3, .4 }, bottom = { .1, .1, .1 } } } }
+    assert(loadfile("AzerothCardBinder/CardArt.lua"))("AzerothCardBinder", late)
+    local art = late.newCardArt(UIParent, 120, 90)
+    art:show("pending", true)
+    equal(#art.tiles, 0)
+    ready = true
+    art:show("pending", true)
+    equal(art.tiles[1].texture, 8123)
+    C_Map, GetFileIDFromPath, EJ_GetInstanceByIndex = unpack(keep, 1, 3)
+end)

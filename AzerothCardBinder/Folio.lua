@@ -248,7 +248,7 @@ function ACB.createFolio(parent, saved, selectSet)
         wantText:SetText(count > 0 and "Link in chat" or (wanted and "On your wanted list" or "Add to wanted list"))
         setCard(detail, entry, count, saved.shiny and saved.shiny[entry.key], wanted)
         if showIndex then
-            preloadPortraits()
+            preloadPortraits(page.cards)
         else
             preloadPortraits(page.cards, first + 1, math.min(first + CARDS_PER_LEAF, total))
         end
