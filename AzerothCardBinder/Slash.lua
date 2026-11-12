@@ -14,6 +14,8 @@ function ACB.initSlash(saved, tools)
             report("Diagnostics " .. (saved.diagnostics and "on. Use /acb log to copy." or "off."))
         elseif cmd == "log" then
             ACB.showLog(table.concat(diagnostics, "\n"), saved.diagnostics)
+        elseif cmd == "version" then
+            ACB.reportVersion(report)
         elseif cmd == "boss" then
             saved.bossTrial = not saved.bossTrial
             report("VanCleef completion trial " .. (saved.bossTrial and "on." or "off."))
@@ -157,7 +159,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, studio, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, studio, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, version, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

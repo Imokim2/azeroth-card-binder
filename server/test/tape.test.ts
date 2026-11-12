@@ -172,6 +172,21 @@ test("the first kind of Ranked, which did not write misses down, is no longer ac
   assert.equal(old.error?.code, "client_too_old");
 });
 
+test("a player who went Ranked on the old add-on and then updated can still sync: the old switch is accepted when a new one follows it", async () => {
+  const env = setup();
+  const { player } = await registered(env);
+  await env.call("/v1/tape", { body: tapeRequest(player) });
+  const base = { t: 1000, count: 0, dust: 0, shiny: 0, partner: "", trade: "", char: "Alice-RealmName" };
+  const events = chain([
+    { ...base, seq: 1, kind: "mode", key: "ranked", tape: 0 },
+    { ...base, seq: 2, t: 1001, kind: "mode", key: "ranked2", tape: 0 },
+  ]);
+  const snapshot = { counts: {}, dust: 0, sets: {}, attempts: {}, titles: {} };
+  const body = await read(await env.call("/v1/ledger", { body: signedUpload(player, events, { tapeIndex: 1, snapshot }) }));
+  assert.equal(body["accepted"], 2, JSON.stringify(body));
+  assert.equal(body.error, undefined);
+});
+
 test("a run of misses long enough to leave the issued entries is refused before any are looked at", async () => {
   const env = setup();
   const { player, id } = await registered(env);

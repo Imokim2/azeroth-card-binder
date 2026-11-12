@@ -15,6 +15,12 @@ import type { Settings } from "./settings.ts";
 import { SecretStorageUnavailable } from "./secrets.ts";
 import { signInAndRegister } from "./signIn.ts";
 import type { SignInOptions } from "./signIn.ts";
+import { RELEASE_PUBLIC_KEY } from "./releaseKey.ts";
+import { downloadVerified, installAddon, verifiedManifest } from "./updates.ts";
+import type { Download, Manifest } from "./updates.ts";
+import { compareVersions } from "./versions.ts";
+import type { UpdateReport } from "./versions.ts";
+import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
 export type Deps = {
@@ -33,6 +39,9 @@ export type Deps = {
   engineTimings?: { quietMs?: number; everyMs?: number; standingsEveryMs?: number };
   applyStartAtLogin?: (on: boolean) => void;
   commonFolders?: string[]; // where to look for the game when asked to find it
+  releaseKey?: string | null; // the public key release manifests must be signed with (default: the one built into the app)
+  download?: Download; // fetches a file for an update; absent, nothing is downloaded
+  runInstaller?: (path: string) => void; // starts the new companion installer and quits this app
 };
 
 export type Status = {
@@ -50,6 +59,10 @@ export type Status = {
   needsNewBinder: boolean; // the saved data is a different binder from the one the server holds
   message: string | null; // the latest thing worth telling the player
   busy: boolean;
+  updates: UpdateReport | null; // whether the app and the add-on are out of date, once a sync has looked
+  canUpdate: { addon: boolean; app: boolean }; // an update can be installed from here: it is signed, and newer than what is installed
+  updating: "addon" | "app" | null; // an update is being downloaded or installed
+  newer: { addon: string | null; app: string | null; notes: { addon: string; app: string } } | null; // what the signed manifest offers
 };
 
 const SIGN_IN_FAILURES: Record<string, string> = {
@@ -84,6 +97,8 @@ export class Controller {
   #busy = false;
   #lastReport: PassReport | null = null;
   #lastSyncAt: number | null = null;
+  #manifest: Manifest | null = null; // the release manifest, once its signature has been checked against the trusted key
+  #updating: "addon" | "app" | null = null;
 
   constructor(deps: Deps) {
     this.#deps = deps;
@@ -111,7 +126,9 @@ export class Controller {
       tapeEntries: report?.tape && "count" in report.tape ? report.tape.count : null,
       standings: report?.standings ?? null,
       needsNewBinder: report?.accounts.some((entry) => entry.result.status === "diverged") ?? false,
-      message: this.#message, busy: this.#busy,
+      message: this.#message, busy: this.#busy, updates: report?.updates ?? null,
+      canUpdate: this.#canUpdate(), updating: this.#updating,
+      newer: this.#manifest ? { addon: this.#manifest.addon.version, app: this.#manifest.app.version, notes: { addon: this.#manifest.addon.notes, app: this.#manifest.app.notes } } : null,
     };
   }
 
@@ -182,10 +199,77 @@ export class Controller {
         this.#lastReport = report;
         this.#lastSyncAt = this.#deps.now();
         this.#busy = false;
+        void this.#trustRelease(report.signedRelease);
         this.#changed();
       },
     });
     this.#stopEngine = this.#engine.start();
+  }
+
+  // The server's release manifest is believed only when it is signed with the key built into the app.
+  async #trustRelease(signed: PassReport["signedRelease"]): Promise<void> {
+    const key = this.#deps.releaseKey === undefined ? RELEASE_PUBLIC_KEY : this.#deps.releaseKey;
+    const manifest = await verifiedManifest(signed, key);
+    if (JSON.stringify(manifest) !== JSON.stringify(this.#manifest)) {
+      this.#manifest = manifest;
+      this.#changed();
+    }
+  }
+
+  #canUpdate(): { addon: boolean; app: boolean } {
+    const manifest = this.#manifest;
+    const installed = this.#lastReport?.updates.addon.installed ?? null;
+    return {
+      addon: manifest !== null && this.#deps.download !== undefined && this.#settings.gameFolder !== null
+        && (installed === null || compareVersions(manifest.addon.version, installed) > 0),
+      app: manifest !== null && this.#deps.download !== undefined && this.#deps.runInstaller !== undefined
+        && compareVersions(manifest.app.version, this.#deps.version) > 0,
+    };
+  }
+
+  // Download the add-on the signed manifest names, check it, and put it in the game folder (the old copy is kept aside).
+  async updateAddon(): Promise<void> {
+    const manifest = this.#manifest;
+    const folder = this.#settings.gameFolder;
+    if (this.#updating || !manifest || !folder || !this.#canUpdate().addon || !this.#deps.download) return;
+    this.#updating = "addon";
+    this.#say("Downloading add-on " + manifest.addon.version + "...");
+    const file = join(this.#deps.dataFolder, "updates", "AzerothCardBinder-" + manifest.addon.version + ".zip");
+    try {
+      await downloadVerified(this.#deps.download, manifest.addon, file);
+      this.#message = "Installing add-on " + manifest.addon.version + "...";
+      this.#changed();
+      await installAddon(file, folder, join(this.#deps.dataFolder, "addon-backups"), manifest.addon.version);
+      this.#updating = null;
+      this.#say("Add-on " + manifest.addon.version + " is installed. Use /reload in the game, or restart it, to start using it.");
+      void this.#engine?.syncOnce();
+    } catch (error) {
+      this.#updating = null;
+      this.#say("The add-on could not be updated: " + (error instanceof Error ? error.message : "an unknown problem") + ". Your add-on was left as it was.");
+    } finally {
+      await rm(file, { force: true });
+    }
+  }
+
+  // Download the new companion installer the signed manifest names, check it, and run it; this app then closes.
+  async updateApp(): Promise<void> {
+    const manifest = this.#manifest;
+    if (this.#updating || !manifest || !this.#canUpdate().app || !this.#deps.download || !this.#deps.runInstaller) return;
+    const agreed = await this.#deps.confirm("Install World of Warcards " + manifest.app.version + " now? This app will close and open again.", "Install and restart");
+    if (!agreed) return this.#say("Nothing was changed.");
+    this.#updating = "app";
+    this.#say("Downloading companion " + manifest.app.version + "...");
+    const updates = join(this.#deps.dataFolder, "updates");
+    const file = join(updates, "World-of-Warcards-Setup-" + manifest.app.version + ".exe");
+    try {
+      await rm(updates, { recursive: true, force: true });
+      await downloadVerified(this.#deps.download, manifest.app, file);
+      this.#say("Installing companion " + manifest.app.version + "...");
+      this.#deps.runInstaller(file);
+    } catch (error) {
+      this.#updating = null;
+      this.#say("The companion could not be updated: " + (error instanceof Error ? error.message : "an unknown problem") + ". Nothing was changed.");
+    }
   }
 
   // Sign in with Discord in the player's browser, then register this computer's key against that account.

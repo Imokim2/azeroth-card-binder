@@ -35,7 +35,7 @@ npm ci
 npm start
 ```
 
-`npm start` compiles the TypeScript to `dist/` and opens the window. Closing the window sends the app to the tray; **Quit** is in the tray menu. Settings and the encrypted key live in `%APPDATA%World of Warcards`. Set `WARCARDS_DATA` to use another data folder, and `WARCARDS_SERVER` to use another server (the default is the staging server in `src/config.ts`).
+`npm start` compiles the TypeScript to `dist/` and opens the window. Closing the window sends the app to the tray; **Quit** is in the tray menu. Settings and the encrypted key live in `%APPDATA%World of Warcards`. Set `WARCARDS_DATA` to use another data folder, and `WARCARDS_SERVER` to use another server (the default is the production server, `https://worldofwarcards.co.uk`, in `src/config.ts`; the staging server is `https://staging.worldofwarcards.co.uk`).
 
 ## Build the installer
 

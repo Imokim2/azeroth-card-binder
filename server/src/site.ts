@@ -125,7 +125,7 @@ export function privacyPage(): string {
 <h2>Your choices</h2>
 <ul>
 <li>Choose public or private when you sign up, and change it by signing in again.</li>
-<li>Delete your data from the server at any time with <strong>Delete my data</strong> in the companion app. Your record, history, characters, Discord link and any archived binders are erased and cannot be recovered. Your cards in the game and the files on your computer are not touched. You can sign up again later, from nothing.</li>
+<li>Delete your data from the server at any time with <strong>Delete my data</strong> in the companion app. Your record, history, characters, Discord link and any archived binders are erased from the live service at once. Copies kept for recovery after a mistake age out on their own: Cloudflare&rsquo;s recovery history lasts 7 days and our own daily copies are kept for 14. Your cards in the game and the files on your computer are not touched. You can sign up again later, from nothing.</li>
 <li>A banned account's record is kept, so that a ban cannot be undone by deleting the account.</li>
 </ul>
 

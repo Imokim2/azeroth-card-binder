@@ -11,10 +11,16 @@ import type { D1Like } from "./db.ts";
 import { SqlStore } from "./sqlStore.ts";
 import type { Catalog } from "./shared.ts";
 import catalog from "../../packages/shared/catalog.json";
+import bundledRelease from "./releases.json";
+import { releasesFrom } from "./releases.ts";
+import type { BundledRelease } from "./releases.ts";
 
 export interface Env {
   DB: D1Like;
   MIN_CLIENT: string;
+  LATEST_APP?: string; // the newest companion app and add-on, and the oldest add-on, as x.y.z (see /v1/releases)
+  LATEST_ADDON?: string;
+  MIN_ADDON?: string;
   VERSION: string;
   TAPE_SECRET?: string; // a secret (wrangler secret put TAPE_SECRET); without it Ranked is closed
   RATE_GENERAL?: RateLimitBinding; // Cloudflare rate-limit bindings (wrangler.toml); without them nothing is limited
@@ -36,6 +42,7 @@ export default {
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },
       minClient: env.MIN_CLIENT, version: env.VERSION,
+      releases: releasesFrom(env, bundledRelease as BundledRelease),
       ...(env.RATE_GENERAL && env.RATE_STRICT ? { limits: { general: bindingLimiter(env.RATE_GENERAL), strict: bindingLimiter(env.RATE_STRICT) } } : {}),
       // Registration opens only when the Discord application is fully configured.
       ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.DISCORD_REDIRECT_URI

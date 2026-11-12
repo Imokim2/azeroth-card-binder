@@ -297,6 +297,7 @@ end
 local function initialize()
     saved = ACB.tableOrEmpty(AzerothCardBinderDB)
     AzerothCardBinderDB = saved
+    saved.addonVersion = ACB.addonVersion() -- the companion app reads it, to tell when a newer one is installed but not loaded
     local _, upgraded = ACB.cleanSavedData(saved)
     local ledger = ACB.newLedger(saved, time, ACB.characterName)
     ledger:begin(upgraded)
@@ -388,6 +389,7 @@ local handlers = {
     UPDATE_MOUSEOVER_UNIT = watchBoss,
     PLAYER_FOCUS_CHANGED = watchBoss,
     PLAYER_ENTERING_WORLD = function()
+        ACB.announceUpdates(report)
         readyLoot, gather, pickpocketAt, encounter = nil, nil, nil, nil
         if kills then kills:reset() end
     end,

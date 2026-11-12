@@ -20,6 +20,7 @@ end
 -- position (counting from 1); the position is stored in the drop event. The entry is used up either way.
 function ACB.takeTape(saved)
     saved.tape = type(saved.tape) == "table" and saved.tape or { next = 1 }
+    if ACB.addonTooOld() then return end -- no Ranked roll on a version the server no longer accepts (Updates.lua)
     local tape = ACB.sync and ACB.sync.tape
     if type(tape) ~= "table" or type(tape.entries) ~= "table" or type(tape.start) ~= "number" then return end
     local index = saved.tape.next
@@ -32,6 +33,7 @@ end
 
 -- Are the next `count` tape entries there and well formed? Checked before anything is written that needs them all.
 function ACB.tapeHolds(saved, count)
+    if ACB.addonTooOld() then return false end
     local tape = ACB.sync and ACB.sync.tape
     if type(tape) ~= "table" or type(tape.entries) ~= "table" or type(tape.start) ~= "number" then return false end
     local index = type(saved.tape) == "table" and saved.tape.next or 1
@@ -45,6 +47,7 @@ end
 
 -- How many tape entries are left, for the Settings tab and /acb verify.
 function ACB.tapeLeft(saved)
+    if ACB.addonTooOld() then return 0 end
     local tape = ACB.sync and ACB.sync.tape
     if type(tape) ~= "table" or type(tape.entries) ~= "table" or type(tape.start) ~= "number" then return 0 end
     local next = type(saved.tape) == "table" and saved.tape.next or 1

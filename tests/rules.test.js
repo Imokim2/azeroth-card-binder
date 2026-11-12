@@ -62,3 +62,23 @@ test("a snapshot that disagrees with the replay is reported by name", () => {
     // An owned-zero entry in the snapshot is the same as no entry.
     assert.deepEqual(rules.snapshotDifferences({ counts: { ...state.counts, "npc:1": 0 }, dust: state.dust, sets: state.sets }, state), []);
 });
+
+test("a new upload may carry an old Ranked switch only when another switch follows it directly, and no roll under it", () => {
+    const base = { t: 1000, count: 0, dust: 0, shiny: 0, tape: 0, partner: "", trade: "", char: "Alice-RealmName" };
+    const old = { ...base, seq: 1, kind: "mode", key: "ranked" };
+    const second = { ...base, seq: 2, t: 1001, kind: "mode", key: "ranked2" };
+    const casual = { ...base, seq: 2, t: 1001, kind: "mode", key: "casual" };
+    const drop = { ...base, seq: 2, t: 1001, kind: "drop", key: "npc:589", count: 1, tape: 1 };
+    // Strict is how a new upload is checked: the old switch followed by the new kind, or by Casual, is fine.
+    assert.equal(rules.replay([old, second], catalog, undefined, { strict: true }).ok, true);
+    assert.equal(rules.replay([old, second], catalog, undefined, { strict: true }).state.mode, "ranked2");
+    assert.equal(rules.replay([old, casual], catalog, undefined, { strict: true }).ok, true);
+    // Alone (or the last event of an upload), or followed by a roll, it is still refused.
+    const alone = rules.replay([old], catalog, undefined, { strict: true });
+    assert.deepEqual([alone.ok, alone.rule], [false, "mode"]);
+    const rolled = rules.replay([old, drop], catalog, undefined, { strict: true });
+    assert.equal(rolled.ok, false);
+    assert.ok(rolled.rule === "mode" || rolled.rule === "tape", rolled.rule);
+    // Old history that is already stored is read as it always was.
+    assert.equal(rules.replay([old], catalog).ok, true);
+});

@@ -14,10 +14,15 @@ compatibility_date = "2026-11-01"
 
 [env.staging]
 name = "warcards-api-staging"
-vars = { MIN_CLIENT = "0.1.0", VERSION = "0.2.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
+vars = { MIN_CLIENT = "0.1.0", LATEST_APP = "0.2.0", LATEST_ADDON = "0.4.0", MIN_ADDON = "0.0.0", VERSION = "0.2.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
 d1_databases = [
   { binding = "DB", database_name = "warcards-staging", database_id = "adf8ffb3-8272-4962-98e8-6b9dba138532", migrations_dir = "migrations" },
 ]
+
+# The test server's own address (a custom domain: Cloudflare makes the DNS record and the certificate).
+routes = [{ pattern = "staging.worldofwarcards.co.uk", custom_domain = true }]
+# The workers.dev address stays on too, so apps installed before the domain existed keep working.
+workers_dev = true
 
 # Once an hour: pair up trades and write off the ones nobody confirmed (src/maintenance.ts).
 [env.staging.triggers]
@@ -41,10 +46,17 @@ enabled = true
 
 [env.production]
 name = "warcards-api"
-vars = { MIN_CLIENT = "0.1.0", VERSION = "0.2.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
+vars = { MIN_CLIENT = "0.1.0", LATEST_APP = "0.2.0", LATEST_ADDON = "0.4.0", MIN_ADDON = "0.0.0", VERSION = "0.2.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
 d1_databases = [
   { binding = "DB", database_name = "warcards", database_id = "aafe20da-94e3-4011-b28c-5e88a125f741", migrations_dir = "migrations" },
 ]
+
+# The real server's address: the website and the API are the same Worker, so one domain serves both.
+routes = [
+  { pattern = "worldofwarcards.co.uk", custom_domain = true },
+  { pattern = "www.worldofwarcards.co.uk", custom_domain = true },
+]
+workers_dev = true
 
 [env.production.triggers]
 crons = ["17 * * * *"]
