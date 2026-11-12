@@ -59,6 +59,11 @@ function ACB.initSlash(saved, tools)
             report("Tooltip hints " .. (saved.hints == false and "off." or "on."))
         elseif cmd == "bar" or cmd == "bar reset" or cmd == "bar debug" then
             if cmd == "bar debug" then
+                local place = ACB.currentPlaceName()
+                local index, owned, total = ACB.zoneProgress(saved, place)
+                report(("Zone: %s. Card bar: %s. %s"):format(place or "not available yet",
+                    ACB.settingOn(saved, "zoneBar") and "on" or "off",
+                    index and ("%s: %d / %d collected."):format(ACB.pages[index].title, owned, total) or "No matching card set."))
                 local slot, name = ACB.replacedBar()
                 report(slot and ("Replacing the bar: " .. tostring(name)) or "No bar to replace; the zone bar sits above the experience bar.")
                 for _, frame in ipairs({ "StatusTrackingBarManager", "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer",
@@ -79,7 +84,8 @@ function ACB.initSlash(saved, tools)
                 end
             elseif cmd == "bar reset" then
                 saved.zoneBarSpot = nil
-                report("The zone card bar is back in the reputation bar's place.")
+                ACB.setSetting(saved, "zoneBar", true)
+                report("The zone card bar is on and its position has been reset.")
             else
                 ACB.setSetting(saved, "zoneBar", not ACB.settingOn(saved, "zoneBar"))
                 report("Zone card bar " .. (ACB.settingOn(saved, "zoneBar") and "on." or "off."))
@@ -121,6 +127,9 @@ function ACB.initSlash(saved, tools)
             report(("Mode: %s. Cards owned: %d. Attempts counted: %d."):format(saved.mode, ACB.countKeys(saved.counts),
                 ACB.sumValues(saved.attempts)))
             if ACB.refresh then ACB.refresh() end
+        elseif cmd == "studio" or cmd == "designs" or cmd:match("^studio%s+") then
+            local query = message:match("^%s*%S+%s+(.-)%s*$")
+            ACB.openCardStudio(query and ACB.findAnyCard(query))
         elseif cmd == "settings" or cmd == "options" then
             ACB.open("settings")
         elseif cmd == "popup" then
@@ -143,16 +152,12 @@ function ACB.initSlash(saved, tools)
             else
                 ACB.open(cmd)
             end
-        elseif cmd == "trade accept" then
-            ACB.acceptTrade()
-        elseif cmd == "trade decline" then
-            ACB.declineTrade()
         elseif cmd:match("^trade%s+%S") then
             ACB.prepareTrade(message:match("^%s*%S+%s+(.-)%s*$"))
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
+            report("/acb opens the binder. Options: index, trade, achievements, settings, studio, packs, dust, link, view, ask, privacy, title, popup, popup test, hints, bar, newbinder, diag, log, boss.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

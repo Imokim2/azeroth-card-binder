@@ -66,7 +66,7 @@ function ACB.findCard(saved, text)
     text = (text or ""):lower():match("^%s*(.-)%s*$")
     if text == "" then return end
     local best
-    for _, page in ipairs(ACB.pages) do
+    for _, page in ipairs(ACB.inventoryPages()) do
         for _, card in ipairs(page.cards) do
             local name = card.name:lower()
             if (saved.counts[card.key] or 0) > 0 and name:find(text, 1, true) then
@@ -81,18 +81,18 @@ end
 -- ---- Viewing a binder ----
 
 -- Cards go over the wire as "c589" (a creature) or "o1731" (a node), then =count and * for a shiny.
-local function shortKey(card) return (card.profession and "o" or "c") .. card.id end
+local function shortKey(card) return card.baseKey and ("v" .. card.key:match("%d+$")) or (card.profession and "o" or "c") .. card.id end
 function ACB.shortKey(card) return shortKey(card) end
 local function longKey(short)
-    local kind, id = short:match("^([co])(%d+)$")
-    return kind and ((kind == "o" and "node:" or "npc:") .. id)
+    local kind, id = short:match("^([cov])(%d+)$")
+    return kind and ((kind == "v" and "edition:" or kind == "o" and "node:" or "npc:") .. id)
 end
 ACB.longKey = longKey
 
 -- The messages that describe a binder: "B|part/parts|key=count[*],..." where * marks a shiny.
 function ACB.encodeBinder(saved)
     local parts, current = {}, {}
-    for _, page in ipairs(ACB.pages) do
+    for _, page in ipairs(ACB.inventoryPages()) do
         for _, card in ipairs(page.cards) do
             local count = saved.counts[card.key] or 0
             if count > 0 then
@@ -152,8 +152,7 @@ function ACB.initSocial(saved, send, now, after, report)
         frame.title:SetPoint("TOP", 0, -18)
         frame.title:SetTextColor(gold[1], gold[2], gold[3])
         frame.title:SetText(title)
-        local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-        close:SetPoint("TOPRIGHT", -6, -6)
+        ACB.uiKit.closeButton(frame, -16, -16)
         table.insert(UISpecialFrames, name)
         frame:Hide()
         return frame
@@ -256,7 +255,7 @@ function ACB.initSocial(saved, send, now, after, report)
         heard[peer] = true
         if book.got[index] then return end
         book.got[index] = true
-        for short, count, star in list:gmatch("([co]%d+)=(%d+)(%*?)") do
+        for short, count, star in list:gmatch("([cov]%d+)=(%d+)(%*?)") do
             local key = longKey(short)
             if key and ACB.cards[key] then
                 book.counts[key] = math.min(tonumber(count) or 0, 99)

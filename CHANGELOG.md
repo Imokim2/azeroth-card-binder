@@ -50,6 +50,21 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 - Engineering foundations (Phase 0 of the [roadmap](docs/ROADMAP.md)): repository layout, continuous integration, the written ledger specification with shared test vectors, contributing guide, decision records, and a release script. Nothing changes for players.
 
+## 0.4.0 - 2026-11-12
+
+- **Distinct boss variants.** All sixteen dungeon editions now use deliberately different actions, viewpoints and framing from Signature: crouches, prayer, salutes, roars, wide weapon strikes and contrasting spell casts. Animated profiles have individual repeat intervals and supported alternative actions. The studio describes each composition; ordinary card poses and variant drop rates are unchanged. Foe Reaper's studio previews also have new close/wide compositions.
+- **Simpler trades and gifts.** Choose a player, use the searchable card picker and click Start trade. The other player's window opens automatically; both players check You give / You receive and click Accept. Gift a card leaves the recipient's side empty. Offer changes clear acceptance; cancellations and delayed messages cannot approve a different revision or apply the same transfer twice. Both players need addon 0.4.0 or newer for this flow. Gifts use the existing server-checked transfer history and count towards trade milestones.
+- **Consistent controls and clean tabs.** Addon action and close buttons use the binder's brown-and-brass style. Opening Wanted hides every previous page, and the section label no longer overlaps the Settings tab.
+- **Portrait loading.** Opening a collection's index also warms its portraits. Slow models get a bounded retry; visible cards recover requests made while hidden. Pack faces request their models and backgrounds during opening, before flipping, and check again on reveal. Temporary artwork fallbacks no longer prevent later loading.
+- **Zone card bar recovery.** Hidden, collapsed and off-screen tracking bars are ignored when choosing its position. The bar follows later layout changes, saved positions stay on-screen, and `/acb bar reset` turns it on as well as resetting its position.
+
+## 0.3.0 - 2026-11-11
+
+- **Companion and website polish.** A new companion dashboard and a matching website with a homepage, downloads information, FAQs, help centre and real server/database status. The addon includes an artwork studio with three alternate native card frames alongside First Edition. Companion app 0.2.0 and server 0.2.0 support the edition-aware ledger; deploy them together for Ranked testing.
+
+- **Collectible boss editions.** Sixteen alternate cards across Deadmines, Shadowfang Keep, Scarlet Monastery and Blackfathom Deeps, with separate inventory, trades, links and holographic unlocks. On a successful card drop from a supported boss, 15% become the still edition, 5% the animated edition and 80% remain Signature. Any edition fills the ordinary creature slot. Ranked validates the exact edition using the issued roll tape. Update the addon, companion and server together; ledger uploads use specification version 4.
+- **Rarity silhouettes.** The nameplate icon now sits on the divider above the description, freeing the name's full width. Common uses a circle, Rare a square, Epic a diamond, Legendary a hexagon and special editions a star. All four frame designs use this layout.
+
 ## 0.2.9
 
 - Achievement tracks for cards collected, sets completed, cards traded and shiny cards, each earning a title; loot and binder-sharing fixes; drop rates of 1% for normal creatures and gathering nodes, 2% for elites and 10% for rares (the guarantee now lands on the 100th attempt for a normal card).

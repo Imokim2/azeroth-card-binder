@@ -314,7 +314,8 @@ test("on a card they are looking for, Trade starts the swap: you pick a card fro
     equal(last.prefix, ACB.tradePrefix)
     equal(last.channel, "WHISPER")
     equal(last.peer, "Bob Realmname")
-    assert(last.message:match("^P|[%w%-]+|" .. wantedKey .. "|" .. theirKey .. "$"), last.message)
+    -- The trade opens on his side by itself, with the card you give (the card you picked is asked for in chat).
+    assert(last.message:match("^I|[%w%-]+|" .. wantedKey .. "|t$"), last.message)
     -- Clean up: cancel the trade that is now open.
     for _, widget in ipairs(widgets) do
         if widget.text == "Cancel" and widget.OnClick then widget:OnClick() break end
@@ -323,40 +324,4 @@ test("on a card they are looking for, Trade starts the swap: you pick a card fro
     saved.counts["npc:589"], saved.tradeRange = keepCounts[1], keepCounts[2]
     ACB.heardWanted = nil
     ACB.refresh()
-end)
-
-test("an offer made to you shows on the Trade tab, with Accept offer and Decline, and /acb trade accept answers it", function()
-    local saved = AzerothCardBinderDB
-    local keep = { saved.counts["npc:589"], saved.tradeRange }
-    saved.counts["npc:589"], saved.tradeRange = 1, false
-    local originalSend, originalCodes, sent = C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult, {}
-    Enum.SendAddonMessageResult = { Success = 0 }
-    C_ChatInfo.SendAddonMessage = function(_, message, _, peer)
-        sent[#sent + 1] = { message = message, peer = peer }
-        return 0
-    end
-    local lines, realPrint = {}, print
-    print = function(text) lines[#lines + 1] = text end
-    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "P|offer-1|npc:639|npc:589", "WHISPER", "Bob-RealmName")
-    print = realPrint
-    assert(table.concat(lines, "\n"):find("offers", 1, true), "chat tells you about the offer: " .. table.concat(lines, "\n"))
-    ACB.open("trade")
-    local accept, decline
-    for _, widget in ipairs(widgets) do
-        if widget.text == "Accept offer" then accept = widget end
-        if widget.text == "Decline" then decline = widget end
-    end
-    assert(accept and decline, "the buttons say what they do for an offer made to you")
-    equal(accept.enabled ~= false, true)
-    -- Typing the command accepts: the card they asked for is sent, and the pair is confirmed.
-    SlashCmdList.AZEROTHCARDBINDER("trade accept")
-    equal(sent[1].message, "R|offer-1|npc:589")
-    equal(sent[2].message, "C|offer-1|npc:589|npc:639")
-    equal(sent[1].peer, "Bob Realmname")
-    C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult = originalSend, originalCodes
-    saved.counts["npc:589"], saved.tradeRange = keep[1], keep[2]
-    for _, widget in ipairs(widgets) do
-        if widget.text == "Cancel" and widget.OnClick then widget:OnClick() break end
-    end
-    ACB.open("collection")
 end)

@@ -18,7 +18,9 @@ local function mapByName(name)
             end
         end)
     end
-    return mapNames[name:lower()]
+    local found = mapNames[name:lower()]
+    if not next(mapNames) then mapNames = nil end
+    return found
 end
 -- Loading screens are named after the place, so every zone and instance gets its likely names tried too.
 -- A name that does not exist simply does not resolve, and the next idea is used.
@@ -49,7 +51,9 @@ local function journalByName(name)
             end
         end)
     end
-    return journalNames[name:lower()]
+    local found = journalNames[name:lower()]
+    if not next(journalNames) then journalNames = nil end
+    return found
 end
 
 local artCache = {}
@@ -96,7 +100,9 @@ local function resolveArt(zoneKey)
             end
         end
     end
-    artCache[zoneKey] = found
+    -- A gradient may mean the game's art APIs were not ready yet. Try again on
+    -- reveal instead of permanently caching that temporary fallback.
+    if found.file or found.tiles then artCache[zoneKey] = found end
     return found
 end
 

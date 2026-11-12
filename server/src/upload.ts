@@ -13,7 +13,7 @@ import type { IngestStore, Player, TapeStore, TradeStore } from "./store.ts";
 import { checkTape, tapeKey, tapeOwner } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3]; // 3 added the pack events; every version 2 history is valid in version 3
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4]; // 4 adds edition-aware drops and the editions1 activation marker
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -118,6 +118,9 @@ export async function acceptUpload(
   }
 
   const chain = await checkChain(events, stored.head);
+  if (upload.specVersion < 4 && events.some((event) => (event["kind"] === "mode" && event["key"] === "editions1") || deps.catalog.cards[String(event["key"])]?.baseKey)) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
   if (!chain.ok) {
     // Where the stored chain stands is included so the app can work out what to send next.
     throw new ApiError(CHAIN_ERRORS[chain.error] ?? "bad_field", { index: chain.index, ackSeq: stored.head.seq, ackHash: stored.head.hash });

@@ -5,7 +5,7 @@
 -- Run from the repository root.
 local addon = "AzerothCardBinder"
 local ACB = {}
-for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "Achievements.lua",
+for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "Editions.lua", "Achievements.lua",
     "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Tape.lua", "Collection.lua", "Packs.lua", "SavedData.lua", "Reports.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
@@ -16,7 +16,7 @@ local saved = {}
 local _, upgraded = ACB.cleanSavedData(saved)
 local ledger = ACB.newLedger(saved, time, function() return "Alice-RealmName" end)
 ledger:begin(upgraded)
-local collection = ACB.newCollection(saved, function(low) return low end, function() end, function() end, nil, nil, ledger)
+local collection = ACB.newCollection(saved, function(low, high) return high == ACB.editionDenominator and 500 or low end, function() end, function() end, nil, nil, ledger)
 local function guid(id, token) return ("Creature-0-session-36-4-%d-%s"):format(id, token) end
 local function find(id, token) assert(collection:roll(guid(id, token), "loot")) end
 

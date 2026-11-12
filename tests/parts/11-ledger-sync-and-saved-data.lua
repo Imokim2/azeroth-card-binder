@@ -16,6 +16,7 @@ end
 -- Open a binder the way the add-on does on login: clean the file, start the ledger, build the collection.
 local function open(saved, random)
     local _, upgraded = ACB.cleanSavedData(saved)
+    saved.editionDrops = false -- preserve the legacy histories here; editions have dedicated coverage
     local ledger = newLedger(saved)
     ledger:begin(upgraded)
     local collection = ACB.newCollection(saved, random or function(low) return low end, ignore, ignore, nil, nil, ledger)
@@ -23,6 +24,11 @@ local function open(saved, random)
 end
 
 test("the Lua ledger code gives exactly the results in the shared test vectors", function()
+    for _, side in ipairs({ vectors.gifts.giver, vectors.gifts.recipient }) do
+        local valid, head = ACB.checkChain(side.events)
+        equal(valid, true)
+        equal(head.hash, side.head.hash)
+    end
     for _, case in ipairs(vectors.sha256) do equal(ACB.sha256(case.input), case.hex) end
     local valid = vectors.valid
     for index, event in ipairs(valid.events) do

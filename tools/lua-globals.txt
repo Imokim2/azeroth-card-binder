@@ -52,7 +52,6 @@ GGET UnitIsDeadOrGhost
 GGET UnitIsPlayer
 GGET UnitIsTapDenied
 GGET UnitIsUnit
-GGET UnitName
 GGET UnitTokenFromGUID
 GGET _G
 GGET bit

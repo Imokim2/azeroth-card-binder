@@ -190,3 +190,17 @@ test("the Wanted tab shows your list, adds and removes cards, shows what others 
     ACB.open("collection")
     saved.wanted, saved.counts["npc:639"], saved.counts["npc:589"], ACB.sync, ACB.heardWanted, ACB.prepareTrade, saved.counts["npc:573"], ACB.requestWanted = unpack(keep, 1, 8)
 end)
+
+test("Wanted hides every previous page before refreshing its content", function()
+    for _, destination in ipairs({ "trade", "settings", "achievements", "ladder", "collection", "index" }) do
+        ACB.open(destination)
+        local previous = {}
+        for _, widget in ipairs(widgets) do
+            if widget.parent == AzerothCardBinderWindow and widget.shown == true then previous[#previous + 1] = widget end
+        end
+        assert(#previous > 0)
+        ACB.open("wanted")
+        for _, widget in ipairs(previous) do equal(widget.shown, false, destination .. " content must be hidden") end
+    end
+    ACB.open("collection")
+end)

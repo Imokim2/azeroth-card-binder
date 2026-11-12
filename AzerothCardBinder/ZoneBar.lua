@@ -64,10 +64,16 @@ local REPUTATION_FRAMES = { "ReputationWatchBar", "ReputationStatusBar", "Status
 local CONTAINERS = { "MainStatusTrackingBarContainer", "SecondaryStatusTrackingBarContainer" }
 
 local function sized(frame)
-    if type(frame) ~= "table" or not frame.GetWidth or not frame.SetAlpha then return false end
-    local wide, tall = ACB.read(frame:GetWidth(), "number"), ACB.read(frame:GetHeight(), "number")
-    local shown = not frame.IsShown or ACB.read(frame:IsShown(), "boolean") ~= false
+    if not frame or not frame.GetWidth or not frame.GetHeight or not frame.SetAlpha then return false end
+    local wide = ACB.read(ACB.safe(frame.GetWidth, frame), "number")
+    local tall = ACB.read(ACB.safe(frame.GetHeight, frame), "number")
+    local visible = frame.IsVisible or frame.IsShown
+    local shown = not visible or ACB.read(ACB.safe(visible, frame), "boolean") ~= false
+    local top = ACB.read(ACB.safe(frame.GetTop, frame), "number")
+    local bottom = ACB.read(ACB.safe(frame.GetBottom, frame), "number")
+    local screenHeight = UIParent:GetHeight()
     return shown and wide ~= nil and tall ~= nil and wide > 100 and tall > 2
+        and (not top or top > 0) and (not bottom or bottom < screenHeight)
 end
 
 -- The kinds of tracking bar the manager knows, whichever table the interface keeps them in.
@@ -108,7 +114,8 @@ function ACB.initZoneBar(saved)
     bar:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
     bar:SetBackdropColor(0.03, 0.03, 0.04, 0.85)
     bar:SetBackdropBorderColor(0, 0, 0, 1)
-    bar:SetFrameStrata("MEDIUM")
+    bar:SetFrameStrata("HIGH")
+    bar:SetClampedToScreen(true)
     bar:SetMovable(true)
     bar:EnableMouse(true)
     bar:RegisterForDrag("LeftButton")
@@ -120,7 +127,9 @@ function ACB.initZoneBar(saved)
         bar:ClearAllPoints()
         local spot = saved.zoneBarSpot
         if type(spot) == "table" and type(spot.x) == "number" and type(spot.y) == "number" then
-            bar:SetPoint("BOTTOM", UIParent, "BOTTOM", spot.x, spot.y)
+            local limit = math.max(0, (UIParent:GetWidth() - bar:GetWidth()) / 2)
+            bar:SetPoint("BOTTOM", UIParent, "BOTTOM", math.max(-limit, math.min(limit, spot.x)),
+                math.max(8, math.min(UIParent:GetHeight() - 24, spot.y)))
             return
         end
         -- Exactly over the reputation bar's place.
@@ -131,8 +140,8 @@ function ACB.initZoneBar(saved)
         end
         for _, name in ipairs(TRACKING_FRAMES) do
             local anchor = _G[name]
-            local width = anchor and anchor.GetWidth and ACB.read(anchor:GetWidth(), "number")
-            if width and width > 100 then
+            if sized(anchor) then
+                local width = ACB.read(ACB.safe(anchor.GetWidth, anchor), "number")
                 bar:SetWidth(math.min(width, 570))
                 bar:SetPoint("BOTTOM", anchor, "TOP", 0, 2)
                 return
@@ -192,6 +201,8 @@ function ACB.initZoneBar(saved)
         end
         local slot = ACB.replacedBar()
         takeSlot(slot)
+        bar:SetSize(400, 12)
+        bar:SetFrameLevel(slot and slot.GetFrameLevel and slot:GetFrameLevel() + 5 or 10)
         place(slot)
         bar:SetMinMaxValues(0, total)
         bar:SetValue(owned)
@@ -200,13 +211,23 @@ function ACB.initZoneBar(saved)
         bar:Show()
     end
 
-    for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED" }) do
+    for _, event in ipairs({ "PLAYER_ENTERING_WORLD", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED_INDOORS", "ZONE_CHANGED",
+        "DISPLAY_SIZE_CHANGED", "UI_SCALE_CHANGED", "UPDATE_FACTION", "PLAYER_LEVEL_UP" }) do
         pcall(bar.RegisterEvent, bar, event)
     end
     bar:SetScript("OnEvent", function(_, event)
         ACB.refreshZoneBar()
         -- The zone name can still be empty while the game finishes loading; look again a moment later.
         if event == "PLAYER_ENTERING_WORLD" and C_Timer and C_Timer.After then C_Timer.After(2, ACB.refreshZoneBar) end
+    end)
+    -- Use a separate shown watcher: the bar itself may be hidden while the zone
+    -- name is unavailable, or before the game's tracking bars finish arranging.
+    local watcher, elapsed = CreateFrame("Frame", nil, UIParent), 0
+    watcher:SetScript("OnUpdate", function(_, dt)
+        elapsed = elapsed + dt
+        if elapsed < 2 then return end
+        elapsed = 0
+        ACB.refreshZoneBar()
     end)
     ACB.refreshZoneBar()
     return bar

@@ -12,6 +12,19 @@ const ledger = require("../packages/shared/src/ledger.js");
 const dir = path.join(__dirname, "..", "packages", "shared", "vectors");
 const load = (name) => JSON.parse(fs.readFileSync(path.join(dir, name), "utf8"));
 
+test("one-way gift vectors verify without any empty-card event or return transfer", () => {
+    const gift = load("gifts.json");
+    const rules = require("../packages/shared/src/rules.js");
+    const catalog = require("../packages/shared/catalog.json");
+    for (const side of [gift.giver, gift.recipient]) {
+        assert.deepEqual(ledger.verifyChain(side.events), { ok: true, head: side.head });
+        assert.equal(rules.replay(side.events, catalog).ok, true);
+    }
+    assert.equal(rules.replay(gift.giver.events, catalog).state.counts[gift.key] || 0, 0);
+    assert.deepEqual(rules.replay(gift.recipient.events, catalog).state.counts, { [gift.key]: 1 });
+    assert.equal(gift.giver.events.at(-1).trade, gift.recipient.events[0].trade);
+});
+
 test("SHA-256 matches the published standard answers and every vector", () => {
     // Anchored to FIPS 180-4 so the vectors cannot drift together with the code.
     assert.equal(ledger.sha256Hex(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");

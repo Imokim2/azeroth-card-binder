@@ -42,9 +42,19 @@ Gathering now has all 39 node types Forever lists (28 herbs, 11 ores), each reco
 
 Every card has a description of at most 80 characters so it fits the card face. The original hand-made cards keep their lines. All raid and dungeon bosses and about a hundred well-known rares and elites have a line written for them. Most other creatures get a line built from their name: a named group ("the Scarlet Crusade"), a kind of creature (boar, murloc, ghoul), a title or job (guard, captain, miner) or, failing that, their rank. About a third of the creatures fall back to a rank line. The 39 nodes have their own lines. Read a few cards from a big set such as The Barrens for anything that sounds wrong.
 
-## Trading, asking and distance
+## Variant artwork
 
-With a second player: (1) Target them, open the **Trade** tab and click **My target**; the name fills in. Offer a card. Move away (more than about 11 yards) and try to send the reply or accept: it should say your partner is too far away. In **Settings**, "Trading distance" turns that off. (2) Right-click them and choose **View their binder**: below the sets it should list the spares they have that you need and the other way round, and **Offer a trade** should open the Trade tab with their name. (3) Open a card you do not own and click **Ask target** while targeting them, or type `/acb ask TheirName CardName`: they should see "... is looking for [Card]. You have N (M spare)" only if they own it, and asking again straight away should be refused politely.
+Open `/acb studio`, cycle through all eight dungeon bosses and compare Signature, the still edition and the animated edition. The editions should be visibly different in crop, facing and action. Check the composition description under the previews. Pause and resume an animated edition; it should freeze on its own action, and restarting the loop must keep that action. Compare the same edition with another player using 0.4.0. Confirm that heads and weapons stay acceptably in frame, particularly Mr. Smite and Aku'mai. The studio grants no cards. Foe Reaper's alternates remain studio-only previews.
+
+## Trading and gifts
+
+Both players need addon **0.4.0 or newer**. Target the other player, open **Trade**, and click **Use target**. Click **Choose card**, search for a card you own and select it, then click **Start trade**. The other player's Trade window should open automatically. They choose their card; both players check **You give** and **You receive**, then click **Accept**. The picker shows how many you own, while the offer always represents one copy. Changing an offer clears the acceptance marks. A completed trade appears in **History**.
+
+For a gift, select **Gift a card** before starting and click **Send gift**. The recipient should see the offered card, an empty **You give** side and an **Accept** button. No return card is required. Confirm that one acceptance moves nothing, both acceptances transfer one copy, cancellation beforehand moves nothing, and a last-copy gift removes that card from the giver's binder. Try an exact collectible edition and check that the shiny unlock remains with its original owner. Reload, sync both companions and reload again; both histories should be accepted and the gift should appear in History.
+
+Move more than about 11 yards away before accepting: the addon should ask you to move closer. The recipient may need to target their partner before accepting. In **Settings**, "Trading distance" turns that check off. Trades remain outdoors and out of combat. Both players should keep the game open until completion; reloads and disconnected clients still need an in-game reliability pass.
+
+Right-click a player and choose **View their binder**: below the sets it should list useful spares, and **Offer a trade** should open Trade with their name. Open a missing card and click **Ask target**, or type `/acb ask target CardName`: they should see your request only if they own it, with repeated requests limited politely.
 
 ## Viewing a binder and trading from it
 

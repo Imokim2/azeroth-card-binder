@@ -1,6 +1,6 @@
 # Ledger specification
 
-Version 3 (draft until Phase A of the [roadmap](ROADMAP.md) has shipped). Version 2 added the `miss` event and the `ranked2` mode (sections 3.1 and 8.1); version 3 adds card packs (the `packFind`, `packOpen` and `packCard` events, section 8.2). Version 1 is no longer accepted for new uploads; version 2 histories are valid in version 3. This is the contract between the Lua add-on, the companion app and the server. All three implement it separately; all three must produce exactly the results in [packages/shared/vectors](../packages/shared/vectors). The reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 4. Version 2 added `miss` and `ranked2`; version 3 added card packs. Version 4 adds collectible editions, described in [COLLECTIBLE-EDITIONS.md](COLLECTIBLE-EDITIONS.md), using the existing event fields and a `mode` event with key `editions1`. This marker activates edition-aware drop verification without reinterpreting older events. Versions 2 and 3 histories and their hashes remain valid. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
 
 If this document, the reference implementation and the vectors ever disagree, that is a bug. Fix all three together in one change.
 
@@ -45,6 +45,7 @@ The server replays the events from `seq` 1 and keeps a running count per card an
 - `craft`: the previous count is 0 and `count` is 1; `dust` equals minus the craft cost of the card's rarity, from the catalog; `shiny` is 0.
 - `recycle`: the previous count is at least 2, `count` is one less, and `dust` equals the recycle yield of the card's rarity.
 - `tradeOut`: the previous count is at least 1 (any card in the binder can be traded, a last copy included) and `count` is one less. `tradeIn`: `count` is the previous count plus 1. Both need `partner` and `trade`.
+  A gift uses exactly one `tradeOut` in the giver's history and one matching `tradeIn` in the recipient's history, with the same card, trade id and reciprocal player identities. There is no event for an empty offer. A two-way exchange has two such matched transfers. Gifts retain all existing matching, Casual-origin and scoring checks; the event format, hashes and specification version are unchanged.
 - `set`: `key` is a set code and every card of that set is owned at that point.
 - `packFind`: a pack of the zone `key` was found; `count` is the packs of that zone held afterwards. In `ranked2` its `tape` must be the entry of the last attempt written down (a `drop` or the end of a `miss` run), the same entry may not find two packs, and the zone must be the zone of the card that attempt was on, which cannot be a gathering node. In Casual `tape` is 0.
 - `packOpen`: a pack of `key` is opened: the player must hold one, `count` is the packs held afterwards, and `tape` is the last entry used so far (0 in Casual). Exactly five `packCard` events must follow, with nothing between them.

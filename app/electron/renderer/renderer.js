@@ -8,14 +8,14 @@ const $ = (id) => document.getElementById(id);
 const demos = {
   newbinder: {
     version: "0.1.0", server: "", problem: null, signedIn: true, visibility: "public", startAtLogin: false, gameFolder: "D:\\Games\\World of Warcraft Forever",
-    accounts: [{ account: "HARRYACCOUNT", mode: "casual", state: "This is a new binder: it does not continue the one the server has" }],
+    accounts: [{ account: "Main account", mode: "casual", state: "This is a new binder: it does not continue the one the server has" }],
     lastSyncAt: Math.floor(Date.now() / 1000) - 20, tapeEntries: null, standings: "fresh", message: null, busy: false, needsNewBinder: true,
   },
   setup: { version: "0.1.0", server: "", problem: null, signedIn: false, visibility: "public", startAtLogin: false, gameFolder: null, accounts: [], lastSyncAt: null, tapeEntries: null, standings: null, message: null, busy: false, needsNewBinder: false },
   syncing: {
     version: "0.1.0", server: "", problem: null, signedIn: true, visibility: "public", startAtLogin: true, gameFolder: "D:\\Games\\World of Warcraft Forever",
-    accounts: [{ account: "HARRYACCOUNT", mode: "ranked", state: "Synced (42 new events)" }, { account: "ALTACCOUNT", mode: "casual", state: "Up to date" }],
-    lastSyncAt: Math.floor(Date.now() / 1000) - 95, tapeEntries: 9710, standings: "fresh", message: "Signed in. Syncing now.", busy: false, needsNewBinder: false,
+    accounts: [{ account: "Main account", mode: "ranked", state: "Synced (42 new events)" }, { account: "Second account", mode: "casual", state: "Up to date" }],
+    lastSyncAt: Math.floor(Date.now() / 1000) - 95, tapeEntries: 1000, standings: "fresh", message: null, busy: false, needsNewBinder: false,
   },
   problem: {
     version: "0.1.0", server: "", problem: "Your key cannot be stored safely on this computer. The app cannot sign in or upload until that is fixed.",
@@ -33,9 +33,19 @@ function ago(seconds) {
 
 function render(status) {
   const ready = status.signedIn && status.gameFolder !== null;
+  const accountIssues = status.accounts.some((entry) => /Cannot|refused|missing|Not registered|could not be reached/.test(entry.state));
+  const attention = status.problem || status.needsNewBinder || accountIssues;
+  const synced = ready && status.lastSyncAt !== null && status.accounts.length > 0 && !attention;
   const pill = $("pill");
-  pill.className = "pill " + (status.problem ? "bad" : status.busy || status.needsNewBinder ? "warn" : ready ? "ok" : "warn");
-  pill.textContent = status.problem ? "Needs attention" : status.busy ? "Working…" : status.needsNewBinder ? "New binder?" : ready ? "Syncing" : "Set-up needed";
+  pill.className = "pill " + (status.problem ? "bad" : attention || status.busy || !synced ? "warn" : "ok");
+  pill.textContent = attention ? "Needs attention" : status.busy ? "Working…" : synced ? "Up to date" : ready ? "Ready to sync" : "Setup needed";
+  $("overview-title").textContent = attention ? "Your connection needs attention." : status.busy ? "Updating your companion." : synced ? "Your binder is up to date." : ready ? "Ready for your first sync." : "Set up your companion.";
+  $("overview-description").textContent = attention ? "Review the message below to continue syncing your collection."
+    : synced ? "Your latest saved collection has been synced."
+    : ready ? "Play with the addon enabled, then reload or leave the game to save your cards."
+    : "Connect your account and game to sync your binder.";
+  const complete = Number(status.signedIn) + Number(status.gameFolder !== null);
+  $("setup-count").textContent = complete === 2 ? status.accounts.length + (status.accounts.length === 1 ? " binder found" : " binders found") : complete + " of 2 steps complete";
 
   $("problem").hidden = !status.problem;
   $("problem").textContent = status.problem || "";
@@ -44,6 +54,8 @@ function render(status) {
   $("delete-data").disabled = status.busy;
   $("new-binder").hidden = !status.needsNewBinder;
   $("new-binder-button").disabled = status.busy;
+  $("discord-state").textContent = status.signedIn ? "Signed in" : "Sign-in needed";
+  $("discord-state").classList.toggle("complete", status.signedIn);
 
   // 1. Discord
   $("discord-text").textContent = status.signedIn ? "You are signed in. " + (status.visibility === "private" ? "You are kept off the ladder." : "You are listed on the ladder.") : "Sign in so your cards and rank belong to you.";
@@ -52,11 +64,16 @@ function render(status) {
   $("sign-in").hidden = status.signedIn;
   $("sign-out").hidden = !status.signedIn;
   $("sign-in").disabled = status.busy || status.problem !== null;
+  $("sign-out").disabled = status.busy;
 
   // 2. Game folder
   const folder = $("folder-path");
-  folder.textContent = status.gameFolder || "Not chosen yet";
+  folder.textContent = status.gameFolder || "Game folder hasn't been selected";
   folder.classList.toggle("empty", !status.gameFolder);
+  $("folder-state").textContent = status.gameFolder ? "Folder selected" : "Choose a folder";
+  $("folder-state").classList.toggle("complete", !!status.gameFolder);
+  $("find-game").disabled = status.busy;
+  $("choose-folder").disabled = status.busy;
 
   // 3. Syncing
   const list = $("accounts");
@@ -72,22 +89,27 @@ function render(status) {
     mode.textContent = entry.mode === "ranked" ? "Ranked" : entry.mode === "casual" ? "Casual" : "?";
     left.append(name, mode);
     const state = document.createElement("span");
-    state.className = "state" + (/^(Synced|Up to date)/.test(entry.state) ? " good" : /Cannot|refused|missing|Not registered/.test(entry.state) ? " bad" : "");
-    state.textContent = entry.state;
+    state.className = "state" + (/^(Synced|Up to date)/.test(entry.state) ? " good" : /Cannot|refused|missing|Not registered|could not be reached/.test(entry.state) ? " bad" : "");
+    state.textContent = entry.state.replace(/^Synced \((\d+) new events\)$/, "$1 updates synced");
     item.append(left, state);
     list.append(item);
   }
   $("sync-empty").hidden = status.accounts.length > 0;
+  $("empty-title").textContent = ready ? "Waiting for your saved binder" : "Connect your binder";
+  $("empty-description").textContent = ready ? "Enable the addon, then reload or leave the game. Your saved collection will appear here." : "Connect your account and choose your game folder to get started.";
+  $("sync-state").textContent = attention ? "Check connection" : status.busy ? "Working" : synced ? "Up to date" : ready ? "Ready" : "Waiting";
+  $("sync-state").classList.toggle("complete", synced && !status.busy);
   $("facts").hidden = status.lastSyncAt === null;
   $("last-sync").textContent = ago(status.lastSyncAt);
   $("standings").textContent = status.standings === "fresh" ? "Up to date" : status.standings === "kept" ? "Recent" : "Not available";
-  $("tape").textContent = status.tapeEntries === null ? "Not needed (Casual)" : status.tapeEntries + " entries ready";
-  $("sync-now").disabled = !ready || status.busy;
+  $("tape").textContent = status.tapeEntries === null ? (status.accounts.some((entry) => entry.mode === "ranked") ? "Awaiting sync" : "Casual mode") : status.tapeEntries.toLocaleString();
+  $("sync-now").disabled = !ready || status.busy || !!status.problem || status.needsNewBinder;
 
   const message = $("message");
   message.hidden = !status.message;
   message.textContent = status.message || "";
   $("start-at-login").checked = status.startAtLogin;
+  $("start-at-login").disabled = status.busy;
   $("version").textContent = "Version " + status.version;
 }
 

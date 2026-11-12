@@ -140,6 +140,7 @@ end
 function ACB.cleanSavedData(saved)
     local upgraded = saved.schema ~= ACB.schema
     saved.schema = ACB.schema
+    saved.editionDrops = true
     saved.counts, saved.achievements = tableOrEmpty(saved.counts), tableOrEmpty(saved.achievements)
     saved.levels = nil -- levels were shown on cards in an earlier build and are no longer kept
     for key, count in pairs(saved.counts) do
@@ -163,7 +164,8 @@ function ACB.cleanSavedData(saved)
     end
     for index = #saved.history, 1, -1 do
         local entry = saved.history[index]
-        if type(entry) ~= "table" or not ACB.cards[entry.give] or not ACB.cards[entry.take] then
+        if type(entry) ~= "table" or (not entry.give and not entry.take)
+            or (entry.give and not ACB.cards[entry.give]) or (entry.take and not ACB.cards[entry.take]) then
             table.remove(saved.history, index)
         end
     end

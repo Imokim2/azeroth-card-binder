@@ -281,7 +281,8 @@ test("Packs, end to end: the real add-on finds a pack on the server's tape, open
     assert.equal(played.tape.next, chosen.position + 6, "attempts up to the pack, then five entries for its cards");
     assert.deepEqual(Object.keys(played.packs ?? {}), [], "the pack was opened");
     const binder = readBinder(await readText(game.saved));
-    const kinds = binder.events.map((event) => event.kind);
+    assert.ok(binder.events.some((event) => event.kind === "mode" && event.key === "editions1"));
+    const kinds = binder.events.filter((event) => !(event.kind === "mode" && event.key === "editions1")).map((event) => event.kind);
     assert.deepEqual(kinds.slice(-7), ["packFind", "packOpen", "packCard", "packCard", "packCard", "packCard", "packCard"]);
     // The server replays every attempt, the pack and its five cards against its own tape.
     const outcome = await syncBinder(chosen.client.options, binder, null);

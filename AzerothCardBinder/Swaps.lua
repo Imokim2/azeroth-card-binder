@@ -8,7 +8,7 @@ function ACB.findAnyCard(text)
     text = (text or ""):lower():match("^%s*(.-)%s*$")
     if text == "" then return end
     local best
-    for _, page in ipairs(ACB.pages) do
+    for _, page in ipairs(ACB.inventoryPages()) do
         for _, card in ipairs(page.cards) do
             local name = card.name:lower()
             if name == text then return card end
@@ -22,7 +22,7 @@ end
 -- Cards on your wanted list come first among the ones they have.
 function ACB.swapSuggestions(mine, theirs, wanted)
     local theyHave, iHave = {}, {}
-    for _, page in ipairs(ACB.pages) do
+    for _, page in ipairs(ACB.inventoryPages()) do
         for _, card in ipairs(page.cards) do
             local key = card.key
             local mineCount, theirCount = mine[key] or 0, theirs[key] or 0
@@ -58,9 +58,11 @@ function ACB.inspectLines(counts, shiny, mine, wanted, theirWanted)
         local have = 0
         for _, card in ipairs(page.cards) do
             total = total + 1
-            if (counts[card.key] or 0) > 0 then
+            if ACB.familyCount(counts, card) > 0 then
                 have, owned = have + 1, owned + 1
-                if shiny[card.key] then shinies = shinies + 1 end
+                for _, edition in ipairs(ACB.cardEditions(card)) do
+                    if shiny[edition.key] and (counts[edition.key] or 0) > 0 then shinies = shinies + 1; break end
+                end
             end
         end
         if have > 0 then sets[#sets + 1] = ("%s   %d / %d"):format(page.title, have, #page.cards) end
@@ -68,6 +70,11 @@ function ACB.inspectLines(counts, shiny, mine, wanted, theirWanted)
     lines[1] = ("%d of %d cards collected, %d shiny"):format(owned, total, shinies)
     lines[2] = ""
     for _, line in ipairs(sets) do lines[#lines + 1] = line end
+    for key, count in pairs(counts) do
+        if count > 0 and ACB.cards[key] and ACB.cards[key].baseKey then
+            lines[#lines + 1] = ("Edition: %s (x%d)"):format(ACB.cards[key].name, count)
+        end
+    end
     if #sets == 0 then lines[#lines + 1] = "No cards yet." end
     if mine then
         local theyHave, iHave = ACB.swapSuggestions(mine, counts, wanted)

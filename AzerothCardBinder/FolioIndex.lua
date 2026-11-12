@@ -68,12 +68,14 @@ local function createIndex(parent, saved, selectSet, openCard)
             local searchable = (entry.title .. " " .. (entry.group or "")):lower()
             if #entry.cards > 0 and searchable:find(query, 1, true) then sets[#sets + 1] = setIndex end
             if query ~= "" then
-                for _, card in ipairs(entry.cards) do
+                for _, base in ipairs(entry.cards) do
+                  for _, card in ipairs(ACB.cardEditions(base)) do
                     local name = card.name:lower()
                     if name:find(query, 1, true) then
                         local list = name == query and exact or matches
                         list[#list + 1] = card
                     end
+                  end
                 end
             end
         end
@@ -111,7 +113,7 @@ local function createIndex(parent, saved, selectSet, openCard)
                 row.progress:SetText(collected >= cards and "Complete" or ("%d / %d"):format(collected, cards))
                 row.bar:set(collected, cards)
             elseif card then
-                local count = saved.counts[card.key] or 0
+                local count = card.baseKey and (saved.counts[card.key] or 0) or ACB.familyCount(saved.counts, card)
                 row.frame:SetBackdropColor(unpack(POCKET))
                 row.frame:SetBackdropBorderColor(unpack(EDGE))
                 row.title:SetText(card.name)

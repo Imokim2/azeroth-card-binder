@@ -64,9 +64,11 @@ end
 
 function ACB.achievementTotals(saved)
     local totals = { cards = 0, sets = 0, trades = saved.tradeCount or 0, shiny = 0 }
+    local creatures = {}
     for key, count in pairs(saved.counts) do
         if count > 0 and ACB.cards[key] then
-            totals.cards = totals.cards + 1
+            local base = ACB.baseCard(ACB.cards[key]).key
+            if not creatures[base] then totals.cards = totals.cards + 1; creatures[base] = true end
             if saved.shiny and saved.shiny[key] then totals.shiny = totals.shiny + 1 end
         end
     end

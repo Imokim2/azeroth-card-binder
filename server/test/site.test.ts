@@ -22,14 +22,14 @@ const page = async (env: ReturnType<typeof setup>, path: string) => { const resp
 
 test("the ladder page lists ranked players, links to them, and says plainly when there are none", async () => {
   const env = setup();
-  const empty = await page(env, "/");
+  const empty = await page(env, "/ladder");
   assert.equal(empty.response.status, 200);
   assert.match(empty.response.headers.get("content-type") ?? "", /^text\/html; charset=utf-8/);
   assert.match(empty.text, /Nobody is on the ladder yet/);
   assert.match(empty.text, /<title>World of Warcards: the ladder<\/title>/);
 
   const alice = await rankedPlayer(env, "Alice");
-  const full = await page(env, "/");
+  const full = await page(env, "/ladder");
   assert.match(full.text, new RegExp(`<a href="/player/${alice.id}">Alice-RealmName</a>`));
   assert.match(full.text, /<td class="num">1<\/td>/);
   assert.ok(!full.text.includes("Nobody is on the ladder yet"));
@@ -37,13 +37,13 @@ test("the ladder page lists ranked players, links to them, and says plainly when
   const casual = newPlayer("casual");
   await env.call("/v1/register", { body: registration(casual) });
   await env.call("/v1/ledger", { body: signedUpload(casual, chainedHistory(), { character: "Casual", realm: "RealmName" }) });
-  assert.ok(!(await page(env, "/")).text.includes("Casual-RealmName"));
+  assert.ok(!(await page(env, "/ladder")).text.includes("Casual-RealmName"));
 });
 
 test("pages carry safety headers, load nothing from anywhere else and run no script", async () => {
   const env = setup();
   await rankedPlayer(env, "Alice");
-  for (const path of ["/", "/fair-play", "/privacy"]) {
+  for (const path of ["/", "/ladder", "/wanted", "/download", "/help", "/faq", "/fair-play", "/privacy"]) {
     const { response, text } = await page(env, path);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-security-policy") ?? "", /default-src 'none'/);
@@ -63,9 +63,9 @@ test("a name from a player can never become markup", async () => {
   const nasty = `<img src=x onerror=alert(1)>"'&<script>alert(2)</script>`;
   env.raw.prepare("UPDATE scores SET display_name = ? WHERE player_id = ?").run(nasty, alice.id);
   env.raw.prepare("INSERT INTO set_completions (set_code, player_id, t, received_at) VALUES ('DM', ?, 1, ?)").run(alice.id, NOW);
-  for (const path of ["/", `/player/${alice.id}`]) {
+  for (const path of ["/ladder", `/player/${alice.id}`]) {
     const { text } = await page(env, path);
-    assert.ok(!text.includes("<img"), `${path} let a tag through`);
+    assert.ok(!text.includes("<img src=x"), `${path} let a tag through`);
     assert.ok(!text.includes("<script>alert"), `${path} let a script through`);
     assert.ok(text.includes("&lt;img src=x onerror=alert(1)&gt;&quot;&#39;&amp;&lt;script&gt;"), `${path} should show the name as text`);
   }

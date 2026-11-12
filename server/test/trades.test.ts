@@ -1,6 +1,7 @@
 // Trade matching (roadmap C5), the firsts feed (C6) and the characters on the leaderboard (C3/C4).
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { TRADE_GRACE_SECONDS, runMaintenance } from "../src/maintenance.ts";
 import { scoreOf } from "../src/score.ts";
 import { NOW, catalog, chain, newPlayer, registration, setup, signedUpload } from "./harness.ts";
@@ -38,6 +39,30 @@ const upload = async (env: ReturnType<typeof setup>, player: ReturnType<typeof n
 const states = (env: ReturnType<typeof setup>) => (env.raw.prepare("SELECT state, COUNT(*) AS n FROM trades GROUP BY state").all() as { state: string; n: number }[]).map((row) => ({ state: row.state, n: row.n }));
 const scoreOfPlayer = (env: ReturnType<typeof setup>, id: string) => (env.raw.prepare("SELECT score FROM scores WHERE player_id = ?").get(id) as { score: number }).score;
 const flagKinds = (env: ReturnType<typeof setup>) => (env.raw.prepare("SELECT kind FROM flags ORDER BY kind").all() as { kind: string }[]).map((row) => row.kind);
+
+test("a gift matches one outgoing copy with one incoming copy, without a return card", async () => {
+  const env = setup();
+  const alice = await registered(env, "alice");
+  const bob = await registered(env, "bob");
+  const gift = JSON.parse(readFileSync(new URL("../../packages/shared/vectors/gifts.json", import.meta.url), "utf8")) as {
+    key: string; giver: { events: Record<string, unknown>[] }; recipient: { events: Record<string, unknown>[] };
+  };
+  for (const [player, character, events, counts] of [
+    [alice.player, "Alice", gift.giver.events, {}],
+    [bob.player, "Bob", gift.recipient.events, { [gift.key]: 1 }],
+  ] as const) {
+    const response = await env.call("/v1/ledger", { body: signedUpload(player, [...events], {
+      character, realm: "RealmName", sentAt: env.clock.now,
+      snapshot: { counts, attempts: { [gift.key]: 100 }, dust: 0, sets: {}, titles: {} },
+    }) });
+    assert.equal(response.status, 200, JSON.stringify(await read(response)));
+  }
+  assert.deepEqual(states(env), [{ state: "open", n: 2 }]);
+  await runMaintenance(env.deps);
+  assert.deepEqual(states(env), [{ state: "matched", n: 2 }]);
+  assert.deepEqual(flagKinds(env), []);
+  assert.deepEqual(await env.store.excluded(bob.id), { [gift.key]: 1 }, "Casual-origin gifts remain excluded from Ranked");
+});
 
 test("both halves of a trade, uploaded by the two players, match and nothing is flagged", async () => {
   const env = setup();

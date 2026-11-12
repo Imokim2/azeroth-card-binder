@@ -2,6 +2,7 @@
 // person to review, and the worst one holds a player off the public ladder until reviewed. Starting thresholds,
 // to be tuned in the beta. Rules version 1.
 import type { Catalog, LedgerState } from "./shared.ts";
+import { baseCardKey } from "./shared.ts";
 import { chanceAfter } from "./stack.ts";
 
 export const LUCK_REVIEW = 4; // -log10(p) at which a flag opens for review
@@ -81,7 +82,7 @@ export function integrityFlags(args: {
     const perHour = ((args.tapeNextNow - args.tapeNextBefore) * 3600) / (args.now - args.lastUploadAt);
     if (perHour > MAX_ATTEMPTS_PER_HOUR) flags.push({ kind: "rate", notes: `${Math.round(perHour)} attempts an hour` });
   }
-  const unique = Object.values(args.state.counts).filter((count) => count > 0).length;
+  const unique = new Set(Object.entries(args.state.counts).filter(([, count]) => count > 0).map(([key]) => baseCardKey(args.catalog, key))).size;
   if (args.now - args.playerCreatedAt < 3600 && unique > FAST_START_CARDS && !open.has("fast-start")) {
     flags.push({ kind: "fast-start", notes: `${unique} cards within the first hour` });
   }

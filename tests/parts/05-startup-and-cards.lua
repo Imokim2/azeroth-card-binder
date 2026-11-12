@@ -69,15 +69,15 @@ test("cards draw for missing, owned and gathering entries", function()
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
 end)
 
-test("opening a set queues later portraits and leaving the set stops the loader", function()
+test("opening an index or set warms portraits, waits for slow models and stops outside the collection", function()
     local cards = ACB.pages[2].cards
     local loader
     for _, widget in ipairs(widgets) do
-        if widget.width == 2 and widget.height == 2 and widget.OnUpdate then loader = widget break end
+        if widget.acbPortraitLoader then loader = widget break end
     end
     assert(loader)
     ACB.open("index")
-    equal(loader:IsShown(), false)
+    equal(loader:IsShown(), true)
     ACB.openCard(cards[1].key)
     equal(loader:IsShown(), true)
     equal(loader.creature, nil)
@@ -86,11 +86,12 @@ test("opening a set queues later portraits and leaving the set stops the loader"
     loader:OnUpdate(0.2)
     equal(loader.creature, cards[5].id) -- still waiting on the first model
     loader.fileID = 123456
-    loader:OnUpdate(0.08)
+    loader:OnUpdate(0.25)
     equal(loader.creature, cards[6].id)
-    loader:OnUpdate(1)
+    loader:OnUpdate(3.1)
     equal(loader.creature, cards[7].id) -- one missing model cannot block the queue
-    ACB.open("index")
+    ACB.open("wanted")
+    loader.parent:OnHide() -- hiding a parent dispatches this in the live client
     equal(loader:IsShown(), false)
     equal(loader.creature, nil)
     ACB.openCard(cards[1].key)
@@ -108,9 +109,9 @@ test("missing models appear in the pocket and detail and regain colour when coll
     for _, widget in ipairs(widgets) do
         if widget.creature == edwin.id then
             local frame = widget.parent.parent
-            if frame.scale == 0.60 or frame.scale == 1.48 then
+            if frame.scale == 0.60 or frame.scale == 1.32 then
                 assert(frame.parent.parent:IsShown() ~= false)
-                equal(frame.OnUpdate ~= nil, frame.scale == 1.48)
+                equal(frame.OnUpdate ~= nil, frame.scale == 1.32)
                 models[frame.scale] = widget
                 equal(widget:IsShown(), true)
                 equal(widget.desaturation, 1)
@@ -118,7 +119,7 @@ test("missing models appear in the pocket and detail and regain colour when coll
             end
         end
     end
-    assert(models[0.60] and models[1.48])
+    assert(models[0.60] and models[1.32])
     saved.counts[edwin.key] = 1
     ACB.refresh()
     for _, model in pairs(models) do

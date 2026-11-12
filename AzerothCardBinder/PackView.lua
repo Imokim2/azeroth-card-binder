@@ -104,6 +104,7 @@ function ACB.createPackView(saved)
         slot.card = ACB.createCard(slot.holder)
         slot.card.frame:SetPoint("CENTER", slot.holder, "CENTER", 0, 0)
         slot.card.frame:EnableMouse(false)
+        slot.back:SetFrameLevel(slot.card.frame:GetFrameLevel() + 20)
         slot.holder:Hide()
         slot.caption = label(stage, "GameFontNormal", left, SLOT_TOP + CARD_H + 8, parchment, "")
         slot.caption:SetWidth(CARD_W)
@@ -146,7 +147,14 @@ function ACB.createPackView(saved)
             slot.state, slot.t, slot.delay = "down", 0, 0
             slot.back:Hide()
             slot.back:SetAlpha(0)
-            slot.holder:Hide()
+            -- Keep the actual faces shown and effectively transparent so the client can load them
+            -- throughout the opening animation, before the player turns a card over.
+            slot.holder:SetWidth(CARD_W)
+            slot.holder:SetAlpha(0.001)
+            slot.holder:Show()
+            slot.back:SetWidth(CARD_W)
+            local result = results[index]
+            slot.card:set(result.card, result.count, result.shiny, false)
             slot.caption:SetText("")
             slot.back:SetBackdropBorderColor(0.78, 0.63, 0.42, 1)
         end
@@ -161,8 +169,6 @@ function ACB.createPackView(saved)
     function view:flip(index)
         local slot = self.slots[index]
         if self.phase ~= "reveal" or not slot or slot.state ~= "down" then return false end
-        local result = self.results[index]
-        slot.card:set(result.card, result.count, result.shiny, false)
         slot.state, slot.t = "flipping", 0
         return true
     end
@@ -231,7 +237,12 @@ function ACB.createPackView(saved)
                     if p < 0.5 then
                         slot.back:SetWidth(math.max(1, CARD_W * (1 - 2 * p)))
                     else
-                        if slot.back:IsShown() then slot.back:Hide() slot.holder:Show() end
+                        if slot.back:IsShown() then
+                            slot.back:Hide()
+                            slot.holder:SetAlpha(1)
+                            slot.card:refreshPortrait()
+                            slot.card.art:show(slot.card.entry.zone, true)
+                        end
                         slot.holder:SetWidth(math.max(1, CARD_W * (2 * p - 1)))
                     end
                     if p >= 1 then

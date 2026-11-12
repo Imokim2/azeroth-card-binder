@@ -70,7 +70,7 @@ export function syncFileText(data: SyncData): string {
     extra.push("    wanted = {");
     for (const entry of data.wanted) {
       if (entry.cards.length > 60 || entry.characters.length > 20) throw new Error("a wanted list is too long");
-      for (const card of entry.cards) if (!/^(?:npc|node):\d{1,9}$/.test(card)) throw new Error("a wanted card is not a card key");
+      for (const card of entry.cards) if (!/^(?:npc|node|edition):\d{1,9}$/.test(card)) throw new Error("a wanted card is not a card key");
       extra.push(`        { name = ${luaString(entry.name, "name")}, characters = { ${entry.characters.map((name) => luaString(name, "character")).join(", ")} }, cards = { ${entry.cards.map((card) => `"${card}"`).join(", ")} } },`);
     }
     extra.push("    },");

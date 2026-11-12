@@ -16,12 +16,39 @@ local function label(parent, font, x, y, color, value)
 end
 
 local function button(parent, text, x, y, width, click)
-    local control = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-    control:SetPoint("TOPLEFT", x, -y)
+    local control = CreateFrame("Button", nil, parent, "BackdropTemplate")
+    if x then control:SetPoint("TOPLEFT", x, -y) end
     control:SetSize(width, 26)
+    control:SetBackdrop({ bgFile = "Interface\\Buttons\\WHITE8X8", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    local caption = control:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    control.caption = caption
+    caption:SetPoint("CENTER")
+    control:SetFontString(caption)
+    local hovered, pressed, enabled = false, false, true
+    local function paint()
+        local bright = enabled and hovered
+        control:SetBackdropColor(pressed and 0.12 or bright and 0.31 or 0.20, pressed and 0.09 or bright and 0.23 or 0.14, 0.09, 1)
+        control:SetBackdropBorderColor(bright and 0.88 or 0.59, bright and 0.69 or 0.44, bright and 0.40 or 0.29, 1)
+        caption:SetTextColor(unpack(enabled and parchment or muted))
+        control:SetAlpha(enabled and 1 or 0.55)
+    end
+    control:SetScript("OnEnter", function() hovered = true paint() end)
+    control:SetScript("OnLeave", function() hovered, pressed = false, false paint() end)
+    control:SetScript("OnMouseDown", function() pressed = true paint() end)
+    control:SetScript("OnMouseUp", function() pressed = false paint() end)
+    control:SetScript("OnEnable", function() enabled = true paint() end)
+    control:SetScript("OnDisable", function() enabled, pressed = false, false paint() end)
+    paint()
     control:SetText(text)
     control:SetScript("OnClick", click)
     return control
+end
+
+local function closeButton(parent, x, y)
+    local close = button(parent, "x", nil, nil, 24, function() parent:Hide() end)
+    close:SetSize(24, 24)
+    close:SetPoint("TOPRIGHT", x, y)
+    return close
 end
 
 local function backdrop(frame, edge, size)
@@ -67,8 +94,7 @@ local function window(name, width, height, title, folio)
     else
         label(header, "GameFontNormalLarge", 2, 3, brass, title)
     end
-    local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-    close:SetPoint("TOPRIGHT", folio and -16 or -6, folio and -14 or -6)
+    closeButton(frame, folio and -20 or -16, folio and -18 or -16)
     table.insert(UISpecialFrames, name)
     frame:Hide()
     return frame
@@ -109,6 +135,7 @@ ACB.uiKit = {
     green = green,
     label = label,
     button = button,
+    closeButton = closeButton,
     backdrop = backdrop,
     window = window,
     tab = tab,

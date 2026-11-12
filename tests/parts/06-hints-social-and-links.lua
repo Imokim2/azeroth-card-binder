@@ -149,7 +149,7 @@ test("shift-click drafts a link and the recipient opens the exact card with loca
     for _, widget in ipairs(widgets) do
         -- The first match is your own binder; the window for another player's binder is built after it.
         if not pocket and widget.text == edwin.name and widget.parent.OnClick then pocket = widget.parent end
-        if not detail and widget.OnMouseUp and widget.OnMouseDown and widget.scale == 1.48 then detail = widget end
+        if not detail and widget.OnMouseUp and widget.OnMouseDown and widget.scale == 1.32 then detail = widget end
         if not stats and widget.text == "BASE DROP CHANCE" then stats = widget.parent end
     end
     assert(pocket and detail and stats)

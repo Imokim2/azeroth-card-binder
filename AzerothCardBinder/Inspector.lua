@@ -32,10 +32,14 @@ function ACB.initInspector(saved, report, now, after)
         end,
         offer = function(entry)
             if not (picking and inspector.peer and entry) then return end
-            local give = picking.give
+            local peer, give = inspector.peer, picking.give
             stopPicking()
-            ACB.proposeTrade(inspector.peer, give, entry.key)
+            -- The trade opens on their side by itself, giving your card; the card you picked is asked for in chat, so they
+            -- know what you would like back.
+            ACB.startTrade(peer, give)
+            if ACB.askForCard then ACB.askForCard(peer, entry) end
             inspector:Hide()
+            if ACB.prepareTrade then ACB.prepareTrade(peer) end
         end,
     })
 
@@ -96,11 +100,7 @@ function ACB.initInspector(saved, report, now, after)
             row.text:SetWidth(690)
             row.text:SetJustifyH("LEFT")
             row.text:SetTextColor(unpack(kit.parchment))
-            row.button = CreateFrame("Button", nil, body, "UIPanelButtonTemplate")
-            row.button:SetSize(110, 26)
-            row.button:SetPoint("TOPLEFT", 700, -(index - 1) * ROW - 2)
-            row.button:SetText("Trade")
-            row.button:SetScript("OnClick", function() startPicking(row.key) end)
+            row.button = kit.button(body, "Trade", 700, (index - 1) * ROW + 2, 110, function() startPicking(row.key) end)
             rows[index] = row
         end
         return row
@@ -163,12 +163,9 @@ function ACB.initInspector(saved, report, now, after)
 
     -- Report this player for cheating. The second click, within a few seconds, is the one that counts, so one slip sends
     -- nothing; for another reason, or to add a note, use /acb report.
-    local reportButton = CreateFrame("Button", nil, inspector, "UIPanelButtonTemplate")
-    reportButton:SetSize(116, 31)
-    reportButton:SetPoint("TOPLEFT", 30 + 3 * 127, -76)
-    reportButton:SetText("Report")
     local confirmUntil = 0
-    reportButton:SetScript("OnClick", function()
+    local reportButton
+    reportButton = kit.button(inspector, "Report", 30 + 3 * 127, 78, 116, function()
         if not inspector.peer then return end
         if now() > confirmUntil then
             confirmUntil = now() + 6
@@ -185,11 +182,7 @@ function ACB.initInspector(saved, report, now, after)
 
     -- The trade window, with this player already entered (for a swap made by hand). While you are choosing a card, the
     -- same button cancels the choice.
-    tradeButton = CreateFrame("Button", nil, inspector, "UIPanelButtonTemplate")
-    tradeButton:SetSize(116, 31)
-    tradeButton:SetPoint("TOPLEFT", 30 + 4 * 127, -76)
-    tradeButton:SetText("Offer a trade")
-    tradeButton:SetScript("OnClick", function()
+    tradeButton = kit.button(inspector, "Offer a trade", 30 + 4 * 127, 78, 116, function()
         if picking then
             stopPicking()
             drawSummary()

@@ -14,7 +14,7 @@ local STONE = "Interface\\FrameGeneral\\UI-Background-Rock"
 local PAD = 7
 local PORTRAIT = { width = WIDTH - PAD * 2, height = 92 }
 local PLATE = { top = 104, height = 20 }
-local NAME_WIDTH = PORTRAIT.width - 38 -- the same room is kept at both ends (the gem sits at one), so the name sits dead centre
+local NAME_WIDTH = PORTRAIT.width - 8
 local SUBLINE_TOP = 125
 local LORE = { top = 147, height = 29 } -- three short lines, with the serial number beneath
 local SHINY = { 0.55, 0.92, 1 }
@@ -24,30 +24,6 @@ local FULL_TURN = 2 * math.pi
 local SWAY_ANGLE, SWAY_SPEED = math.rad(8), FULL_TURN / 8
 local gold, goldDark = { 1, 0.82, 0 }, { 0.42, 0.33, 0.14 }
 local panel, plate = { 0.055, 0.05, 0.045 }, { 0.06, 0.05, 0.04 }
-
--- Put `value` in `line` so that all of it shows: the largest size from `maxSize` down to `minSize` at which the real
--- width of the text fits `width`. A name too long even at the smallest size is broken over two lines instead of being
--- cut short with "...". Returns the size used.
-function ACB.fitText(line, font, value, width, maxSize, minSize, flags)
-    flags = flags or ""
-    line:SetWordWrap(false)
-    line:SetWidth(width)
-    local size = maxSize
-    for _ = 1, 8 do
-        line:SetFont(font, size, flags)
-        line:SetText(value)
-        local used = ACB.read(line:GetStringWidth(), "number")
-        if not used or used <= width then return size end
-        if size <= minSize then break end
-        -- Shrink in proportion, with a little to spare, and look again: the real width is not exactly linear in size.
-        size = math.max(minSize, math.floor(size * width / used * 4 - 0.5) / 4)
-    end
-    line:SetWordWrap(true)
-    ACB.safe(line.SetMaxLines, line, 2)
-    line:SetFont(font, size, flags)
-    line:SetText(value)
-    return size
-end
 
 local typeNames = { mining = "Mining", herbalism = "Herbalism" }
 local function typeName(entry)
@@ -99,7 +75,8 @@ local function gradient(texture, direction, first, last)
     texture:SetColorTexture(unpack(first))
 end
 
-function ACB.createCard(parent, previewUnowned, share)
+function ACB.createCard(parent, previewUnowned, share, options)
+    options = options or {}
     local card = { entry = nil, owned = 0 }
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetSize(WIDTH, HEIGHT)
@@ -137,6 +114,7 @@ function ACB.createCard(parent, previewUnowned, share)
 
     -- Portrait window: zone art, then the 3D model on top.
     local window = strip(frame, PAD, PAD, PORTRAIT.width, PORTRAIT.height, { 0, 0, 0 })
+    card.window = window
     window:SetFrameLevel(level + 1)
     local inner = { width = PORTRAIT.width - 2, height = PORTRAIT.height - 2 }
     card.art = ACB.newCardArt(window, inner.width, inner.height)
@@ -149,7 +127,7 @@ function ACB.createCard(parent, previewUnowned, share)
     card.model:SetFrameLevel(level + 3)
     safe(card.model.SetKeepModelOnHide, card.model, true)
 
-    local swayPhase, modelReady = 0, false
+    local swayPhase, animationElapsed, modelReady = 0, 0, false
     local function portraitFacing()
         return card.facing + SWAY_ANGLE * math.sin(swayPhase)
     end
@@ -164,10 +142,11 @@ function ACB.createCard(parent, previewUnowned, share)
         if entry.profession then
             card.node:SetShown(not modelReady)
         else
-            poseCreature(model, entry, portraitFacing())
+            card.playing, card.playbackAnimation = poseCreature(model, entry, portraitFacing(), card.presentation,
+                share ~= nil and card.owned > 0 and not card.motionPaused)
         end
     end
-    safe(card.model.SetScript, card.model, "OnModelLoaded", updateModel)
+    card.refreshPortrait = ACB.watchCardModel(card, updateModel, function() return card.owned > 0 or previewUnowned end)
 
     card.glow = CreateFrame("Frame", nil, window, "BackdropTemplate")
     card.glow:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
@@ -237,8 +216,9 @@ function ACB.createCard(parent, previewUnowned, share)
     card.count:SetFont(FONT, 10, "")
     card.count:SetTextColor(0.54, 0.80, 0.61)
 
-    -- Name plate with the rarity gem set into its left end.
+    -- The name has the entire plate; rarity belongs on the divider below it.
     local nameplate = strip(badges, PAD, PLATE.top, PORTRAIT.width, PLATE.height, plate)
+    card.nameplate = nameplate
     card.name = nameplate:CreateFontString(nil, "OVERLAY", "GameFontNormal")
     card.name:SetShadowOffset(1, -1)
     card.name:SetShadowColor(0, 0, 0, 1)
@@ -246,10 +226,13 @@ function ACB.createCard(parent, previewUnowned, share)
     card.name:SetWidth(NAME_WIDTH)
     card.name:SetJustifyH("CENTER")
     card.name:SetWordWrap(false)
-    card.gemBezel = diamond(badges, 13, goldDark)
-    card.gemBezel:SetPoint("CENTER", frame, "TOPLEFT", PAD + 11, -(PLATE.top + PLATE.height / 2))
-    card.gem = diamond(badges, 9, { 1, 1, 1 })
-    card.gem:SetPoint("CENTER", frame, "TOPLEFT", PAD + 11, -(PLATE.top + PLATE.height / 2))
+    card.gemBezel = badges:CreateTexture(nil, "OVERLAY")
+    card.gemBezel:SetSize(15, 15)
+    card.gemBezel:SetVertexColor(0.035, 0.03, 0.025, 1)
+    card.gemBezel:SetPoint("CENTER", frame, "TOPLEFT", WIDTH / 2, -140)
+    card.gem = badges:CreateTexture(nil, "OVERLAY")
+    card.gem:SetSize(11, 11)
+    card.gem:SetPoint("CENTER", frame, "TOPLEFT", WIDTH / 2, -140)
 
     -- A dark text box so the rarity line and the description stay readable over the stone.
     local textBox
@@ -268,12 +251,10 @@ function ACB.createCard(parent, previewUnowned, share)
     card.subline:SetFont(FONT, 9, "")
 
     local rule = badges:CreateTexture(nil, "ARTWORK")
+    card.rule = rule
     rule:SetColorTexture(goldDark[1], goldDark[2], goldDark[3], 0.8)
     rule:SetSize(PORTRAIT.width - 30, 1)
-    rule:SetPoint("TOP", frame, "TOPLEFT", WIDTH / 2, -(LORE.top - 4))
-
-    local ornament = diamond(badges, 5, gold)
-    ornament:SetPoint("CENTER", frame, "TOPLEFT", WIDTH / 2, -(LORE.top - 4))
+    rule:SetPoint("TOP", frame, "TOPLEFT", WIDTH / 2, -140)
 
     card.lore = badges:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     card.lore:SetShadowOffset(1, -1)
@@ -288,26 +269,7 @@ function ACB.createCard(parent, previewUnowned, share)
     card.lore:SetWordWrap(true)
     card.lore:SetTextColor(gold[1], gold[2], gold[3])
 
-    frame:SetScript("OnEnter", function(self)
-        local entry = card.entry
-        if not entry or not GameTooltip then return end
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        local rarity = ACB.rarities[entry.rarity]
-        GameTooltip:AddLine(entry.name, unpack(rarity.color))
-        GameTooltip:AddLine(rarity.name .. " " .. typeName(entry), 0.8, 0.8, 0.8)
-        if card.shiny then GameTooltip:AddLine("Shiny", SHINY[1], SHINY[2], SHINY[3]) end
-        GameTooltip:AddLine(("%g%% chance per source"):format(ACB.rates[entry.rank] / 100), 0.65, 0.61, 0.54)
-        if card.owned > 0 then
-            GameTooltip:AddLine(("Owned %d, spare %d"):format(card.owned, card.owned - 1), 0.54, 0.80, 0.61)
-        else
-            GameTooltip:AddLine("Not in your binder yet", 0.65, 0.61, 0.54)
-            GameTooltip:AddLine(ACB.whereToFind(entry), 0.65, 0.61, 0.54, true)
-        end
-        GameTooltip:Show()
-    end)
-    frame:SetScript("OnLeave", function()
-        if GameTooltip then GameTooltip:Hide() end
-    end)
+    ACB.installCardTooltip(card, typeName, share ~= nil)
 
     local linkEntry, previousX, radiansPerPixel
     local function stopInteraction()
@@ -315,6 +277,10 @@ function ACB.createCard(parent, previewUnowned, share)
     end
     if share then
         frame:SetScript("OnMouseDown", function(self, button)
+            if button == "RightButton" and card.presentation and card.presentation.animated then
+                card:setMotionPaused(not card.motionPaused)
+                return
+            end
             if button ~= "LeftButton" or not card.entry then return end
             if IsShiftKeyDown() then
                 linkEntry = card.entry
@@ -332,9 +298,17 @@ function ACB.createCard(parent, previewUnowned, share)
                 previousX = x
             else
                 previousX = nil
-                swayPhase = (swayPhase + elapsed * SWAY_SPEED) % FULL_TURN
+                if not card.motionPaused then swayPhase = (swayPhase + elapsed * SWAY_SPEED) % FULL_TURN end
             end
             safe(card.model.SetFacing, card.model, portraitFacing())
+            if card.playing then
+                animationElapsed = animationElapsed + elapsed
+                local duration = card.presentation.duration or 4
+                if animationElapsed >= duration then
+                    animationElapsed = animationElapsed % duration
+                    safe(card.model.SetAnimation, card.model, card.playbackAnimation or card.presentation.pose.animation, 0)
+                end
+            end
         end)
         frame:SetScript("OnMouseUp", function(self, button)
             if button ~= "LeftButton" then return end
@@ -356,6 +330,9 @@ function ACB.createCard(parent, previewUnowned, share)
             swayPhase, modelReady = 0, false
         end
         self.entry, self.owned, self.shiny = entry, count, shiny
+        local presentation = ACB.cardPresentation(entry, options.presentation)
+        local changedPresentation = not self.presentation or self.presentation.id ~= presentation.id
+        self.presentation = presentation
         local rarity = ACB.rarities[entry.rarity]
         local color = found and rarity.color or LOCKED
         local nameColor = found and rarity.color or LOCKED_TEXT
@@ -384,10 +361,12 @@ function ACB.createCard(parent, previewUnowned, share)
         -- Creatures use their in-game model by NPC ID, gathering nodes by the model file of the node.
         self.model:SetShown(showModel == true)
         if showModel and self.modelFor ~= entry.key then
+            self.playing = false
             self.modelFor = nil
             safe(self.model.ClearModel, self.model)
             self.modelFor = entry.key
-            self.facing = entry.profession and 0.6 or ACB.portraitPreset(entry).facing
+            self.facing = entry.profession and 0.6 or presentation.pose.facing
+            animationElapsed = 0
             self.node:SetShown(entry.profession ~= nil)
             if entry.profession then self.node:SetTexture(entry.icon) end
             if entry.profession then
@@ -404,12 +383,24 @@ function ACB.createCard(parent, previewUnowned, share)
             updateModel(self.model)
         elseif showModel then
             setModelFinish(self.model, found)
+            if changedPresentation then
+                self.facing, swayPhase, animationElapsed = presentation.pose.facing, 0, 0
+                updateModel(self.model)
+            elseif not entry.profession then
+                local shouldPlay = share ~= nil and found and presentation.animated and not self.motionPaused
+                if (self.playing == true) ~= (shouldPlay == true) then updateModel(self.model) end
+            end
         end
 
         local name = entry.name
         ACB.fitText(self.name, FONT, name, NAME_WIDTH, 11, 6.5, "OUTLINE")
         self.name:SetTextColor(unpack(nameColor))
         self.gem:SetVertexColor(color[1], color[2], color[3], 1)
+        local shapes = { common = "Circle", rare = "Square", epic = "Diamond", legendary = "Hexagon" }
+        self.rarityShape = entry.baseKey and "Star" or shapes[entry.rarity] or "Circle"
+        local icon = "Interface\\AddOns\\AzerothCardBinder\\Art\\Rarity\\" .. self.rarityShape .. ".tga"
+        self.gem:SetTexture(icon)
+        self.gemBezel:SetTexture(icon)
         self.subline:SetText(("%s%s|r  %s%s|r%s"):format(hex(nameColor),
             rarity.name, hex({ 0.62, 0.6, 0.56 }), typeName(entry),
             (shiny and ("  " .. hex(SHINY) .. "Shiny|r") or "") .. (wanted and ("  " .. hex(LOCKED_TEXT) .. "Wanted|r") or "")))
@@ -424,7 +415,22 @@ function ACB.createCard(parent, previewUnowned, share)
         self.lore:SetText(text)
         local lore = found and gold or LOCKED
         self.lore:SetTextColor(lore[1], lore[2], lore[3])
+        ACB.applyCardDesign(self, found, shiny)
     end
+
+    -- These controls are used by the artwork studio; they never change ownership.
+    function card:setPresentation(id)
+        options.presentation = id
+        if self.entry then self:set(self.entry, self.owned, self.shiny, self.wantedFlag) end
+    end
+
+    function card:setMotionPaused(paused)
+        self.motionPaused = paused == true
+        animationElapsed = 0
+        if self.entry then updateModel(self.model) end
+    end
+
+    ACB.installCardDesign(card, options.design)
 
     return card
 end

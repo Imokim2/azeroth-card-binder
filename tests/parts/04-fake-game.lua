@@ -38,9 +38,11 @@ local methods = {
     SetDesaturation = function(self, strength) self.desaturation = strength end,
     SetModelAlpha = function(self, alpha) self.modelAlpha = alpha end,
     SetPortraitZoom = function(self, zoom) self.portraitZoom = zoom end,
-    SetCamDistanceScale = ignore, SetFacing = function(self, facing) self.facing = facing end, SetPosition = ignore, SetPaused = ignore,
+    SetCamDistanceScale = ignore, SetFacing = function(self, facing) self.facing = facing end,
+    SetPosition = function(self, x, y, z) self.position = { x, y, z } end, SetPaused = ignore,
     HasAnimation = function(self, animation) return self.supportedAnimation == animation end,
     FreezeAnimation = function(self, animation, variation, frame) self.frozen = { animation, variation, frame } end,
+    SetAnimation = function(self, animation, variation) self.animation, self.variation, self.frozen = animation, variation, nil end,
     Show = function(self) self.shown = true end,
     Hide = function(self) self.shown = false end,
     SetShown = function(self, shown) self.shown = shown end,
@@ -132,6 +134,7 @@ print = function(message)
 end
 math.random = function(min, max)
     if max == ACB.shinyOdds then return shinyDraw end
+    if max == ACB.editionDenominator then return 500 end
     if max == 10000 then rolls = rolls + 1 return draw end
     return realRandom(min, max)
 end
@@ -139,8 +142,11 @@ AzerothCardBinderDB = { counts = { invalid = -1 }, diagnostics = true }
 hintCallbacks = {}
 TooltipDataProcessor = { AddTooltipPostCall = function(_, callback) hintCallbacks[#hintCallbacks + 1] = callback end }
 Enum = { TooltipDataType = { Unit = 1, Object = 2 } }
+loadAddon("CardPresentations.lua")
+loadAddon("CardDesigns.lua")
 loadAddon("CardModels.lua")
 loadAddon("CardArt.lua")
+loadAddon("CardText.lua")
 loadAddon("Cards.lua")
 loadAddon("Toast.lua")
 loadAddon("Hints.lua")
@@ -155,12 +161,15 @@ loadAddon("Kills.lua")
 loadAddon("Packs.lua")
 loadAddon("FolioUi.lua")
 loadAddon("FolioIndex.lua")
+loadAddon("EditionView.lua")
 loadAddon("Folio.lua")
 loadAddon("UiKit.lua")
+loadAddon("CardStudio.lua")
 loadAddon("SettingsView.lua")
 loadAddon("LeaderboardView.lua")
 loadAddon("WantedView.lua")
 loadAddon("PackView.lua")
+loadAddon("TradeView.lua")
 loadAddon("Binder.lua")
 loadAddon("Minimap.lua")
 loadAddon("SavedData.lua")

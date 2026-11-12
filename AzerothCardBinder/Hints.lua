@@ -15,7 +15,7 @@ end
 -- The tooltip lines for a card, as { text, r, g, b } rows.
 function ACB.hintLines(saved, card)
     local lines = {}
-    local count = saved.counts[card.key] or 0
+    local count = ACB.familyCount(saved.counts, card)
     if count > 0 then
         local shiny = saved.shiny and saved.shiny[card.key] and ", shiny" or ""
         lines[1] = { ("Card: in your binder (x%d%s)"):format(count, shiny), 0.54, 0.80, 0.61 }

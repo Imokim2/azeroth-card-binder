@@ -49,6 +49,12 @@ npm run typecheck
 - **A new error code** goes in `src/errors.ts` and in the table in `docs/API.md`; a test keeps them equal.
 - **No hidden state.** Settings come from `wrangler.toml` variables and secrets; nothing is read from the environment anywhere but `src/index.ts`.
 
-## Not deployed yet
+## Public website
 
-`wrangler.toml` holds placeholders until the Cloudflare account and the databases exist (roadmap B2). Discord sign-in is not connected, so `/v1/register` answers `registration_closed` (B7). Rate limits at the edge, the tape (Phase C) and the flag queue (Phase D) are not built.
+The same Worker serves the homepage at `/`, the Ranked ladder at `/ladder`, the wanted board at `/wanted` and public binders at `/player/<id>`. Setup and support content lives at `/help` and `/faq`; `/download` describes release availability. Public installer and addon download links and a public support contact still need to be supplied before launch.
+
+`/status` checks the API and collection database on request, returning 200 when healthy and 503 when the database cannot be reached. The header loads `/status/badge.svg`, which performs the same check and renders an online or issue indicator. Both responses use `no-store`; this is a point-in-time check, not an uptime monitor or a test of Discord sign-in or game realms. The pages use no JavaScript or external resources, and the binder illustration uses CSS rather than game art.
+
+## Deployment
+
+The staging environment is configured in `wrangler.toml`; production still has a placeholder database id. Deploy a reviewed staging build with `npx wrangler deploy --env staging` from this folder using the project's Cloudflare account. Keep existing secrets in place. Discord registration opens only when the Discord client id, secret and redirect URI are all configured. A live Discord sign-in and real-game sync playtest is still needed before public release.
