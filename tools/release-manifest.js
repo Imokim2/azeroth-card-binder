@@ -38,6 +38,7 @@ function keygen(file) {
   const target = path.resolve(file);
   if (!path.relative(root, target).startsWith("..")) fail("Keep the private key outside the repository: " + target);
   if (fs.existsSync(target)) fail(target + " already exists. Refusing to replace a signing key.");
+  fs.mkdirSync(path.dirname(target), { recursive: true });
   const { publicKey, privateKey } = crypto.generateKeyPairSync("ed25519");
   const publicHex = publicKey.export({ format: "der", type: "spki" }).subarray(-32).toString("hex");
   const privateHex = privateKey.export({ format: "der", type: "pkcs8" }).toString("hex");
