@@ -55,7 +55,7 @@ The Windows app connects your saved binder to the server. Sign in with Discord, 
 - **File-based syncing.** Reads the addon’s saved data and writes its update file; it does not read game memory or automate play.
 - **Checkable downloads.** Release files include SHA-256 checksums. The companion verifies updates before installing them.
 
-The current Windows installer is **not code-signed yet**, so Windows may show an unknown-publisher warning. See the [installation guide](https://worldofwarcards.co.uk/help#companion) and [code-signing policy](https://worldofwarcards.co.uk/code-signing-policy).
+The current Windows installer is **not code-signed yet**, so Windows may show an unknown-publisher warning. See the [installation guide](https://worldofwarcards.co.uk/help#companion).
 
 ## Ranked play
 

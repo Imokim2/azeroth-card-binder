@@ -91,12 +91,18 @@ test("the help and FAQ pages describe the public release: real downloads, the un
   assert.ok(!/not available on this site yet|testers should use/i.test(faq));
 });
 
-test("the code signing policy page says where signing stands, who approves, and links from every page's footer", async () => {
+test("the privacy page tells people how to get a copy of their data, and shows a contact address only when one is set and well formed", async () => {
   const env = setup();
-  const page = await (await env.call("/code-signing-policy")).text();
-  assert.match(page, /not code-signed yet/);
-  assert.ok(page.includes('Free code signing provided by <a href="https://signpath.io">SignPath.io</a>, certificate by <a href="https://signpath.org">SignPath Foundation</a>'));
-  for (const part of ["Authors", "Reviewers", "Approvers", "multi-factor authentication", "privacy information"]) assert.ok(page.includes(part), part);
-  for (const path of ["/", "/download", "/help"]) assert.ok((await (await env.call(path)).text()).includes('href="/code-signing-policy"'), path);
-  assert.equal((await env.call("/code-signing-policy", { method: "POST", body: {} })).status, 405);
+  const without = await (await env.call("/privacy")).text();
+  assert.match(without, /Download my data/);
+  assert.match(without, /Questions about your data/);
+  assert.ok(!without.includes("mailto:"));
+  assert.ok(without.includes("issues/new/choose"), "falls back to the issue tracker, with a warning about personal details");
+  env.deps.privacyEmail = "privacy@worldofwarcards.co.uk";
+  const withAddress = await (await env.call("/privacy")).text();
+  assert.ok(withAddress.includes('<a href="mailto:privacy@worldofwarcards.co.uk">privacy@worldofwarcards.co.uk</a>'));
+  for (const bad of ['x"><script>alert(1)</script>@a.co', "no at sign", "a@b", "<b>@x.co", "a b@c.co"]) {
+    env.deps.privacyEmail = bad;
+    assert.ok(!(await (await env.call("/privacy")).text()).includes("mailto:"), bad);
+  }
 });

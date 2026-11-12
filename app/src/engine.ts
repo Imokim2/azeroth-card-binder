@@ -17,12 +17,15 @@ import type { Ack } from "./syncFile.ts";
 import { compareVersions, readAddonVersion, updateReport } from "./versions.ts";
 import type { Releases, UpdateReport } from "./versions.ts";
 
+// The server's refill threshold (server/src/tape.ts REFILL_BELOW): below this many unused entries it issues more.
+const TAPE_REFILL_BELOW = 250;
+
 export type EngineOptions = {
   install: Install;
   client: ClientOptions;
   // The player's id once the key is registered (for "your place"); null before that.
   playerId: () => string | null;
-  standingsEveryMs?: number; // at most this often (default five minutes)
+  standingsEveryMs?: number; // at most this often (default half an hour: the ladder moves slowly, and every refresh costs the server reads)
   quietMs?: number; // how long the game's file must stay unchanged before it is read (default 1.5 seconds)
   everyMs?: number; // a pass on a timer even with no change, to refill the tape and refresh standings (default ten minutes)
   releasesEveryMs?: number; // how often to ask the server which versions are current (default half an hour)
@@ -81,6 +84,7 @@ export class Engine {
     const { install, client } = this.#options;
     const accounts: AccountReport[] = [];
     let anyRanked = false;
+    let tapeNext = 1; // the furthest tape position any Ranked add-on file says it will use next
     const wanted = new Set<string>();
     const reports = new Map<string, PendingReport>();
     let running: string | null = null; // the oldest add-on version that last wrote an account's file
@@ -93,7 +97,10 @@ export class Engine {
         accounts.push({ account: file.account, result: { status: "unreadable", reason }, mode: null });
         continue;
       }
-      if (binder.mode === "ranked") anyRanked = true;
+      if (binder.mode === "ranked") {
+        anyRanked = true;
+        tapeNext = Math.max(tapeNext, binder.tapeNext);
+      }
       if (binder.addonVersion && (running === null || compareVersions(binder.addonVersion, running) < 0)) running = binder.addonVersion;
       for (const key of binder.wanted) wanted.add(key);
       for (const report of binder.reports) reports.set(report.token, report);
@@ -124,7 +131,14 @@ export class Engine {
     // The tape is asked for after the uploads, so the server knows how far the add-on has got.
     let tape: PassReport["tape"] = null;
     let rankedPaused = false;
-    if (anyRanked) {
+    // It is asked for only when the add-on is running low (or has none), not on every pass: the server issues more only below this
+    // many unused entries anyway, and a tape request is the most expensive one it answers.
+    const held = this.#tape ? this.#tape.start + this.#tape.entries.length - 1 : 0; // the last position the app holds
+    const left = held - (tapeNext - 1); // held entries the add-on has not used
+    const lowOnTape = !this.#tape || tapeNext < this.#tape.start || left <= TAPE_REFILL_BELOW;
+    if (anyRanked && !lowOnTape && this.#tape) {
+      tape = { start: this.#tape.start, count: left };
+    } else if (anyRanked) {
       const reply = await fetchTape(client, running ?? undefined);
       if (reply.status === "rejected" && reply.code === "addon_too_old") rankedPaused = true;
       if (reply.status === "tape") {
@@ -138,7 +152,7 @@ export class Engine {
 
     let standings: PassReport["standings"] = this.#standings ? "kept" : "unavailable";
     const now = client.now() * 1000;
-    if (!this.#standings || now - this.#standingsAt >= (this.#options.standingsEveryMs ?? 300_000)) {
+    if (!this.#standings || now - this.#standingsAt >= (this.#options.standingsEveryMs ?? 1_800_000)) {
       const reply = await fetchStandings(client, this.#options.playerId());
       if (reply.status === "standings") {
         this.#standings = reply.standings;

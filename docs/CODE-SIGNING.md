@@ -1,5 +1,7 @@
 # Code signing the Windows installer
 
+> **Shelved (12 Nov 2026): we are not applying for now.** The installer stays unsigned. Everything below is kept in case that changes; the website's code signing policy page was taken down, and would need to come back (with the attribution wording) before applying.
+
 The companion installer is not code-signed, so Windows shows an "unknown publisher" warning (SmartScreen) and warns more the fewer people have run the file. A normal certificate costs money every year and needs a registered business. **SignPath Foundation** gives free signing to open-source projects; the certificate is in their name, which shows as the publisher.
 
 This page is what we found about the programme (read on 12 Nov 2026 from signpath.org/terms and SignPath's documentation; **check the live pages before applying, because the terms can change**), where our project stands, and what to do.

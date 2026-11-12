@@ -12,6 +12,8 @@ import { SqlStore } from "./sqlStore.ts";
 import type { Catalog } from "./shared.ts";
 import catalog from "../../packages/shared/catalog.json";
 import bundledRelease from "./releases.json";
+import { withEdgeCache } from "./cache.ts";
+import type { EdgeCache } from "./cache.ts";
 import { releasesFrom } from "./releases.ts";
 import type { BundledRelease } from "./releases.ts";
 
@@ -22,6 +24,7 @@ export interface Env {
   LATEST_ADDON?: string;
   MIN_ADDON?: string;
   RELEASES_URL?: string; // the project's public releases page on GitHub, once the repository is public (the download page links to it)
+  PRIVACY_EMAIL?: string; // where people can write about their data (shown on the privacy page), once the address exists
   VERSION: string;
   TAPE_SECRET?: string; // a secret (wrangler secret put TAPE_SECRET); without it Ranked is closed
   RATE_GENERAL?: RateLimitBinding; // Cloudflare rate-limit bindings (wrangler.toml); without them nothing is limited
@@ -34,8 +37,12 @@ export interface Env {
 
 const log: Deps["log"] = (entry) => console.log(JSON.stringify({ at: new Date().toISOString(), ...entry }));
 
+// The Workers runtime provides these; the type checker is not told about them.
+declare const caches: { default: EdgeCache } | undefined;
+type Context = { waitUntil(work: Promise<unknown>): void };
+
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, context: Context): Promise<Response> {
     const db = fromD1(env.DB);
     const store = new SqlStore(db);
     const handle = createApi({
@@ -45,6 +52,7 @@ export default {
       minClient: env.MIN_CLIENT, version: env.VERSION,
       releases: releasesFrom(env, bundledRelease as BundledRelease),
       ...(env.RELEASES_URL ? { releasesUrl: env.RELEASES_URL } : {}),
+      ...(env.PRIVACY_EMAIL ? { privacyEmail: env.PRIVACY_EMAIL } : {}),
       ...(env.RATE_GENERAL && env.RATE_STRICT ? { limits: { general: bindingLimiter(env.RATE_GENERAL), strict: bindingLimiter(env.RATE_STRICT) } } : {}),
       // Registration opens only when the Discord application is fully configured.
       ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.DISCORD_REDIRECT_URI
@@ -52,7 +60,8 @@ export default {
         : {}),
       // identity: added with the Discord sign-in (roadmap B7); until then registration answers "registration_closed".
     });
-    return handle(request);
+    // Public answers are shared at the edge (src/cache.ts); everything else goes straight to the API.
+    return withEdgeCache(request, typeof caches === "undefined" ? undefined : caches.default, () => handle(request), (work) => context.waitUntil(work));
   },
   // Hourly (see wrangler.toml): pair up trades and write off the ones nobody confirmed.
   async scheduled(_event: unknown, env: Env): Promise<void> {

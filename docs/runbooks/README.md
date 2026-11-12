@@ -11,6 +11,8 @@ Step-by-step instructions for things that go wrong. They are written when the th
 - [logs and alerts](ALERTS.md)
 - [backups and restoring the database](BACKUPS.md)
 - [releasing: app, add-on and server](RELEASES.md)
+- [capacity: does it fit the free Workers plan?](CAPACITY.md)
+- [privacy requests](PRIVACY-REQUESTS.md)
 - [code signing the Windows installer](../CODE-SIGNING.md)
 - catalog refresh after a game patch
 

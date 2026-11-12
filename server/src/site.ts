@@ -101,7 +101,9 @@ export function fairPlayPage(): string {
 
 export const privacyHeadings = ["What is stored", "What is shown to others", "What is not collected", "Your choices", "Technical logs", "Where it lives"] as const;
 
-export function privacyPage(): string {
+// `contact` is the address people can write to about their data, once there is one (the PRIVACY_EMAIL setting); without it the
+// page points to the app's own buttons and the project's issue tracker.
+export function privacyPage(contact?: string): string {
   return layout("Privacy: World of Warcards", `
 <article class="prose page-content"><h1>Privacy</h1>
 <p class="lede">What we store when you use the companion app, what other players can see and how to delete your data.</p>
@@ -128,8 +130,12 @@ export function privacyPage(): string {
 <ul>
 <li>Choose public or private when you sign up, and change it by signing in again.</li>
 <li>Delete your data from the server at any time with <strong>Delete my data</strong> in the companion app. Your record, history, characters, Discord link and any archived binders are erased from the live service at once. Copies kept for recovery after a mistake age out on their own: Cloudflare&rsquo;s recovery history lasts 7 days and our own daily copies are kept for 14. Your cards in the game and the files on your computer are not touched. You can sign up again later, from nothing.</li>
+<li>Download a copy of everything held about you with <strong>Download my data</strong> in the companion app: your account, keys, characters, every event of every binder you have had, your saved state, score, trades, finished sets, wanted cards and the reports you sent. It leaves out reports other players made about you, the notes reviewers wrote and the server's secrets.</li>
 <li>A banned account's record is kept, so that a ban cannot be undone by deleting the account.</li>
 </ul>
+
+<h2>Questions about your data</h2>
+<p>${contact ? `Write to <a href="mailto:${escapeHtml(contact)}">${escapeHtml(contact)}</a> to ask what is held about you, to have something corrected, or about anything on this page.` : `Use <strong>Download my data</strong> and <strong>Delete my data</strong> in the companion app, or open an issue on the project's <a href="https://github.com/Imokim2/azeroth-card-binder/issues/new/choose">GitHub tracker</a> (please do not put personal details in a public issue).`}</p>
 
 <h2>Technical logs</h2>
 <p>The server keeps a log of each request (the route, the result and how long it took, with a request id) so that problems can be found. It does not log your Discord id, your cards or what you uploaded. Cloudflare, which runs the server, also keeps its own technical logs, which include the address a request came from, for a limited time.</p>
