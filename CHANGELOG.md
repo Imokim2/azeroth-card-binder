@@ -11,15 +11,21 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 - Packs can be traded for cards or other packs, or gifted, one per offer. Both players accept. An offered pack stays reserved, preventing it from also being opened. These are addon-owned items: native bags, mail, auction house and gold payments are not integrated.
 - Companion/server 0.4.0, ledger specification 6. Matching server checks validate pack tiers and transfers, and trace opened contents through subsequent trades for Ranked eligibility. Casual pack finds themselves count as unverified provenance. See [satchel rollout notes](docs/runbooks/SATCHEL.md); no remote deployment or installer release is performed by this source change.
 
-## 0.5.0 — 2026-11-12
+
 
 - Stable individual drop rates across all 3,423 base cards. Most retain the current pace; uncommon discoveries take longer, and a small chase group uses slower odds. Bosses, epic/legendary enemies, rare spawns and gathering retain immediate protection. Chase mobs and critters use a late protection ramp with a guaranteed ceiling.
 - Thirty-one exceptionally rare critters gain separate collectible, deliberately excessive face-close-up editions. Existing cards and variants remain owned, with no additional ordinary set slots.
 - Exact odds, attempt counters and protection percentages are hidden in normal binder pages and tooltips. Protection and diagnostic logging remain active.
 - Chase cards cannot be crafted and have lower within-rarity pack weights, so their scarcity also matters when opening packs.
-- Companion/server 0.3.0 and ledger specification 5. Legacy histories keep their old rules up to a recorded policy marker; existing pity carries over. Update all components together; see [the rollout notes](docs/runbooks/DROP-BALANCE.md). This source change does not deploy the server.
+- Historical drops keep their old rules up to a recorded policy marker, and existing pity carries over. Update all components together; see [the rollout notes](docs/runbooks/DROP-BALANCE.md). This source change does not deploy the server.
 - Full-binder message capacity now includes collectible editions, preventing larger binders from running out of response parts.
 
+
+
+## 0.5.0 - 2026-11-12
+
+- **First public release.** Add-on 0.5.0 with companion app 0.3.0 (the companion's own version is separate from the add-on's).
+- **Public downloads.** The website's download page now shows the addon ZIP and the companion installer, with sizes and SHA-256 checksums, as soon as a signed release names them, and links to the project's GitHub releases page once `RELEASES_URL` is set. Pushing a `v*` tag builds both files and publishes a GitHub release (`.github/workflows/release.yml`). The installer file is now named `World-of-Warcards-Setup-<version>.exe`. The project is licensed GPL-3.0-or-later (`LICENSE`), with a public README and `SECURITY.md`.
 - **Backups.** `tools/backup-db.js` takes a checked copy of the database outside Cloudflare, keeps the newest 14 and refuses a folder inside the repository; `docs/runbooks/BACKUPS.md` explains Cloudflare's point-in-time restore, the daily schedule and how to restore. The privacy page now says that deleted data leaves backup copies as they age out (7 and 14 days).
 - **A player who went Ranked on the old add-on and then updated can sync again.** The old Ranked switch written before the update is accepted when another mode switch follows it directly (nothing was rolled under it); a roll after it, or it alone, is still refused.
 - **Update alerts.** The server now says which versions are current (`GET /v1/releases`: the newest companion app and add-on, and the oldest add-on it accepts). The companion app checks every half hour, reads the add-on version from its `.toc` file and from the saved data the game wrote, and says in its window when the add-on or the app is out of date, when the add-on is too old, or when a newer add-on is installed but the game has not loaded it yet (use /reload). It also passes the newest and oldest add-on version on in `Data/Sync.lua`, so the add-on can say it too: a line in chat a few seconds after you log in, and `/acb version` at any time. The add-on writes the version it runs as into its saved data (`addonVersion`).

@@ -19,7 +19,7 @@ World of Warcards is meant to be maintained for years, so changes are held to a 
    node --test tests/vectors.test.js    the shared-contract tests
    ```
 
-   `node tools/release.js build` runs all three and builds the install ZIP. Continuous integration runs the same checks on every pull request, and a pull request cannot merge while they fail.
+   `node tools/release.js build` runs all three and builds the install ZIP. The server and the companion app have their own tests: `cd server && npm test` and `cd app && npm test`. Continuous integration runs the same checks on every pull request, and a pull request cannot merge while they fail.
 3. Anything the offline tests cannot reach (tooltips, sounds, fonts, models, two-player trading, the Settings tab) must be checked in game. Say what you checked in the pull request. The checklist is in [docs/ROADMAP.md](docs/ROADMAP.md#6-testing).
 4. Open a pull request using the template. Keep it to one idea; a reviewer should be able to read it in one sitting.
 

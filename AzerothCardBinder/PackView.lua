@@ -327,8 +327,8 @@ function ACB.initPacks(saved, collection)
         if ACB.refreshSatchel then ACB.refreshSatchel() end
     end
     collection.packsEnabled = true
-    collection.onPack = function(page, count)
-        if ACB.playToastSound then ACB.playToastSound("epic", false) end
+    collection.onPack = function(page, count, item)
+        if ACB.playToastSound then ACB.playToastSound(item and item.tier or "epic", false) end
         if ACB.refreshPackButton then ACB.refreshPackButton() end
         if ACB.refreshSatchel then ACB.refreshSatchel() end
         if view.frame:IsShown() and view.phase == "list" then view:refreshList() end

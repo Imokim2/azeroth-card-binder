@@ -14,7 +14,7 @@ compatibility_date = "2026-11-01"
 
 [env.staging]
 name = "warcards-api-staging"
-vars = { MIN_CLIENT = "0.4.0", LATEST_APP = "0.4.0", LATEST_ADDON = "0.6.0", MIN_ADDON = "0.6.0", VERSION = "0.4.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
+vars = { MIN_CLIENT = "0.4.0", LATEST_APP = "0.4.0", LATEST_ADDON = "0.6.0", RELEASES_URL = "https://github.com/Imokim2/azeroth-card-binder/releases/latest", MIN_ADDON = "0.6.0", VERSION = "0.4.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
 d1_databases = [
   { binding = "DB", database_name = "warcards-staging", database_id = "adf8ffb3-8272-4962-98e8-6b9dba138532", migrations_dir = "migrations" },
 ]
@@ -46,7 +46,7 @@ enabled = true
 
 [env.production]
 name = "warcards-api"
-vars = { MIN_CLIENT = "0.4.0", LATEST_APP = "0.4.0", LATEST_ADDON = "0.6.0", MIN_ADDON = "0.6.0", VERSION = "0.4.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
+vars = { MIN_CLIENT = "0.4.0", LATEST_APP = "0.4.0", LATEST_ADDON = "0.6.0", RELEASES_URL = "https://github.com/Imokim2/azeroth-card-binder/releases/latest", MIN_ADDON = "0.6.0", VERSION = "0.4.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }
 d1_databases = [
   { binding = "DB", database_name = "warcards", database_id = "aafe20da-94e3-4011-b28c-5e88a125f741", migrations_dir = "migrations" },
 ]

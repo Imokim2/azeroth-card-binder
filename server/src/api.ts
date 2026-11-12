@@ -4,6 +4,7 @@ import { ApiError, ERRORS } from "./errors.ts";
 import type { ErrorCode } from "./errors.ts";
 import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import type { Catalog } from "./shared.ts";
+import { downloadsFrom, releasesPageFrom } from "./releases.ts";
 import type { Releases } from "./releases.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
@@ -44,6 +45,7 @@ export type Deps = {
   // The newest and the oldest accepted version of the add-on, and the newest companion app (the oldest is minClient), as
   // x.y.z. Served by /v1/releases so the app can say what is out of date. Absent: nothing is announced.
   releases?: Releases;
+  releasesUrl?: string; // the public page of the project's releases (GitHub), once there is one: the download page links to it
   version: string; // this server's version, shown by /v1/health
   // Turns the Discord sign-in the app obtained into a Discord account id, or null. Absent until registration opens.
   identity?: { verify(token: string): Promise<string | null> };
@@ -454,7 +456,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const chosen =
       url.pathname === "/" ? allow("site-home", ["GET"], async () => html(200, landingPage()))
       : url.pathname === "/ladder" ? allow("site-ladder", ["GET"], siteLadder)
-      : url.pathname === "/download" ? allow("site-download", ["GET"], async () => html(200, downloadPage()))
+      : url.pathname === "/download" ? allow("site-download", ["GET"], async () => html(200, downloadPage({ ...downloadsFrom(deps.releases), releasesUrl: releasesPageFrom(deps.releasesUrl) })))
       : url.pathname === "/help" ? allow("site-help", ["GET"], async () => html(200, helpPage()))
       : url.pathname === "/faq" ? allow("site-faq", ["GET"], async () => html(200, faqPage()))
       : url.pathname === "/status" ? allow("site-status", ["GET"], () => siteStatus())

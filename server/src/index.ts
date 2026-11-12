@@ -21,6 +21,7 @@ export interface Env {
   LATEST_APP?: string; // the newest companion app and add-on, and the oldest add-on, as x.y.z (see /v1/releases)
   LATEST_ADDON?: string;
   MIN_ADDON?: string;
+  RELEASES_URL?: string; // the project's public releases page on GitHub, once the repository is public (the download page links to it)
   VERSION: string;
   TAPE_SECRET?: string; // a secret (wrangler secret put TAPE_SECRET); without it Ranked is closed
   RATE_GENERAL?: RateLimitBinding; // Cloudflare rate-limit bindings (wrangler.toml); without them nothing is limited
@@ -43,6 +44,7 @@ export default {
       health: async () => { await db.all("SELECT 1"); },
       minClient: env.MIN_CLIENT, version: env.VERSION,
       releases: releasesFrom(env, bundledRelease as BundledRelease),
+      ...(env.RELEASES_URL ? { releasesUrl: env.RELEASES_URL } : {}),
       ...(env.RATE_GENERAL && env.RATE_STRICT ? { limits: { general: bindingLimiter(env.RATE_GENERAL), strict: bindingLimiter(env.RATE_STRICT) } } : {}),
       // Registration opens only when the Discord application is fully configured.
       ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.DISCORD_REDIRECT_URI

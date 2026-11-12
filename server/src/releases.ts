@@ -38,3 +38,36 @@ export function releasesFrom(env: Variables, bundled: BundledRelease): Releases 
   }
   return releases;
 }
+
+export type DownloadFile = { version: string; url: string; size: number; sha256: string };
+
+// The two files the signed manifest names, for the download page. The server does not trust the manifest for anything the
+// app does (the app checks the signature itself); here it only decides which buttons the page shows, so a file is shown only when
+// its address is https and its checksum and size look right. A manifest that cannot be read shows nothing.
+export function downloadsFrom(releases: Releases | undefined): { app?: DownloadFile; addon?: DownloadFile } {
+  if (!releases?.signed) return {};
+  try {
+    const manifest = JSON.parse(releases.signed.manifest) as Record<string, unknown>;
+    const read = (value: unknown): DownloadFile | undefined => {
+      const item = value as Record<string, unknown> | null;
+      if (!item || typeof item !== "object") return undefined;
+      const { version, url, size, sha256 } = item;
+      if (typeof version !== "string" || !VERSION.test(version)) return undefined;
+      if (typeof url !== "string" || !/^https:\/\/[^\s"'<>]+$/.test(url)) return undefined;
+      if (typeof size !== "number" || !Number.isSafeInteger(size) || size < 1) return undefined;
+      if (typeof sha256 !== "string" || !/^[0-9a-f]{64}$/.test(sha256)) return undefined;
+      return { version, url, size, sha256 };
+    };
+    const app = read(manifest["app"]);
+    const addon = read(manifest["addon"]);
+    return { ...(app ? { app } : {}), ...(addon ? { addon } : {}) };
+  } catch {
+    return {};
+  }
+}
+
+// The public page of the project's releases (GitHub). Absent until the repository is public, so the site never links to a page
+// that does not exist yet.
+export function releasesPageFrom(value: string | undefined): string | undefined {
+  return value !== undefined && /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/releases(\/latest)?$/.test(value) ? value : undefined;
+}

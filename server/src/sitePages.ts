@@ -33,9 +33,30 @@ export function landingPage(): string {
 `);
 }
 
-export function downloadPage(): string {
+export type DownloadInfo = {
+  app?: { version: string; url: string; size: number; sha256: string };
+  addon?: { version: string; url: string; size: number; sha256: string };
+  releasesUrl?: string | undefined; // the project's public releases page, once there is one
+};
+
+// What a card offers: a direct button (with the size and checksum, so a download can be checked) when a signed release names the
+// file, else a link to the releases page, else "pending".
+function downloadAction(file: DownloadInfo["app"], releasesUrl: string | undefined, label: string): string {
+  if (file) {
+    const megabytes = (file.size / (1024 * 1024)).toFixed(1);
+    return `<a class="button" href="${escapeHtml(file.url)}" rel="noopener">Download ${escapeHtml(label)} ${escapeHtml(file.version)} (${megabytes} MB) <span aria-hidden="true">↓</span></a><p class="fine">SHA-256 <code>${file.sha256}</code></p>`;
+  }
+  if (releasesUrl) return `<a class="button" href="${escapeHtml(releasesUrl)}" rel="noopener">Get it from GitHub <span aria-hidden="true">↗</span></a>`;
+  return `<div class="availability">Public release pending</div>`;
+}
+
+export function downloadPage(info: DownloadInfo = {}): string {
+  const available = info.app !== undefined || info.addon !== undefined || info.releasesUrl !== undefined;
+  const notice = available
+    ? `<div class="notice">Every download is also listed with its checksum on <strong>GitHub</strong>, where the source code lives. The companion app updates itself and the addon from signed releases only.</div>`
+    : `<div class="notice"><strong>Public downloads are not available yet.</strong> Preview builds are currently shared directly with testers. Download links will be added here when a public release is ready.</div>`;
   return layout("Downloads — World of Warcards", `${heading("START YOUR COLLECTION", "Your next adventure starts here.", "The addon brings your binder into the game. The Windows companion app connects it to Ranked play and the community.")}
-<div class="page-content"><div class="notice"><strong>Public downloads are not available yet.</strong> Preview builds are currently shared directly with testers. Download links will be added here when a public release is ready.</div><div class="download-grid"><section class="download-card"><span class="number">01 / IN GAME</span><h2>The addon</h2><p>Your card binder, collections, achievements and trades, right inside World of Warcraft: Forever.</p><div class="download-meta"><span class="tag">World of Warcraft: Forever</span><span class="tag">Manual installation</span></div><div class="availability">Public release pending</div><p>Already have a testing ZIP? Extract the <code>AzerothCardBinder</code> folder into your game's <code>Interface/AddOns</code> folder.</p><a class="button" href="/help#install">Addon setup guide <span aria-hidden="true">↗</span></a></section><section class="download-card"><span class="number">02 / ON YOUR DESKTOP</span><h2>The companion app</h2><p>Sign in with Discord, sync your saved collection and get ready for server-checked Ranked drops.</p><div class="download-meta"><span class="tag">Windows 64-bit</span><span class="tag">Per-user installer</span></div><div class="availability">Public release pending</div><p>The testing installer is currently unsigned. It installs for your user without administrator rights. Automatic updates are not available yet.</p><a class="button" href="/help#companion">Companion setup guide <span aria-hidden="true">↗</span></a></section></div><p class="download-note">World of Warcards is a free fan project. Read our <a href="/privacy">privacy information</a> and <a href="/fair-play">fair-play rules</a> before connecting your collection.</p></div>`, "/download");
+<div class="page-content">${notice}<div class="download-grid"><section class="download-card"><span class="number">01 / IN GAME</span><h2>The addon</h2><p>Your card binder, collections, achievements and trades, right inside World of Warcraft: Forever.</p><div class="download-meta"><span class="tag">World of Warcraft: Forever</span><span class="tag">Manual installation</span></div>${downloadAction(info.addon, info.releasesUrl, "the addon")}<p>Extract the <code>AzerothCardBinder</code> folder from the ZIP into your game's <code>Interface/AddOns</code> folder. The companion app can also install addon updates for you.</p><a class="button" href="/help#install">Addon setup guide <span aria-hidden="true">↗</span></a></section><section class="download-card"><span class="number">02 / ON YOUR DESKTOP</span><h2>The companion app</h2><p>Sign in with Discord, sync your saved collection and get ready for server-checked Ranked drops.</p><div class="download-meta"><span class="tag">Windows 64-bit</span><span class="tag">Per-user installer</span></div>${downloadAction(info.app, info.releasesUrl, "the companion")}<p>The installer is currently unsigned, so Windows may warn about an unknown publisher. It installs for your user without administrator rights.</p><a class="button" href="/help#companion">Companion setup guide <span aria-hidden="true">↗</span></a></section></div><p class="download-note">World of Warcards is a free fan project. Read our <a href="/privacy">privacy information</a> and <a href="/fair-play">fair-play rules</a> before connecting your collection.</p></div>`, "/download");
 }
 
 export function faqPage(): string {

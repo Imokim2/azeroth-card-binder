@@ -96,7 +96,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "bag" or cmd == "satchel" then
             if ACB.openSatchel then ACB.openSatchel() end
         elseif cmd == "packs" or cmd == "pack" then
-            if ACB.openPacks then ACB.openPacks() end
+            if ACB.openSatchel then ACB.openSatchel() elseif ACB.openPacks then ACB.openPacks() end
         elseif cmd == "report" or cmd:match("^report%s") then
             ACB.reportCommand(saved, message:match("^%s*%S+%s*(.-)%s*$"), report, time())
         elseif cmd == "newbinder" or cmd == "newbinder confirm" then

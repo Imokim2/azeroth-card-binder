@@ -36,7 +36,9 @@ function ACB.initUI(saved, trade)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
     -- Card packs: how many are held, and a way to open them (PackView.lua).
-    local packButton = button(frame, "Packs", nil, nil, 110, function() if ACB.openPacks then ACB.openPacks() end end)
+    local packButton = button(frame, "Packs", nil, nil, 110, function()
+        if ACB.openSatchel then ACB.openSatchel() elseif ACB.openPacks then ACB.openPacks() end
+    end)
     packButton:SetSize(110, 22)
     packButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -222, -24)
     function ACB.refreshPackButton()

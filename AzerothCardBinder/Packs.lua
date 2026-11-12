@@ -165,7 +165,7 @@ function ACB.addPackMethods(collection, ctx)
         record("packFind", zone, { count = count, tape = tapeIndex })
         if not tapeIndex or tapeIndex == 0 then saved.casualDrops = (saved.casualDrops or 0) + 1 end
         report(("Card pack found: %s (%s). Open your Warcards Satchel with /acb bag."):format(item.name, ACB.packTiers[item.tier].name))
-        if self.onPack then self.onPack(page, count) end
+        if self.onPack then self.onPack(page, count, item) end
         return true
     end
 

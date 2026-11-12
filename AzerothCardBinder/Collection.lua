@@ -271,7 +271,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             transfer("tradeIn", into, 1)
             report(out and ("Traded %s for %s"):format(out.name, into.name) or ("Received %s as a gift."):format(into.name))
             if into.pack then
-                if self.onPack then self.onPack(into.page, saved.packs[into.zone]) end
+                if self.onPack then self.onPack(into.page, saved.packs[into.zone], into) end
             else
                 checkAchievements(into)
                 found(into, { count = counts[take], first = counts[take] == 1, trade = true })

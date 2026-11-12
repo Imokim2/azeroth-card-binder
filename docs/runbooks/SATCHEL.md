@@ -2,6 +2,8 @@
 
 Prepared source: addon 0.6.0, companion/server 0.4.0, ledger specification 6. The generated card catalog stays `5e7dcd9e5e29`. This builds on the chase-card changes and Harry's updater/domain work. Source preparation does not deploy Workers or publish installers/manifests.
 
+Harry's existing public 0.5.0 / companion 0.3.0 signed manifest and trusted release key are retained unchanged. Build, publish and sign the new matching assets before deploying this source's raised minimum versions: the signed manifest takes precedence over `LATEST_*` variables, and must point at the new addon and companion. Do not deploy a server that requires versions newer than the downloads it offers.
+
 Update the server, companion and both trading players' addons together. No SQL migration or inventory reset is needed. Old `saved.packs[zone]` entries remain five-card Epic packs. New Common and Rare packs are separate `zone:common` and `zone:rare` stacks. Back up normal saved data before the in-game test.
 
 New found packs are 70% Common (1 card), 25% Rare (3) and 5% Epic (5), conditional on finding a pack; overall pack-find odds remain unchanged. Each card comes from the named zone. Chase weights remain in force for all pack tiers. Exact odds remain developer-facing.

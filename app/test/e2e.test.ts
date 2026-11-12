@@ -10,7 +10,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { CLIENT, NOW, catalog, newPlayer, setup } from "../../server/test/harness.ts";
 import { readBinder } from "../src/binderFile.ts";
-import { packValue } from "../../server/src/shared.ts";
+import { packValue, packTier } from "../../server/src/shared.ts";
 import { fetchTape, registerKey, syncBinder } from "../src/client.ts";
 import type { ClientOptions, FetchLike } from "../src/client.ts";
 import { describeInstall, findGameFolders, readText, writeFileAtomic } from "../src/files.ts";
@@ -257,7 +257,7 @@ test("the game folder is found even when it is one or two levels down, and accou
   void newPlayer;
 });
 
-test("Packs, end to end: the real add-on finds a pack on the server's tape, opens it, and the server accepts all five cards", async () => {
+test("Packs, end to end: the real add-on finds a tiered pack on the server's tape and the server accepts its cards", async () => {
   const game = await gameFolder();
   try {
     const env = setup();
@@ -278,16 +278,19 @@ test("Packs, end to end: the real add-on finds a pack on the server's tape, open
     process.env["WARCARDS_PACKS"] = "1";
     let played: { mode: string; packs: Record<string, number>; tape: { next: number } };
     try { played = JSON.parse(lua("tests/tools/write-saved.lua", game.saved, "400", install.syncPath)); } finally { delete process.env["WARCARDS_PACKS"]; }
-    assert.equal(played.tape.next, chosen.position + 6, "attempts up to the pack, then five entries for its cards");
+    const tier = packTier(chosen.entries[chosen.position - 1]!, catalog.shinyOdds);
+    const size = { common: 1, rare: 3, epic: 5 }[tier as "common" | "rare" | "epic"];
+    assert.equal(played.tape.next, chosen.position + size + 1, "attempts up to the pack, then its tier's card entries");
     assert.deepEqual(Object.keys(played.packs ?? {}), [], "the pack was opened");
     const binder = readBinder(await readText(game.saved));
     assert.ok(binder.events.some((event) => event.kind === "mode" && event.key === "editions1"));
     const kinds = binder.events.filter((event) => !(event.kind === "mode" && event.key === "editions1")).map((event) => event.kind);
-    assert.deepEqual(kinds.slice(-7), ["packFind", "packOpen", "packCard", "packCard", "packCard", "packCard", "packCard"]);
-    // The server replays every attempt, the pack and its five cards against its own tape.
+    assert.deepEqual(kinds.slice(-(size + 2)), ["packFind", "packOpen", ...Array(size).fill("packCard")]);
+    assert.ok(binder.events.some(event => event.kind === "mode" && event.key === "packs2"));
+    // The server replays every attempt, the pack tier and its cards against its own tape.
     const outcome = await syncBinder(chosen.client.options, binder, null);
     assert.equal(outcome.status, "synced", JSON.stringify(outcome));
-    assert.equal(env.raw.prepare("SELECT tape_next FROM ledger_state").get()?.["tape_next"], chosen.position + 6);
+    assert.equal(env.raw.prepare("SELECT tape_next FROM ledger_state").get()?.["tape_next"], chosen.position + size + 1);
     assert.equal(env.raw.prepare("SELECT casual_drops AS n FROM ledger_state").get()?.["n"], 0);
     assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM flags").get()?.["n"], 0);
     const state = JSON.parse((env.raw.prepare("SELECT state_json FROM ledger_state").get() as { state_json: string }).state_json) as { packs: Record<string, number>; packLeft: number };
