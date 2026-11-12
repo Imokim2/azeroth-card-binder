@@ -15,6 +15,9 @@ import catalog from "../../packages/shared/catalog.json";
 export interface Env {
   DB: D1Like;
   MIN_CLIENT: string;
+  LATEST_APP?: string; // the newest companion app and add-on, and the oldest add-on, as x.y.z (see /v1/releases)
+  LATEST_ADDON?: string;
+  MIN_ADDON?: string;
   VERSION: string;
   TAPE_SECRET?: string; // a secret (wrangler secret put TAPE_SECRET); without it Ranked is closed
   RATE_GENERAL?: RateLimitBinding; // Cloudflare rate-limit bindings (wrangler.toml); without them nothing is limited
@@ -36,6 +39,7 @@ export default {
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },
       minClient: env.MIN_CLIENT, version: env.VERSION,
+      releases: { latestApp: env.LATEST_APP ?? env.MIN_CLIENT, latestAddon: env.LATEST_ADDON ?? "0.0.0", minAddon: env.MIN_ADDON ?? "0.0.0" },
       ...(env.RATE_GENERAL && env.RATE_STRICT ? { limits: { general: bindingLimiter(env.RATE_GENERAL), strict: bindingLimiter(env.RATE_STRICT) } } : {}),
       // Registration opens only when the Discord application is fully configured.
       ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.DISCORD_REDIRECT_URI

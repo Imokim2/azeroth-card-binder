@@ -15,6 +15,7 @@ import type { Settings } from "./settings.ts";
 import { SecretStorageUnavailable } from "./secrets.ts";
 import { signInAndRegister } from "./signIn.ts";
 import type { SignInOptions } from "./signIn.ts";
+import type { UpdateReport } from "./versions.ts";
 import { join } from "node:path";
 
 export type Deps = {
@@ -50,6 +51,7 @@ export type Status = {
   needsNewBinder: boolean; // the saved data is a different binder from the one the server holds
   message: string | null; // the latest thing worth telling the player
   busy: boolean;
+  updates: UpdateReport | null; // whether the app and the add-on are out of date, once a sync has looked
 };
 
 const SIGN_IN_FAILURES: Record<string, string> = {
@@ -111,7 +113,7 @@ export class Controller {
       tapeEntries: report?.tape && "count" in report.tape ? report.tape.count : null,
       standings: report?.standings ?? null,
       needsNewBinder: report?.accounts.some((entry) => entry.result.status === "diverged") ?? false,
-      message: this.#message, busy: this.#busy,
+      message: this.#message, busy: this.#busy, updates: report?.updates ?? null,
     };
   }
 

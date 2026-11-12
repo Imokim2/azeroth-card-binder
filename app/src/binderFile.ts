@@ -22,6 +22,7 @@ export type Binder = {
   wanted: string[];
   // Reports about other players waiting to be sent, as the add-on wrote them (at most 20).
   reports: PendingReport[];
+  addonVersion: string | null; // the add-on version that last wrote this file, as the add-on says it (x.y.z)
 };
 
 export type PendingReport = { token: string; target: string; reason: "cheating" | "trading" | "other"; note: string };
@@ -118,5 +119,6 @@ export function readBinder(fileText: string): Binder {
     character: last ? splitCharacter(last.char) : null,
     wanted: wantedKeys(db["wanted"]),
     reports: pendingReports(db["reports"]),
+    addonVersion: typeof db["addonVersion"] === "string" && /^\d+\.\d+\.\d+$/.test(db["addonVersion"]) ? db["addonVersion"] : null,
   };
 }

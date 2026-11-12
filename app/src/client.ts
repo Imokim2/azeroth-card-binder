@@ -7,6 +7,8 @@ import { canonicalJson } from "../../packages/shared/src/crypto.ts";
 import type { Binder, BinderEvent } from "./binderFile.ts";
 import type { Identity } from "./identity.ts";
 import type { Ack } from "./syncFile.ts";
+import { isVersion } from "./versions.ts";
+import type { Releases } from "./versions.ts";
 
 export type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => Promise<{
   status: number;
@@ -177,6 +179,17 @@ export type Standings = {
 
 const record = (value: unknown): Record<string, unknown> => (typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {});
 const whole = (value: unknown): number => (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0);
+
+// The newest and oldest accepted versions of the app and the add-on (GET /v1/releases).
+export async function fetchReleases(options: ClientOptions): Promise<{ status: "releases"; releases: Releases } | Outcome> {
+  const reply = await sendWithRetries(options, "/v1/releases");
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  const app = record(reply.body["app"]);
+  const addon = record(reply.body["addon"]);
+  if (![app["latest"], app["min"], addon["latest"], addon["min"]].every(isVersion)) return { status: "rejected", code: "bad_reply" };
+  return { status: "releases", releases: { app: { latest: app["latest"] as string, min: app["min"] as string }, addon: { latest: addon["latest"] as string, min: addon["min"] as string } } };
+}
 
 export async function fetchStandings(options: ClientOptions, playerId: string | null): Promise<{ status: "standings"; standings: Standings } | Outcome> {
   const board = await sendWithRetries(options, "/v1/leaderboard?limit=100");
