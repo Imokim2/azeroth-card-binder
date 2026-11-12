@@ -310,9 +310,16 @@ export class Controller {
   async updateApp(): Promise<void> {
     const manifest = this.#manifest;
     if (this.#updating || !manifest || !this.#canUpdate().app || !this.#deps.download || !this.#deps.runInstaller) return;
-    const agreed = await this.#deps.confirm("Install World of Warcards " + manifest.app.version + " now? This app will close and open again.", "Install and restart");
-    if (!agreed) return this.#say("Nothing was changed.");
     this.#updating = "app";
+    this.#changed();
+    let agreed: boolean;
+    try {
+      agreed = await this.#deps.confirm("Install World of Warcards " + manifest.app.version + " now? This app will close and open again. Your binder progress and settings will be kept.", "Install and restart");
+    } catch {
+      this.#updating = null;
+      return this.#say("The update confirmation could not be opened. Nothing was changed.");
+    }
+    if (!agreed) { this.#updating = null; return this.#say("Nothing was changed."); }
     this.#say("Downloading companion " + manifest.app.version + "...");
     const updates = join(this.#deps.dataFolder, "updates");
     const file = join(updates, "World-of-Warcards-Setup-" + manifest.app.version + ".exe");

@@ -57,6 +57,9 @@ test("launch discovers a trusted companion update before Discord sign-in or choo
     assert.equal(f.confirmations(), 1);
     assert.deepEqual(f.downloads, [], "declining the restart keeps the current installation");
     assert.deepEqual(f.installers, []);
+    await Promise.all([f.controller.updateApp(), f.controller.updateApp()]);
+    assert.equal(f.confirmations(), 2, "repeated clicks open only one more confirmation");
+    assert.equal(f.controller.status().updating, null);
   } finally { await f.cleanup(); }
 });
 
