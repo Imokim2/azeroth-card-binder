@@ -51,6 +51,7 @@ SettingsView.lua
 LeaderboardView.lua
 WantedView.lua
 PackView.lua
+SatchelSkin.lua
 Satchel.lua
 TradeView.lua
 Binder.lua

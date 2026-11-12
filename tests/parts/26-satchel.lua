@@ -30,6 +30,38 @@ test("pack gifts use both accepts, move one sealed pack once, and cannot spend a
     equal(bCollection:swap("pack:BDX", nil, "alice-realm", "absent"), false)
 end)
 
+test("satchel skin uses native bag chrome and custom card artwork without binding a real bag", function()
+    local keepUtil, keepBag = _G.NineSliceUtil, _G.ContainerFrame1
+    local layout, applied = {}, nil
+    _G.ContainerFrame1 = { sentinel = true }
+    _G.NineSliceUtil = {
+        GetLayout = function(name) equal(name, "HeldBagLayout") return layout end,
+        ApplyLayout = function(chrome, value) equal(value, layout) applied = chrome end,
+    }
+    local saved = ACB.cleanSavedData({ packs = { ["WF:rare"] = 2 } })
+    local view = ACB.createSatchel(saved)
+    view:refresh()
+    equal(view.frame.nativeBagSkin, true)
+    equal(view.frame.chrome, applied)
+    equal(view.frame.portrait.texture, ACB.satchelIcon)
+    equal(view.slots[1].icon.texture, ACB.satchelIcon)
+    equal(view.slots[1].qualityBorder:IsShown(), true)
+    equal(view.slots[1].qualityBorder.vertex[3], ACB.packTiers.rare.color[3])
+    view.slots[1]:OnClick("LeftButton")
+    equal(view.slots[1].selection:IsShown(), true)
+    saved.packs = {}; view:refresh()
+    equal(view.slots[1].qualityBorder:IsShown(), false)
+    equal(view.slots[1].selection:IsShown(), false)
+    equal(_G.ContainerFrame1.sentinel, true)
+    _G.NineSliceUtil = nil
+    local fallback = ACB.createSatchel(saved)
+    equal(fallback.frame.nativeBagSkin, false)
+    equal(fallback.frame.width, 320)
+    fallback.frame.closeButton:OnClick()
+    equal(fallback.frame:IsShown(), false)
+    _G.NineSliceUtil, _G.ContainerFrame1 = keepUtil, keepBag
+end)
+
 test("a pack offered in a live trade stays sealed but unreserved spares can still open", function()
     local saved = ACB.cleanSavedData({})
     saved.packs.DM = 1

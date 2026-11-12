@@ -6,6 +6,8 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## 0.6.0 — 2026-11-12
 
+- The satchel now uses the game's metal bag-frame layout, native empty-slot/quality artwork and a compact grey interior with rounded controls. A custom painted gold-and-blue card-stack icon replaces the pouch on the launcher and pack slots. The window has a native close button and retains the pack/trade behavior.
+
 - **Warcards Satchel:** a separate bag-style inventory with stack counts and pages. Its button sits above the keyring, falling back to the bag controls or bottom right on custom layouts. `/acb bag` and `/acb satchel` also open it. Right-click a pack to use the existing reveal screen.
 - Zone packs are named **Pack: Westfall**, **Pack: Blackfathom Deeps**, and so on. Common packs contain 1 card, Rare packs 3 and Epic packs 5. Tier and card count appear separately; pack rarity does not guarantee card rarity. Existing unopened packs remain five-card Epic packs.
 - Packs can be traded for cards or other packs, or gifted, one per offer. Both players accept. An offered pack stays reserved, preventing it from also being opened. These are addon-owned items: native bags, mail, auction house and gold payments are not integrated.
