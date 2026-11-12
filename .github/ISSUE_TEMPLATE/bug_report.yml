@@ -1,0 +1,59 @@
+name: Something is not working
+description: The add-on, the companion app or the website is not doing what it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping. The more of this you fill in, the faster it can be fixed. Please do not paste your saved-data file or the companion's data folder: they can hold personal information.
+  - type: dropdown
+    id: part
+    attributes:
+      label: Which part?
+      options:
+        - The add-on (in the game)
+        - The companion app (Windows)
+        - The website
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: addon-version
+    attributes:
+      label: Add-on version
+      description: Type `/acb version` in the game.
+      placeholder: "0.5.0"
+  - type: input
+    id: companion-version
+    attributes:
+      label: Companion app version
+      description: Shown at the bottom of the companion window.
+      placeholder: "0.3.0"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: The exact message you saw, what you were doing, and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How can we make it happen again?
+      placeholder: |
+        1. ...
+        2. ...
+  - type: textarea
+    id: log
+    attributes:
+      label: Diagnostic lines (if it is about drops, kills, whispers or trading)
+      description: Type `/acb diag`, repeat the thing that went wrong, then `/acb log` and paste the relevant lines.
+      render: text
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Which mode were you playing?
+      options:
+        - Casual
+        - Ranked
+        - Not sure

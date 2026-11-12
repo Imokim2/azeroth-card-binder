@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem privately
+    url: https://github.com/Imokim2/azeroth-card-binder/security/advisories/new
+    about: A way to cheat Ranked, reach another player's data or run code through the companion or its updates. Please do not post these as public issues.
+  - name: Help centre
+    url: https://worldofwarcards.co.uk/help
+    about: Setup, syncing and troubleshooting guides.
+  - name: Server status
+    url: https://worldofwarcards.co.uk/status
+    about: Check that the server and its database are answering before reporting a sync problem.

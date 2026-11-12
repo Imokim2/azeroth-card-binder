@@ -11,6 +11,7 @@ Step-by-step instructions for things that go wrong. They are written when the th
 - [logs and alerts](ALERTS.md)
 - [backups and restoring the database](BACKUPS.md)
 - [releasing: app, add-on and server](RELEASES.md)
+- [code signing the Windows installer](../CODE-SIGNING.md)
 - catalog refresh after a game patch
 
 Each runbook has the same shape: how you notice, how to confirm, what to do, how to check it worked, and who to tell.

@@ -79,3 +79,24 @@ test("the download page shows real downloads, with their size and checksum, only
   env.deps.releasesUrl = "https://evil.test/releases/latest";
   assert.match(await (await env.call("/download")).text(), /not available yet/);
 });
+
+test("the help and FAQ pages describe the public release: real downloads, the unsigned-installer warning, and GitHub for reports", async () => {
+  const env = setup();
+  const help = await (await env.call("/help")).text();
+  assert.ok(!/testing build|supplied by the maintainers|before launch/i.test(help), "no leftover testing-build wording");
+  assert.ok(help.includes('href="https://github.com/Imokim2/azeroth-card-binder/issues/new/choose"'));
+  assert.match(help, /More info/);
+  const faq = await (await env.call("/faq")).text();
+  assert.match(faq, /More info/);
+  assert.ok(!/not available on this site yet|testers should use/i.test(faq));
+});
+
+test("the code signing policy page says where signing stands, who approves, and links from every page's footer", async () => {
+  const env = setup();
+  const page = await (await env.call("/code-signing-policy")).text();
+  assert.match(page, /not code-signed yet/);
+  assert.ok(page.includes('Free code signing provided by <a href="https://signpath.io">SignPath.io</a>, certificate by <a href="https://signpath.org">SignPath Foundation</a>'));
+  for (const part of ["Authors", "Reviewers", "Approvers", "multi-factor authentication", "privacy information"]) assert.ok(page.includes(part), part);
+  for (const path of ["/", "/download", "/help"]) assert.ok((await (await env.call(path)).text()).includes('href="/code-signing-policy"'), path);
+  assert.equal((await env.call("/code-signing-policy", { method: "POST", body: {} })).status, 405);
+});

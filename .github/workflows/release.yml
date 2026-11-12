@@ -1,7 +1,8 @@
 name: Release
 
 # Pushing a tag that starts with "v" (for example v0.5.0) builds the add-on ZIP and the Windows installer and attaches both, with
-# their SHA-256 checksums, to a GitHub release. Nothing is signed here: the release key never goes into GitHub. After the release
+# their SHA-256 checksums, to a GitHub release. The release key never goes into GitHub. (The installer is signed by SignPath
+# once that is set up, see the steps in the installer job; the manifest for the companion app is still signed on the maintainer's computer.) After the release
 # exists, sign it on the maintainer's computer (docs/runbooks/RELEASES.md, `node tools/release-manifest.js sign`) so the companion
 # app will install it, and deploy the server.
 
@@ -46,10 +47,32 @@ jobs:
         run: |
           npm ci
           npm run dist
+      # Free code signing from SignPath Foundation (docs/CODE-SIGNING.md). These steps do nothing until the repository
+      # variable SIGNPATH_ORGANIZATION_ID is set (Settings, Secrets and variables, Actions, Variables) and the secret
+      # SIGNPATH_API_TOKEN exists. Each signing request must then be approved by hand in SignPath before the release goes on.
+      - name: Keep the unsigned installer for signing
+        id: unsigned
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-unsigned
+          path: app/release/World-of-Warcards-Setup-*.exe
+          if-no-files-found: error
+      - name: Sign the installer
+        if: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: signed
       - uses: actions/upload-artifact@v4
         with:
           name: installer
-          path: app/release/World-of-Warcards-Setup-*.exe
+          path: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' && 'signed/*.exe' || 'app/release/World-of-Warcards-Setup-*.exe' }}
           if-no-files-found: error
 
   publish:
