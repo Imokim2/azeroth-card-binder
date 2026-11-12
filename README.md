@@ -1,69 +1,110 @@
+![World of Warcards — a card binder for World of Warcraft: Forever](docs/media/banner.png)
+
 # World of Warcards
 
-A collectible card add-on for **World of Warcraft: Forever**. Defeat neutral and hostile creatures and gather herbs and ore to find cards, fill a binder set by set, open card packs, trade spares with other players, and race everyone else up a global, server-checked ladder.
+Find cards from mobs, dungeon bosses and gathering nodes while you play **World of Warcraft: Forever**. Keep them in your binder, open packs, trade your spares and work towards collection achievements.
 
-> A free fan project. It is not affiliated with or endorsed by Blizzard Entertainment.
+**[Download](https://worldofwarcards.co.uk/download)** · **[Website](https://worldofwarcards.co.uk)** · **[Help](https://worldofwarcards.co.uk/help)** · **[Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose)**
 
-**Website and downloads:** <https://worldofwarcards.co.uk>
+Free and open source. Built for **Forever**; Retail and other Classic clients are not currently supported.
 
-## The three parts
+## Your collection, in game
 
-| Part | What it does | Where |
-|---|---|---|
-| **The add-on** | Your in-game binder: cards, sets, achievements, packs, trading and the ladder tab. | `AzerothCardBinder/` |
-| **The companion app** | A Windows app that reads the add-on's saved data after a reload, uploads it, brings back Ranked roll tape and standings, and can install updates. | `app/` |
-| **The server** | A Cloudflare Worker and D1 database that check every Ranked drop, run the ladder and serve the website. | `server/` |
+Browse cards by zone or dungeon, see what you’re missing and take a closer look at your favourites. Some cards have separate collectible editions with different poses or animations.
 
-The add-on folder is called `AzerothCardBinder`. The name is historical and stays, because the saved-data name, the card-link prefix and the install path all depend on it. The name players see is World of Warcards.
+![Binder layout illustration showing a collection page and a selected card. Screenshot placeholder.](docs/media/gallery/binder.png)
 
-## Install (players)
+*The gallery currently uses labelled layout illustrations. We’ll replace these with actual in-game screenshots.*
 
-1. Download the **add-on ZIP** and the **companion installer** from the [website](https://worldofwarcards.co.uk/download) or the project's GitHub *Releases* page.
-2. Close the game and extract the `AzerothCardBinder` folder from the ZIP into `World of Warcraft/_forever_/Interface/AddOns/`. Enable it on the character screen, then click the book on the minimap or type `/acb`.
-3. Run the companion installer (Windows 64-bit, installs for your user, no administrator rights). It is **not code-signed yet**, so Windows may warn about an unknown publisher. Sign in with Discord, choose your game folder, then `/reload` in the game so it syncs.
+| Open packs | Trade or send a gift |
+|:---:|:---:|
+| ![Pack opening layout illustration. Screenshot placeholder.](docs/media/gallery/packs.png) | ![Two-player trade layout illustration. Screenshot placeholder.](docs/media/gallery/trading.png) |
+| Turn the cards over to see what you found. | Choose your offer. Both players accept before the trade completes. |
 
-Casual play works without the companion. Ranked play needs it. Each release lists SHA-256 checksums so a download can be checked. The first-playtest notes are in [AzerothCardBinder/PLAYTEST.md](AzerothCardBinder/PLAYTEST.md).
+| Collect alternate editions | Earn achievements and titles |
+|:---:|:---:|
+| ![Alternate card editions layout illustration. Screenshot placeholder.](docs/media/gallery/variants.png) | ![Collection achievements layout illustration. Screenshot placeholder.](docs/media/gallery/achievements.png) |
+| Find different versions of selected cards, including different poses and animations. | Complete sets and unlock titles other addon users can see. |
 
-## How Ranked stays fair
+## Start collecting
 
-Ranked random numbers come from a "roll tape" the server issues and the server checks every attempt against it. The ledger of everything you collect is hash-chained and signed with a key that stays on your computer. The format is in [docs/LEDGER-SPEC.md](docs/LEDGER-SPEC.md), the rules players are held to in the website's [fair-play guide](https://worldofwarcards.co.uk/fair-play), and what the service stores in the [privacy page](https://worldofwarcards.co.uk/privacy).
+1. Download the **addon ZIP** from [Downloads](https://worldofwarcards.co.uk/download) or [GitHub Releases](https://github.com/Imokim2/azeroth-card-binder/releases/latest). Use the release file, rather than GitHub’s “Code → Download ZIP”.
+2. Close the game. Extract the `AzerothCardBinder` folder into your Forever installation:
 
-## Develop
+   ```text
+   World of Warcraft/
+     _forever_/
+       Interface/
+         AddOns/
+           AzerothCardBinder/
+             AzerothCardBinder.toc
+   ```
 
-You need [LuaJIT](https://luajit.org) (the tests use Lua 5.1 semantics, as WoW does) and [Node.js](https://nodejs.org) 24 or later.
+3. Enable **World of Warcards** in the character screen’s AddOns list. Open it from the minimap, or type `/acb`.
 
-```
-luajit tests/run.lua           the add-on tests, with a mocked WoW API
-node tools/release.js check    syntax-check every Lua and JavaScript file and the add-on's file list
-node tools/release.js test     the add-on tests and the shared-contract tests
-node tools/release.js build    check, test, then build dist/AzerothCardBinder-<version>.zip
-(cd server && npm ci && npm test)    the server tests
-(cd app && npm ci && npm test)       the companion app tests (npm run dist builds the installer)
-```
+You can collect in **Casual** mode with just the addon. For **Ranked** play and online syncing, install the companion app too. The [setup guide](https://worldofwarcards.co.uk/help#install) covers both.
 
-The tests never start WoW. Anything that depends on the real client (tooltips, sounds, fonts, models, two-player trading) has to be checked in game; the checklist is in [docs/ROADMAP.md](docs/ROADMAP.md#6-testing).
+## The companion app
 
-## Layout
+The Windows app connects your saved binder to the server. Sign in with Discord, choose your game folder and keep it running while you play. It syncs after `/reload` or logout and checks for addon and app updates.
 
-| Folder | What is in it |
+![Companion app layout illustration showing collection and sync controls. Screenshot placeholder.](docs/media/gallery/companion.png)
+
+- **Windows 64-bit.** Installs for your user without administrator rights.
+- **Public or private.** Choose whether your binder appears on the website.
+- **File-based syncing.** Reads the addon’s saved data and writes its update file; it does not read game memory or automate play.
+- **Checkable downloads.** Release files include SHA-256 checksums. The companion verifies updates before installing them.
+
+The current Windows installer is **not code-signed yet**, so Windows may show an unknown-publisher warning. See the [installation guide](https://worldofwarcards.co.uk/help#companion) and [code-signing policy](https://worldofwarcards.co.uk/code-signing-policy).
+
+## Ranked play
+
+Collect through normal play, use the addon’s trade window and keep your companion synced. Edited collections, fake progress and exploiting bugs are not allowed.
+
+Read the [Ranked rules](https://worldofwarcards.co.uk/fair-play) **before starting a Ranked binder**. Casual drops affect eligibility. You can compare public collections on the [ladder](https://worldofwarcards.co.uk/ladder) and find possible swaps on the [wanted board](https://worldofwarcards.co.uk/wanted).
+
+## Need a hand?
+
+- [Setup and troubleshooting](https://worldofwarcards.co.uk/help)
+- [Frequently asked questions](https://worldofwarcards.co.uk/faq)
+- [Server status](https://worldofwarcards.co.uk/status)
+- [Bug reports and feature requests](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose)
+- [Privacy and deleting your data](https://worldofwarcards.co.uk/privacy)
+
+For security issues, follow [SECURITY.md](SECURITY.md). Avoid putting account files or personal information in a public issue.
+
+<details>
+<summary><strong>For contributors: source, builds and documentation</strong></summary>
+
+The repository contains the addon, companion and server. The installed addon folder remains named `AzerothCardBinder` for compatibility with existing saved data and card links.
+
+| Folder | Contents |
 |---|---|
-| `AzerothCardBinder/` | The add-on, installed as it is |
-| `app/` | The Windows companion app (Electron and TypeScript) |
-| `server/` | The Cloudflare Worker, its database migrations and the website pages |
-| `packages/shared/` | Contracts shared by the add-on, server and app: the ledger rules, the card catalog and test vectors |
+| `AzerothCardBinder/` | The addon, installed as it is |
+| `app/` | Windows companion app, using Electron and TypeScript |
+| `server/` | Cloudflare Worker, database migrations and website |
+| `packages/shared/` | Shared catalog, ledger rules and test vectors |
 | `tests/` | Offline Lua and shared-contract tests |
-| `tools/` | Scripts that build the card catalog, the release, signed manifests and database backups |
-| `docs/` | Roadmap, specifications, decision records and runbooks |
+| `tools/` | Build, release, catalog and backup tools |
+| `docs/` | Specifications, release planning and runbooks |
 
-## Where to read next
+Use [LuaJIT](https://luajit.org) and [Node.js](https://nodejs.org) 24 or later. Install the app and server dependencies before running the full suite.
 
-- [docs/ROADMAP.md](docs/ROADMAP.md): the plan, with phases, tasks and risks.
-- [docs/LEDGER-SPEC.md](docs/LEDGER-SPEC.md) and [docs/API.md](docs/API.md): the ledger format and the server's API.
-- [docs/adr/](docs/adr/): why the big decisions were made.
-- [docs/runbooks/](docs/runbooks/): releasing, backups and alerts.
-- [CONTRIBUTING.md](CONTRIBUTING.md): how to make a change. [SECURITY.md](SECURITY.md): how to report a vulnerability.
-- [CREDITS.md](CREDITS.md): where the data comes from.
+```sh
+luajit tests/run.lua
+node tools/release.js check
+node tools/release.js test
+node tools/release.js build
+```
 
-## Licence
+See [CONTRIBUTING.md](CONTRIBUTING.md), the [roadmap](docs/ROADMAP.md), [ledger specification](docs/LEDGER-SPEC.md), [API documentation](docs/API.md) and [release runbook](docs/runbooks/RELEASES.md). Client rendering, model poses, sounds and two-player interactions also need testing inside the game.
 
-Copyright (C) 2026 the World of Warcards contributors. Free software under the **GNU General Public License, version 3 or (at your option) any later version**: see [LICENSE](LICENSE). The generated creature and node catalogs are built from data that is itself GPL-licensed (see [CREDITS.md](CREDITS.md)). Game names and the Forever name belong to their owners and are used only to say what this is for.
+For the release-page draft and planned screenshots, see [CurseForge release planning](docs/launch/CURSEFORGE-PLAN.md). Image filenames and replacement instructions are in the [media guide](docs/media/README.md).
+
+</details>
+
+## Licence and credits
+
+Copyright © 2026 the World of Warcards contributors. Licensed under **GPL-3.0-or-later**; see [LICENSE](LICENSE). Catalog sources and attribution are in [CREDITS.md](CREDITS.md).
+
+World of Warcards is a fan project, not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft and the Forever name belong to their respective owners.
