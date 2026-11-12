@@ -13,6 +13,7 @@ export const ERRORS = {
   replay: { status: 409, message: "These events were already stored." },
   gap: { status: 409, message: "Events are missing before this batch." },
   conflict: { status: 409, message: "Another upload for this player was in progress. Try again." },
+  binder_reset: { status: 409, message: "This binder was reset by the people who run the service. Start a new binder (in the companion app, then /acb newbinder confirm in the game) before syncing again." },
   too_soon: { status: 429, message: "A binder was started recently. Try again later." },
   rate_limited: { status: 429, message: "Too many requests. Slow down and try again." },
   too_large: { status: 413, message: "The upload is too large." },
