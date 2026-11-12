@@ -23,6 +23,8 @@ export type Binder = {
   // Reports about other players waiting to be sent, as the add-on wrote them (at most 20).
   reports: PendingReport[];
   addonVersion: string | null; // the add-on version that last wrote this file, as the add-on says it (x.y.z)
+  rankedStarter?: boolean; // untouched collection that can default to Ranked when the companion supplies it
+  modeSetupID?: string | null;
 };
 
 export type PendingReport = { token: string; target: string; reason: "cheating" | "trading" | "other"; note: string };
@@ -120,5 +122,9 @@ export function readBinder(fileText: string): Binder {
     wanted: wantedKeys(db["wanted"]),
     reports: pendingReports(db["reports"]),
     addonVersion: typeof db["addonVersion"] === "string" && /^\d+\.\d+\.\d+$/.test(db["addonVersion"]) ? db["addonVersion"] : null,
+    modeSetupID: typeof db["modeSetupID"] === "string" && /^[0-9a-f]{32}$/.test(db["modeSetupID"]) ? db["modeSetupID"] : null,
+    rankedStarter: typeof db["modeSetupID"] === "string" && /^[0-9a-f]{32}$/.test(db["modeSetupID"])
+      && db["modeChoice"] !== "casual" && db["legacy"] !== true && !(Number(db["casualDrops"]) > 0)
+      && Object.keys(numberMap(db["counts"], 1)).length === 0 && Object.keys(numberMap(db["attempts"], 1)).length === 0,
   };
 }

@@ -173,6 +173,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             log("Already rolled: " .. card.name .. " (" .. origin .. ")")
             return
         end
+        if saved == AzerothCardBinderDB and ACB.ensureCollectionMode and not ACB.ensureCollectionMode() then return end
         ACB.activateDropBalance(saved, ledger)
         if ACB.editions[card.key] and (not card.critter or saved.balancedDrops) then ACB.activateEditions(saved, ledger) end
 

@@ -4,6 +4,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+## 0.6.4 — 2026-11-12 (companion 0.4.4)
+
+- New binders default to Ranked after a verified companion setup. The local setup pairing prevents an unrelated or stale sync file from choosing a mode. Without it, a one-time choice appears before the first card or pack is rolled. Casual requires an explicit choice, the mode stays visible in the binder, and switching away from Ranked asks for confirmation. Existing Casual cards are kept and are not silently relabelled as Ranked.
+- The companion brings a new history conflict into view and offers Repair sync. It rebuilds routine sync data first and keeps five recent synced saves per account without extra network requests. A backup restore requires a closed game, explicit approval, fresh server/local checks and preservation of all current progress. Both original files are kept, current preferences survive, and no reset or deletion is used as a repair. Ambiguous cases stay unchanged.
+- The trade window and pack picker use the binder leather, parchment, brass and ink palette. Offer and history panels match the binder pages.
+
 ## 0.6.3 — 2026-11-12 (companion 0.4.3, server 0.4.1)
 
 - Trade invitations wait for Accept invitation before joining or opening a window. The separate trade window has a clickable card slot: it opens the binder above the trade, then Add to trade beneath the selected card returns to the trade. Missing cards stay unavailable; editions and sealed packs retain their identities. Both players still accept the final offers.

@@ -99,6 +99,9 @@ code { padding: 1px 4px; border: 1px solid #453b33; border-radius: 3px; font: 10
 .attention h2 { font: 21px Georgia, serif; margin: 3px 0 8px; }
 .attention p:not(.eyebrow) { color: var(--muted); margin: 0; max-width: 650px; }
 .attention button { flex-shrink: 0; }
+.attention details { flex: 0 0 220px; max-width: 240px; font-size: 11px; }
+.attention summary { cursor: pointer; color: var(--muted); }
+.attention details p { padding: 9px 0; }
 .message { margin: 16px 0 0; color: var(--ink); border-color: #5c5041; background: #3b332630; }
 footer { display: flex; align-items: center; flex-wrap: wrap; gap: 15px; padding: 19px 0 0; font-size: 11px; color: var(--muted); }
 .startup-choice { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
@@ -125,5 +128,6 @@ button.link:hover:not(:disabled) { background: transparent; color: var(--red); }
   .setup-count { margin: 0; }
   .panel { padding: 17px; }
   .attention { align-items: flex-start; flex-direction: column; }
+  .attention details { flex-basis: auto; max-width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { button { transition: none; } }

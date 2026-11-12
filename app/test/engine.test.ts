@@ -89,6 +89,25 @@ test("one pass: uploads, acknowledges into Sync.lua, writes the standings, and t
   }
 });
 
+test("a paired fresh binder receives Ranked setup while an explicit Casual choice does not", async () => {
+  const game = await gameFolder();
+  try {
+    const w = await world(), install = await describeInstall(game.folder), id = "a".repeat(32);
+    const fresh = (choice: string) => `AzerothCardBinderDB = { schema = 2, mode = "casual", modeSetupID = "${id}", ${choice} head = { seq = 0, hash = "${"0".repeat(32)}" }, ledger = {}, counts = {}, tape = { next = 1 } }`;
+    await writeFile(game.saved, fresh('modeChoice = "casual",'));
+    const casual = new Engine({ install, client: w.client, playerId: w.playerId });
+    assert.equal((await casual.syncOnce()).tape, null);
+    assert.equal(w.calls.filter(call => call === "POST /v1/tape").length, 0);
+    await writeFile(game.saved, fresh(""));
+    const starter = new Engine({ install, client: w.client, playerId: w.playerId });
+    assert.deepEqual((await starter.syncOnce()).tape, { start: 1, count: TAPE_SIZE });
+    const sync = await readFile(install.syncPath, "utf8");
+    assert.match(sync, /companionReady = true/);
+    assert.ok(sync.includes(`rankedSetups = { "${id}" }`));
+    assert.equal(await readFile(game.saved, "utf8"), fresh(""), "the companion does not change the player's chosen mode itself");
+  } finally { await game.cleanup(); }
+});
+
 test("Ranked: the pass brings the tape back from where the add-on got to, and the player's place with it", async () => {
   const game = await gameFolder();
   try {

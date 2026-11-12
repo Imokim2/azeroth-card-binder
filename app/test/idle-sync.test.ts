@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { CLIENT, NOW, catalog, setup } from "../../server/test/harness.ts";
@@ -57,6 +57,27 @@ async function fixture() {
     playerId: () => registered.playerId, advance(seconds: number) { stamp += seconds; },
     cleanup: () => rm(folder, { recursive: true, force: true }) };
 }
+
+test("a blocked sync file repairs itself after folder access returns without extra network polling", { timeout: 30_000 }, async (t) => {
+  const f = await fixture(), observed = observe();
+  let stop: (() => Promise<void>) | undefined;
+  try {
+    await mkdir(f.install.syncPath, { recursive: true }); // an isolated test directory blocks the file replacement
+    t.mock.timers.enable({ apis: ["setTimeout"] });
+    const engine = new Engine({ install: f.install, client: f.client, playerId: f.playerId, onReport: observed.onReport });
+    stop = engine.start();
+    assert.equal((await observed.wait(1)).wroteSync, false); await flush();
+    const calls = f.calls.length;
+    assert.ok(resolve(f.install.syncPath).startsWith(resolve(f.folder) + sep), "only remove the obstruction inside this temporary fixture");
+    await rm(f.install.syncPath, { recursive: true });
+    t.mock.timers.tick(60_000);
+    assert.equal((await observed.wait(2)).wroteSync, true); await flush();
+    assert.match(await readFile(f.install.syncPath, "utf8"), /ACB.sync =/);
+    assert.equal(f.calls.length, calls, "cached sync state repairs the local file without another network request");
+    t.mock.timers.tick(3_600_000); await flush();
+    assert.equal(observed.reports.length, 2, "successful repair returns to idle");
+  } finally { await stop?.(); t.mock.timers.reset(); await f.cleanup(); }
+});
 
 test("a day idle makes no requests; a saved-file rewrite still syncs without manual input", { timeout: 10_000 }, async (t) => {
   const f = await fixture(), observed = observe();

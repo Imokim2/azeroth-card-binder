@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("warcards", {
   chooseGameFolder: () => ipcRenderer.invoke("chooseGameFolder"),
   findGame: () => ipcRenderer.invoke("findGame"),
   syncNow: () => ipcRenderer.invoke("syncNow"),
+  repairSync: () => ipcRenderer.invoke("repairSync"),
   startNewBinder: () => ipcRenderer.invoke("startNewBinder"),
   deleteMyData: () => ipcRenderer.invoke("deleteMyData"),
   exportMyData: () => ipcRenderer.invoke("exportMyData"),

@@ -13,6 +13,7 @@ import { DEFAULT_SERVER, SERVERS } from "../src/config.ts";
 import { Controller } from "../src/controller.ts";
 import type { Status } from "../src/controller.ts";
 import { encryptedFileStore } from "../src/secrets.ts";
+import { gameClosed } from "./gameProcess.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(here, "..", "..", ".."); // the app/ folder, from app/dist/app/electron
@@ -99,6 +100,8 @@ async function main(): Promise<void> {
   const userData = app.getPath("userData");
   controller = new Controller({
     dataFolder: userData,
+    gameClosed,
+    onSyncIssue: showWindow,
     secrets: encryptedFileStore(join(userData, "key.bin"), {
       available: () => safeStorage.isAsyncEncryptionAvailable(),
       encrypt: (text) => safeStorage.encryptStringAsync(text),
@@ -151,6 +154,7 @@ async function main(): Promise<void> {
   ipcMain.handle("chooseGameFolder", () => controller.chooseGameFolder());
   ipcMain.handle("findGame", () => controller.findGame());
   ipcMain.handle("syncNow", () => controller.syncNow());
+  ipcMain.handle("repairSync", () => controller.repairSync());
   ipcMain.handle("startNewBinder", () => controller.startNewBinder());
   ipcMain.handle("deleteMyData", () => controller.deleteMyData());
   ipcMain.handle("exportMyData", () => controller.exportMyData());

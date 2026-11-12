@@ -1,31 +1,35 @@
 local _, ACB = ...
 local kit = ACB.uiKit
 local button, label, centered = kit.button, kit.label, kit.centered
+local INK, SEPIA = ACB.folioUi.INK, ACB.folioUi.SEPIA
+local function paperPanel(frame)
+    frame:SetBackdrop({ bgFile = ACB.folioArt .. "Parchment.tga", edgeFile = "Interface\\Buttons\\WHITE8X8", edgeSize = 1 })
+    frame:SetBackdropColor(1, 1, 1, 1)
+    frame:SetBackdropBorderColor(0.58, 0.43, 0.27, 1)
+end
 
 local function side(parent, x, caption)
     local frame = CreateFrame("Frame", nil, parent, "BackdropTemplate")
     frame:SetPoint("TOPLEFT", x, -78)
     frame:SetSize(290, 310)
-    kit.backdrop(frame, "Interface\\Buttons\\WHITE8X8", 1)
-    frame:SetBackdropColor(0.055, 0.05, 0.045, 1)
-    frame:SetBackdropBorderColor(unpack(kit.goldDark))
-    centered(frame, "GameFontNormal", 12, kit.brass, 260):SetText(caption)
+    paperPanel(frame)
+    centered(frame, "GameFontNormal", 12, SEPIA, 260):SetText(caption)
     local card = ACB.createCard(frame)
     card.frame:SetPoint("TOP", frame, "TOP", 0, -35)
     local pack = ACB.createPackItemView(frame, ACB.cardWidth, ACB.cardHeight)
     pack.frame:SetPoint("TOP", frame, "TOP", 0, -35)
     pack.frame:Hide()
     return { frame = frame, card = card, pack = pack,
-        empty = centered(frame, "GameFontHighlight", 112, kit.muted, 244),
-        accepted = centered(frame, "GameFontNormal", 267, kit.muted, 260),
-        note = centered(frame, "GameFontHighlightSmall", 290, kit.muted, 266) }
+        empty = centered(frame, "GameFontHighlight", 112, SEPIA, 244),
+        accepted = centered(frame, "GameFontNormal", 267, INK, 260),
+        note = centered(frame, "GameFontHighlightSmall", 290, SEPIA, 266) }
 end
 
 function ACB.createTradeView(parent, saved, trade)
-    local view = kit.window("AzerothCardBinderTradeWindow", 680, 560, "Card trade")
+    local view = kit.window("AzerothCardBinderTradeWindow", 680, 584, "Card trade", true)
     local box = CreateFrame("Frame", nil, view)
     box:SetSize(640, 480)
-    box:SetPoint("TOP", view, "TOP", 0, -48)
+    box:SetPoint("TOP", view, "TOP", 0, -64)
     label(box, "GameFontHighlightSmall", 20, 14, kit.muted, "PLAYER")
     local partner = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
     partner:SetPoint("TOPLEFT", 78, -4)
@@ -68,17 +72,18 @@ function ACB.createTradeView(parent, saved, trade)
     end
 
     -- Cards are chosen from the binder; sealed packs keep their own searchable list.
-    local picker = kit.window("AzerothCardBinderTradeCards", 480, 420, "Choose a pack", false)
+    local picker = kit.window("AzerothCardBinderTradeCards", 560, 450, "Choose a pack", true)
+    picker.edition:Hide()
     picker:SetFrameStrata("FULLSCREEN_DIALOG")
     local search = CreateFrame("EditBox", nil, picker, "InputBoxTemplate")
-    search:SetPoint("TOPLEFT", 38, -56)
-    search:SetSize(404, 26)
+    search:SetPoint("TOPLEFT", 38, -76)
+    search:SetSize(484, 26)
     search:SetAutoFocus(false)
     search:SetMaxLetters(80)
     search:SetScript("OnEscapePressed", function() picker:Hide() end)
     local rows, page, pages = {}, 1, 1
-    local empty = label(picker, "GameFontHighlight", 30, 94, kit.muted, "No matching packs.")
-    local pageLabel = centered(picker, "GameFontHighlightSmall", 377, kit.muted, 160)
+    local empty = label(picker, "GameFontHighlight", 30, 112, kit.parchment, "No matching packs.")
+    local pageLabel = centered(picker, "GameFontHighlightSmall", 408, kit.parchment, 160)
     local back, more
     local function listCards()
         local query, cards = search:GetText():lower(), {}
@@ -102,14 +107,14 @@ function ACB.createTradeView(parent, saved, trade)
         more:SetEnabled(page < pages)
     end
     for index = 1, 9 do
-        local row = button(picker, "", 30, 94 + (index - 1) * 28, 420, function(self)
+        local row = button(picker, "", 30, 112 + (index - 1) * 28, 500, function(self)
             selectCard(self.key)
             picker:Hide()
         end)
         rows[index] = row
     end
-    back = button(picker, "Previous", 30, 370, 100, function() page = page - 1 listCards() end)
-    more = button(picker, "Next", 350, 370, 100, function() page = page + 1 listCards() end)
+    back = button(picker, "Previous", 30, 402, 100, function() page = page - 1 listCards() end)
+    more = button(picker, "Next", 430, 402, 100, function() page = page + 1 listCards() end)
     search:SetScript("OnTextChanged", function() page = 1 listCards() end)
     local function editable()
         local s = trade:active()
@@ -148,11 +153,9 @@ function ACB.createTradeView(parent, saved, trade)
     historyPanel:SetPoint("TOPLEFT", 20, -78)
     historyPanel:SetSize(600, 310)
     historyPanel:SetFrameLevel(box:GetFrameLevel() + 60)
-    kit.backdrop(historyPanel, "Interface\\Buttons\\WHITE8X8", 1)
-    historyPanel:SetBackdropColor(0.055, 0.05, 0.045, 1)
-    historyPanel:SetBackdropBorderColor(unpack(kit.goldDark))
-    centered(historyPanel, "GameFontNormal", 14, kit.brass, 560):SetText("Recent trades and gifts")
-    local historyText = label(historyPanel, "GameFontHighlightSmall", 24, 44, kit.parchment, "")
+    paperPanel(historyPanel)
+    centered(historyPanel, "GameFontNormal", 14, SEPIA, 560):SetText("Recent trades and gifts")
+    local historyText = label(historyPanel, "GameFontHighlightSmall", 24, 44, INK, "")
     historyText:SetWidth(552)
     historyText:SetSpacing(5)
     view:SetScript("OnHide", function() picker:Hide() end)
@@ -197,7 +200,7 @@ function ACB.createTradeView(parent, saved, trade)
                 else panel.card:set(item, count, saved.shiny and saved.shiny[key] and panel == mine) end
             end
             panel.accepted:SetText(confirmed and "Accepted" or "Not accepted")
-            panel.accepted:SetTextColor(unpack(confirmed and kit.green or kit.muted))
+            panel.accepted:SetTextColor(unpack(confirmed and { 0.15, 0.36, 0.15 } or SEPIA))
             panel.frame:SetBackdropBorderColor(unpack(confirmed and kit.green or kit.goldDark))
         end
         -- The offer is one copy, even when the picker says several are owned.

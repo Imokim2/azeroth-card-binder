@@ -34,6 +34,7 @@ export type EngineOptions = {
   initialReleasesAt?: number; // milliseconds; reusing the cache must not extend its age
   log?: (message: string) => void;
   onReport?: (report: PassReport) => void; // told after every pass, whoever asked for it
+  keepSavedBackup?: (account: string, source: string) => Promise<void>;
 };
 
 export type AccountReport = {
@@ -41,6 +42,7 @@ export type AccountReport = {
   // What happened to this account's file: an upload outcome, or why it could not be read.
   result: Outcome | { status: "unreadable"; reason: string } | { status: "not-registered" };
   mode: string | null;
+  rankedSetup?: boolean;
 };
 
 export type PassReport = {
@@ -61,6 +63,7 @@ export class Engine {
   #acks = new Map<string, Ack>();
   #tape: { start: number; entries: string[] } | undefined;
   #rankedIssue: "binder-mismatch" | "position-mismatch" | undefined;
+  #rankedSetups: string[] = [];
   #standings: Standings | undefined;
   #loadedCommunity = false;
   #releases: Releases | undefined; // the versions the server last announced
@@ -100,6 +103,7 @@ export class Engine {
       this.#standings = cachedStandings(await readText(install.syncPath).catch(() => ""));
     }
     const accounts: AccountReport[] = [];
+    this.#rankedSetups = [];
     let anyRanked = false;
     let rankedBlocked = false;
     let tapeNext = 1; // the furthest tape position any Ranked add-on file says it will use next
@@ -108,14 +112,17 @@ export class Engine {
     let running: string | null = null; // the oldest add-on version that last wrote an account's file
     for (const file of install.savedFiles) {
       let binder: Binder;
+      let source: string;
       try {
-        binder = readBinder(await readText(file.path));
+        source = await readText(file.path);
+        binder = readBinder(source);
       } catch (error) {
         const reason = error instanceof BinderFileError || error instanceof LuaSyntaxError || error instanceof Error ? error.message : String(error);
         accounts.push({ account: file.account, result: { status: "unreadable", reason }, mode: null });
         continue;
       }
-      if (binder.mode === "ranked") {
+      const wantsRanked = binder.mode === "ranked" || binder.rankedStarter === true;
+      if (wantsRanked) {
         anyRanked = true;
         tapeNext = Math.max(tapeNext, binder.tapeNext);
       }
@@ -124,13 +131,19 @@ export class Engine {
       const result = await syncBinder(client, binder, this.#acks.get(file.account) ?? null);
       if (result.status === "diverged" || result.status === "history-missing") {
         this.#acks.delete(file.account);
-        if (binder.mode === "ranked") rankedBlocked = true;
+        if (wantsRanked) rankedBlocked = true;
       }
-      if (binder.mode === "ranked" && result.status === "rejected") rankedBlocked = true;
+      if (wantsRanked && result.status === "rejected") rankedBlocked = true;
       if (result.status === "synced" && result.uploaded > 0) uploadedProgress = true;
       if (result.status === "synced" && result.ack) this.#acks.set(file.account, result.ack);
+      if (result.status === "synced" && result.ack?.seq === binder.head.seq && result.ack.hash === binder.head.hash) {
+        try { await this.#options.keepSavedBackup?.(file.account, source); }
+        catch { this.#options.log?.("The local recovery copy could not be saved; the game save is unchanged."); }
+      }
+      if (result.status === "synced" && binder.rankedStarter && binder.modeSetupID) this.#rankedSetups.push(binder.modeSetupID);
       accounts.push({
         account: file.account, mode: binder.mode,
+        ...(binder.rankedStarter && binder.mode !== "ranked" ? { rankedSetup: true } : {}),
         result: result.status === "rejected" && result.code === "unknown_key" ? { status: "not-registered" } : result,
       });
     }
@@ -214,7 +227,7 @@ export class Engine {
 
   async #writeSync(syncedAt: number): Promise<boolean> {
     const text = syncFileText({
-      syncedAt, acks: [...this.#acks.values()].filter((ack) => ack.seq > 0), reportsDone: this.#reportsDone,
+      syncedAt, companionReady: true, rankedSetups: this.#rankedSetups, acks: [...this.#acks.values()].filter((ack) => ack.seq > 0), reportsDone: this.#reportsDone,
       ...(this.#rankedIssue ? { rankedIssue: this.#rankedIssue } : {}),
       ...(this.#releases ? { releases: { latestAddon: this.#releases.addon.latest, minAddon: this.#releases.addon.min } } : {}),
       ...(this.#tape ? { tape: this.#tape } : {}),
@@ -249,6 +262,7 @@ export class Engine {
       pending = this.syncOnce({ saved }).then((report) => {
         if (stopped) return;
         const wait = report.accounts.flatMap((account) => (account.result.status === "retry-later" ? [account.result.afterMs] : []));
+        if (!report.wroteSync) wait.push(60_000);
         if (report.retryAfterMs !== undefined) wait.push(report.retryAfterMs);
         if (wait.length > 0) scheduleRetry(Math.max(...wait));
         else failures = 0;

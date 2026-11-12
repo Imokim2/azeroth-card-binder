@@ -56,14 +56,16 @@ function ACB.createSettingsView(frame, saved)
     label(general, "GameFontHighlightSmall", 230, controlsY + 7, muted, "Shift-drag the satchel button to move it.")
     -- Casual uses this computer's random numbers and does not count for the ladder; Ranked uses the server's tape.
     local modeButton = button(general, "Switch to Ranked", 32, controlsY + 46, 182, function()
-        SlashCmdList.AZEROTHCARDBINDER("mode " .. (saved.mode == "ranked" and "casual" or "ranked"))
+        ACB.requestCollectionMode(saved.mode == "ranked" and "casual" or "ranked")
     end)
-    label(general, "GameFontHighlightSmall", 230, controlsY + 53, muted, "Titles can be selected in the Achievements tab.")
+    local modeNote = label(general, "GameFontHighlightSmall", 230, controlsY + 53, brass, "")
+    modeNote:SetWidth(615)
 
     function settingsView:refresh()
         audio:refresh()
         for _, setting in ipairs(ACB.settings) do checks[setting.key]:SetChecked(ACB.settingOn(saved, setting)) end
         modeButton:SetText(saved.mode == "ranked" and "Switch to Casual" or "Switch to Ranked")
+        modeNote:SetText(ACB.collectionModeText(saved))
     end
     settingsView:SetScript("OnHide", function() ACB.stopSounds() end)
     settingsView.soundControls = audio.controls

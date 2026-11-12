@@ -22,6 +22,8 @@ import { compareVersions, readAddonVersion, updateReport } from "./versions.ts";
 import type { Releases, UpdateReport } from "./versions.ts";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import { findRecovery, keepSavedBackup, recoveryServer, restoreRecovery, savedBackups } from "./recovery.ts";
 
 export type Deps = {
   dataFolder: string; // where settings.json lives
@@ -43,6 +45,8 @@ export type Deps = {
   download?: Download; // fetches a file for an update; absent, nothing is downloaded
   runInstaller?: (path: string) => void; // starts the new companion installer and quits this app
   saveFile?: (suggestedName: string, text: string) => Promise<string | null>; // asks where to save a file and writes it; null when cancelled
+  gameClosed?: (folder: string) => Promise<boolean>; // a failed process check must return false
+  onSyncIssue?: () => void; // bring the repair prompt into view once per changed history conflict
 };
 
 export type Status = {
@@ -53,13 +57,14 @@ export type Status = {
   visibility: "public" | "private";
   startAtLogin: boolean;
   gameFolder: string | null;
-  accounts: { account: string; mode: string | null; state: string }[];
+  accounts: { account: string; mode: string | null; state: string; setupReady?: boolean }[];
   lastSyncAt: number | null;
   tapeEntries: number | null; // roll-tape entries ready for the add-on, when any account plays Ranked
   standings: "fresh" | "kept" | "unavailable" | null;
   needsNewBinder: boolean; // the saved data is a different binder from the one the server holds
   message: string | null; // the latest thing worth telling the player
   busy: boolean;
+  repairing?: boolean;
   updates: UpdateReport | null; // whether the app and the add-on are out of date, once a sync has looked
   canUpdate: { addon: boolean; app: boolean }; // an update can be installed from here: it is signed, and newer than what is installed
   updating: "addon" | "app" | null; // an update is being downloaded or installed
@@ -100,6 +105,8 @@ export class Controller {
   #problem: string | null = null;
   #message: string | null = null;
   #busy = false;
+  #repairing = false;
+  #lastSyncConflict = "";
   #lastReport: PassReport | null = null;
   #lastSyncAt: number | null = null;
   #manifest: Manifest | null = null; // the release manifest, once its signature has been checked against the trusted key
@@ -132,12 +139,18 @@ export class Controller {
     return {
       version: this.#deps.version, server: this.#deps.server, problem: this.#problem, signedIn: this.#settings.playerId !== null,
       visibility: this.#settings.visibility, startAtLogin: this.#settings.startAtLogin, gameFolder: this.#settings.gameFolder,
-      accounts: report?.accounts.map((entry) => ({ account: entry.account, mode: entry.mode, state: accountState(entry.result) })) ?? [],
+      accounts: report?.accounts.map((entry) => {
+        const ready = entry.rankedSetup && entry.result.status === "synced" && report.tape && "count" in report.tape && report.tape.count > 0;
+        return { account: entry.account, mode: entry.mode, state: !report.wroteSync && entry.result.status === "synced"
+          ? "Cannot write the addon sync file. Check folder access; retrying automatically."
+          : ready ? "Reload the game UI to start in Ranked." : accountState(entry.result),
+          ...(ready ? { setupReady: true } : {}) };
+      }) ?? [],
       lastSyncAt: this.#lastSyncAt,
       tapeEntries: report?.tape && "count" in report.tape ? report.tape.count : null,
       standings: report?.standings ?? null,
       needsNewBinder: report?.accounts.some((entry) => entry.result.status === "diverged") ?? false,
-      message: this.#message, busy: this.#busy, updates: this.#updates ?? report?.updates ?? null,
+      message: this.#message, busy: this.#busy, repairing: this.#repairing, updates: this.#updates ?? report?.updates ?? null,
       canUpdate: this.#canUpdate(), updating: this.#updating,
       checkingUpdates: this.#checkingUpdates,
       updateCheckMessage: this.#updateCheckMessage,
@@ -244,11 +257,17 @@ export class Controller {
     const timings = this.#deps.engineTimings ?? {};
     this.#engine = new Engine({
       install, client: options, playerId: () => this.#settings.playerId,
+      keepSavedBackup: (account, source) => keepSavedBackup(join(this.#deps.dataFolder, "binder-backups"), account, source),
       ...(timings.quietMs !== undefined ? { quietMs: timings.quietMs } : {}),
       ...(timings.everyMs !== undefined ? { everyMs: timings.everyMs } : {}),
       ...(timings.standingsEveryMs !== undefined ? { standingsEveryMs: timings.standingsEveryMs } : {}),
       ...(this.#releases ? { initialReleases: this.#releases, initialReleasesAt: this.#releasesAt } : {}),
       onReport: (report) => {
+        const conflict = (report.wroteSync ? "" : "sync-file|") + report.accounts.filter(a => ["diverged", "history-missing", "unreadable"].includes(a.result.status)
+          || (a.result.status === "rejected" && a.result.code === "tape_position_mismatch"))
+          .map(a => a.account + ":" + a.result.status).join("|");
+        const newlyConflicted = conflict !== "" && conflict !== this.#lastSyncConflict;
+        this.#lastSyncConflict = conflict;
         this.#lastReport = report;
         this.#updates = report.updates;
         if (report.releases) this.#releases = report.releases;
@@ -257,6 +276,7 @@ export class Controller {
         this.#busy = false;
         void this.#trustRelease(report.signedRelease);
         this.#changed();
+        if (newlyConflicted && !this.#repairing) this.#deps.onSyncIssue?.();
       },
     });
     this.#stopEngine = this.#engine.start();
@@ -273,6 +293,7 @@ export class Controller {
   }
 
   #canUpdate(): { addon: boolean; app: boolean } {
+    if (this.#repairing) return { addon: false, app: false };
     const manifest = this.#manifest;
     const installed = this.#updates?.addon.installed ?? null;
     return {
@@ -399,6 +420,7 @@ export class Controller {
   }
 
   async syncNow(): Promise<void> {
+    if (this.#repairing) return;
     await this.checkForUpdates();
     if (!this.#settings.playerId) return this.#say("Sign in with Discord first.");
     if (!this.#settings.gameFolder) return this.#say("Choose your game folder first.");
@@ -407,6 +429,69 @@ export class Controller {
     this.#busy = true;
     this.#changed();
     await this.#engine?.syncOnce();
+  }
+
+  async repairSync(): Promise<void> {
+    const options = this.#options(), folder = this.#settings.gameFolder;
+    const player = this.#settings.playerId;
+    if (this.#repairing || this.#updating) return;
+    if (!options || !this.#settings.playerId) return this.#say("Sign in with Discord to repair syncing.");
+    if (!folder) return this.#say("Choose your World of Warcraft folder first.");
+    this.#repairing = true; this.#busy = true;
+    this.#say("Checking your saved collection and rebuilding sync data...");
+    try {
+      await this.#restartEngine();
+      const report = await this.#engine?.syncOnce();
+      const issues = report?.accounts.filter(a => a.result.status !== "synced") ?? [];
+      if (report && report.wroteSync && report.accounts.length > 0 && issues.length === 0 && (!report.tape || "count" in report.tape)) {
+        return this.#say("Sync data rebuilt. Your cards and settings are unchanged. Reload the game UI to load it.");
+      }
+      const conflicts = issues.filter(a => ["diverged", "history-missing", "unreadable"].includes(a.result.status)
+        || (a.result.status === "rejected" && a.result.code === "tape_position_mismatch"));
+      if (conflicts.length !== 1 || issues.length !== 1) {
+        return this.#say("Automatic repair could not finish. Check the account message, sign-in and game folder. Your collection has not been reset.");
+      }
+      await this.#stopEngine?.(); this.#stopEngine = null; this.#engine = null;
+      this.#busy = true;
+      this.#say("Checking whether your saved backup matches the server...");
+      const exported = await exportAccount(options);
+      if (exported.status !== "exported") return this.#say("The server backup check could not finish. Try again when connected. No saved data was changed.");
+      const server = recoveryServer(exported.text);
+      const install = await describeInstall(folder);
+      const file = install.savedFiles.find(f => f.account === conflicts[0]!.account);
+      const copies = file ? await savedBackups(join(this.#deps.dataFolder, "binder-backups"), file.account) : [];
+      const plan = file && server ? await findRecovery(file.path, server, copies) : null;
+      if (!plan) return this.#say("No backup could be proved safe to restore automatically. Your files and server collection are unchanged. Keep your backups and ask for help; do not start over to repair this.");
+      const closed = () => this.#deps.gameClosed?.(folder) ?? Promise.resolve(false);
+      if (!(await closed())) return this.#say("A verified backup is available. Close World of Warcraft, then click Repair sync again to restore it safely.");
+      const agreed = await this.#deps.confirm(
+        `Restore the verified backup for ${conflicts[0]!.account}?\n\nIt contains ${plan.copies} card copies in ${plan.mode === "ranked" ? "Ranked" : "Casual"} mode and matches your synced server record. It keeps all progress in the current save and your current settings. Both original files will be copied to the companion's recovery-backups folder first. Keep World of Warcraft closed until this finishes. This does not reset your binder or ranking.`,
+        "Restore verified backup",
+      );
+      if (!agreed) return this.#say("Nothing was restored. Your current collection and backup are unchanged.");
+      if (this.#settings.gameFolder !== folder || this.#settings.playerId !== player || this.#updating) {
+        return this.#say("Your account or game folder changed. Nothing was restored.");
+      }
+      // Recheck both the server and local files after the confirmation; a newer session may have arrived.
+      const checked = await exportAccount(options);
+      const latest = checked.status === "exported" ? recoveryServer(checked.text) : null;
+      const fresh = latest && file ? await findRecovery(file.path, latest, copies) : null;
+      if (!fresh || fresh.current !== plan.current || fresh.backup !== plan.backup || fresh.head.hash !== plan.head.hash || fresh.tapeNext !== plan.tapeNext) {
+        return this.#say("The collection changed during the backup check. Nothing was restored. Click Repair sync to check again.");
+      }
+      await restoreRecovery(fresh, join(this.#deps.dataFolder, "recovery-backups", randomUUID()), closed);
+      this.#say("Verified backup restored. Your settings and original files were kept. You can start the game again after syncing finishes.");
+    } catch {
+      this.#say("Repair stopped without resetting your collection. Close the game and check folder access, then try again. Original recovery copies are kept if any were created.");
+    } finally {
+      try {
+        if (!this.#engine) await this.#restartEngine();
+        await this.#engine?.syncOnce();
+      } catch { this.#say("The repair check finished, but syncing could not restart yet. Your recovery copies have been kept."); }
+      this.#repairing = false;
+      this.#busy = false;
+      this.#changed();
+    }
   }
 
   // The saved data is a new binder (the player started over in the game). After they agree, the server archives the old

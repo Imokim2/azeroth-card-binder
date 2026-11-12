@@ -70,6 +70,8 @@ function ACB.initUI(saved, trade)
     local regionMark = label(frame, "GameFontHighlightSmall", 34, 62, brass, "")
     regionMark:SetWidth(196)
     regionMark:SetJustifyH("LEFT")
+    local collectionMode = label(frame, "GameFontHighlightSmall", 250, 62, brass, "")
+    collectionMode:SetWidth(450)
 
     function ACB.refresh()
         if tradeView:IsShown() then tradeView:refresh() end
@@ -87,6 +89,7 @@ function ACB.initUI(saved, trade)
             end
         end
         titleMark:SetText(saved.title and ("Title: " .. saved.title) or "")
+        collectionMode:SetText(ACB.collectionModeText(saved))
         titleMark:SetAlpha(tradeSelection and 0 or 1)
         local inTrade, inSettings = mode == "trade", mode == "settings"
         local inAchievements, inLadder, inWanted = mode == "achievements", mode == "ladder", mode == "wanted"
@@ -130,7 +133,7 @@ function ACB.initUI(saved, trade)
             if s and s.invited then inviteTime = 0 invite:Show() return end
             if tradeSelection then endTradeSelection() end
             frame:Hide()
-            tradeView:SetScale(math.min(1, (UIParent:GetWidth() - 24) / 680, (UIParent:GetHeight() - 24) / 560))
+            tradeView:SetScale(math.min(1, (UIParent:GetWidth() - 24) / 680, (UIParent:GetHeight() - 24) / 584))
             tradeView:Show()
             tradeView:refresh()
             return

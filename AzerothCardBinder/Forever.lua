@@ -359,6 +359,7 @@ local function initialize()
         if name then gatherNames[name] = skill end
     end
     ACB.initUI(saved, trade)
+    ACB.initCollectionMode(saved, ledger, report)
     ACB.initPacks(saved, collection)
     ACB.initSatchel(saved, collection, trade)
     ACB.initLauncher(saved)

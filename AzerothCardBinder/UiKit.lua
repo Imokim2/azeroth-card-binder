@@ -91,6 +91,7 @@ local function window(name, width, height, title, folio)
         edition:SetPoint("TOPRIGHT", -14, -20)
         edition:SetTextColor(unpack(brass))
         edition:SetText("F I R S T   E D I T I O N")
+        frame.edition = edition
     else
         label(header, "GameFontNormalLarge", 2, 3, brass, title)
     end
