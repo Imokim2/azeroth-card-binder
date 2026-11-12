@@ -188,3 +188,24 @@ test("with Cross-faction trading off everything stays on whispers, and /acb cros
     equal(world.last().distribution, "CHANNEL")
     world.finish()
 end)
+
+test("wanted lists, which now only travel in game, cross factions the same way", function()
+    local world = crossWorld({ joined = true, faction = "Alliance" })
+    local first = #world.sent
+    equal(ACB.requestWanted("bob-realmname"), true)
+    equal(#world.sent, first + 1)
+    equal(world.last().distribution, "CHANNEL")
+    equal(world.last().message, "@bob-realmname|L?")
+    -- His answer comes back on the channel, addressed to us, and fills in what he is looking for.
+    ACB.heardWanted["bob-realmname"] = nil
+    emit("CHAT_MSG_ADDON", ACB.viewPrefix, "@alice-realmname|L|1|c589", "CHANNEL", "Bob Realmname")
+    local heard = ACB.heardWanted["bob-realmname"]
+    assert(heard, "his wanted list arrived by the channel")
+    equal(heard.cards[1], "npc:589")
+    -- And asking us works the other way: we answer on the channel.
+    emit("CHAT_MSG_ADDON", ACB.viewPrefix, "@alice-realmname|L?", "CHANNEL", "Bob Realmname")
+    equal(world.last().distribution, "CHANNEL")
+    assert(world.last().message:find("^@bob%-realmname|L|%d+|"), world.last().message)
+    ACB.heardWanted["bob-realmname"] = nil
+    world.finish()
+end)
