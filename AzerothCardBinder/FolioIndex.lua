@@ -15,7 +15,7 @@ local turnButton = ui.turnButton
 
 
 -- The Index page of the binder: a searchable, paged list of every set.
-local function createIndex(parent, saved, selectSet)
+local function createIndex(parent, saved, selectSet, openCard)
     local index = paper(parent, 20)
     text(index, 23, 17, "FIND A COLLECTION", 10, SEPIA, 403)
     text(index, 22, 33, "Collection Index", 35, INK, 403, "LEFT", true)
@@ -43,7 +43,7 @@ local function createIndex(parent, saved, selectSet)
             bar = progressBar(row, 9, 26, 380),
         }
         row:SetScript("OnClick", function(self)
-            if self.cardKey then ACB.openCard(self.cardKey) else selectSet(self.setIndex) end
+            if self.cardKey then (openCard or ACB.openCard)(self.cardKey) else selectSet(self.setIndex) end
         end)
     end
 

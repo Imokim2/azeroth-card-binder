@@ -231,3 +231,97 @@ test("a trade asks the distance rule at every step and stops with the reason whe
     trade:confirm()
     equal(trade.session.sentConfirm, true)
 end)
+
+test("another player's binder opens as the binder's own pages, filled with their cards and read-only", function()
+    local saved = AzerothCardBinderDB
+    -- The first card of a page is on its first leaf, which is where the view opens.
+    ACB.initSocial(saved, function() return true end, function() return 1 end, ignore)
+    local key = ACB.pages[ACB.cards["npc:639"].page].cards[1].key
+    local keep = saved.counts[key]
+    saved.counts[key] = 1
+    local function newest(value)
+        for index = #widgets, 1, -1 do
+            if widgets[index].text == value then return widgets[index] end
+        end
+    end
+    local function newestStarting(prefix)
+        for index = #widgets, 1, -1 do
+            if type(widgets[index].text) == "string" and widgets[index].text:sub(1, #prefix) == prefix then return widgets[index] end
+        end
+    end
+    ACB.heardWanted = { ["bob-realmname"] = { cards = { "npc:589" } } }
+    ACB.showInspect("bob-realmname", { [key] = 3 }, { [key] = true })
+    assert(newest("Bob Realmname's Binder"), "the title is the player's name, as the game writes it")
+    assert(newest("3 owned / 2 spare / Shiny"), "their cards fill the pockets of the page")
+    assert(newestStarting("1 of "), "how many cards they have, and what could be swapped")
+    assert(newestStarting("You own: "), "and how many of the selected card you own")
+    -- Nothing here can change your own binder.
+    equal(newest("Ask target").parent.shown, false)
+    equal(newest("Add to wanted list") == nil or newest("Add to wanted list").parent.shown == false, true)
+    equal(newest("Recycle a spare: +" .. ACB.dustFor(ACB.cards[key])) == nil
+        or newest("Recycle a spare: +" .. ACB.dustFor(ACB.cards[key])).parent.shown == false, true)
+    saved.counts[key] = keep
+    ACB.heardWanted = nil
+    ACB.refresh()
+end)
+
+test("on a card they are looking for, Trade starts the swap: you pick a card from their binder and the offer is sent", function()
+    local saved = AzerothCardBinderDB
+    local keepCounts = { saved.counts["npc:589"], saved.tradeRange }
+    saved.counts["npc:589"], saved.tradeRange = 2, false
+    ACB.initSocial(saved, function() return true end, function() return 1 end, ignore)
+    local theirKey = ACB.pages[ACB.cards["npc:639"].page].cards[1].key
+    local wantedKey = theirKey == "npc:589" and "npc:590" or "npc:589"
+    saved.counts[wantedKey] = saved.counts[wantedKey] or 1
+    local function newest(value)
+        for index = #widgets, 1, -1 do
+            if widgets[index].text == value then return widgets[index] end
+        end
+    end
+    local function newestStarting(prefix)
+        for index = #widgets, 1, -1 do
+            if type(widgets[index].text) == "string" and widgets[index].text:sub(1, #prefix) == prefix then return widgets[index] end
+        end
+    end
+    local originalSend, originalCodes, sent = C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult, {}
+    Enum.SendAddonMessageResult = { Success = 0 }
+    C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
+        sent[#sent + 1] = { prefix = prefix, message = message, channel = channel, peer = peer }
+        return 0
+    end
+    -- Bob has the first card of the page, and is looking for a card of mine.
+    ACB.heardWanted = { ["bob-realmname"] = { cards = { wantedKey }, total = 1 } }
+    ACB.showInspect("bob-realmname", { [theirKey] = 1 }, {})
+    -- Nothing offers a trade from a card of his until one is picked from the Wanted tab.
+    equal(newestStarting("Get this one for my ") == nil or newestStarting("Get this one for my ").parent.shown == false, true)
+    newest("Wanted").OnClick(newest("Wanted"))
+    assert(newest("Bob Realmname is looking for"), "the wanted list is titled with his name")
+    local row = newestStarting(ACB.cards[wantedKey].name .. "    ")
+    assert(row, "and names the card he is looking for")
+    -- The Trade button on the row: you give that card, and his binder is shown to pick from.
+    local trade
+    for _, widget in ipairs(widgets) do
+        if widget.text == "Trade" and widget.parent == row.parent and widget.OnClick then trade = widget end
+    end
+    assert(trade, "a Trade button sits on his wanted card")
+    trade:OnClick()
+    assert(newest("Cancel pick"), "the button now cancels the choice")
+    local ask = newest("Get this one for my " .. ACB.cards[wantedKey].name)
+    assert(ask and ask.parent.shown ~= false, "his selected card has a button that sends the offer")
+    ask.parent:OnClick()
+    local last = sent[#sent]
+    assert(last, "an offer was sent")
+    equal(last.prefix, ACB.tradePrefix)
+    equal(last.channel, "WHISPER")
+    equal(last.peer, "Bob Realmname")
+    -- The trade opens on his side by itself, with the card you give (the card you picked is asked for in chat).
+    assert(last.message:match("^I|[%w%-]+|" .. wantedKey .. "|t$"), last.message)
+    -- Clean up: cancel the trade that is now open.
+    for _, widget in ipairs(widgets) do
+        if widget.text == "Cancel" and widget.OnClick then widget:OnClick() break end
+    end
+    C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult = originalSend, originalCodes
+    saved.counts["npc:589"], saved.tradeRange = keepCounts[1], keepCounts[2]
+    ACB.heardWanted = nil
+    ACB.refresh()
+end)
