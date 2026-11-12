@@ -102,7 +102,7 @@ test("a save arriving during an upload is queued and reaches the server without 
   } finally { release.resolve(); await stop?.(); await f.cleanup(); }
 });
 
-test("Ranked data retries without another save, backs off after failures and stops after recovery", { timeout: 10_000 }, async (t) => {
+test("Ranked data retries without another save, backs off after failures and stops after recovery", { timeout: 30_000 }, async (t) => {
   const f = await fixture(), observed = observe();
   let stop: (() => Promise<void>) | undefined;
   try {

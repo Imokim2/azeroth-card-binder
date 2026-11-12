@@ -1,6 +1,6 @@
 {
   "name": "warcards-app",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "private": true,
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -52,6 +52,7 @@
       "icon": "assets/icon.png"
     },
     "nsis": {
+      "include": "installer.nsh",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "perMachine": false,

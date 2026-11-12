@@ -144,7 +144,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
   }
 
   // Ranked random numbers (spec section 8): all the entries this player has not used yet, topped up with 10,000 new
-  // ones when 2,000 or fewer remain. Asking again returns the same entries, so a lost reply costs nothing.
+  // ones when 250 or fewer remain. Asking again returns the same entries without issuing another batch.
   async function tape(request: Request): Promise<Response> {
     checkClient(request, deps);
     if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
@@ -166,23 +166,25 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     }
     const secret = await tapeKey(deps.tapeSecret);
     const next = await deps.tapes.tapeNext(holder.id);
-    let issuedEnd = await deps.tapes.issuedEnd(holder.id);
+    const issuedEnd = await deps.tapes.issuedEnd(holder.id);
     let issued: { start: number; end: number; commitment: string } | null = null;
+    const entries: string[] = [];
+    // Derive the remaining old entries once. Fresh entries below are reused for both commitment and response.
+    const owner = tapeOwner(holder);
+    for (let index = next; index <= issuedEnd; index++) entries.push(await tapeEntry(secret, owner, index));
     if (issuedEnd - (next - 1) <= REFILL_BELOW) {
       const start = issuedEnd + 1;
       const end = issuedEnd + TAPE_SIZE;
       const fresh: string[] = [];
-      for (let index = start; index <= end; index++) fresh.push(await tapeEntry(secret, tapeOwner(holder), index));
+      for (let index = start; index <= end; index++) fresh.push(await tapeEntry(secret, owner, index));
       issued = { start, end, commitment: await tapeCommitment(fresh) };
       try {
         await deps.tapes.recordIssue(holder.id, issued, deps.now());
       } catch {
         throw new ApiError("conflict", undefined, 1); // another request issued at the same moment; ask again
       }
-      issuedEnd = end;
+      entries.push(...fresh);
     }
-    const entries: string[] = [];
-    for (let index = next; index <= issuedEnd; index++) entries.push(await tapeEntry(secret, tapeOwner(holder), index));
     return json(200, { start: next, entries, issued }, { "cache-control": "no-store" });
   }
 

@@ -14,6 +14,7 @@ test("pack gifts use both accepts, move one sealed pack once, and cannot spend a
         function(give, take, peer, id) return bCollection:swap(give, take, peer, id) end, nil, nil, bSaved)
     a:start("bob-realm", "pack:DM", true)
     equal(b.session.take, "pack:DM")
+    assert(b:join())
     b:confirm()
     equal(aSaved.packs.DM, 2)
     equal(bSaved.packs.DM, nil)
@@ -119,7 +120,7 @@ test("the trade picker finds packs and uses a sealed pack face instead of a crea
     local trade = ACB.newTrade(saved.counts, function() return 10 end, function() return "pack-ui" end,
         function() return true end, function() return true end, nil, nil, saved)
     local view = ACB.createTradeView(UIParent, saved, trade)
-    view.controls.choose:OnClick()
+    view.controls.packs:OnClick()
     view.controls.search:SetText("deadmines pack")
     view.controls.search:OnTextChanged()
     equal(view.controls.rows[1].key, "pack:DM")

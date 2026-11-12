@@ -142,7 +142,7 @@ The signature covers the **canonical JSON** of the object without its `sig` fiel
 
 ## 8. Ranked random numbers (the tape)
 
-A tape is a list of entries issued by the server, 16 hex characters each. The server stores a commitment: the SHA-256 of all the entries joined by a line feed.
+A tape is a list of entries issued by the server, 16 hex characters each. Refills add 10,000 entries when 250 or fewer remain; installed companions already support this larger buffer. Existing issued ranges and positions remain valid. The server stores a commitment: the SHA-256 of all the entries joined by a line feed.
 
 For each ranked roll the add-on takes the next unused entry (counting from 1):
 
@@ -170,7 +170,7 @@ The server checks every `packFind` (the entry must say a pack was found) and eve
 
 Entering `ranked2` writes a `mode` event and starts every card's run of misses again from zero, so the server and the add-on agree on each card's chance. From then on every attempt is on record, in order: a drop is a `drop` event; consecutive misses on the **same card** are one `miss` event covering their entries; an attempt on another card, a drop, or a change of mode ends the run. The tape positions recorded therefore follow each other with no gap, which the rules in section 3.1 check without any secret.
 
-The server then replays every attempt against its own entry, keeping each card's stack of misses: a **miss** needs a roll above the chance at that point (a roll that would have won means a drop was left out), a **drop** needs a roll at or below it, and a drop's shiny flag must match its entry while the card has no shiny copy. This replaces the older check, which could only compare totals. What the server still cannot see is **which card an entry was spent on**: a player who reads the entries ahead of time could spend a winning entry on the card they want. Two things bound that: the tape is issued in small batches, topped up only when an upload shows the last batch nearly used (at most about 1,250 entries ahead of the last upload), and the luck checks still look at the totals.
+The server then replays every attempt against its own entry, keeping each card's stack of misses: a **miss** needs a roll above the chance at that point (a roll that would have won means a drop was left out), a **drop** needs a roll at or below it, and a drop's shiny flag must match its entry while the card has no shiny copy. This replaces the older check, which could only compare totals. What the server still cannot see is **which card an entry was spent on**: a player who reads the entries ahead of time could spend a winning entry on the card they want. Two things bound that: the tape is issued in small batches, topped up only when an upload shows the last batch nearly used (at most 10,250 entries ahead of the last upload), and the luck checks still look at the totals.
 
 ## 9. Versioning and compatibility
 
@@ -197,7 +197,7 @@ This is a local check for accidents and casual edits. Anyone who reads the add-o
 ## 12. Known limits
 
 - The ledger cannot show that a kill happened. See the roadmap's plausibility checks and evidence process.
-- A player who edits the add-on can still choose which card to spend a tape entry on, and can read entries ahead of time (a few hundred to about 1,250 at once). The server bounds this by issuing the tape in small batches, rate limits and the luck checks.
+- A player who edits the add-on can still choose which card to spend a tape entry on, and can read entries ahead of time (up to 10,250 at once). The server bounds this by issuing the tape in small batches, rate limits and the luck checks.
 - A player can also end the game without it saving (killing the process) after seeing a result they do not like: the saved file then still holds the older state and the same entries. This cannot be seen from the ledger.
 - A binder upgraded from schema 1 has cards the ledger never saw drop, so its events cannot account for them. Phase B must decide how the server treats such a binder (play Casual, or ranked from a fresh binder). Until then it is verified locally only.
 - The 32-character hash is a truncation of SHA-256. It is plenty to catch edits and accidents; it is not meant to resist someone who controls both ends of the chain, which this design never claims to stop.

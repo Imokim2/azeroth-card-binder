@@ -9,6 +9,7 @@ import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 import { CLIENT, NOW, catalog, newPlayer, setup } from "../../server/test/harness.ts";
+import { TAPE_SIZE } from "../../server/src/tape.ts";
 import { readBinder } from "../src/binderFile.ts";
 import { packValue, packTier } from "../../server/src/shared.ts";
 import { fetchTape, registerKey, syncBinder } from "../src/client.ts";
@@ -314,7 +315,7 @@ test("Ranked, end to end: the server issues a tape, the real add-on rolls it, an
     assert.equal(issued.status, "tape");
     if (issued.status !== "tape") return;
     assert.equal(issued.start, 1);
-    assert.equal(issued.entries.length, 1_000);
+    assert.equal(issued.entries.length, TAPE_SIZE);
     const install = await describeInstall(game.folder);
     await writeFileAtomic(install.syncPath, syncFileText({ syncedAt: NOW, acks: [], tape: { start: issued.start, entries: issued.entries } }));
 

@@ -98,6 +98,6 @@ test("a Ranked attempt on an old add-on is held back with its own message, and C
             function() return 1 end, print, function() end)
         collection:roll("Creature-0-1-0-0-589-OLDADDON01", "loot")
     end)
-    assert(text:find("older than the server accepts", 1, true), text)
+    assert(text:find("update the add-on", 1, true), text)
     ACB.sync, GetAddOnMetadata, saved.mode, saved.tape = keep[1], keep[2], keep[3], keep[4]
 end)

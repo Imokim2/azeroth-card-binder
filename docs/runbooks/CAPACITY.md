@@ -8,7 +8,7 @@ Cloudflare's free Workers plan gives each request **10 ms of CPU time** (waiting
 
 `server/bench/cpu.bench.ts` (run `npm run bench` in `server/`, or `node bench/cpu.bench.ts`) runs the real API code against an in-memory SQLite database and times the heaviest requests. It is an estimate: Node's crypto is not Cloudflare's, and SQLite here runs on the same thread (on Cloudflare a database wait costs no CPU), which makes the figures slightly high. They are good for the order of magnitude and for which request is the expensive one. Windows' timer is coarse (16 ms steps for CPU time), so the **wall-clock column is the one to read**.
 
-## Results (12 Nov 2026, a desktop PC)
+## Historical results with the 1,000-entry buffer (12 Nov 2026, a desktop PC)
 
 | Request | Wall time | Why |
 |---|---|---|
@@ -20,6 +20,10 @@ Cloudflare's free Workers plan gives each request **10 ms of CPU time** (waiting
 | `POST /v1/ledger`, Ranked, one full tape batch (about 1,000 attempts) | roughly 60 ms (extrapolated) | |
 
 Even if Cloudflare's runtime were two or three times faster than this PC, the tape requests and a larger Ranked upload would still be over 10 ms. On the free plan they would be cut off with an error, which for Ranked means **no new roll tape and refused uploads**.
+
+## Longer sessions (server 0.4.1)
+
+Refills now add 10,000 entries at the existing 250-entry threshold, compatible with installed companions. This reduces refill interruptions during long sessions, without adding polling. The API reuses new entries for both commitment and response, removing their previous duplicate HMAC calculation. Existing entries and binder history are untouched. A response is roughly 190 KB of JSON plus a little metadata. The older measurements above and cost examples below are not current-buffer benchmarks; rerun the benchmark before using them for forecasts.
 
 ## New saved-progress mode (companion 0.4.0)
 
@@ -74,6 +78,6 @@ Set billing/usage alerts before a wide launch. Alerts notify; they are not a gua
 
 - **Four entries per HMAC.** A tape entry is 8 bytes, an HMAC-SHA256 gives 32: one call could produce four entries, cutting the tape's cost to a quarter. It changes how entries are derived (a new ledger specification version, new test vectors and a way to keep old tapes valid), so it is a deliberate change, not a tweak.
 - **Do not re-derive what the app already holds.** The tape request re-derives every unused entry each time; the app could say where it is and get only the new ones.
-- **Smaller batches.** The tape batch is 1,000 entries; a smaller one lowers the worst request but means more requests.
+- **Smaller batches.** The tape batch is now 10,000 entries; a smaller one lowers the worst request but means more requests.
 
 None of these is needed while the account is on the paid plan: at the paid price of CPU time the heaviest request costs a fraction of a cent.

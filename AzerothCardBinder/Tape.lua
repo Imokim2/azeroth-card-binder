@@ -21,6 +21,7 @@ end
 function ACB.takeTape(saved)
     saved.tape = type(saved.tape) == "table" and saved.tape or { next = 1 }
     if ACB.addonTooOld() then return end -- no Ranked roll on a version the server no longer accepts (Updates.lua)
+    if ACB.sync and ACB.sync.rankedIssue then return end
     local tape = ACB.sync and ACB.sync.tape
     if type(tape) ~= "table" or type(tape.entries) ~= "table" or type(tape.start) ~= "number" then return end
     local index = saved.tape.next
@@ -34,6 +35,7 @@ end
 -- Are the next `count` tape entries there and well formed? Checked before anything is written that needs them all.
 function ACB.tapeHolds(saved, count)
     if ACB.addonTooOld() then return false end
+    if ACB.sync and ACB.sync.rankedIssue then return false end
     local tape = ACB.sync and ACB.sync.tape
     if type(tape) ~= "table" or type(tape.entries) ~= "table" or type(tape.start) ~= "number" then return false end
     local index = type(saved.tape) == "table" and saved.tape.next or 1
@@ -48,10 +50,28 @@ end
 -- How many tape entries are left, for the Settings tab and /acb verify.
 function ACB.tapeLeft(saved)
     if ACB.addonTooOld() then return 0 end
+    if ACB.sync and ACB.sync.rankedIssue then return 0 end
     local tape = ACB.sync and ACB.sync.tape
     if type(tape) ~= "table" or type(tape.entries) ~= "table" or type(tape.start) ~= "number" then return 0 end
     local next = type(saved.tape) == "table" and saved.tape.next or 1
+    if type(next) ~= "number" or next < tape.start then return 0 end
     return math.max(0, tape.start + #tape.entries - math.max(next, tape.start))
+end
+
+-- Missing data or an older binder position must not be called an exhausted supply, or skipped forward.
+function ACB.rankedPauseReason(saved)
+    if ACB.addonTooOld() then
+        return "Ranked rolls are paused: update the add-on in the companion, then reload the game UI. Your cards have been kept."
+    end
+    local tape = ACB.sync and ACB.sync.tape
+    local next = type(saved.tape) == "table" and saved.tape.next or 1
+    if (ACB.sync and ACB.sync.rankedIssue) or (type(tape) == "table" and type(tape.start) == "number" and next < tape.start) then
+        return "Ranked rolls are paused: your saved binder and the server are out of sync. Open the companion to check the message. Your cards have been kept."
+    end
+    if type(tape) ~= "table" or type(tape.entries) ~= "table" then
+        return "Ranked rolls are paused: no Ranked supply is loaded. Keep the companion open, /reload, wait for it to sync, then /reload again."
+    end
+    return "Ranked rolls are paused: the roll tape has run out. Keep the companion open, /reload, wait for it to sync, then /reload again."
 end
 
 -- Switch between Casual and Ranked. The switch is written to the ledger so the server knows which rules apply to

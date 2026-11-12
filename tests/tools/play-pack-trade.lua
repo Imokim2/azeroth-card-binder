@@ -31,6 +31,7 @@ b = ACB.newTrade(bSaved.counts, function() return 1 end, function() return "pack
     function(_, message) a:receive("bob-realmname", message) return true end,
     function(give, take, peer, id) return bCollection:swap(give, take, peer, id) end, nil, nil, bSaved)
 a:start("bob-realmname", "pack:" .. zone, true)
+assert(b:join())
 a:confirm(); b:confirm()
 assert(aSaved.packs[zone] == nil and bSaved.packs[zone] == 1)
 assert(#bCollection:openPack(zone) == ACB.packInfo(zone).size)

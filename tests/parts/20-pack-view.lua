@@ -132,7 +132,7 @@ test("a Ranked pack with too little tape says why and keeps the pack", function(
     view:openZone(ZONE_CODE)
     equal(view.phase, "list")
     equal(ACB.packList(saved)[1].count, 1)
-    assert(textOf("A Ranked pack needs 5 roll tape entries. Type /reload so the companion app can bring more, or switch to Casual."), "the reason is shown")
+    assert(textOf("A Ranked pack needs 5 roll tape entries. Ranked rolls are paused: no Ranked supply is loaded. Keep the companion open, /reload, wait for it to sync, then /reload again."), "the reason is shown")
     ACB.sync.tape = keepTape
     saved.packs, saved.mode = keep[1], keep[2]
     view.frame:Hide()

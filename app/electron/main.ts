@@ -132,8 +132,9 @@ async function main(): Promise<void> {
     // Updates: the controller checks every download against the signed manifest before anything is installed or run.
     download: (url) => fetch(url, { redirect: "follow" }),
     runInstaller: (path) => {
-      // The installer closes this app if it must, and opens the new one when it is done.
-      spawn(path, ["/S", "--force-run"], { detached: true, stdio: "ignore" }).unref();
+      // Show setup so a moved/protected installation can be repaired and errors remain visible.
+      // This app exits itself; setup never needs to forcibly interrupt a sync.
+      spawn(path, ["--force-run"], { detached: true, stdio: "ignore" }).unref();
       quitting = true;
       app.quit();
     },

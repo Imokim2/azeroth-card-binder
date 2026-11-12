@@ -44,7 +44,7 @@ function updateNote(updates, gameFolder) {
 
 function render(status) {
   const ready = status.signedIn && status.gameFolder !== null;
-  const accountIssues = status.accounts.some((entry) => /Cannot|refused|missing|Not registered|could not be reached/.test(entry.state));
+  const accountIssues = status.accounts.some((entry) => /Cannot|refused|missing|Not registered|could not be reached|differs|out of step/.test(entry.state));
   const attention = status.problem || status.needsNewBinder || accountIssues;
   const hasUpdate = status.canUpdate && (status.canUpdate.app || status.canUpdate.addon);
   const synced = ready && status.lastSyncAt !== null && status.accounts.length > 0 && !attention;
@@ -103,7 +103,7 @@ function render(status) {
     mode.textContent = entry.mode === "ranked" ? "Ranked" : entry.mode === "casual" ? "Casual" : "?";
     left.append(name, mode);
     const state = document.createElement("span");
-    state.className = "state" + (/^(Synced|Up to date)/.test(entry.state) ? " good" : /Cannot|refused|missing|Not registered|could not be reached/.test(entry.state) ? " bad" : "");
+    state.className = "state" + (/^(Synced|Up to date)/.test(entry.state) ? " good" : /Cannot|refused|missing|Not registered|could not be reached|differs|out of step/.test(entry.state) ? " bad" : "");
     state.textContent = entry.state.replace(/^Synced \((\d+) new events\)$/, "$1 updates synced");
     item.append(left, state);
     list.append(item);
@@ -111,7 +111,7 @@ function render(status) {
   $("sync-empty").hidden = status.accounts.length > 0;
   $("empty-title").textContent = ready ? "Waiting for your saved binder" : "Connect your binder";
   $("empty-description").textContent = ready ? "Enable the addon, then reload or leave the game. Your saved collection will appear here." : "Connect your account and choose your game folder to get started.";
-  $("sync-state").textContent = attention ? "Check connection" : status.busy ? "Working" : synced ? "Up to date" : ready ? "Ready" : "Waiting";
+  $("sync-state").textContent = attention ? "Needs attention" : status.busy ? "Working" : synced ? "Up to date" : ready ? "Ready" : "Waiting";
   $("sync-state").classList.toggle("complete", synced && !status.busy);
   $("facts").hidden = status.lastSyncAt === null;
   $("last-sync").textContent = ago(status.lastSyncAt);
@@ -131,7 +131,7 @@ function render(status) {
   $("update-addon").disabled = $("update-app").disabled = !!status.updating || status.busy || !!status.checkingUpdates;
   $("update-addon").textContent = status.updating === "addon" ? "Installing…" : (updates && updates.addon.installed === null ? "Install addon" : "Update addon") + (status.newer && status.newer.addon ? " to " + status.newer.addon : "");
   $("update-app").textContent = status.updating === "app" ? "Updating…" : "Update companion" + (status.newer && status.newer.app ? " to " + status.newer.app : "");
-  $("sync-now").disabled = !ready || status.busy || !!status.problem || status.needsNewBinder;
+  $("sync-now").disabled = !ready || status.busy || !!status.problem;
 
   const message = $("message");
   message.hidden = !status.message;

@@ -7,7 +7,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import { CLIENT, NOW, catalog, setup } from "../../server/test/harness.ts";
+import { CLIENT, NOW, TAPE_SECRET, catalog, setup } from "../../server/test/harness.ts";
+import { TAPE_SIZE, tapeKey, tapeEntry, tapeCommitment } from "../../server/src/tape.ts";
 import { fetchTape, registerKey } from "../src/client.ts";
 import type { ClientOptions, FetchLike } from "../src/client.ts";
 import { Engine } from "../src/engine.ts";
@@ -104,7 +105,7 @@ test("Ranked: the pass brings the tape back from where the add-on got to, and th
     const report = await engine.syncOnce();
     assert.equal(report.accounts[0]?.result.status, "synced", JSON.stringify(report));
     assert.equal(report.accounts[0]?.mode, "ranked");
-    assert.deepEqual(report.tape, { start: 61, count: 1_000 - 60 });
+    assert.deepEqual(report.tape, { start: 61, count: TAPE_SIZE - 60 });
     const text = await readFile(install.syncPath, "utf8");
     assert.match(text, /start = 61,/);
     assert.match(text, /leaderboard = \{/);
@@ -115,11 +116,73 @@ test("Ranked: the pass brings the tape back from where the add-on got to, and th
   }
 });
 
-test("Ranked tape is asked for only when the add-on is running low, and the ladder is refreshed only every half hour", async () => {
+test("an empty replacement binder cannot receive the old tape, with or without a companion restart", async () => {
   const game = await gameFolder();
   try {
     const w = await world();
     const install = await describeInstall(game.folder);
+    const issued = await fetchTape(w.client);
+    if (issued.status !== "tape") throw new Error("no tape");
+    await writeFileAtomic(install.syncPath, syncFileText({ syncedAt: NOW, acks: [], tape: { start: issued.start, entries: issued.entries } }));
+    lua("tests/tools/write-saved.lua", game.saved, "60", install.syncPath);
+    const options = { install, client: w.client, playerId: w.playerId };
+    const engine = new Engine(options);
+    assert.equal((await engine.syncOnce()).accounts[0]?.result.status, "synced");
+    const before = w.env.raw.prepare("SELECT * FROM ledger_state WHERE player_id = ?").get(w.playerId());
+    const empty = 'AzerothCardBinderDB = { schema = 2, mode = "ranked", head = { seq = 0, hash = "' + "0".repeat(32) + '" }, ledger = {}, counts = {}, tape = { next = 1 } }';
+    await writeFile(game.saved, empty);
+    const tapeCalls = w.calls.filter((call) => call === "POST /v1/tape").length;
+    for (const active of [engine, new Engine(options)]) {
+      const report = await active.syncOnce();
+      assert.equal(report.accounts[0]?.result.status, "diverged");
+      assert.deepEqual(report.tape, { status: "binder-mismatch" });
+      const sync = await readFile(install.syncPath, "utf8");
+      assert.match(sync, /rankedIssue = "binder-mismatch"/);
+      assert.doesNotMatch(sync, /tape = \{/);
+      assert.equal(await readFile(game.saved, "utf8"), empty);
+      assert.deepEqual(w.env.raw.prepare("SELECT * FROM ledger_state WHERE player_id = ?").get(w.playerId()), before);
+    }
+    assert.equal(w.calls.filter((call) => call === "POST /v1/tape").length, tapeCalls);
+  } finally { await game.cleanup(); }
+});
+
+test("a supply starting past the saved roll position is withheld until the matching save is restored", async () => {
+  const game = await gameFolder();
+  try {
+    const w = await world(), install = await describeInstall(game.folder);
+    await fetchTape(w.client);
+    await w.env.deps.ingest.noteTapeNext(w.playerId()!, 96, NOW);
+    const empty = (next: number) => `AzerothCardBinderDB = { schema = 2, mode = "ranked", head = { seq = 0, hash = "${"0".repeat(32)}" }, ledger = {}, counts = {}, tape = { next = ${next} } }`;
+    await writeFile(game.saved, empty(1));
+    const engine = new Engine({ install, client: w.client, playerId: w.playerId });
+    const mismatch = await engine.syncOnce();
+    assert.deepEqual(mismatch.tape, { status: "position-mismatch" });
+    assert.deepEqual(mismatch.accounts[0]?.result, { status: "rejected", code: "tape_position_mismatch" });
+    let sync = await readFile(install.syncPath, "utf8");
+    assert.match(sync, /rankedIssue = "position-mismatch"/);
+    assert.doesNotMatch(sync, /tape = \{/);
+    assert.equal(await readFile(game.saved, "utf8"), empty(1), "no automatic skip or reset");
+    // A player restoring the correct save can resume without starting a new binder.
+    await writeFile(game.saved, empty(96));
+    const recovered = await engine.syncOnce();
+    assert.equal(recovered.accounts[0]?.result.status, "synced");
+    assert.deepEqual(recovered.tape, { start: 96, count: TAPE_SIZE - 95 });
+    sync = await readFile(install.syncPath, "utf8");
+    assert.doesNotMatch(sync, /rankedIssue/);
+    assert.match(sync, /tape = \{/);
+    assert.doesNotMatch(sync, /seq = 0/, "zero acknowledgements remain internal");
+  } finally { await game.cleanup(); }
+});
+
+test("Ranked tape is fetched only when low, and the ladder is cached between saved progress", async () => {
+  const game = await gameFolder();
+  try {
+    const w = await world();
+    const install = await describeInstall(game.folder);
+    // Existing players may still hold a legacy 1,000-entry issue when the server buffer is increased.
+    const key = await tapeKey(TAPE_SECRET), legacy: string[] = [];
+    for (let index = 1; index <= 1_000; index++) legacy.push(await tapeEntry(key, w.playerId()!, index));
+    await w.env.deps.tapes.recordIssue(w.playerId()!, { start: 1, end: 1_000, commitment: await tapeCommitment(legacy) }, NOW);
     const issued = await fetchTape(w.client);
     if (issued.status !== "tape") throw new Error("no tape");
     await writeFileAtomic(install.syncPath, syncFileText({ syncedAt: NOW, acks: [], tape: { start: issued.start, entries: issued.entries } }));
@@ -131,7 +194,7 @@ test("Ranked tape is asked for only when the add-on is running low, and the ladd
     await engine.syncOnce();
     assert.equal(tapeCalls() - before, 1, "the first pass asks, the app holds nothing yet");
     assert.equal(standingsCalls(), 1);
-    // Plenty is left (940 of 1,000): the next passes ask for neither the tape nor the standings, and still report what is left.
+    // Plenty is left in the legacy issue: the next passes reuse it without extra requests.
     w.advance();
     const again = await engine.syncOnce();
     await engine.syncOnce();
@@ -139,8 +202,8 @@ test("Ranked tape is asked for only when the add-on is running low, and the ladd
     assert.equal(standingsCalls(), 1, "no new standings request within half an hour");
     assert.deepEqual(again.tape, { start: 61, count: 1_000 - 60 });
     assert.match(await readFile(install.syncPath, "utf8"), /start = 61,/, "Sync.lua still carries the tape");
-    // The add-on uses most of it (800 attempts: 200 left, below the refill mark): now the tape is asked for again.
-    lua("tests/tools/write-saved.lua", game.saved, "800", install.syncPath);
+    // Continue the same binder for another 800 attempts (140 left), preserving the already acknowledged prefix.
+    lua("tests/tools/write-saved.lua", game.saved, "800", install.syncPath, "resume");
     await engine.syncOnce();
     assert.equal(tapeCalls() - before, 2, "asked again once it runs low");
   } finally {

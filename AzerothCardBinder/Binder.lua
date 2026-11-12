@@ -24,8 +24,12 @@ function ACB.initUI(saved, trade)
     local mode = "collection"
     local collectionView = ACB.createFolio(frame, saved, function(setIndex) ACB.open(setIndex) end)
     local achievementView = ACB.createAchievements(frame, saved)
-    local tradeView = ACB.createTradeView(frame, saved, trade)
+    local tradeView = ACB.createTradeView(UIParent, saved, trade)
     ACB.tradeView = tradeView
+    ACB.binderView = collectionView
+    local tradeSelection, endTradeSelection
+    local returnToTrade = button(frame, "Back to trade", 726, 48, 180, function() endTradeSelection() end)
+    returnToTrade:Hide()
     local settingsView = ACB.createSettingsView(frame, saved)
     local ladderView = ACB.createLadderView(frame, saved)
     local wantedView = ACB.createWantedView(frame, saved)
@@ -38,9 +42,11 @@ function ACB.initUI(saved, trade)
     inviteText:SetWidth(312)
     inviteText:SetHeight(36)
     inviteText:SetWordWrap(true)
-    button(invite, "View trade", 24, 100, 145, function() invite:Hide(); ACB.open("trade") end)
-    button(invite, "Decline", 183, 100, 145, function() trade:cancel(); invite:Hide(); ACB.refresh() end)
     local invitePeer, inviteTime
+    invite.accept = button(invite, "Accept invitation", 24, 100, 145, function()
+        if ACB.prepareTrade(invitePeer) ~= false then invite:Hide() end
+    end)
+    invite.decline = button(invite, "Decline", 183, 100, 145, function() trade:cancel(); invite:Hide(); ACB.refresh() end)
     function ACB.notifyTrade(peer, gift)
         invitePeer, inviteTime = peer, 0
         inviteText:SetText(peer .. (gift and " sent you a gift." or " wants to trade cards or packs."))
@@ -66,10 +72,12 @@ function ACB.initUI(saved, trade)
     regionMark:SetJustifyH("LEFT")
 
     function ACB.refresh()
+        if tradeView:IsShown() then tradeView:refresh() end
+        if tradeSelection and not tradeSelection.allowed() then endTradeSelection() end
         if not frame:IsShown() then return end
         for destination, control in pairs(tabs) do
             local active = destination == mode
-            control.frame:SetEnabled(not active)
+            control.frame:SetEnabled(not active and (not tradeSelection or destination == "index" or destination == "collection"))
             if active then
                 control.frame:SetBackdropColor(0.82, 0.67, 0.43, 1)
                 control.title:SetTextColor(0.22, 0.13, 0.07, 1)
@@ -79,10 +87,10 @@ function ACB.initUI(saved, trade)
             end
         end
         titleMark:SetText(saved.title and ("Title: " .. saved.title) or "")
+        titleMark:SetAlpha(tradeSelection and 0 or 1)
         local inTrade, inSettings = mode == "trade", mode == "settings"
         local inAchievements, inLadder, inWanted = mode == "achievements", mode == "ladder", mode == "wanted"
         collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder and not inWanted)
-        tradeView:SetShown(inTrade)
         settingsView:SetShown(inSettings)
         achievementView:SetShown(inAchievements)
         ladderView:SetShown(inLadder)
@@ -117,6 +125,16 @@ function ACB.initUI(saved, trade)
     end
 
     function ACB.open(destination)
+        if destination == "trade" then
+            local s = trade:active()
+            if s and s.invited then inviteTime = 0 invite:Show() return end
+            if tradeSelection then endTradeSelection() end
+            frame:Hide()
+            tradeView:SetScale(math.min(1, (UIParent:GetWidth() - 24) / 680, (UIParent:GetHeight() - 24) / 560))
+            tradeView:Show()
+            tradeView:refresh()
+            return
+        end
         if not frame:IsShown() and ACB.playSound then ACB.playSound("binder") end
         if tabs[destination] then
             mode = destination
@@ -126,6 +144,37 @@ function ACB.initUI(saved, trade)
         fitWindow()
         frame:Show()
         ACB.refresh()
+    end
+
+    endTradeSelection = function()
+        if not tradeSelection then return end
+        local level = tradeSelection.level
+        tradeSelection = nil
+        collectionView:setTradePicker(nil)
+        frame:SetFrameStrata("DIALOG")
+        frame:SetFrameLevel(level)
+        returnToTrade:Hide()
+        frame:Hide()
+        tradeView:Show()
+        tradeView:refresh()
+    end
+    frame:SetScript("OnHide", function() if tradeSelection then endTradeSelection() end end)
+
+    function ACB.selectTradeCard(choose, allowed, key)
+        if not allowed() then return false end
+        if tradeSelection then endTradeSelection() end
+        tradeSelection = { allowed = allowed, level = frame:GetFrameLevel() }
+        collectionView:setTradePicker(function(cardKey)
+            if not tradeSelection or not allowed() or (saved.counts[cardKey] or 0) == 0 then return false end
+            if choose(cardKey) == false then return false end
+            endTradeSelection()
+            return true
+        end, allowed)
+        frame:SetFrameStrata("FULLSCREEN_DIALOG")
+        frame:SetFrameLevel(math.max(frame:GetFrameLevel(), tradeView:GetFrameLevel() + 100))
+        returnToTrade:Show()
+        if not key or not ACB.openCard(key) then ACB.open("index") end
+        return true
     end
 
     -- Open the binder on one card's page with that card selected.

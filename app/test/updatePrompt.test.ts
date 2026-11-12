@@ -41,3 +41,18 @@ test("a manual check disables update actions temporarily and a current installat
   assert.equal(s.elements.get("update-prompt")!.hidden, true);
   assert.equal(s.elements.get("check-updates")!.disabled, false);
 });
+
+test("a binder mismatch remains visible while manual sync is available to check a restored save", () => {
+  const s = screen(), value = status();
+  value.needsNewBinder = true;
+  value.canUpdate = { app: false, addon: false };
+  value.accounts[0]!.state = "This saved binder differs from the server record. Your cards have been kept.";
+  s.draw(value);
+  assert.equal(s.elements.get("new-binder")!.hidden, false);
+  assert.equal(s.elements.get("sync-now")!.disabled, false);
+  assert.equal(s.elements.get("sync-state")!.textContent, "Needs attention");
+  value.needsNewBinder = false;
+  value.accounts[0]!.state = "Your saved binder and Ranked supply are out of step. Your cards have been kept.";
+  s.draw(value);
+  assert.equal(s.elements.get("sync-state")!.textContent, "Needs attention");
+});

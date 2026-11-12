@@ -4,6 +4,14 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+## 0.6.3 — 2026-11-12 (companion 0.4.3, server 0.4.1)
+
+- Trade invitations wait for Accept invitation before joining or opening a window. The separate trade window has a clickable card slot: it opens the binder above the trade, then Add to trade beneath the selected card returns to the trade. Missing cards stay unavailable; editions and sealed packs retain their identities. Both players still accept the final offers.
+- Empty or fully pruned saved histories are checked against the server, including after restarting the companion. An incompatible binder or roll position stops Ranked supply with a clear sync message instead of being mistaken for exhausted rolls. Cards, settings and server history are retained; no automatic reset or position jump.
+- Ranked refills now supply 10,000 attempts instead of 1,000, giving long sessions more room between reloads. Old tapes continue at the same position, and refill responses reuse freshly generated entries rather than calculating them twice. No extra polling or binder reset.
+- The companion installer checks specifically for the companion executable, including manually moved copies, rather than treating any program in the installation folder as Warcards. It waits for updates to exit and distinguishes process-check errors from a running app, without forcibly killing processes.
+- Companion updates open the setup wizard so folder choices and errors stay visible. Added installation recovery guidance for moved folders and write-permission errors. The saved-data format is unchanged.
+
 ## 0.6.2 — 2026-11-12 (companion 0.4.2)
 
 - The companion checks for updates on launch before sign-in or game-folder setup. If a signed update is available it opens the window with a prominent prompt for the companion and/or addon. Installation stays a player choice; companion updates ask before closing and restarting.

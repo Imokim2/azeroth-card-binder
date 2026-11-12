@@ -256,7 +256,8 @@ test("index searches categories and opens sets beyond the original tabs", functi
     indexRow("Test Set 12"):OnClick()
     equal(button("Collection").enabled, false)
     button("Trade"):OnClick()
-    equal(button("Trade").enabled, false)
+    equal(ACB.tradeView:IsShown(), true)
+    equal(AzerothCardBinderWindow:IsShown(), false)
     button("Collection"):OnClick()
     findWidget(function(widget) return widget.text == ("SELECTED CARD  /  SET %02d 01"):format(base + 9) end)
 

@@ -60,6 +60,7 @@ export class Engine {
   #running: Promise<PassReport> | null = null;
   #acks = new Map<string, Ack>();
   #tape: { start: number; entries: string[] } | undefined;
+  #rankedIssue: "binder-mismatch" | "position-mismatch" | undefined;
   #standings: Standings | undefined;
   #loadedCommunity = false;
   #releases: Releases | undefined; // the versions the server last announced
@@ -100,6 +101,7 @@ export class Engine {
     }
     const accounts: AccountReport[] = [];
     let anyRanked = false;
+    let rankedBlocked = false;
     let tapeNext = 1; // the furthest tape position any Ranked add-on file says it will use next
     let uploadedProgress = false;
     const reports = new Map<string, PendingReport>();
@@ -120,6 +122,11 @@ export class Engine {
       if (binder.addonVersion && (running === null || compareVersions(binder.addonVersion, running) < 0)) running = binder.addonVersion;
       for (const report of binder.reports) reports.set(report.token, report);
       const result = await syncBinder(client, binder, this.#acks.get(file.account) ?? null);
+      if (result.status === "diverged" || result.status === "history-missing") {
+        this.#acks.delete(file.account);
+        if (binder.mode === "ranked") rankedBlocked = true;
+      }
+      if (binder.mode === "ranked" && result.status === "rejected") rankedBlocked = true;
       if (result.status === "synced" && result.uploaded > 0) uploadedProgress = true;
       if (result.status === "synced" && result.ack) this.#acks.set(file.account, result.ack);
       accounts.push({
@@ -145,14 +152,29 @@ export class Engine {
     const held = this.#tape ? this.#tape.start + this.#tape.entries.length - 1 : 0; // the last position the app holds
     const left = held - (tapeNext - 1); // held entries the add-on has not used
     const lowOnTape = !this.#tape || tapeNext < this.#tape.start || left <= TAPE_REFILL_BELOW;
-    if (anyRanked && !lowOnTape && this.#tape) {
+    if (rankedBlocked) {
+      this.#tape = undefined;
+      this.#rankedIssue = "binder-mismatch";
+      tape = { status: "binder-mismatch" };
+    } else if (anyRanked && !lowOnTape && this.#tape) {
+      this.#rankedIssue = undefined;
       tape = { start: this.#tape.start, count: left };
     } else if (anyRanked) {
       const reply = await fetchTape(client, running ?? undefined);
       if (reply.status === "rejected" && reply.code === "addon_too_old") rankedPaused = true;
       if (reply.status === "tape") {
-        this.#tape = { start: reply.start, entries: reply.entries };
-        tape = { start: reply.start, count: reply.entries.length };
+        if (reply.start > tapeNext) {
+          this.#tape = undefined;
+          this.#rankedIssue = "position-mismatch";
+          tape = { status: "position-mismatch" };
+          for (const account of accounts) if (account.mode === "ranked") {
+            account.result = { status: "rejected", code: "tape_position_mismatch" };
+          }
+        } else {
+          this.#rankedIssue = undefined;
+          this.#tape = { start: reply.start, entries: reply.entries };
+          tape = { start: reply.start, count: reply.entries.length };
+        }
       } else {
         tape = { status: reply.status };
         if (reply.status === "retry-later") retryAfterMs = reply.afterMs;
@@ -192,7 +214,8 @@ export class Engine {
 
   async #writeSync(syncedAt: number): Promise<boolean> {
     const text = syncFileText({
-      syncedAt, acks: [...this.#acks.values()], reportsDone: this.#reportsDone,
+      syncedAt, acks: [...this.#acks.values()].filter((ack) => ack.seq > 0), reportsDone: this.#reportsDone,
+      ...(this.#rankedIssue ? { rankedIssue: this.#rankedIssue } : {}),
       ...(this.#releases ? { releases: { latestAddon: this.#releases.addon.latest, minAddon: this.#releases.addon.min } } : {}),
       ...(this.#tape ? { tape: this.#tape } : {}),
       ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts } : {}),

@@ -63,3 +63,29 @@ test("a server chain that is ours is not mistaken for a new binder", async () =>
   }), mine, null);
   assert.equal(outcome.status, "synced");
 });
+
+test("empty or fully pruned saved history must still match a cached or cold-start server head", async () => {
+  const mine = await binder();
+  const ack = { seq: mine.head.seq, hash: mine.head.hash };
+  const empty = { ...mine, events: [], head: { seq: 0, hash: "0".repeat(32) }, tapeNext: 1 };
+  let calls = 0;
+  const client = clientWith(() => { calls++; return { status: 200, body: { ackSeq: ack.seq, ackHash: ack.hash, accepted: 0 } }; });
+  assert.deepEqual(await syncBinder(client, empty, ack), { status: "diverged", serverSeq: ack.seq });
+  assert.equal(calls, 0, "a known mismatch needs no request");
+  assert.deepEqual(await syncBinder(client, empty, null), { status: "diverged", serverSeq: ack.seq });
+  assert.equal(calls, 1, "cold-start empty history is checked rather than assumed uploaded");
+  const pruned = { ...mine, events: [] };
+  assert.deepEqual(await syncBinder(client, pruned, ack), { status: "synced", ack, uploaded: 0 });
+  assert.deepEqual(await syncBinder(client, { ...pruned, head: { ...pruned.head, hash: "f".repeat(32) } }, ack), { status: "diverged", serverSeq: ack.seq });
+});
+
+test("an empty new server acknowledgement is cached without repeated checks", async () => {
+  const mine = await binder();
+  const empty = { ...mine, events: [], head: { seq: 0, hash: "0".repeat(32) }, tapeNext: 1 };
+  const ack = { seq: 0, hash: "0".repeat(32) };
+  let calls = 0;
+  const client = clientWith(() => { calls++; return { status: 200, body: { ackSeq: 0, ackHash: ack.hash, accepted: 0 } }; });
+  assert.deepEqual(await syncBinder(client, empty, null), { status: "synced", ack, uploaded: 0 });
+  assert.deepEqual(await syncBinder(client, empty, ack), { status: "synced", ack, uploaded: 0 });
+  assert.equal(calls, 1);
+});

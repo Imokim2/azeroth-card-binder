@@ -410,7 +410,6 @@ local handlers = {
         if kind == ACB.tradePrefix then
             local peer = normalizePeer(sender)
             local opened = trade:receive(peer, read(message, "string"))
-            if opened and ACB.prepareTrade then ACB.prepareTrade(peer) end
             if opened and ACB.notifyTrade then ACB.notifyTrade(peer, trade:active().gift) end
             ACB.refresh()
         else
