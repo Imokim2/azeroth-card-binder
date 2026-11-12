@@ -42,7 +42,7 @@ test("a healthy server with a correctly signed, downloadable release passes ever
   const { get } = world();
   const results = await smoke({ base: BASE, get, key: trusted.publicKey, deep: true });
   assert.deepEqual(failures(results), []);
-  assert.ok(results.length >= 20);
+  assert.ok(results.length >= 18);
   assert.match(results.find((result) => result.name.startsWith("downloads: the app"))?.detail ?? "", /checksum matches/);
 });
 

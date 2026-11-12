@@ -22,7 +22,7 @@ The server rejects uploads whose `specVersion` it does not support (`client_too_
 
 ## Endpoints
 
-The public HTML website is served outside `/v1`: `/` introduces the project, `/ladder` lists Ranked collections, `/wanted` lists public requests, and `/player/:id` shows eligible public binders. Setup information is at `/download`, `/help` and `/faq`, with existing policies at `/fair-play` and `/privacy`.
+The public HTML website is served outside `/v1`: `/` introduces the project, `/ladder` lists Ranked collections, `/player/:id` shows eligible public binders. Setup information is at `/download`, `/help` and `/faq`, with existing policies at `/fair-play` and `/privacy`.
 
 `GET /status` performs a current database check and returns an HTML status page (200 healthy, 503 database unavailable). `GET /status/badge.svg` performs the same check and returns an SVG online/issue indicator with HTTP 200 in either case so it remains a valid image. Both use `Cache-Control: no-store`; neither monitors Discord, game realms or historical uptime. Public pages otherwise cache for 60 seconds and use no JavaScript or external resources.
 
@@ -90,9 +90,11 @@ The best **public** players **with no Casual drops** (see below), highest score 
 
 Who finished each set first, among the players who may appear on the ladder (public, not banned, not held): `200 { generatedAt, firsts: [{ setCode, title, playerId, displayName, at }] }`, earliest first. `at` is when the server received the upload with the finishing event, not the player's own clock. If the first player is later held back or banned, the next one is first. Cached for 60 seconds.
 
-### `POST /v1/wanted` and `GET /v1/wanted`
+### Retired wanted routes
 
-The cards a player is looking for, so other players can see them at once. `POST` body: `{ key, sentAt, cards, sig }`, where `cards` is a list of up to 60 distinct catalog keys (`npc:589`, `obj:1731`) and `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt, cards }` plus `"purpose": "wanted"`. `sentAt` must be within a day of the server's clock. It replaces the player's whole list. `200 { stored, listed }`: only a **public** player's list is kept (`listed: true`); a private player's is stored as empty. `GET` answers `200 { generatedAt, players: [{ playerId, displayName, characters, cards, updatedAt }] }` for up to 100 public, non-banned players with at least one character, most recently changed first. Cached for 60 seconds. The same list is the website's `/wanted` page. The companion app uploads the list whenever it changes and brings the board into `Data/Sync.lua` for the add-on's Wanted tab.
+Wanted lists are shared directly between addons in game, not published by the website or synced by the companion. `/wanted` redirects to `/help#trading`.
+
+For already-installed companions, `GET /v1/wanted` returns `200 { generatedAt, players: [], retired: true }`; `POST /v1/wanted` returns `200 { stored: 0, listed: false, retired: true }` and ignores the uploaded list. Neither reads or writes player data. Both responses are `no-store`, and old wanted cache entries are bypassed. Other methods are refused. Historical rows remain available only through account export/deletion routines.
 
 ### `POST /v1/report`
 
@@ -128,7 +130,7 @@ A public player's entry: `{ playerId, displayName, rank, scoreTenths, uniqueCard
 
 ## Caching
 
-In front of everything, the Worker keeps a shared copy at Cloudflare's edge (the Workers Cache API, `server/src/cache.ts`) of any successful `GET` answer that is marked `cache-control: public, max-age=N`: the ladder, `/v1/leaderboard`, `/v1/firsts`, `/v1/wanted`, public player pages and entries, `/v1/releases` and the site pages, for their stated lifetime (60 seconds, 5 minutes for releases). A cached answer carries `x-cache: hit` (and the first one `miss`). Nothing private, signed or live is ever kept: health, status, the admin routes (which carry a token), errors, `POST`s and anything not marked `public`. A player who turns private or deletes their data can therefore still appear on a public page for up to a minute. The cache only works on the custom domain; on the `workers.dev` address nothing is kept.
+In front of everything, the Worker keeps a shared copy at Cloudflare's edge (the Workers Cache API, `server/src/cache.ts`) of any successful `GET` answer that is marked `cache-control: public, max-age=N`: the ladder, `/v1/leaderboard`, `/v1/firsts`, public player pages and entries, `/v1/releases` and the site pages, for their stated lifetime (60 seconds, 5 minutes for releases). A cached answer carries `x-cache: hit` (and the first one `miss`). Nothing private, signed or live is ever kept: health, status, the admin routes (which carry a token), errors, `POST`s and anything not marked `public`. A player who turns private or deletes their data can therefore still appear on a public page for up to a minute. The cache only works on the custom domain; on the `workers.dev` address nothing is kept.
 
 ## Errors
 

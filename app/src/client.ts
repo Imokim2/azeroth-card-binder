@@ -174,8 +174,6 @@ export type Standings = {
   verified: string[];
   firsts: { setCode: string; title: string; by: string; at: number }[];
   you: { rank: number; score: number; cards: number; sets: number } | null;
-  // What public players are looking for: each player's name, their characters and the card keys.
-  wanted: { name: string; characters: string[]; cards: string[] }[];
 };
 
 const record = (value: unknown): Record<string, unknown> => (typeof value === "object" && value !== null ? (value as Record<string, unknown>) : {});
@@ -204,14 +202,6 @@ export async function fetchStandings(options: ClientOptions, playerId: string | 
   const feed = await sendWithRetries(options, "/v1/firsts");
   if ("later" in feed) return { status: "retry-later", afterMs: feed.later, reason: feed.reason };
   if (feed.status !== 200) return { status: "rejected", ...errorOf(feed) };
-  const wantedReply = await sendWithRetries(options, "/v1/wanted");
-  if ("later" in wantedReply) return { status: "retry-later", afterMs: wantedReply.later, reason: wantedReply.reason };
-  if (wantedReply.status !== 200) return { status: "rejected", ...errorOf(wantedReply) };
-  const wanted = (Array.isArray(wantedReply.body["players"]) ? (wantedReply.body["players"] as unknown[]).map(record) : []).map((entry) => ({
-    name: String(entry["displayName"] ?? ""),
-    characters: Array.isArray(entry["characters"]) ? (entry["characters"] as unknown[]).filter((name): name is string => typeof name === "string") : [],
-    cards: Array.isArray(entry["cards"]) ? (entry["cards"] as unknown[]).filter((card): card is string => typeof card === "string") : [],
-  }));
   const entries = Array.isArray(board.body["entries"]) ? (board.body["entries"] as unknown[]).map(record) : [];
   const verified = new Set<string>();
   const leaderboard = entries.map((entry) => {
@@ -225,7 +215,7 @@ export async function fetchStandings(options: ClientOptions, playerId: string | 
     const page = await sendWithRetries(options, "/v1/player/" + playerId);
     if (!("later" in page) && page.status === 200) you = { rank: whole(page.body["rank"]), score: whole(page.body["scoreTenths"]), cards: whole(page.body["uniqueCards"]), sets: whole(page.body["setsDone"]) };
   }
-  return { status: "standings", standings: { leaderboard, verified: [...verified], firsts, you, wanted } };
+  return { status: "standings", standings: { leaderboard, verified: [...verified], firsts, you } };
 }
 
 // Start a new binder: the server archives the old record and the player begins again with an empty chain and a new roll
@@ -273,15 +263,4 @@ export async function sendReports(options: ClientOptions, reports: { token: stri
     if (Array.isArray(reply.body["done"])) for (const token of reply.body["done"]) if (typeof token === "string") done.push(token);
   }
   return { status: "reported", done };
-}
-
-// Tell the server which cards this player is looking for, so other players can see them (the wanted board). Signed by the
-// player's key. The server lists only public players and drops the list of a private one; an empty list clears it.
-export async function uploadWanted(options: ClientOptions, cards: string[]): Promise<{ status: "stored"; listed: boolean } | Outcome> {
-  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now(), cards };
-  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "wanted" }));
-  const reply = await sendWithRetries(options, "/v1/wanted", { ...body, sig });
-  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
-  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
-  return { status: "stored", listed: reply.body["listed"] === true };
 }

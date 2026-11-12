@@ -1,12 +1,13 @@
 // The sync engine: one pass that reads every account's saved data, uploads what the server has not stored, brings back
 // the roll tape for Ranked and the standings for the Ladder tab, and writes the one file the add-on reads (docs/ROADMAP.md,
-// 2.2 and 2.4). `start` runs a pass whenever the game finishes writing a saved file, and on a timer.
+// 2.2 and 2.4). `start` runs a pass at startup and when the game saves, with retries for pending work.
 //
 // Nothing is kept that the files do not already hold: the saved-data file is the upload queue, and Sync.lua is rebuilt
 // whole on every pass, so a crash, a restart or a failed request cannot leave the two out of step.
 import { readBinder, BinderFileError } from "./binderFile.ts";
 import type { Binder } from "./binderFile.ts";
-import { fetchReleases, fetchStandings, fetchTape, sendReports, syncBinder, uploadWanted } from "./client.ts";
+import { fetchReleases, fetchStandings, fetchTape, sendReports, syncBinder } from "./client.ts";
+import { cachedStandings } from "./communityCache.ts";
 import type { PendingReport } from "./binderFile.ts";
 import type { ClientOptions, Outcome, Standings } from "./client.ts";
 import { readText, watchSettled, writeFileAtomic } from "./files.ts";
@@ -25,10 +26,10 @@ export type EngineOptions = {
   client: ClientOptions;
   // The player's id once the key is registered (for "your place"); null before that.
   playerId: () => string | null;
-  standingsEveryMs?: number; // at most this often (default half an hour: the ladder moves slowly, and every refresh costs the server reads)
+  standingsEveryMs?: number; // legacy test/config option; standings now refresh only for saved progress
   quietMs?: number; // how long the game's file must stay unchanged before it is read (default 1.5 seconds)
-  everyMs?: number; // a pass on a timer even with no change, to refill the tape and refresh standings (default ten minutes)
-  releasesEveryMs?: number; // how often to ask the server which versions are current (default half an hour)
+  everyMs?: number; // optional diagnostic polling; no periodic pass by default (zero also disables it)
+  releasesEveryMs?: number; // minimum gap between update checks during saved-file syncs (default six hours)
   log?: (message: string) => void;
   onReport?: (report: PassReport) => void; // told after every pass, whoever asked for it
 };
@@ -47,6 +48,7 @@ export type PassReport = {
   wroteSync: boolean;
   updates: UpdateReport; // whether the app and the add-on are out of date
   signedRelease?: { manifest: string; signature: string }; // the server's signed release manifest, for the controller to check
+  retryAfterMs?: number; // required Ranked data could not be fetched; the automatic runner retries with backoff
 };
 
 export class Engine {
@@ -55,10 +57,9 @@ export class Engine {
   #acks = new Map<string, Ack>();
   #tape: { start: number; entries: string[] } | undefined;
   #standings: Standings | undefined;
-  #standingsAt = 0;
+  #loadedCommunity = false;
   #releases: Releases | undefined; // the versions the server last announced
   #releasesAt = 0;
-  #wantedSent: string | null = null; // the wanted list the server last accepted, so it is only sent when it changes
   #reportsDone: string[] = []; // tokens of reports the server has settled, newest last; written to Sync.lua for the add-on
 
   constructor(options: EngineOptions) {
@@ -71,21 +72,25 @@ export class Engine {
   }
 
   // One pass. Passes never overlap: asking while one is running returns that one.
-  syncOnce(): Promise<PassReport> {
+  syncOnce(options: { saved?: boolean } = {}): Promise<PassReport> {
     if (!this.#running) {
-      this.#running = this.#pass().finally(() => {
+      this.#running = this.#pass(options.saved === true).finally(() => {
         this.#running = null;
       });
     }
     return this.#running;
   }
 
-  async #pass(): Promise<PassReport> {
+  async #pass(savedFileChanged: boolean): Promise<PassReport> {
     const { install, client } = this.#options;
+    if (!this.#loadedCommunity) {
+      this.#loadedCommunity = true;
+      this.#standings = cachedStandings(await readText(install.syncPath).catch(() => ""));
+    }
     const accounts: AccountReport[] = [];
     let anyRanked = false;
     let tapeNext = 1; // the furthest tape position any Ranked add-on file says it will use next
-    const wanted = new Set<string>();
+    let uploadedProgress = false;
     const reports = new Map<string, PendingReport>();
     let running: string | null = null; // the oldest add-on version that last wrote an account's file
     for (const file of install.savedFiles) {
@@ -102,22 +107,14 @@ export class Engine {
         tapeNext = Math.max(tapeNext, binder.tapeNext);
       }
       if (binder.addonVersion && (running === null || compareVersions(binder.addonVersion, running) < 0)) running = binder.addonVersion;
-      for (const key of binder.wanted) wanted.add(key);
       for (const report of binder.reports) reports.set(report.token, report);
       const result = await syncBinder(client, binder, this.#acks.get(file.account) ?? null);
+      if (result.status === "synced" && result.uploaded > 0) uploadedProgress = true;
       if (result.status === "synced" && result.ack) this.#acks.set(file.account, result.ack);
       accounts.push({
         account: file.account, mode: binder.mode,
         result: result.status === "rejected" && result.code === "unknown_key" ? { status: "not-registered" } : result,
       });
-    }
-
-    // The player's wanted list goes up when it has changed since the server last took it.
-    const list = [...wanted].sort().slice(0, 60);
-    const fingerprint = JSON.stringify(list);
-    if (accounts.length > 0 && fingerprint !== this.#wantedSent) {
-      const sent = await uploadWanted(client, list);
-      if (sent.status === "stored") this.#wantedSent = fingerprint;
     }
 
     // Reports the player made in the game go up once; the ones the server has settled are written for the add-on to forget.
@@ -130,6 +127,7 @@ export class Engine {
 
     // The tape is asked for after the uploads, so the server knows how far the add-on has got.
     let tape: PassReport["tape"] = null;
+    let retryAfterMs: number | undefined;
     let rankedPaused = false;
     // It is asked for only when the add-on is running low (or has none), not on every pass: the server issues more only below this
     // many unused entries anyway, and a tape request is the most expensive one it answers.
@@ -146,23 +144,23 @@ export class Engine {
         tape = { start: reply.start, count: reply.entries.length };
       } else {
         tape = { status: reply.status };
+        if (reply.status === "retry-later") retryAfterMs = reply.afterMs;
         this.#options.log?.(`the roll tape could not be fetched: ${JSON.stringify(reply)}`);
       }
     }
 
     let standings: PassReport["standings"] = this.#standings ? "kept" : "unavailable";
     const now = client.now() * 1000;
-    if (!this.#standings || now - this.#standingsAt >= (this.#options.standingsEveryMs ?? 1_800_000)) {
+    if (savedFileChanged || uploadedProgress) {
       const reply = await fetchStandings(client, this.#options.playerId());
       if (reply.status === "standings") {
         this.#standings = reply.standings;
-        this.#standingsAt = now;
         standings = "fresh";
       }
     }
 
     // Which versions are current: asked every so often, and kept when the server cannot be reached.
-    if (!this.#releases || now - this.#releasesAt >= (this.#options.releasesEveryMs ?? 1_800_000)) {
+    if (!this.#releases || now - this.#releasesAt >= (this.#options.releasesEveryMs ?? 21_600_000)) {
       const reply = await fetchReleases(client);
       if (reply.status === "releases") {
         this.#releases = reply.releases;
@@ -173,7 +171,9 @@ export class Engine {
 
     // Sync.lua is always written whole from what is known now.
     const written = await this.#writeSync(client.now());
-    const report: PassReport = { accounts, tape, standings, wroteSync: written, updates, ...(this.#releases?.signed ? { signedRelease: this.#releases.signed } : {}) };
+    const report: PassReport = { accounts, tape, standings, wroteSync: written, updates,
+      ...(this.#releases?.signed ? { signedRelease: this.#releases.signed } : {}),
+      ...(retryAfterMs !== undefined ? { retryAfterMs } : {}) };
     this.#options.onReport?.(report);
     return report;
   }
@@ -183,7 +183,7 @@ export class Engine {
       syncedAt, acks: [...this.#acks.values()], reportsDone: this.#reportsDone,
       ...(this.#releases ? { releases: { latestAddon: this.#releases.addon.latest, minAddon: this.#releases.addon.min } } : {}),
       ...(this.#tape ? { tape: this.#tape } : {}),
-      ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts, wanted: this.#standings.wanted } : {}),
+      ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts } : {}),
     });
     try {
       await writeFileAtomic(this.#options.install.syncPath, text);
@@ -194,30 +194,44 @@ export class Engine {
     }
   }
 
-  // Run a pass now, then again whenever the game finishes writing a saved file, and every `everyMs`. A pass that is told to
-  // come back later (the server asked to wait, or it was unreachable) is retried after that wait. Returns a function that stops.
+  // No network polling while idle. File saves trigger work; a change during an upload queues one more pass.
+  // Only failed required work is retried, backing off from a minute to half an hour and respecting Retry-After.
   start(): () => void {
     const { install } = this.#options;
-    let stopped = false;
+    let stopped = false, active = false, queued = false, queuedSave = false, failures = 0;
     let retry: ReturnType<typeof setTimeout> | undefined;
-    const run = (): void => {
+    const scheduleRetry = (afterMs: number): void => {
+      failures++;
+      const backoff = Math.min(1_800_000, 60_000 * 2 ** Math.min(failures - 1, 5));
+      retry = setTimeout(() => run(), Math.max(afterMs, backoff));
+    };
+    const run = (saved = false): void => {
       if (stopped) return;
-      void this.syncOnce().then((report) => {
+      if (active) { queued = true; queuedSave = queuedSave || saved; return; }
+      if (retry) { clearTimeout(retry); retry = undefined; }
+      active = true;
+      void this.syncOnce({ saved }).then((report) => {
         if (stopped) return;
         const wait = report.accounts.flatMap((account) => (account.result.status === "retry-later" ? [account.result.afterMs] : []));
-        if (wait.length > 0) {
-          if (retry) clearTimeout(retry);
-          retry = setTimeout(run, Math.max(...wait));
-        }
-      }, (error: unknown) => this.#options.log?.(`a pass failed: ${error instanceof Error ? error.message : String(error)}`));
+        if (report.retryAfterMs !== undefined) wait.push(report.retryAfterMs);
+        if (wait.length > 0) scheduleRetry(Math.max(...wait));
+        else failures = 0;
+      }, (error: unknown) => {
+        this.#options.log?.(`a pass failed: ${error instanceof Error ? error.message : String(error)}`);
+        if (!stopped) scheduleRetry(60_000);
+      }).finally(() => {
+        active = false;
+        if (queued && !stopped) { const savedAgain = queuedSave; queued = false; queuedSave = false; run(savedAgain); }
+      });
     };
-    const stops = install.savedFiles.map((file) => watchSettled(file.path, run, this.#options.quietMs ?? 1500));
-    const timer = setInterval(run, this.#options.everyMs ?? 600_000);
+    const stops = install.savedFiles.map((file) => watchSettled(file.path, () => run(true), this.#options.quietMs ?? 1500));
+    const interval = this.#options.everyMs;
+    const timer = interval !== undefined && interval > 0 ? setInterval(() => run(), interval) : undefined;
     run();
     return () => {
       stopped = true;
       if (retry) clearTimeout(retry);
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
       for (const stop of stops) stop();
     };
   }

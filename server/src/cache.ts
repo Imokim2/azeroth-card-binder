@@ -13,7 +13,7 @@ export type EdgeCache = {
 };
 
 // Never kept, whatever they say: health and status must be live, and the admin screen is not for sharing.
-const NEVER = new Set(["/v1/health", "/status", "/status/badge.svg", "/admin"]);
+const NEVER = new Set(["/v1/health", "/status", "/status/badge.svg", "/admin", "/wanted", "/v1/wanted"]);
 
 // Is this answer one to keep for others? A 200 to a GET that asks to be shared and has no cookie.
 export function worthKeeping(request: Request, response: Response): boolean {

@@ -29,7 +29,7 @@ footer{margin-top:65px;padding:34px 0 30px;border-top:1px solid var(--edge)}.foo
 `;
 
 export function layout(title: string, body: string, path = "/"): string {
-  const links = [["/", "Home"], ["/ladder", "Ladder"], ["/wanted", "Wanted"], ["/help", "Help"], ["/faq", "FAQ"]];
+  const links = [["/", "Home"], ["/ladder", "Ladder"], ["/help", "Help"], ["/faq", "FAQ"]];
   const nav = links.map(([href, label]) => `<a href="${href}"${path === href ? ' aria-current="page"' : ""}>${label}</a>`).join("");
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">

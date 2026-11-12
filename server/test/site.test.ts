@@ -43,7 +43,7 @@ test("the ladder page lists ranked players, links to them, and says plainly when
 test("pages carry safety headers, load nothing from anywhere else and run no script", async () => {
   const env = setup();
   await rankedPlayer(env, "Alice");
-  for (const path of ["/", "/ladder", "/wanted", "/download", "/help", "/faq", "/fair-play", "/privacy"]) {
+  for (const path of ["/", "/ladder", "/download", "/help", "/faq", "/fair-play", "/privacy"]) {
     const { response, text } = await page(env, path);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-security-policy") ?? "", /default-src 'none'/);

@@ -61,7 +61,7 @@ The current Windows installer is **not code-signed yet**, so Windows may show an
 
 Collect through normal play, use the addon’s trade window and keep your companion synced. Edited collections, fake progress and exploiting bugs are not allowed.
 
-Read the [Ranked rules](https://worldofwarcards.co.uk/fair-play) **before starting a Ranked binder**. Casual drops affect eligibility. You can compare public collections on the [ladder](https://worldofwarcards.co.uk/ladder) and find possible swaps on the [wanted board](https://worldofwarcards.co.uk/wanted).
+Read the [Ranked rules](https://worldofwarcards.co.uk/fair-play) **before starting a Ranked binder**. Casual drops affect eligibility. You can compare public collections on the [ladder](https://worldofwarcards.co.uk/ladder). Use the addon’s Wanted tab to compare lists in game.
 
 ## Need a hand?
 

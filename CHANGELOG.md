@@ -4,6 +4,9 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- Companion syncing now follows game saves instead of a ten-minute polling timer. The leaderboard stays cached between saved-progress syncs, required work retries with backoff, and saves received during an upload are queued. Update checks are kept for six hours during normal use.
+- Wanted lists stay in game and are shared directly between players. The companion no longer sends or fetches them; the web board is retired, with cheap empty responses for older companions.
+
 - **Lighter on the server.** Public answers (the ladder, firsts, the wanted board, public player pages, site pages, the release announcement) are now shared at Cloudflare's edge for a minute or five instead of being worked out for every request; the companion app asks for standings every 30 minutes instead of 5, and for Ranked roll tape only when the add-on is running low instead of on every pass. A deleted or newly private player can still appear on a public page for up to a minute. Estimates and costs: `docs/runbooks/CAPACITY.md`.
 - **Download my data.** The companion window has a **Download my data…** button that saves a copy of everything the server holds about you as a JSON file (`POST /v1/export`, signed with your key): your account, keys, characters, every event of every binder you have had, saved state, score, trades, finished sets, wanted cards and the reports you sent. Reports others made about you, reviewers' notes and server secrets are left out. The privacy page says so, has a "Questions about your data" section and shows a contact address once `PRIVACY_EMAIL` is set (`docs/runbooks/PRIVACY-REQUESTS.md`).
 - **Capacity measured.** `npm run bench` in `server/` times the heaviest requests: tape requests take 20 to 55 ms and a full Ranked upload about 60 ms, well over the free Workers plan's 10 ms of CPU. `docs/runbooks/CAPACITY.md` recommends the paid plan before launch.
