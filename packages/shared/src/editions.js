@@ -5,8 +5,9 @@ function editionKeys(catalog, key) {
     return [base, ...(catalog.editions?.[base] || []).map((edition) => edition.key)];
 }
 function familyCount(catalog, counts, key) { return editionKeys(catalog, key).reduce((total, item) => total + (counts[item] || 0), 0); }
-function pickEdition(catalog, key, roll) {
+function pickEdition(catalog, key, roll, balanced = false) {
     const base = baseKey(catalog, key);
+    if (catalog.cards[base]?.critter && !balanced) return base;
     let upTo = 0;
     for (const edition of catalog.editions?.[base] || []) {
         upTo += edition.weight;

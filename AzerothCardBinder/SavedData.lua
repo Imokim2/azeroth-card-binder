@@ -141,6 +141,7 @@ function ACB.cleanSavedData(saved)
     local upgraded = saved.schema ~= ACB.schema
     saved.schema = ACB.schema
     saved.editionDrops = true
+    saved.balancedDrops = true
     saved.counts, saved.achievements = tableOrEmpty(saved.counts), tableOrEmpty(saved.achievements)
     saved.levels = nil -- levels were shown on cards in an earlier build and are no longer kept
     for key, count in pairs(saved.counts) do

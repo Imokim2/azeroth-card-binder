@@ -66,7 +66,7 @@ end
 -- Attempts without a drop so far, and the attempt that is certain to drop, for a catalog card.
 function ACB.luck(saved, card)
     card = ACB.baseCard(card)
-    local rate = ACB.rates[card.rank]
+    local rate = ACB.dropRate(card, saved.balancedDrops)
     local factor = ACB.stackFactor or 0
     local limit = factor > 0 and 1 + math.ceil((10000 - rate) / (rate * factor)) or nil
     return (saved.misses and saved.misses[card.key]) or 0, limit
@@ -80,7 +80,7 @@ end
 function ACB.luckText(saved, card, showEmpty)
     local misses = ACB.luck(saved, card)
     if misses == 0 and not showEmpty then return end
-    local chance = ACB.chanceAfter(ACB.rates[card.rank], misses)
+    local chance = ACB.dropChance(ACB.baseCard(card), misses, saved.balancedDrops)
     if chance >= 10000 then return "Next attempt guaranteed" end
     return ("Next attempt: %g%%"):format(chance / 100)
 end
@@ -159,7 +159,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             log("Already rolled: " .. card.name .. " (" .. origin .. ")")
             return
         end
-        if ACB.editions[card.key] then ACB.activateEditions(saved, ledger) end
+        ACB.activateDropBalance(saved, ledger)
+        if ACB.editions[card.key] and (not card.critter or saved.balancedDrops) then ACB.activateEditions(saved, ledger) end
 
         -- In Ranked mode every attempt uses the next entry of the server's tape. With none left, rolling pauses.
         local ranked = saved.mode == "ranked"
@@ -177,11 +178,10 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         end
         remember(guid)
         -- Ranked uses the card's listed rate, so the server can recheck every drop without seeing the creature.
-        local threshold = ranked and ACB.rates[card.rank] or ACB.rates[observedRank] or ACB.rates[card.rank]
         saved.misses = saved.misses or {}
-        -- Every miss raises the chance of the next attempt, and a drop starts it over.
+        -- Each profile decides when protection rises; a drop starts it over.
         local misses = ACB.luck(saved, card)
-        local chance = ACB.chanceAfter(threshold, misses)
+        local chance = ACB.dropChance(card, misses, saved.balancedDrops, not ranked and observedRank or nil)
         local guaranteed = chance >= 10000
         -- A certain drop needs no roll; a Casual roll is drawn only when it is needed.
         local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= chance
@@ -212,7 +212,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         if ranked and ledger then ledger:flushRun() end
 
         if saved.editionDrops and ACB.editions[card.key] then
-            card = ACB.pickEdition(card, ranked and ACB.editionRoll(entry) or random(1, ACB.editionDenominator))
+            card = ACB.pickEdition(card, ranked and ACB.editionRoll(entry) or random(1, ACB.editionDenominator), saved.balancedDrops)
         end
 
         local counts = saved.counts
@@ -277,6 +277,10 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     -- Spend dust on a card that is not in the binder yet. It is a plain copy, never shiny.
     function collection:craft(key)
         local card = ACB.cards[key]
+        if saved.balancedDrops and card and card.dropProfile and card.dropProfile.noCraft then
+            report("This elusive card must be found or traded for.")
+            return false
+        end
         if not card or card.baseKey or (saved.counts[key] or 0) > 0 then return false end
         local _, cost = ACB.dustFor(card)
         if (saved.dust or 0) < cost then return false end

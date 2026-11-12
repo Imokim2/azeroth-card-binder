@@ -101,10 +101,10 @@ test("a first-time player: key made once, registered, uploaded, acknowledged bac
     assert.equal(outcome.uploaded, binder.events.length);
     assert.deepEqual(outcome.ack, { seq: binder.head.seq, hash: binder.head.hash });
 
-    // The add-on's snapshot matched the replay. This scripted binder wins every single roll, which no honest player
-    // does, so the luck check rightly holds it off the ladder: the only flag is that one.
+    // The snapshot matches. New-policy luck statistics use verifiable Ranked attempts;
+    // this Casual fixture remains off the ladder through Casual provenance, without a false luck flag.
     const flags = env.raw.prepare("SELECT kind FROM flags").all() as { kind: string }[];
-    assert.deepEqual(flags.map((flag) => flag.kind), ["luck-hold"]);
+    assert.deepEqual(flags.map((flag) => flag.kind), []);
 
     // The app writes Sync.lua and the real add-on code understands it: the stored events are dropped, the chain still verifies.
     await writeFileAtomic(install.syncPath, syncFileText({ syncedAt: NOW, acks: [outcome.ack as { seq: number; hash: string }] }));

@@ -1,6 +1,16 @@
 # Ledger specification
 
-Version 4. Version 2 added `miss` and `ranked2`; version 3 added card packs. Version 4 adds collectible editions, described in [COLLECTIBLE-EDITIONS.md](COLLECTIBLE-EDITIONS.md), using the existing event fields and a `mode` event with key `editions1`. This marker activates edition-aware drop verification without reinterpreting older events. Versions 2 and 3 histories and their hashes remain valid. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 5. Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds the `mode/chase1` marker for per-card drop profiles, protected chase cards and weighted packs. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+
+## Drop balance version 1
+
+`mode/chase1` has count, dust, shiny and tape zero. It is recorded once before new balanced rolls or pack openings, after flushing any old miss run. It activates persistent `balance=1`; earlier events retain legacy rank rates and uniform within-rarity pack picks. Miss counts carry over. A new critter edition requires both `editions1` and `chase1`.
+
+The catalog supplies each base card's `dropProfile`: integer hundredths-of-a-percent `rate`, `style` (`stack` or `chase`), integer `packWeight`, `tier` and `noCraft`. Variants inherit their source profile. Stack protection retains the existing `rate * (1 + misses * stackFactor)` formula. Chase protection stays at its base rate until `floor(0.75 * ceil(10000/rate))` misses, then rises linearly, rounded down, to 10000 on attempt `ceil(10000/rate)`. Its chance is `rate + floor((10000-rate) * (misses-start)/(limit-1-start))` in that final interval, clamped to 10000.
+
+After activation, within-rarity pack selection uses each card's `packWeight`, in existing numeric-key order. The pool draw is `floor(hex2/shinyOdds) mod sum(weights)`; select the first cumulative weight above it. The rarity draw, pack-find odds, shiny and edition draws are unchanged. Cards with `noCraft=true` cannot be crafted after activation. There is no empty or synthetic event for these rules.
+
+Replay accumulates `balanceAttempts` and `balanceDrops` by base source for post-marker Ranked misses/drops. The first cycle for each source may inherit legacy pity: skip it through its first drop, then set `balanceReady[source]=true` and count subsequent attempts and drops. Casual events do not enter these counters and remain ineligible for Ranked through their existing provenance rules. Statistical luck checks use those counters and the new profiles; old counters remain valid for legacy players. Counts, inventories, hashes and transferred card keys are retained. Versions 2–4 remain accepted for legacy events; version 5 is required for the new marker and critter editions.
 
 If this document, the reference implementation and the vectors ever disagree, that is a bug. Fix all three together in one change.
 

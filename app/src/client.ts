@@ -77,7 +77,7 @@ async function sendWithRetries(options: ClientOptions, path: string, body?: Reco
 
 async function uploadBody(options: ClientOptions, binder: Binder, events: BinderEvent[]): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {
-    specVersion: 4, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
+    specVersion: 5, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
     realm: binder.character?.realm ?? "Unknown", schema: binder.schema, catalogVersion: options.catalogVersion,
     events, snapshot: binder.snapshot, tapeIndex: binder.tapeNext, sentAt: options.now(),
   };

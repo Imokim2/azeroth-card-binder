@@ -5,7 +5,7 @@
 -- Run from the repository root.
 local addon = "AzerothCardBinder"
 local ACB = {}
-for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "Editions.lua", "Achievements.lua",
+for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "DropRates.lua", "Editions.lua", "Achievements.lua",
     "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Tape.lua", "Collection.lua", "Packs.lua", "SavedData.lua", "Reports.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end

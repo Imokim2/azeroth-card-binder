@@ -26,7 +26,7 @@ test("ready-only loot advances the open binder's protection once per identified 
     equal(saved.misses[card.key], 1)
     local protection
     for _, widget in ipairs(widgets) do
-        if widget.text == "Next attempt: 2%" then protection = widget end
+        if widget.text == ACB.discoveryText(card) then protection = widget end
     end
     assert(protection)
     openLoot({ spawn, 1 }) -- a later event or reopening the same corpse does not count again

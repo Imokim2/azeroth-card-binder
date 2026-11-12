@@ -37,7 +37,7 @@ function ACB.createPackView(saved)
     local list = CreateFrame("Frame", nil, frame)
     list:SetAllPoints(frame)
     local note = label(list, "GameFontHighlightSmall", 40, 84, muted,
-        "Any enemy you defeat has a 1 in 500 chance to drop a pack. A pack holds five cards from the zone it dropped in: common cards are common, rare ones rarer, legendary ones rarest.")
+        "Enemies can rarely drop a pack. Each pack holds five cards from the zone it dropped in. Some discoveries are much harder to find than others.")
     note:SetWidth(720)
     local empty = label(list, "GameFontNormal", 40, 150, parchment, "")
     empty:SetWidth(720)

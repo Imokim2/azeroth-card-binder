@@ -13,7 +13,7 @@ import type { IngestStore, Player, TapeStore, TradeStore } from "./store.ts";
 import { checkTape, tapeKey, tapeOwner } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4]; // 4 adds edition-aware drops and the editions1 activation marker
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5]; // 5 adds versioned per-card profiles and critter editions
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -97,6 +97,10 @@ export async function acceptUpload(
 
   const stored = await deps.ingest.load(player.id);
   const events = upload.events;
+  if (upload.specVersion < 5 && (stored.state.balance === 1 || events.some((event) =>
+    (event["kind"] === "mode" && event["key"] === "chase1") || deps.catalog.cards[String(event["key"])]?.balanceOnly))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
   // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.
   if (upload.tapeIndex > (await deps.tapes.issuedEnd(player.id)) + 1 && upload.tapeIndex > 1) {
     throw new ApiError("tape_invalid", { reason: "next", index: events.length });

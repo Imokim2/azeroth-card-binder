@@ -35,7 +35,7 @@ function packPools(catalog, zone) {
 
 // The card a tape entry gives from a zone's pack: the rarity from the roll, then a card of that rarity from the rest.
 // Only whole numbers are used, so every implementation gets the same answer. Returns the card key, or null for an unknown zone.
-function packPick(catalog, zone, entry, shinyOdds) {
+function packPick(catalog, zone, entry, shinyOdds, balanced = false) {
     const pools = packPools(catalog, zone);
     if (pools.length === 0) return null;
     const total = pools.reduce((sum, pool) => sum + pool.weight, 0);
@@ -46,7 +46,15 @@ function packPick(catalog, zone, entry, shinyOdds) {
         upTo += pool.weight * 10000;
         if (scaled < upTo) { chosen = pool; break; }
     }
-    return chosen.cards[Math.floor(secondHalf(entry) / shinyOdds) % chosen.cards.length];
+    const draw = Math.floor(secondHalf(entry) / shinyOdds);
+    if (!balanced) return chosen.cards[draw % chosen.cards.length];
+    const weights = chosen.cards.map(key => catalog.cards[key].dropProfile?.packWeight ?? 100);
+    let index = draw % weights.reduce((sum, weight) => sum + weight, 0);
+    for (let i = 0; i < chosen.cards.length; i++) {
+        index -= weights[i];
+        if (index < 0) return chosen.cards[i];
+    }
+    return null;
 }
 
 module.exports = { PACK_ODDS, PACK_SIZE, PACK_RARITIES, packValue, packFound, packPools, packPick };

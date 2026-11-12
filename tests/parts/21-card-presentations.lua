@@ -113,7 +113,7 @@ end)
 
 test("every collectible edition has a substantially different camera and action from its signature", function()
     local checked = 0
-    for _, family in pairs(ACB.editions) do
+    for _, family in pairs(ACB.editions) do if not family[1].critter then
         local base = ACB.portraitPreset(family[1])
         for slot = 2, 3 do
             local entry, pose = family[slot], family[slot].presentation
@@ -126,12 +126,12 @@ test("every collectible edition has a substantially different camera and action 
         end
         assert(math.abs(family[2].presentation.facing - family[3].presentation.facing) > 2)
         assert(family[2].presentation.animation ~= family[3].presentation.animation)
-    end
+    end end
     equal(checked, 16)
 end)
 
 test("animated editions keep their supported fallback action when looping and restore the base camera", function()
-    for _, family in pairs(ACB.editions) do
+    for _, family in pairs(ACB.editions) do if not family[1].critter then
         local entry = family[3]
         local fallback = entry.presentation.fallbacks[1]
         local card = ACB.createCard(UIParent, true, ignore)
@@ -153,5 +153,5 @@ test("animated editions keep their supported fallback action when looping and re
         card.model:OnModelLoaded()
         equal(card.model.position[2], 0)
         equal(card.model.position[3], -.05)
-    end
+    end end
 end)

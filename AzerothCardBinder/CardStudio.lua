@@ -8,6 +8,9 @@ function ACB.openCardStudio(entry)
     if not studio then
         local frame = kit.window("AzerothCardBinderStudio", 1040, 680, "World of Warcards / Card design studio")
         local samples = { "npc:639", "npc:646", "npc:4275", "npc:3887", "npc:3976", "npc:3977", "npc:4832", "npc:4829", "npc:573" }
+        for _, id in ipairs({ 721, 6271, 883, 1412, 890, 4075, 5951, 2620, 13321, 1933, 2442 }) do
+            if ACB.cards["npc:" .. id] then samples[#samples + 1] = "npc:" .. id end
+        end
         local sample, edition, shiny, paused = 1, "signature", false, false
         local current, refresh
         local cards, editionButtons = {}, {}

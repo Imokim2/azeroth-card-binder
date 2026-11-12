@@ -1,6 +1,6 @@
 {
   "name": "warcards-app",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "World of Warcards companion app: reads the add-on's saved data, uploads it, and writes the file the add-on reads. An Electron window and tray around a tested controller.",

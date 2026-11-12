@@ -68,6 +68,24 @@ for _, row in ipairs(content) do
     end
 end
 
+-- One still, deliberately excessive face portrait for each curated critter.
+for id, title in pairs(ACB.critterCards or {}) do
+    local base = ACB.cards["npc:" .. id]
+    if base then
+        local entry = {}
+        for key, value in pairs(base) do entry[key] = value end
+        entry.baseKey, entry.editionTitle = base.key, title
+        entry.key, entry.presentationId = "edition:" .. (id * 10 + 1), "critter-face-" .. id
+        entry.name, entry.serial = base.name .. " (" .. title .. ")", base.serial .. "/A1"
+        entry.editionWeight, entry.balanceOnly = 250, true
+        local deer = id == 883 or id == 890 or id == 10780 or id == 12298 or id == 4166 or id == 12296
+        entry.presentation = { zoom = deer and .92 or .98, facing = .05, animation = 0, frame = 0,
+            y = 0, z = deer and -.03 or 0, animated = false, composition = "Far too close to a tiny face" }
+        ACB.cards[entry.key] = entry
+        ACB.editions[base.key] = { base, entry }
+    end
+end
+
 function ACB.baseCard(entry)
     return entry.baseKey and ACB.cards[entry.baseKey] or entry
 end
@@ -114,8 +132,9 @@ function ACB.editionRoll(entry)
     return tonumber(ACB.sha256("edition-v1|" .. entry):sub(1, 8), 16) % ACB.editionDenominator + 1
 end
 
-function ACB.pickEdition(card, roll)
+function ACB.pickEdition(card, roll, balanced)
     local base, upTo = ACB.baseCard(card), 0
+    if base.critter and not balanced then return base end
     local family = ACB.editions[base.key]
     if not family then return base end
     for index = 2, #family do

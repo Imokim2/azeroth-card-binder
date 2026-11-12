@@ -33,9 +33,9 @@ function ACB.installCardTooltip(card, typeName, interactive)
         if card.presentation and card.presentation.animated and interactive then
             GameTooltip:AddLine("Right-click to pause or resume model animation.", 0.65, 0.61, 0.54, true)
         end
-        GameTooltip:AddLine(("%g%% chance per source"):format(ACB.rates[entry.rank] / 100), 0.65, 0.61, 0.54)
+        GameTooltip:AddLine(ACB.discoveryText(entry), 0.65, 0.61, 0.54, true)
         if entry.baseKey then
-            GameTooltip:AddLine(("Edition: %g%% of this source's card drops"):format(entry.editionWeight / 10), 0.65, 0.61, 0.54, true)
+            GameTooltip:AddLine("Special collectible edition", 0.65, 0.61, 0.54, true)
         end
         if card.owned > 0 then
             GameTooltip:AddLine(("Owned %d, spare %d"):format(card.owned, card.owned - 1), 0.54, 0.80, 0.61)

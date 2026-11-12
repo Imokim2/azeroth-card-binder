@@ -9,7 +9,7 @@ ACB.viewPrefix = "AzerothBinderV1"
 
 local ENTRIES_PER_MESSAGE = 19
 local catalogSize = 0
-for _, page in ipairs(ACB.pages) do catalogSize = catalogSize + #page.cards end
+for _ in pairs(ACB.cards) do catalogSize = catalogSize + 1 end
 local MAX_PARTS = math.ceil(catalogSize / ENTRIES_PER_MESSAGE)
 -- The game limits how fast addon messages can go out (a short burst, then about one a second), and a message over
 -- the limit is refused, not queued. The first parts go quickly, the rest at a steady pace, and a refused part is

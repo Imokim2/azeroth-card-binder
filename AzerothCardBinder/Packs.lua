@@ -35,7 +35,7 @@ function ACB.packValue(entry)
 end
 
 -- The card key an entry gives from a zone's pack, or nil for an unknown zone.
-function ACB.packPick(zone, entry)
+function ACB.packPick(zone, entry, balanced)
     local page = ACB.pageOfZone(zone)
     if not page then return end
     local pools, total = {}, 0
@@ -61,7 +61,15 @@ function ACB.packPick(zone, entry)
         upTo = upTo + pool.weight * 10000
         if scaled < upTo then chosen = pool break end
     end
-    return chosen.cards[math.floor(second(entry) / ACB.shinyOdds) % #chosen.cards + 1]
+    local draw = math.floor(second(entry) / ACB.shinyOdds)
+    if not balanced then return chosen.cards[draw % #chosen.cards + 1] end
+    local weight = 0
+    for _, key in ipairs(chosen.cards) do weight = weight + ACB.cards[key].dropProfile.packWeight end
+    draw = draw % weight
+    for _, key in ipairs(chosen.cards) do
+        draw = draw - ACB.cards[key].dropProfile.packWeight
+        if draw < 0 then return key end
+    end
 end
 
 -- An entry made from the computer's random numbers, for a Casual pack, in the same layout as a tape entry.
@@ -123,6 +131,7 @@ function ACB.addPackMethods(collection, ctx)
             return nil, ("A Ranked pack needs %d roll tape entries. Type /reload so the companion app can bring more, or switch to Casual."):format(ACB.packSize)
         end
         if ledger then ledger:flushRun() end
+        ACB.activateDropBalance(saved, ledger)
         ACB.activateEditions(saved, ledger)
         saved.packs[zone] = held > 1 and held - 1 or nil
         record("packOpen", zone, { count = held - 1, tape = ranked and ACB.tapeUsed(saved) or 0 })
@@ -131,8 +140,8 @@ function ACB.addPackMethods(collection, ctx)
         for index = 1, ACB.packSize do
             local entry, tapeIndex
             if ranked then entry, tapeIndex = ACB.takeTape(saved) else entry = ACB.randomEntry(random) end
-            local key = ACB.packPick(zone, entry)
-            if saved.editionDrops then key = ACB.pickEdition(ACB.cards[key], ACB.editionRoll(entry)).key end
+            local key = ACB.packPick(zone, entry, saved.balancedDrops)
+            if saved.editionDrops then key = ACB.pickEdition(ACB.cards[key], ACB.editionRoll(entry), saved.balancedDrops).key end
             local before = saved.counts[key] or 0
             saved.counts[key] = before + 1
             local shiny = not saved.shiny[key] and ACB.tapeShiny(entry, ACB.shinyOdds) == 1
