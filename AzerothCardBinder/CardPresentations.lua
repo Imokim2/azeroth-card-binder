@@ -20,16 +20,14 @@ local function special(entry)
     return not entry.profession and (entry.rarity == "epic" or entry.rarity == "legendary")
 end
 
--- Named alternates are presentation previews until collectible-edition rules are
--- defined. They do not grant cards, alter counts, or enter the collection ledger.
+-- Foe Reaper's alternates are studio previews. The sixteen dungeon editions
+-- below come from Editions.lua, which also supplies the live binder poses.
 local alternates = {
-    ["npc:639"] = {
-        { id = "vancleef-defiant", name = "Defiant", zoom = 0.56, facing = 0.38, animation = 25, frame = 18 },
-        { id = "vancleef-blades", name = "Blades Drawn", zoom = 0.52, facing = -0.66, animation = 17, frame = 24, animated = true, duration = 3.2 },
-    },
     ["npc:573"] = {
-        { id = "reaper-watch", name = "The Last Harvest", zoom = 0.31, facing = 0.42, animation = 16, frame = 14 },
-        { id = "reaper-living", name = "Still Working", zoom = 0.28, facing = -0.34, animation = 0, frame = 0, animated = true, duration = 4 },
+        { id = "reaper-watch", name = "The Last Harvest", zoom = .68, facing = 1.2, animation = 74, frame = 700,
+            fallbacks = { 55, 130 }, y = -.06, z = .04, composition = "Close mechanical roar" },
+        { id = "reaper-living", name = "Still Working", zoom = .03, facing = -1.55, animation = 130, frame = 600,
+            fallbacks = { 118, 5 }, y = .06, z = -.12, animated = true, duration = 2.6, composition = "Wide harvesting-machine action" },
     },
 }
 

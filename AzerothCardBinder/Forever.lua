@@ -398,7 +398,9 @@ local handlers = {
             return
         end
         if kind == ACB.tradePrefix then
-            trade:receive(normalizePeer(sender), read(message, "string"))
+            local peer = normalizePeer(sender)
+            local opened = trade:receive(peer, read(message, "string"))
+            if opened and ACB.prepareTrade then ACB.prepareTrade(peer) end
             ACB.refresh()
         else
             ACB.receiveView(normalizePeer(sender), read(message, "string"))
@@ -430,3 +432,8 @@ events:SetScript("OnEvent", function(self, event, ...)
     end
 end)
 events:RegisterEvent("ADDON_LOADED")
+events:SetScript("OnUpdate", function(_, elapsed)
+    if trade and trade.step then
+        if trade:step(elapsed) and ACB.refresh then ACB.refresh() end
+    end
+end)

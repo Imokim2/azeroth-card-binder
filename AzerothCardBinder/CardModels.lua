@@ -27,18 +27,20 @@ local function loadModel(model, entry)
     end
 end
 
--- Reuse one tiny model behind the parchment. Keeping it shown lets the client load
+-- Reuse one portrait behind the parchment. Keeping it shown lets the client load
 -- later portraits without allocating a model frame for every card in the set.
 function ACB.createPortraitLoader(parent, paper)
     local model = CreateFrame("PlayerModel", nil, parent)
-    model:SetSize(2, 2)
+    model:SetSize(128, 104)
+    model.acbPortraitLoader = true
+    model:SetAlpha(0.001)
     model:SetPoint("CENTER", paper)
     model:SetFrameLevel(parent:GetFrameLevel())
     model:Hide()
-    if not model.GetModelFileID or not model.ClearModel then return function() end end
+    safe(model.SetKeepModelOnHide, model, true)
 
     local warmed = {}
-    local cards, pending, nextSlot, remaining
+    local cards, sourceCards, pending, nextSlot, remaining, retries, retryCards
     local elapsedSinceRequest = 0
     local function idle()
         pending = nil
@@ -48,14 +50,23 @@ function ACB.createPortraitLoader(parent, paper)
 
     model:SetScript("OnUpdate", function(_, elapsed)
         elapsedSinceRequest = elapsedSinceRequest + elapsed
-        if elapsedSinceRequest < 0.08 then return end
+        if not cards or elapsedSinceRequest < 0.08 then return end
         if pending then
             local file = ACB.read(safe(model.GetModelFileID, model), "number")
-            if file and file > 0 and (not pending.profession or file == pending.model) then
+            if file and file > 0 and (not pending.profession or file == pending.model) and elapsedSinceRequest >= 0.25 then
                 warmed[pending.key] = true
-            elseif elapsedSinceRequest < 1 then
+            elseif elapsedSinceRequest < 3 then
                 return
+            elseif not retries[pending.key] then
+                -- A slow or unavailable model gets one more turn after the rest of
+                -- the set, instead of starving the queue or being cached as ready.
+                retries[pending.key] = true
+                retryCards[#retryCards + 1] = pending
             end
+        end
+        if remaining == 0 and #retryCards > 0 then
+            cards, nextSlot, remaining = retryCards, 1, #retryCards
+            retryCards = {}
         end
         while remaining > 0 do
             local entry = cards[nextSlot]
@@ -71,15 +82,52 @@ function ACB.createPortraitLoader(parent, paper)
     end)
 
     return function(entries, first, last)
-        if cards == entries then return end
+        if sourceCards == entries and model:IsShown() then return end
         idle()
-        cards = entries
+        cards, sourceCards = entries, entries
         if not cards then return end
-        remaining = #cards - (last - first + 1)
+        retries, retryCards = {}, {}
+        first, last = first or 1, last or 0
+        remaining = #cards - math.max(0, last - first + 1)
         if remaining <= 0 then return end
         nextSlot, elapsedSinceRequest = last % #cards + 1, 0
         model:Show()
     end
+end
+
+-- Hidden pages and pack faces can receive their entry before the client starts
+-- loading a model. Retry on visibility, with a bounded fallback for missed callbacks.
+function ACB.watchCardModel(card, update, canLoad)
+    local elapsed, attempts, key, settled = 0, 0
+    local function ready(model)
+        local file = ACB.read(safe(model.GetModelFileID, model), "number")
+        return file and file > 0 and (not card.entry.profession or file == card.entry.model)
+    end
+    safe(card.model.SetScript, card.model, "OnModelLoaded", function(model)
+        update(model)
+        settled = card.entry and ready(model)
+    end)
+    local function resume(model)
+        elapsed, attempts, key, settled = 0, 0, card.modelFor, false
+        if not card.entry or card.entry.key ~= card.modelFor or not canLoad() then return end
+        if not ready(model) then loadModel(model, card.entry) end
+        update(model)
+        settled = ready(model)
+    end
+    card.model:SetScript("OnShow", resume)
+    card.model:SetScript("OnUpdate", function(model, dt)
+        if not card.entry or not canLoad() then return end
+        if key ~= card.modelFor then elapsed, attempts, key, settled = 0, 0, card.modelFor, false end
+        if settled or attempts >= 2 then return end
+        elapsed = elapsed + dt
+        if elapsed < 1 then return end
+        elapsed = 0
+        update(model)
+        if ready(model) then settled = true return end
+        attempts = attempts + 1
+        loadModel(model, card.entry)
+    end)
+    return function() resume(card.model) end
 end
 
 local function setModelFinish(model, found)
@@ -94,14 +142,23 @@ local function poseCreature(model, entry, facing, presentation, animate)
         safe(model.SetCamDistanceScale, model, 0.8)
     end
     safe(model.SetFacing, model, facing)
-    safe(model.SetPosition, model, 0, 0, -0.05)
+    safe(model.SetPosition, model, preset.x or 0, preset.y or 0, preset.z or -0.05)
 
-    local supported = ACB.read(safe(model.HasAnimation, model, preset.animation), "boolean")
+    local animation = preset.animation
+    local supported = ACB.read(safe(model.HasAnimation, model, animation), "boolean")
+    if not supported then
+        for _, alternative in ipairs(preset.fallbacks or {}) do
+            if ACB.read(safe(model.HasAnimation, model, alternative), "boolean") then
+                animation, supported = alternative, true
+                break
+            end
+        end
+    end
     if supported and animate and presentation.animated and type(model.SetAnimation) == "function" then
         safe(model.SetPaused, model, false)
-        if pcall(model.SetAnimation, model, preset.animation, 0) then return true end
+        if pcall(model.SetAnimation, model, animation, 0) then return true, animation end
     end
-    if supported and pcall(model.FreezeAnimation, model, preset.animation, 0, preset.frame) then return false end
+    if supported and pcall(model.FreezeAnimation, model, animation, 0, preset.frame) then return false, animation end
     if not pcall(model.FreezeAnimation, model, STAND, 0, 0) then safe(model.SetPaused, model, true) end
     return false
 end

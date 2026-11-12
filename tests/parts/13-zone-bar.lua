@@ -161,3 +161,31 @@ test("the bar takes the reputation bar's place, gives it back when it is off or 
     ACB.refreshZoneBar()
     equal(second.alpha, 1)
 end)
+
+test("the zone bar ignores hidden or collapsed trackers and recovers when the layout changes", function()
+    local saved, bar = AzerothCardBinderDB, AzerothCardBinderZoneBar
+    local keep = { saved.zoneBar, saved.zoneBarSpot, GetRealZoneText, _G.StatusTrackingBarManager, _G.MainMenuExpBar }
+    saved.zoneBar, saved.zoneBarSpot = true, nil
+    GetRealZoneText = function() return "Westfall" end
+    local manager = CreateFrame("Frame", nil, UIParent)
+    manager:SetSize(570, 0)
+    local experience = CreateFrame("Frame", nil, UIParent)
+    experience:SetSize(570, 12)
+    experience:Hide()
+    _G.StatusTrackingBarManager, _G.MainMenuExpBar = manager, experience
+    ACB.refreshZoneBar()
+    equal(bar.point[2], UIParent, "invisible tracking bars cannot swallow the card bar")
+    equal(bar.point[5], 118)
+    experience:Show()
+    ACB.refreshZoneBar()
+    equal(bar.point[2], experience, "a visible experience bar becomes the anchor")
+    saved.zoneBarSpot = { x = 50000, y = -50000 }
+    ACB.refreshZoneBar()
+    assert(bar.point[4] <= UIParent:GetWidth() / 2 and bar.point[5] >= 8)
+    saved.zoneBar = false
+    SlashCmdList.AZEROTHCARDBINDER("bar reset")
+    equal(saved.zoneBar, true, "reset also enables a previously disabled bar")
+    equal(saved.zoneBarSpot, nil)
+    saved.zoneBar, saved.zoneBarSpot, GetRealZoneText, _G.StatusTrackingBarManager, _G.MainMenuExpBar = unpack(keep, 1, 5)
+    ACB.refreshZoneBar()
+end)

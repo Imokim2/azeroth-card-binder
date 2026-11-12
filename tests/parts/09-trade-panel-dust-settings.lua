@@ -1,6 +1,7 @@
-test("Trade panel sends only supported outdoor whispers and filters incoming messages", function()
-    local sent = {}
-    local tradesBefore = AzerothCardBinderDB.tradeCount
+test("the simple Trade panel filters whispers and moves cards only after both accept and finish", function()
+    local saved, sent = AzerothCardBinderDB, {}
+    local tradesBefore, range = saved.tradeCount, saved.tradeRange
+    saved.tradeRange = false
     Enum = { SendAddonMessageResult = { Success = 0, AddOnMessageLockdown = 11 } }
     C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
         equal(prefix, ACB.tradePrefix)
@@ -10,56 +11,46 @@ test("Trade panel sends only supported outdoor whispers and filters incoming mes
         sent[#sent + 1] = message
         return 0
     end
-    local function click(text)
-        for _, widget in ipairs(widgets) do
-            if widget.text == text and widget.OnClick then widget:OnClick() return end
-        end
-        error("button not found: " .. text)
-    end
-    SlashCmdList.AZEROTHCARDBINDER("trade")
-    for _, widget in ipairs(widgets) do
-        if widget.OnEnterPressed and not widget.OnTextChanged then widget:SetText("Bob") break end
-    end
-    click(">")
+    ACB.open("trade")
+    local c = ACB.tradeView.controls
+    c.partner:SetText("Bob")
+    c.choose:OnClick()
+    c.search:SetText("Defias Pillager")
+    c.search:OnTextChanged()
+    local give = assert(c.rows[1].key)
+    local before, takeBefore = saved.counts[give], saved.counts["npc:573"] or 0
+    c.rows[1]:OnClick()
     instance = 36
-    click("Send offer")
+    c.start:OnClick()
     equal(#sent, 0)
     instance, combat = 0, true
-    click("Resend last step")
+    eventFrame:OnUpdate(2.1)
     equal(#sent, 0)
     combat, locked = false, true
-    click("Resend last step")
+    eventFrame:OnUpdate(2.1)
     equal(#sent, 0)
     locked = false
-    click("Resend last step")
+    eventFrame:OnUpdate(2.1)
     equal(#sent, 1)
-    local id, give = sent[1]:match("^O|([^|]+)|(.+)$")
-    assert(id and give)
+    local id, offered = sent[1]:match("^I|([^|]+)|([^|]+)|t$")
+    equal(offered, give)
     emit("CHAT_MSG_ADDON", secret, secret, secret, secret)
-    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "R|" .. id .. "|npc:573", "PARTY", "Bob")
-    click("Accept trade")
+    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "U|" .. id .. "|1|npc:573", "PARTY", "Bob")
+    c.accept:OnClick()
     equal(#sent, 1)
-    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "R|" .. id .. "|npc:573", "WHISPER", "Bob")
-    click("Accept trade")
-    equal(sent[2], "C|" .. id .. "|" .. give .. "|npc:573")
-    equal(AzerothCardBinderDB.tradeCount, tradesBefore)
-    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "C|" .. id .. "|npc:573|" .. give, "WHISPER", "Bob-RealmName")
-    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "C|" .. id .. "|npc:573|" .. give, "WHISPER", "Bob-RealmName")
-    equal(AzerothCardBinderDB.tradeCount, tradesBefore + 1)
-    equal(AzerothCardBinderDB.titles["Card Trader"], true)
-    local complete
-    for _, widget in ipairs(widgets) do
-        if widget.text == ("Trade complete. You gave %s and received Foe Reaper 4000."):format(ACB.cards[give].name) then
-            complete = true
-        end
-    end
-    equal(complete, true)
-    -- Neither side of the trade window shows a placeholder such as "?" for a received card.
-    for _, widget in ipairs(widgets) do
-        assert(widget.text ~= "?" and widget.text ~= "??", "placeholder text on screen")
-    end
-    equal(AzerothCardBinderDB.counts[give], 1)
-    equal(AzerothCardBinderDB.counts["npc:573"], 1)
+    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "U|" .. id .. "|1|npc:573", "WHISPER", "Bob")
+    c.accept:OnClick()
+    equal(sent[2], "A|" .. id .. "|1|1|" .. give .. "|npc:573")
+    equal(saved.tradeCount, tradesBefore)
+    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "A|" .. id .. "|1|1|npc:573|" .. give, "WHISPER", "Bob-RealmName")
+    equal(saved.tradeCount, tradesBefore, "commit must also be acknowledged")
+    assert(sent[#sent]:find("^F|"))
+    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "D|" .. id, "WHISPER", "Bob-RealmName")
+    emit("CHAT_MSG_ADDON", ACB.tradePrefix, "D|" .. id, "WHISPER", "Bob-RealmName")
+    equal(saved.tradeCount, tradesBefore + 1)
+    equal(saved.counts[give] or 0, before - 1)
+    equal(saved.counts["npc:573"], takeBefore + 1)
+    saved.tradeRange = range
 end)
 
 test("binder dust recycles spares, keeps the last copy, and crafts a missing card once", function()

@@ -33,16 +33,17 @@ test("authored animated editions play only on an owned detail, and pause or fall
     card.model.fileID, card.model.supportedAnimation = 1000, 17
     card.model:OnModelLoaded()
     equal(card.playing, false)
+    card.model.supportedAnimation = 126
     card:setPresentation("vancleef-blades")
     equal(card.playing, true)
-    equal(card.model.animation, 17)
+    equal(card.model.animation, 126)
     equal(card.model.frozen, nil)
-    equal(card.facing, -0.66)
+    equal(card.facing, -1.65)
     card.frame:OnUpdate(3.3)
-    equal(card.model.animation, 17)
+    equal(card.model.animation, 126)
     card.frame:OnMouseDown("RightButton")
     equal(card.playing, false)
-    equal(card.model.frozen[1], 17)
+    equal(card.model.frozen[1], 126)
     card.frame:OnMouseDown("RightButton")
     equal(card.playing, true)
     card:set(entry, 0)
@@ -53,17 +54,17 @@ test("authored animated editions play only on an owned detail, and pause or fall
     card:setMotionPaused(false)
     equal(card.playing, false)
     equal(card.model.frozen[1], 0)
-    card.model.supportedAnimation = 17
+    card.model.supportedAnimation = 126
     card.model.SetAnimation = false -- older clients may not expose playback
     card:setMotionPaused(false)
     equal(card.playing, false)
-    equal(card.model.frozen[1], 17)
+    equal(card.model.frozen[1], 126)
     local thumbnail = ACB.createCard(UIParent, true)
     thumbnail:set(entry, 1)
-    thumbnail.model.fileID, thumbnail.model.supportedAnimation = 1000, 17
+    thumbnail.model.fileID, thumbnail.model.supportedAnimation = 1000, 126
     thumbnail:setPresentation("vancleef-blades")
     equal(thumbnail.playing, false)
-    equal(thumbnail.model.frozen[1], 17)
+    equal(thumbnail.model.frozen[1], 126)
     card:set(ACB.cards["node:1731"], 1)
     equal(card.playing, false)
 end)
@@ -108,4 +109,49 @@ test("the design studio previews editions without granting cards or writing ledg
     SlashCmdList.AZEROTHCARDBINDER("studio")
     equal(gallery:IsShown(), true)
     gallery:Hide()
+end)
+
+test("every collectible edition has a substantially different camera and action from its signature", function()
+    local checked = 0
+    for _, family in pairs(ACB.editions) do
+        local base = ACB.portraitPreset(family[1])
+        for slot = 2, 3 do
+            local entry, pose = family[slot], family[slot].presentation
+            assert(math.abs(pose.facing - base.facing) >= .9, entry.name .. " needs a different viewpoint")
+            assert(math.abs(pose.zoom - base.zoom) >= .2, entry.name .. " needs a different crop")
+            assert(pose.animation ~= base.animation, entry.name .. " must use a different action")
+            assert(pose.composition and pose.frame >= 400)
+            for _, fallback in ipairs(pose.fallbacks) do assert(fallback ~= base.animation) end
+            checked = checked + 1
+        end
+        assert(math.abs(family[2].presentation.facing - family[3].presentation.facing) > 2)
+        assert(family[2].presentation.animation ~= family[3].presentation.animation)
+    end
+    equal(checked, 16)
+end)
+
+test("animated editions keep their supported fallback action when looping and restore the base camera", function()
+    for _, family in pairs(ACB.editions) do
+        local entry = family[3]
+        local fallback = entry.presentation.fallbacks[1]
+        local card = ACB.createCard(UIParent, true, ignore)
+        card:set(entry, 1)
+        card.model.fileID, card.model.supportedAnimation = 7000, fallback
+        card.model:OnModelLoaded()
+        equal(card.playing, true)
+        equal(card.model.animation, fallback)
+        equal(card.model.position[2], entry.presentation.y)
+        equal(card.model.position[3], entry.presentation.z)
+        card.model.animation = nil
+        card.frame:OnUpdate(entry.presentation.duration + .1)
+        equal(card.model.animation, fallback, "looping must keep the supported action")
+        card:setMotionPaused(true)
+        equal(card.model.frozen[1], fallback)
+        equal(card.model.frozen[3], entry.presentation.frame)
+        card:set(family[1], 1)
+        card.model.fileID = 7000
+        card.model:OnModelLoaded()
+        equal(card.model.position[2], 0)
+        equal(card.model.position[3], -.05)
+    end
 end)

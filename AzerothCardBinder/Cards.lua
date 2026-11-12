@@ -142,11 +142,11 @@ function ACB.createCard(parent, previewUnowned, share, options)
         if entry.profession then
             card.node:SetShown(not modelReady)
         else
-            card.playing = poseCreature(model, entry, portraitFacing(), card.presentation,
+            card.playing, card.playbackAnimation = poseCreature(model, entry, portraitFacing(), card.presentation,
                 share ~= nil and card.owned > 0 and not card.motionPaused)
         end
     end
-    safe(card.model.SetScript, card.model, "OnModelLoaded", updateModel)
+    card.refreshPortrait = ACB.watchCardModel(card, updateModel, function() return card.owned > 0 or previewUnowned end)
 
     card.glow = CreateFrame("Frame", nil, window, "BackdropTemplate")
     card.glow:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
@@ -306,7 +306,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
                 local duration = card.presentation.duration or 4
                 if animationElapsed >= duration then
                     animationElapsed = animationElapsed % duration
-                    safe(card.model.SetAnimation, card.model, card.presentation.pose.animation, 0)
+                    safe(card.model.SetAnimation, card.model, card.playbackAnimation or card.presentation.pose.animation, 0)
                 end
             end
         end)

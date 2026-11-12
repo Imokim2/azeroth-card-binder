@@ -152,8 +152,7 @@ function ACB.initSocial(saved, send, now, after, report)
         frame.title:SetPoint("TOP", 0, -18)
         frame.title:SetTextColor(gold[1], gold[2], gold[3])
         frame.title:SetText(title)
-        local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-        close:SetPoint("TOPRIGHT", -6, -6)
+        ACB.uiKit.closeButton(frame, -16, -16)
         table.insert(UISpecialFrames, name)
         frame:Hide()
         return frame
@@ -175,7 +174,7 @@ function ACB.initSocial(saved, send, now, after, report)
     inspectText:SetSpacing(3)
 
     -- Start a trade with the player whose binder this is.
-    local tradeButton = CreateFrame("Button", nil, inspector, "UIPanelButtonTemplate")
+    local tradeButton = ACB.uiKit.button(inspector, "Offer a trade", nil, nil, 130, function() end)
     tradeButton:SetSize(130, 24)
     tradeButton:SetPoint("BOTTOMLEFT", 28, 24)
     tradeButton:SetText("Offer a trade")
@@ -188,7 +187,7 @@ function ACB.initSocial(saved, send, now, after, report)
 
     -- Report this player for cheating. The second click, within a few seconds, is the one that counts, so one slip sends
     -- nothing; for another reason, or to add a note, use /acb report.
-    local reportButton = CreateFrame("Button", nil, inspector, "UIPanelButtonTemplate")
+    local reportButton = ACB.uiKit.button(inspector, "Report", nil, nil, 120, function() end)
     reportButton:SetSize(120, 24)
     reportButton:SetPoint("BOTTOMRIGHT", -28, 24)
     reportButton:SetText("Report")

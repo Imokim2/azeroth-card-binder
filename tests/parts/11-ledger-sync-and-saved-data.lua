@@ -24,6 +24,11 @@ local function open(saved, random)
 end
 
 test("the Lua ledger code gives exactly the results in the shared test vectors", function()
+    for _, side in ipairs({ vectors.gifts.giver, vectors.gifts.recipient }) do
+        local valid, head = ACB.checkChain(side.events)
+        equal(valid, true)
+        equal(head.hash, side.head.hash)
+    end
     for _, case in ipairs(vectors.sha256) do equal(ACB.sha256(case.input), case.hex) end
     local valid = vectors.valid
     for index, event in ipairs(valid.events) do

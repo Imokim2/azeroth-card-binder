@@ -74,7 +74,8 @@ function ACB.openCardStudio(entry)
                     (choice.animated and " / Animated" or "") .. (choice.id == presentation.id and " ]" or "")) end
             end
             editionNote:SetText("PREVIEW ONLY / " .. presentation.name ..
-                ". Gallery previews do not grant cards. Collectible editions are found in game; unsupported animations use a still pose.")
+                (presentation.pose.composition and (" / " .. presentation.pose.composition) or "") ..
+                ". Previews do not grant cards. Unsupported animations use an alternate pose.")
         end
         function frame:preview(cardEntry)
             current, edition = cardEntry or ACB.cards[samples[sample]], "signature"

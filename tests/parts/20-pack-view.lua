@@ -52,6 +52,13 @@ test("opening a pack shakes it, bursts it, deals five cards face down, and each 
     equal(view.phase, "shake")
     equal(saved.packs[ZONE_CODE], 1, "one pack is used up as soon as it is opened")
     equal(#view.results, 5)
+    for index, slot in ipairs(view.slots) do
+        equal(slot.card.entry, view.results[index].card, "the face is prepared before the shake")
+        equal(slot.holder:IsShown(), true, "shown frames can load before a flip")
+        assert(slot.holder.alpha <= 0.001, "prepared faces do not reveal the results early")
+        assert(slot.card.art.base.texture or slot.card.art.base.colorTexture, "background requested before reveal")
+        if not slot.card.entry.profession then equal(slot.card.model.creature, slot.card.entry.id) end
+    end
     -- The pack shakes, then bursts, then the cards are dealt.
     run(view, 0.5)
     equal(view.phase, "shake")
@@ -72,6 +79,7 @@ test("opening a pack shakes it, bursts it, deals five cards face down, and each 
     run(view, 0.2)
     equal(view.slots[2].back:IsShown(), false, "past halfway the face takes over")
     equal(view.slots[2].holder:IsShown(), true)
+    equal(view.slots[2].holder.alpha, 1)
     run(view, 0.3)
     equal(view.slots[2].state, "up")
     local result = view.results[2]
