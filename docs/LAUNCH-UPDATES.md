@@ -9,3 +9,11 @@ The player chooses when to install. Updating the companion asks for confirmation
 A running older companion retains its own check schedule until updated. It can discover this release with Sync collection or a full tray Quit/relaunch. Closing the window alone leaves that process running. Public release announcements can remain cached at the edge for up to five minutes after publication.
 
 Tests cover signed-out launch discovery, a configured launch with only one release request, addon availability before sign-in, untrusted signatures, offline launch, declining companion installation and showing both update actions while the binder is already synced. Existing installation tests verify hashes, tamper rejection, addon backup/restore and consent. In-game data is never reset by an update prompt.
+
+## Progress must survive updates
+
+Normal updates replace program files only. Cards, variants, shiny cards, packs, dust, achievements, titles, settings and ledger history stay in the game's `WTF/Account/.../SavedVariables/AzerothCardBinder.lua`; its `.bak` is left untouched too. Every WoW account keeps its separate save. The addon updater preserves the companion-generated `Data/Sync.lua`, including if it has to roll back a failed installation.
+
+The companion uses the same installer identity and existing user-data directory across versions. Its settings, registered identity key and server player remain the same. The installer is configured to retain app data even on uninstall. An update never calls the new-binder/reset or account-deletion actions. Those remain separate, deliberately confirmed actions.
+
+Regression tests install over an existing addon while checking two accounts' save/backup bytes, the live sync file, companion settings/key bytes and the server's ledger head. The native Windows installer build and its retention configuration are checked separately; automated tests do not run the installer over a user's live companion.

@@ -224,7 +224,7 @@ async function world(options: { key: string | null; tamper?: boolean; agree?: bo
   };
   await waitFor("the first sync", (status) => status.lastSyncAt !== null);
   return {
-    controller, dir, installers, served, waitFor, dataFolder,
+    controller, dir, installers, served, waitFor, dataFolder, saved, env,
     cleanup: async () => { await controller.stop(); for (const folder of [scratch, game, dataFolder]) await rm(folder, { recursive: true, force: true }); },
   };
 }
@@ -258,6 +258,10 @@ test("the add-on can be updated from the window: downloaded, checked, installed,
   const w = await world({ key: trusted.publicKey });
   try {
     await w.waitFor("an update to offer", (status) => status.canUpdate.addon);
+    const progress = await readFile(w.saved);
+    const settings = await readFile(join(w.dataFolder, "settings.json"));
+    const identity = await readFile(join(w.dataFolder, "key.bin"));
+    const serverHead = w.env.raw.prepare("SELECT head_seq, head_hash FROM ledger_state").all();
     assert.equal(w.controller.status().newer?.addon, "0.5.0");
     await w.controller.updateAddon();
     assert.match(w.controller.status().message ?? "", /Add-on 0\.5\.0 is installed\. Use \/reload/);
@@ -267,6 +271,10 @@ test("the add-on can be updated from the window: downloaded, checked, installed,
     assert.equal((await readdir(join(w.dataFolder, "addon-backups"))).length, 1);
     await w.waitFor("the installed version to show", (status) => status.updates?.addon.installed === "0.5.0");
     assert.equal(w.controller.status().canUpdate.addon, false, "nothing newer is left to install");
+    assert.deepEqual(await readFile(w.saved), progress, "the saved binder is byte-for-byte unchanged by updating");
+    assert.deepEqual(await readFile(join(w.dataFolder, "settings.json")), settings, "account and game-folder settings stay");
+    assert.deepEqual(await readFile(join(w.dataFolder, "key.bin")), identity, "the existing identity stays registered");
+    assert.deepEqual(w.env.raw.prepare("SELECT head_seq, head_hash FROM ledger_state").all(), serverHead, "server progress is not reset");
     assert.deepEqual(await readdir(join(w.dataFolder, "updates")).catch(() => []), [], "the download is not kept");
   } finally {
     await w.cleanup();
@@ -300,10 +308,16 @@ test("the companion updates itself only after the player agrees and the installe
   const agreed = await world({ key: trusted.publicKey });
   try {
     await agreed.waitFor("an update to offer", (status) => status.canUpdate.app);
+    const progress = await readFile(agreed.saved);
+    const settings = await readFile(join(agreed.dataFolder, "settings.json"));
+    const identity = await readFile(join(agreed.dataFolder, "key.bin"));
     await agreed.controller.updateApp();
     assert.equal(agreed.installers.length, 1);
     assert.match(agreed.installers[0] as string, /World-of-Warcards-Setup-9\.0\.0\.exe$/);
     assert.equal(await readFile(agreed.installers[0] as string, "utf8"), "pretend installer");
+    assert.deepEqual(await readFile(agreed.saved), progress);
+    assert.deepEqual(await readFile(join(agreed.dataFolder, "settings.json")), settings);
+    assert.deepEqual(await readFile(join(agreed.dataFolder, "key.bin")), identity);
   } finally {
     await agreed.cleanup();
   }
