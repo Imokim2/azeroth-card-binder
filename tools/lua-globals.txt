@@ -33,7 +33,9 @@ GGET GetRealZoneText
 GGET GetTime
 GGET GetZoneText
 GGET InCombatLockdown
+GGET IsInGroup
 GGET IsInInstance
+GGET IsInRaid
 GGET IsMouseButtonDown
 GGET IsShiftKeyDown
 GGET Menu
@@ -43,6 +45,7 @@ GGET PlaySoundFile
 GGET ReloadUI
 GGET SELECTED_CHAT_FRAME
 GGET SOUNDKIT
+GGET SendChatMessage
 GGET SlashCmdList
 GGET StopSound
 GGET TooltipDataProcessor

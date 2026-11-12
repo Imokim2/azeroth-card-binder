@@ -33,6 +33,7 @@ local parts = {
     "26-satchel",
     "27-pack-tiers",
     "28-sounds-and-card-backs",
+    "29-card-announcements",
 }
 
 local source, ranges, line = {}, {}, 1

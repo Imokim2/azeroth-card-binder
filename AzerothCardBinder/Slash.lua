@@ -21,6 +21,9 @@ function ACB.initSlash(saved, tools)
             report("Addon sounds " .. (ACB.settingOn(saved, "sounds") and "on." or "off."))
         elseif cmd == "sound stop" then
             ACB.stopSounds()
+        elseif cmd == "announce" then
+            ACB.setSetting(saved, "announceCards", not ACB.settingOn(saved, "announceCards"))
+            report("Public card announcements " .. (ACB.settingOn(saved, "announceCards") and "on." or "off. Private card links stay on."))
         elseif cmd == "sound test" or cmd:match("^sound test ") then
             ACB.previewSounds(cmd:match("^sound test%s+(%a+)$") or "pickup", report)
         elseif cmd == "boss" then

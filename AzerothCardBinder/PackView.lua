@@ -29,6 +29,14 @@ function ACB.createPackView(saved)
     local frame = kit.window("AzerothCardBinderPacks", WINDOW_W, WINDOW_H, "Card packs", false)
     frame:SetFrameStrata("FULLSCREEN_DIALOG")
     local view = { frame = frame, phase = "list", t = 0, slots = {}, results = nil }
+    local function notify(result)
+        if result.announced then return end
+        result.announced = true
+        if ACB.collection and ACB.collection.cardAdded then
+            ACB.collection:cardAdded(result.card, result,
+                ("From the pack: %s (x%d). Added to your binder."):format(ACB.cardLink(result.card, result.shiny), result.count))
+        end
+    end
 
     local status = label(frame, "GameFontHighlight", 40, 56, gold, "")
     status:SetWidth(720)
@@ -269,6 +277,7 @@ function ACB.createPackView(saved)
                         slot.state = "up"
                         slot.holder:SetWidth(CARD_W)
                         local result = self.results[slot.index]
+                        notify(result)
                         local text, color = caption(slot, result)
                         slot.caption:SetText(text)
                         slot.caption:SetTextColor(unpack(color))
@@ -309,15 +318,7 @@ function ACB.createPackView(saved)
     -- Back to the list. Cards that were never turned over are told to chat, so closing early loses nothing.
     function view:finish()
         if self.phase ~= "list" and self.results then
-            local unseen = {}
-            for index, slot in ipairs(self.slots) do
-                if self.results[index] and slot.state ~= "up" then unseen[#unseen + 1] = self.results[index] end
-            end
-            if #unseen > 0 and ACB.say then
-                local names = {}
-                for _, result in ipairs(unseen) do names[#names + 1] = result.card.name .. (result.shiny and " (shiny)" or "") end
-                ACB.say("From the pack: " .. table.concat(names, ", ") .. ". They are in your binder.")
-            end
+            for _, result in ipairs(self.results) do notify(result) end
             if ACB.refreshZoneBar then ACB.refreshZoneBar() end
         end
         self.phase, self.results = "list", nil

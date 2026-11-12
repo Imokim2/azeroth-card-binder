@@ -316,6 +316,7 @@ local function initialize()
         if ACB.refresh then ACB.refresh() end
     end, ledger)
     ACB.collection = collection
+    collection.announcements = ACB.newCardAnnouncements(saved, log)
     -- Kills with nothing to loot (critters and the like): see Kills.lua.
     kills = ACB.newKillWatcher(collection, {
         now = GetTime, units = { "target", "mouseover", "focus" }, log = log,

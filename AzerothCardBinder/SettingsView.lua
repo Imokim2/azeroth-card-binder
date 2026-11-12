@@ -37,7 +37,7 @@ function ACB.createSettingsView(frame, saved)
     generalTab:SetEnabled(false)
     local checks = {}
     for index, setting in ipairs(ACB.settings) do
-        local y = 62 + (index - 1) * 36
+        local y = 62 + (index - 1) * 32
         local check = CreateFrame("CheckButton", nil, general, "UICheckButtonTemplate")
         check.settingGroup = "general"
         check:SetPoint("TOPLEFT", 30, -y)
@@ -47,10 +47,10 @@ function ACB.createSettingsView(frame, saved)
             ACB.refresh()
         end)
         label(general, "GameFontNormal", 70, y + 2, parchment, setting.name)
-        label(general, "GameFontHighlightSmall", 70, y + 20, muted, setting.note)
+        label(general, "GameFontHighlightSmall", 70, y + 18, muted, setting.note)
         checks[setting.key] = check
     end
-    local titleY = 62 + #ACB.settings * 36 + 6
+    local titleY = 62 + #ACB.settings * 32 + 6
     label(general, "GameFontNormal", 32, titleY + 6, parchment, "Title shown in player tooltips")
     button(general, "Previous title", 290, titleY, 110, function()
         ACB.cycleTitle(saved, -1)
@@ -71,7 +71,7 @@ function ACB.createSettingsView(frame, saved)
         SlashCmdList.AZEROTHCARDBINDER("mode " .. (saved.mode == "ranked" and "casual" or "ranked"))
     end)
     label(general, "GameFontHighlightSmall", 32, titleY + 90, muted,
-        "Everything here is also a slash command: /acb popup, hints, privacy, diag, boss and title.")
+        "Quick controls: /acb popup, hints, privacy, diag, boss, title and announce.")
     local verification = label(general, "GameFontHighlightSmall", 32, titleY + 118, muted, "")
 
     function settingsView:refresh()

@@ -19,6 +19,8 @@ ACB.settings = {
         note = "Trades need your partner targeted and within about 11 yards, like the game's own trading." },
     { key = "killRolls", name = "Cards from kills you can't loot", default = true,
         note = "Critters and other creatures with nothing to loot still get their chance when you kill them while targeting them." },
+    { key = "announceCards", name = "Announce cards in chat", default = true,
+        note = "Share card finds in group chat, or /say when solo. Your private clickable card messages always stay on." },
 }
 
 ACB.soundSettings = {
@@ -43,6 +45,9 @@ end
 function ACB.setSetting(saved, key, on)
     if not byKey[key] then return false end
     saved[key] = on == true
+    if key == "announceCards" and not on and ACB.collection and ACB.collection.announcements then
+        ACB.collection.announcements:clear()
+    end
     if byKey[key] and (key == "sounds" or key:find("Sounds$")) and ACB.stopSounds then ACB.stopSounds() end
     return true
 end

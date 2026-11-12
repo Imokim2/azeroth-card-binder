@@ -37,6 +37,7 @@ Hints.lua
 ZoneBar.lua
 Settings.lua
 Social.lua
+Announcements.lua
 Swaps.lua
 Updates.lua
 Inspector.lua

@@ -109,6 +109,14 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     found = found or function() end
     completed = completed or function() end
     local collection = { saved = saved, rolled = {} }
+    local function cardLink(card, shiny)
+        return ACB.cardLink and ACB.cardLink(card, shiny) or card.name
+    end
+    -- Only called for a committed acquisition, never while restoring or displaying a binder.
+    function collection:cardAdded(card, info, message)
+        report(message or ("Added %s to your binder (x%d)."):format(cardLink(card, info.shiny), info.count))
+        if self.announcements then self.announcements:add(card, info) end
+    end
     local function record(...)
         if ledger then return ledger:record(...) end
     end
@@ -236,7 +244,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         if packWin then self:addPack(card, tapeIndex, entry) end
         -- A drop rolled with this computer's own random numbers cannot be rechecked by the server.
         if not ranked then saved.casualDrops = (saved.casualDrops or 0) + 1 end
-        report(("%s: %s (x%d)"):format(shiny and "Shiny card found" or "Card found", card.name, counts[card.key]))
+        self:cardAdded(card, { count = counts[card.key], shiny = shiny })
         checkAchievements(card)
         found(card, { count = counts[card.key], first = counts[card.key] == 1, shiny = shiny })
         return true
@@ -269,10 +277,13 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         end
         if into then
             transfer("tradeIn", into, 1)
-            report(out and ("Traded %s for %s"):format(out.name, into.name) or ("Received %s as a gift."):format(into.name))
+            local received = into.pack and into.name or cardLink(into, false)
+            local message = out and ("Traded %s for %s"):format(out.name, received) or ("Received %s as a gift."):format(received)
             if into.pack then
+                report(message)
                 if self.onPack then self.onPack(into.page, saved.packs[into.zone], into) end
             else
+                self:cardAdded(into, { count = counts[take], trade = true }, message)
                 checkAchievements(into)
                 found(into, { count = counts[take], first = counts[take] == 1, trade = true })
             end
@@ -310,7 +321,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         saved.counts[key] = 1
         record("craft", key, { before = 0, dust = -cost })
         if saved.misses then saved.misses[key] = nil end
-        report(("Crafted %s for %d Binder Dust (%d left)"):format(card.name, cost, saved.dust))
+        self:cardAdded(card, { count = 1, crafted = true },
+            ("Crafted %s for %d Binder Dust (%d left)"):format(cardLink(card, false), cost, saved.dust))
         checkAchievements(card)
         found(card, { count = 1, first = true, crafted = true })
         return true
