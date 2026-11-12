@@ -2,7 +2,7 @@
 // game folder, runs the sync engine and keeps a plain description of how things stand (`status()`) for whatever draws the
 // window. The Electron shell only supplies the parts that need Electron (opening the browser, a folder dialog, the
 // system's key protection), so all of this is tested without a screen.
-import { deleteAccount, resetBinder } from "./client.ts";
+import { deleteAccount, exportAccount, resetBinder } from "./client.ts";
 import type { ClientOptions, FetchLike } from "./client.ts";
 import { Engine } from "./engine.ts";
 import type { PassReport } from "./engine.ts";
@@ -42,6 +42,7 @@ export type Deps = {
   releaseKey?: string | null; // the public key release manifests must be signed with (default: the one built into the app)
   download?: Download; // fetches a file for an update; absent, nothing is downloaded
   runInstaller?: (path: string) => void; // starts the new companion installer and quits this app
+  saveFile?: (suggestedName: string, text: string) => Promise<string | null>; // asks where to save a file and writes it; null when cancelled
 };
 
 export type Status = {
@@ -371,6 +372,22 @@ export class Controller {
   }
 
   // Delete everything the server holds about the player. Their cards in the game and on this computer are not touched.
+  // A copy of everything the server holds about the player, saved where they choose.
+  async exportMyData(): Promise<void> {
+    const options = this.#options();
+    if (!options || !this.#settings.playerId) return this.#say("You are not signed in, so the server holds nothing about you from this computer.");
+    if (!this.#deps.saveFile) return this.#say("Saving a file is not available here.");
+    this.#busy = true;
+    this.#say("Asking the server for your data...");
+    const result = await exportAccount(options);
+    this.#busy = false;
+    if (result.status !== "exported") {
+      return this.#say(result.status === "rejected" ? `The server refused it (${result.code}).` : "The server could not be reached. Try again.");
+    }
+    const where = await this.#deps.saveFile("worldofwarcards-my-data.json", result.text);
+    this.#say(where ? `Your data was saved to ${where}. It holds personal information: keep it somewhere private.` : "Nothing was saved.");
+  }
+
   async deleteMyData(): Promise<void> {
     const options = this.#options();
     if (!options || !this.#settings.playerId) return this.#say("You are not signed in, so the server holds nothing about you from this computer.");

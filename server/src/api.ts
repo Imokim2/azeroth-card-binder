@@ -9,7 +9,7 @@ import type { Releases } from "./releases.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
 import { binderSets, fairPlayPage, ladderPage, notFoundPage, playerPage, privacyPage, wantedPage } from "./site.ts";
-import { codeSigningPage, downloadPage, faqPage, helpPage, landingPage, statusBadge, statusPage } from "./sitePages.ts";
+import { downloadPage, faqPage, helpPage, landingPage, statusBadge, statusPage } from "./sitePages.ts";
 import { ADMIN_HTML, scriptHash } from "./adminPage.ts";
 import { rebuild } from "./rebuild.ts";
 import { acceptReports, parseReports } from "./reports.ts";
@@ -47,6 +47,7 @@ export type Deps = {
   // x.y.z. Served by /v1/releases so the app can say what is out of date. Absent: nothing is announced.
   releases?: Releases;
   releasesUrl?: string; // the public page of the project's releases (GitHub), once there is one: the download page links to it
+  privacyEmail?: string; // where people can write about their data, once there is an address (the privacy page shows it)
   version: string; // this server's version, shown by /v1/health
   // Turns the Discord sign-in the app obtained into a Discord account id, or null. Absent until registration opens.
   identity?: { verify(token: string): Promise<string | null> };
@@ -425,7 +426,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
   }
 
   // The routes that make or remove things, or take secrets, get the tighter limit.
-  const STRICT = /^\/v1\/(register|reset|delete|report|admin\/.*)$/;
+  const STRICT = /^\/v1\/(register|reset|delete|export|report|admin\/.*)$/;
   async function enforceLimits(request: Request, pathname: string): Promise<void> {
     if (!deps.limits || pathname === "/v1/health") return;
     const client = request.headers.get("cf-connecting-ip") ?? "unknown";
@@ -449,6 +450,24 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, confirm, purpose: "delete" })))) throw new ApiError("bad_signature");
     await deps.players.deletePlayer(holder.id);
     return json(200, { deleted: true }, { "cache-control": "no-store" });
+  }
+
+  // A copy of everything held about the player. Signed with their key, like deleting is; a banned player may still have their copy.
+  async function exportAccount(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    const { key, sentAt, sig } = body ?? {};
+    if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string") throw new ApiError("bad_request");
+    if (Math.abs(deps.now() - (sentAt as number)) > 86_400) throw new ApiError("bad_request", { field: "sentAt" });
+    const holder = await deps.players.findByActiveKey(key);
+    if (!holder) throw new ApiError("unknown_key");
+    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, purpose: "export" })))) throw new ApiError("bad_signature");
+    const data = await deps.players.exportPlayer(holder.id);
+    if (!data) throw new ApiError("unknown_key");
+    return json(200, {
+      format: 1, exportedAt: deps.now(), ...data,
+      notIncluded: "Reports other players made about you, the notes reviewers wrote, and the server's secrets (including the one the roll tape comes from) are not included. Your roll tape entries can be recomputed from the secret only by us.",
+    }, { "cache-control": "no-store", "content-disposition": 'attachment; filename="worldofwarcards-my-data.json"' });
   }
 
   async function route(request: Request): Promise<{ route: string; response: Response }> {
@@ -477,8 +496,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/status/badge.svg" ? allow("site-status-badge", ["GET"], () => siteStatus(true))
       : url.pathname === "/wanted" ? allow("site-wanted", ["GET"], siteWanted)
       : url.pathname === "/fair-play" ? allow("site-fair-play", ["GET"], async () => html(200, fairPlayPage()))
-      : url.pathname === "/code-signing-policy" ? allow("site-code-signing", ["GET"], async () => html(200, codeSigningPage()))
-      : url.pathname === "/privacy" ? allow("site-privacy", ["GET"], async () => html(200, privacyPage()))
+      : url.pathname === "/privacy" ? allow("site-privacy", ["GET"], async () => html(200, privacyPage(/^[^\s@<>"']+@[^\s@<>"']+\.[A-Za-z]{2,}$/.test(deps.privacyEmail ?? "") ? deps.privacyEmail : undefined)))
       : pageMatch ? allow("site-player", ["GET"], () => sitePlayer(pageMatch[1] as string))
       : url.pathname === "/v1/health" ? allow("health", ["GET"], health)
       : url.pathname === "/v1/releases" ? allow("releases", ["GET"], async () => releases())
@@ -486,6 +504,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
       : url.pathname === "/v1/reset" ? allow("reset", ["POST"], () => reset(request))
+      : url.pathname === "/v1/export" ? allow("export", ["POST"], () => exportAccount(request))
       : url.pathname === "/v1/delete" ? allow("delete", ["POST"], () => deleteAccount(request))
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))
       : url.pathname === "/v1/firsts" ? allow("firsts", ["GET"], firsts)

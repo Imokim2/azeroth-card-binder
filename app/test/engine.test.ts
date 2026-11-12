@@ -115,6 +115,39 @@ test("Ranked: the pass brings the tape back from where the add-on got to, and th
   }
 });
 
+test("Ranked tape is asked for only when the add-on is running low, and the ladder is refreshed only every half hour", async () => {
+  const game = await gameFolder();
+  try {
+    const w = await world();
+    const install = await describeInstall(game.folder);
+    const issued = await fetchTape(w.client);
+    if (issued.status !== "tape") throw new Error("no tape");
+    await writeFileAtomic(install.syncPath, syncFileText({ syncedAt: NOW, acks: [], tape: { start: issued.start, entries: issued.entries } }));
+    lua("tests/tools/write-saved.lua", game.saved, "60", install.syncPath);
+    const engine = new Engine({ install, client: w.client, playerId: w.playerId });
+    const tapeCalls = () => w.calls.filter((call) => call === "POST /v1/tape").length;
+    const standingsCalls = () => w.calls.filter((call) => call === "GET /v1/leaderboard").length;
+    const before = tapeCalls();
+    await engine.syncOnce();
+    assert.equal(tapeCalls() - before, 1, "the first pass asks, the app holds nothing yet");
+    assert.equal(standingsCalls(), 1);
+    // Plenty is left (940 of 1,000): the next passes ask for neither the tape nor the standings, and still report what is left.
+    w.advance();
+    const again = await engine.syncOnce();
+    await engine.syncOnce();
+    assert.equal(tapeCalls() - before, 1, "no new tape request while plenty is left");
+    assert.equal(standingsCalls(), 1, "no new standings request within half an hour");
+    assert.deepEqual(again.tape, { start: 61, count: 1_000 - 60 });
+    assert.match(await readFile(install.syncPath, "utf8"), /start = 61,/, "Sync.lua still carries the tape");
+    // The add-on uses most of it (800 attempts: 200 left, below the refill mark): now the tape is asked for again.
+    lua("tests/tools/write-saved.lua", game.saved, "800", install.syncPath);
+    await engine.syncOnce();
+    assert.equal(tapeCalls() - before, 2, "asked again once it runs low");
+  } finally {
+    await game.cleanup();
+  }
+});
+
 test("an unregistered key, a damaged file and a missing server each cost only what they must", async () => {
   const game = await gameFolder();
   try {

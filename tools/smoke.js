@@ -16,7 +16,7 @@ const path = require("path");
 const root = path.resolve(__dirname, "..");
 const SERVERS = { production: "https://worldofwarcards.co.uk", staging: "https://staging.worldofwarcards.co.uk" };
 const SPKI_PREFIX = Buffer.from("302a300506032b6570032100", "hex");
-const PAGES = ["/", "/download", "/help", "/faq", "/privacy", "/fair-play", "/code-signing-policy", "/ladder", "/wanted", "/status"];
+const PAGES = ["/", "/download", "/help", "/faq", "/privacy", "/fair-play", "/ladder", "/wanted", "/status"];
 
 // The public key the app trusts, read from the app's own source so the check is against what players actually run.
 function embeddedKey() {

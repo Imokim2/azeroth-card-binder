@@ -120,6 +120,12 @@ async function main(): Promise<void> {
     now: () => Math.floor(Date.now() / 1000),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
     applyStartAtLogin: (on) => app.setLoginItemSettings({ openAtLogin: on }),
+    saveFile: async (name, text) => {
+      const picked = await dialog.showSaveDialog(window as BrowserWindow, { title: "Save a copy of your data", defaultPath: join(app.getPath("downloads"), name), filters: [{ name: "JSON", extensions: ["json"] }] });
+      if (picked.canceled || !picked.filePath) return null;
+      await writeFile(picked.filePath, text, "utf8");
+      return picked.filePath;
+    },
     // Updates: the controller checks every download against the signed manifest before anything is installed or run.
     download: (url) => fetch(url, { redirect: "follow" }),
     runInstaller: (path) => {
@@ -143,6 +149,7 @@ async function main(): Promise<void> {
   ipcMain.handle("syncNow", () => controller.syncNow());
   ipcMain.handle("startNewBinder", () => controller.startNewBinder());
   ipcMain.handle("deleteMyData", () => controller.deleteMyData());
+  ipcMain.handle("exportMyData", () => controller.exportMyData());
   ipcMain.handle("setStartAtLogin", (_event, on: unknown) => controller.setStartAtLogin(on === true));
   ipcMain.handle("updateAddon", () => controller.updateAddon());
   ipcMain.handle("updateApp", () => controller.updateApp());

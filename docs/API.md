@@ -32,6 +32,10 @@ The public HTML website is served outside `/v1`: `/` introduces the project, `/l
 
 `200 { app: { latest, min }, addon: { latest, min }, signed? }`, every version as `x.y.z`. `signed` is `{ manifest, signature }` when a release has been signed with the release key (`tools/release-manifest.js`): `manifest` is JSON text naming each download (`url`, `sha256`, `size`, `notes`) and `signature` is Ed25519 over exactly those bytes (128 hex characters). The server passes it on untouched and does not check it; the companion app believes it only if the signature matches the public key built into the app, and checks every download against it before installing anything. `latest` is the newest release of the companion app and of the add-on; `min` the oldest still accepted (the app's is the `minClient` that other routes enforce; the add-on's is not enforced yet). The companion app asks at start-up and every few hours, and tells the player when either is out of date. Public, cached for 5 minutes, not rate-limited more than other routes. The versions are Worker variables (`MIN_CLIENT`, `LATEST_APP`, `LATEST_ADDON`, `MIN_ADDON` in `server/wrangler.toml`), changed by a release, not by code.
 
+### `POST /v1/export`
+
+A copy of everything held about the player. Body: `{ key, sentAt, sig }`, where `sig` signs the canonical JSON of `{ key, sentAt, purpose: "export" }` (a signature made for another purpose fails; `sentAt` within a day). `200 { format: 1, exportedAt, account, keys, characters, binders: [{ binderId, archived, events, saved, score, trades, completedSets, wanted, flags, tapeRanges }], reportsSent, notIncluded }`, with `content-disposition: attachment` and never cached. `binders` holds the current binder and every one archived by starting over. Left out: reports other players made about the player, reviewers' notes on flags, and the server's secrets. A banned player may still export; after the account is deleted the key is unknown (`unknown_key`). Under the strict rate limit, like the other routes that create or remove things.
+
 ### `POST /v1/register`
 
 Links a public key to a Discord account. Body: `{ key, visibility, sentAt, identityToken, proof }`.
@@ -119,6 +123,10 @@ For the people who run the service, not for clients. They need the header `autho
 A public player's entry: `{ playerId, displayName, rank, scoreTenths, uniqueCards, setsDone, attempts, updatedAt }`. Private players and unknown ids answer `not_found`, the same for both, so privacy cannot be probed. Cached for 60 seconds.
 
 `scoreTenths` is the score in tenths of a point (a whole number); divide by 10 to show it. The weights are in `server/src/score.ts` and [ROADMAP.md](ROADMAP.md) (D7); a change to them is a new rules version and a recompute, never an edit.
+
+## Caching
+
+In front of everything, the Worker keeps a shared copy at Cloudflare's edge (the Workers Cache API, `server/src/cache.ts`) of any successful `GET` answer that is marked `cache-control: public, max-age=N`: the ladder, `/v1/leaderboard`, `/v1/firsts`, `/v1/wanted`, public player pages and entries, `/v1/releases` and the site pages, for their stated lifetime (60 seconds, 5 minutes for releases). A cached answer carries `x-cache: hit` (and the first one `miss`). Nothing private, signed or live is ever kept: health, status, the admin routes (which carry a token), errors, `POST`s and anything not marked `public`. A player who turns private or deletes their data can therefore still appear on a public page for up to a minute. The cache only works on the custom domain; on the `workers.dev` address nothing is kept.
 
 ## Errors
 
