@@ -13,6 +13,9 @@ export type Player = {
   createdAt: number;
   epoch: number; // how many times the player has started a new binder
   resetAt: number | null;
+  // Set when the people who run the service reset the binder: a history whose first event is not after this time (seconds) is refused,
+  // so the player's old binder cannot be uploaded again. Cleared by a restore.
+  barredBefore: number | null;
 };
 
 export interface PlayerStore {
@@ -115,6 +118,40 @@ export interface ModerationStore {
   review(id: string, state: "cleared" | "confirmed", note: string, at: number): Promise<boolean>;
   // Ban or unban a player. False when there is no such player.
   setBanned(playerId: string, banned: boolean): Promise<boolean>;
+}
+
+// The admin panel (docs/runbooks/ADMIN.md): finding a player, looking at everything held about one, and the record of what
+// the reviewers did. Reading only, except for the audit record. Banning is in ModerationStore, deleting in PlayerStore.
+export type AdminPlayerRow = {
+  playerId: string; displayName: string; status: "active" | "banned"; visibility: Visibility; createdAt: number;
+  characters: string[]; scoreTenths: number | null;
+};
+export type AdminPlayerDetail = {
+  playerId: string; createdAt: number; status: "active" | "banned"; visibility: Visibility; epoch: number; resetAt: number | null;
+  hasDiscord: boolean; barredBefore: number | null; keys: { active: number; revoked: number };
+  // Binders put aside by a restart or a reset, newest first, that a restore could bring back.
+  archives: { archiveId: string; displayName: string; epoch: number; batches: number; cardsOwned: number; scoreTenths: number | null; lastUpload: number | null }[];
+  characters: { name: string; realm: string; firstSeen: number; lastSeen: number }[];
+  score: { displayName: string; scoreTenths: number; uniqueCards: number; setsDone: number; attempts: number; rulesVersion: number; updatedAt: number } | null;
+  binder: { mode: string; cardsOwned: number; headSeq: number; casualDrops: number; updatedAt: number } | null;
+  uploads: { batches: number; first: number | null; last: number | null };
+  trades: { open: number; matched: number; unmatched: number };
+  flags: FlagRecord[];
+  reportsAbout: number;
+};
+export type AuditEntry = { id: string; at: number; actor: string; action: string; target: string; detail: string };
+export interface AdminStore {
+  // Players (not archived binders) whose id, display name or a character's name matches the text, newest first; with no text,
+  // the newest players.
+  search(text: string, limit: number): Promise<AdminPlayerRow[]>;
+  detail(playerId: string): Promise<AdminPlayerDetail | null>;
+  record(entry: AuditEntry): Promise<void>;
+  // Archive the player's binder and refuse its old history from now on. False when there is no such player or no binder.
+  adminReset(playerId: string, archivedId: string, at: number): Promise<boolean>;
+  // Bring an archived binder of this player back as the current one (the current one is archived in its place). False when either does not exist.
+  restoreBinder(playerId: string, archiveId: string, newArchiveId: string): Promise<boolean>;
+  // The newest entries first.
+  audit(limit: number): Promise<AuditEntry[]>;
 }
 
 // Rebuilding everything derived from the stored batches (roadmap D8).

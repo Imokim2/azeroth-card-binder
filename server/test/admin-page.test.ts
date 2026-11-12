@@ -16,6 +16,7 @@ class Node_ {
   children: Node_[] = [];
   listeners: Record<string, ((event: { preventDefault(): void }) => void)[]> = {};
   className = "";
+  hidden = false;
   value = "";
   disabled = false;
   placeholder = "";
@@ -35,19 +36,28 @@ class Node_ {
   find(predicate: (node: Node_) => boolean): Node_[] { return [...(predicate(this) ? [this] : []), ...this.children.flatMap((child) => child.find(predicate))]; }
 }
 
-function page(fetchImpl: typeof fetch, answer = true) {
+const IDS = [["signin", "form"], ["token", "input"], ["state", "select"], ["refresh", "button"], ["message", "p"], ["flags", "div"], ["app", "div"], ["who", "p"],
+  ["tab-flags", "button"], ["tab-players", "button"], ["tab-activity", "button"], ["view-flags", "section"], ["view-players", "section"], ["view-activity", "section"],
+  ["find", "form"], ["query", "input"], ["players", "div"], ["player", "div"], ["audit", "div"], ["refresh-activity", "button"]] as const;
+
+function page(fetchImpl: typeof fetch, answer = true, promptAnswers: (string | null)[] = []) {
   const ids: Record<string, Node_> = {};
-  for (const [id, tag] of [["signin", "form"], ["token", "input"], ["state", "select"], ["refresh", "button"], ["message", "p"], ["flags", "div"]] as const) ids[id] = new Node_(tag);
+  for (const [id, tag] of IDS) ids[id] = new Node_(tag);
   ids["state"]!.value = "open";
+  ids["app"]!.hidden = true;
   const confirms: string[] = [];
+  const prompts: string[] = [];
   runInNewContext(ADMIN_SCRIPT, {
     document: { getElementById: (id: string) => ids[id], createElement: (tag: string) => new Node_(tag) },
-    window: { confirm: (question: string) => { confirms.push(question); return answer; } },
+    window: {
+      confirm: (question: string) => { confirms.push(question); return answer; },
+      prompt: (question: string) => { prompts.push(question); return promptAnswers.length ? promptAnswers.shift() : null; },
+    },
     fetch: fetchImpl, encodeURIComponent, Date, JSON, Object, Error, Promise,
   });
-  return { ids, confirms, signIn: async (token: string) => { ids["token"]!.value = token; ids["signin"]!.fire("submit"); await settle(); } };
+  return { ids, confirms, prompts, signIn: async (token: string) => { ids["token"]!.value = token; ids["signin"]!.fire("submit"); await settle(); } };
 }
-const settle = () => new Promise((resolve) => setTimeout(resolve, 30));
+const settle = () => new Promise((resolve) => setTimeout(resolve, 80));
 
 async function withFlag(displayName = "Mallory") {
   const env = setup();
@@ -91,7 +101,8 @@ test("with the right token the open flags are listed as text, and a wrong token 
   const { fetchImpl } = await withFlag("<img src=x onerror=alert(1)>");
   const wrong = page(fetchImpl);
   await wrong.signIn("not the token");
-  assert.equal(wrong.ids["message"]!.textContent, "That token is not right.");
+  assert.match(wrong.ids["message"]!.textContent, /^That is not accepted: the token is wrong/);
+  assert.equal(wrong.ids["app"]!.hidden, true, "nothing opens without a good sign-in");
   assert.equal(wrong.ids["flags"]!.children.length, 0);
 
   const right = page(fetchImpl);
@@ -140,4 +151,106 @@ test("banning asks first, and only an agreed ban is sent; the reports about a pl
   card.find((node) => node.textContent === "Reports about them")[0]!.fire("click");
   await settle();
   assert.match(card.find((node) => node.tag === "ul")[0]!.textContent, /No reports about this player/);
+});
+
+test("signing in shows who is signed in and opens the tabs; the other tabs stay shut until then", async () => {
+  const { fetchImpl } = await withFlag();
+  const view = page(fetchImpl);
+  assert.equal(view.ids["app"]!.hidden, true);
+  await view.signIn(ADMIN_TOKEN);
+  assert.equal(view.ids["app"]!.hidden, false);
+  assert.equal(view.ids["who"]!.textContent, "Signed in as token (admin token only)");
+  assert.equal(view.ids["view-flags"]!.hidden, false);
+  assert.equal(view.ids["view-players"]!.hidden, true);
+  view.ids["tab-players"]!.fire("click");
+  await settle();
+  assert.equal(view.ids["view-flags"]!.hidden, true);
+  assert.equal(view.ids["view-players"]!.hidden, false);
+  assert.equal(view.ids["tab-players"]!.className, "tab on");
+  assert.equal(view.ids["players"]!.children.length, 1, "the newest players are listed when the tab opens");
+});
+
+test("a player is searched for, opened as text, banned with a reason, and the ban shows in the activity tab", async () => {
+  const { env, playerId, fetchImpl } = await withFlag("<b>Eve</b>");
+  const view = page(fetchImpl, true, ["Edited their saved file"]);
+  await view.signIn(ADMIN_TOKEN);
+  view.ids["tab-players"]!.fire("click");
+  await settle();
+  view.ids["query"]!.value = "Eve";
+  view.ids["find"]!.fire("submit");
+  await settle();
+  const result = view.ids["players"]!.children[0]!;
+  assert.match(result.textContent, /^<b>Eve<\/b>-Realm Name - /, "a name with markup in it is shown as the text it is");
+  result.fire("click");
+  await settle();
+  const card = view.ids["player"]!.children[0]!;
+  assert.match(card.textContent, new RegExp("Player id: " + playerId));
+  assert.match(card.textContent, /signed in with Discord: yes/);
+  assert.ok(!card.textContent.includes("Eve-discord") && !card.textContent.includes("discord:"), "no Discord id on the page");
+  assert.match(card.textContent, /luck-hold - open/);
+  card.find((node) => node.textContent === "Ban...")[0]!.fire("click");
+  await settle();
+  assert.match(view.prompts[0]!, /^Ban <b>Eve<\/b>-Realm Name\?/);
+  assert.equal((env.raw.prepare("SELECT status FROM players WHERE id = ?").get(playerId) as { status: string }).status, "banned");
+  assert.match(view.ids["message"]!.textContent, /^Banned/);
+  // The page reloads the player, which now offers an unban instead.
+  const reopened = view.ids["player"]!.children[0]!;
+  assert.ok(reopened.find((node) => node.textContent === "Unban").length === 1 && reopened.find((node) => node.textContent === "Ban...").length === 0);
+  view.ids["tab-activity"]!.fire("click");
+  await settle();
+  assert.match(view.ids["audit"]!.textContent, /token - ban - .* Edited their saved file/);
+});
+
+test("cancelling the reason asks nothing of the server, and deleting needs the player id typed", async () => {
+  const { env, playerId, fetchImpl } = await withFlag("Mallory");
+  const view = page(fetchImpl, true, [null, "wrong id", playerId]);
+  await view.signIn(ADMIN_TOKEN);
+  view.ids["tab-players"]!.fire("click");
+  await settle();
+  view.ids["players"]!.children[0]!.fire("click");
+  await settle();
+  const card = () => view.ids["player"]!.children[0]!;
+  card().find((node) => node.textContent === "Ban...")[0]!.fire("click");
+  await settle();
+  assert.equal((env.raw.prepare("SELECT status FROM players WHERE id = ?").get(playerId) as { status: string }).status, "active", "cancelled: not banned");
+  card().find((node) => node.textContent.startsWith("Delete their data"))[0]!.fire("click");
+  await settle();
+  assert.match(view.ids["message"]!.textContent, /^Not deleted/);
+  assert.equal((env.raw.prepare("SELECT COUNT(*) AS n FROM players WHERE id = ?").get(playerId) as { n: number }).n, 1);
+  card().find((node) => node.textContent.startsWith("Delete their data"))[0]!.fire("click");
+  await settle();
+  assert.match(view.ids["message"]!.textContent, /^Deleted Mallory/);
+  assert.equal((env.raw.prepare("SELECT COUNT(*) AS n FROM players WHERE id = ?").get(playerId) as { n: number }).n, 0);
+  assert.equal(view.ids["player"]!.children.length, 0, "the page of a deleted player is gone");
+});
+
+test("a binder is reset from the player's page, appears as an archived binder, and a restore brings it back", async () => {
+  const { env, playerId, fetchImpl } = await withFlag("Mallory");
+  const view = page(fetchImpl, true, ["Edited the file", "Reset was a mistake"]);
+  await view.signIn(ADMIN_TOKEN);
+  view.ids["tab-players"]!.fire("click");
+  await settle();
+  view.ids["players"]!.children[0]!.fire("click");
+  await settle();
+  const card = () => view.ids["player"]!.children[0]!;
+  const binders = () => (env.raw.prepare("SELECT COUNT(*) AS n FROM ledger_state WHERE player_id = ?").get(playerId) as { n: number }).n;
+  assert.equal(binders(), 1);
+  assert.equal(card().find((node) => node.textContent === "Restore this binder...").length, 0, "nothing to restore yet");
+  card().find((node) => node.textContent === "Reset their binder...")[0]!.fire("click");
+  await settle();
+  assert.match(view.prompts[0]!, /^Reset Mallory-Realm Name's binder\? It is put aside, not deleted/);
+  assert.equal(binders(), 0, "the binder was put aside");
+  assert.match(view.ids["message"]!.textContent, /^Reset Mallory-Realm Name's binder\./);
+  assert.equal(card().find((node) => node.textContent === "Reset their binder...").length, 0, "no binder left to reset");
+  assert.match(card().textContent, /Old history refused: anything written before/);
+  card().find((node) => node.textContent === "Restore this binder...")[0]!.fire("click");
+  await settle();
+  assert.match(view.prompts[1]!, /^Bring this binder back for Mallory-Realm Name\?/);
+  assert.equal(binders(), 1, "the binder is back");
+  assert.match(view.ids["message"]!.textContent, /^Restored the binder/);
+  assert.equal(card().find((node) => node.textContent === "Restore this binder...").length, 0);
+  view.ids["tab-activity"]!.fire("click");
+  await settle();
+  assert.match(view.ids["audit"]!.textContent, /reset-binder - .*: Edited the file/);
+  assert.match(view.ids["audit"]!.textContent, /restore-binder - .*: Reset was a mistake - binder /);
 });

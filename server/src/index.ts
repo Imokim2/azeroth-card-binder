@@ -12,6 +12,7 @@ import { SqlStore } from "./sqlStore.ts";
 import type { Catalog } from "./shared.ts";
 import catalog from "../../packages/shared/catalog.json";
 import bundledRelease from "./releases.json";
+import { accessVerifier, teamHost } from "./access.ts";
 import { withEdgeCache } from "./cache.ts";
 import type { EdgeCache } from "./cache.ts";
 import { releasesFrom } from "./releases.ts";
@@ -34,6 +35,8 @@ export interface Env {
   DISCORD_REDIRECT_URI?: string; // the address the companion app listens on while signing in
   DISCORD_CLIENT_SECRET?: string; // a secret (wrangler secret put DISCORD_CLIENT_SECRET); without it registration stays closed
   ADMIN_TOKEN?: string; // a secret (wrangler secret put ADMIN_TOKEN); without it the admin routes do not exist
+  ACCESS_TEAM_DOMAIN?: string; // Cloudflare Access in front of the admin panel (docs/runbooks/ADMIN.md): the team domain, e.g. myteam.cloudflareaccess.com
+  ACCESS_AUD?: string; // ... and the application's audience tag. Set both, or neither; if either is set the panel needs a good Access sign-in.
 }
 
 const log: Deps["log"] = (entry) => console.log(JSON.stringify({ at: new Date().toISOString(), ...entry }));
@@ -42,12 +45,26 @@ const log: Deps["log"] = (entry) => console.log(JSON.stringify({ at: new Date().
 declare const caches: { default: EdgeCache } | undefined;
 type Context = { waitUntil(work: Promise<unknown>): void };
 
+// Access is switched on by its two settings. Half-set or malformed, it refuses everyone (the panel closes) rather than opening up.
+// The verifier keeps Access's public keys, so it lives as long as the Worker instance and not one request.
+let accessKept: { team: string; audience: string; verify: NonNullable<Deps["access"]> } | undefined;
+function accessFrom(env: Env): Deps["access"] {
+  if (!env.ACCESS_TEAM_DOMAIN && !env.ACCESS_AUD) return undefined;
+  const team = teamHost(env.ACCESS_TEAM_DOMAIN);
+  const audience = (env.ACCESS_AUD ?? "").trim();
+  if (!team || !/^[0-9a-f]{32,128}$/i.test(audience)) return async () => null;
+  if (accessKept?.team !== team || accessKept.audience !== audience) {
+    accessKept = { team, audience, verify: accessVerifier({ team, audience }, () => Math.floor(Date.now() / 1000)) };
+  }
+  return accessKept.verify;
+}
+
 export default {
   async fetch(request: Request, env: Env, context: Context): Promise<Response> {
     const db = fromD1(env.DB);
     const store = new SqlStore(db);
     const handle = createApi({
-      players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, rebuild: store, wanted: store, reports: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
+      players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, admin: store, access: accessFrom(env), rebuild: store, wanted: store, reports: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },
       minClient: env.MIN_CLIENT, version: env.VERSION,
