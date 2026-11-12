@@ -15,7 +15,7 @@ import { downloadPage, faqPage, helpPage, landingPage, statusBadge, statusPage }
 import { ADMIN_HTML, scriptHash } from "./adminPage.ts";
 import { rebuild } from "./rebuild.ts";
 import { acceptReports, parseReports } from "./reports.ts";
-import type { FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, ReportStore, TapeStore, TradeStore, Visibility, WantedStore } from "./store.ts";
+import type { AdminStore, FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, ReportStore, TapeStore, TradeStore, Visibility, WantedStore } from "./store.ts";
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
 
@@ -32,6 +32,7 @@ export type Deps = {
   tapes: TapeStore;
   trades: TradeStore;
   moderation: ModerationStore;
+  admin: AdminStore; // finding players and the record of what reviewers did (the admin panel)
   // Rate limits per client address: `general` for everything, `strict` for the routes that create or destroy things.
   // Absent means no limiting.
   limits?: { general: Limiter; strict: Limiter } | undefined;
@@ -39,6 +40,9 @@ export type Deps = {
   wanted: WantedStore;
   reports: ReportStore;
   adminToken?: string | undefined; // the secret that opens /v1/admin/*; without it those routes do not exist
+  // Cloudflare Access (src/access.ts): who signed in for a request, or null. When present, the admin routes and screen also need it,
+  // so only people let in by Access, on the real address, get as far as the token. Absent: the token alone.
+  access?: ((request: Request) => Promise<string | null>) | undefined;
   catalog: Catalog;
   tapeSecret?: string | undefined; // derives the roll tape; Ranked is closed (ranked_unavailable) without it
   now: () => number; // seconds
@@ -250,10 +254,23 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return difference === 0;
   }
 
-  async function requireAdmin(request: Request): Promise<void> {
+  // Who is acting: the Access sign-in's email (or service name), or "token" when Access is not set up. Throws if not allowed.
+  async function requireAdmin(request: Request): Promise<string> {
     if (!deps.adminToken) throw new ApiError("not_found"); // not configured: the routes are not there at all
+    const who = deps.access ? await deps.access(request) : "token";
+    if (!who) throw new ApiError("unauthorized");
     const sent = /^Bearer (.+)$/.exec(request.headers.get("authorization") ?? "")?.[1];
     if (!sent || !(await sameText(sent, deps.adminToken))) throw new ApiError("unauthorized");
+    return who;
+  }
+
+  // Write down what a reviewer did. The action has happened by now, so a failure here is logged, not turned into an error.
+  async function audit(actor: string, action: string, target = "", detail = ""): Promise<void> {
+    try {
+      await deps.admin.record({ id: newId(deps.now() * 1000), at: deps.now(), actor, action, target, detail: detail.slice(0, 300) });
+    } catch {
+      deps.log({ level: "error", msg: "audit write failed", action });
+    }
   }
 
   async function adminFlags(request: Request, url: URL): Promise<Response> {
@@ -267,26 +284,30 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
   }
 
   async function adminReview(request: Request, id: string): Promise<Response> {
-    await requireAdmin(request);
+    const actor = await requireAdmin(request);
     const body = (await readJson(request)) as Record<string, unknown> | null;
     const { state, note } = body ?? {};
     if (state !== "cleared" && state !== "confirmed") throw new ApiError("bad_request", { field: "state" });
     if (note !== undefined && (typeof note !== "string" || note.length > 500)) throw new ApiError("bad_request", { field: "note" });
     if (!(await deps.moderation.review(id, state, typeof note === "string" ? note : "", deps.now()))) throw new ApiError("not_found");
+    await audit(actor, "flag-" + state, id, typeof note === "string" ? note : "");
     return json(200, { id, state }, { "cache-control": "no-store" });
   }
 
   async function adminBan(request: Request, playerId: string): Promise<Response> {
-    await requireAdmin(request);
+    const actor = await requireAdmin(request);
     const body = (await readJson(request)) as Record<string, unknown> | null;
     if (typeof body?.["banned"] !== "boolean") throw new ApiError("bad_request", { field: "banned" });
+    const reason = body["reason"];
+    if (reason !== undefined && (typeof reason !== "string" || reason.length > 200)) throw new ApiError("bad_request", { field: "reason" });
     if (!(await deps.moderation.setBanned(playerId, body["banned"]))) throw new ApiError("not_found");
+    await audit(actor, body["banned"] ? "ban" : "unban", playerId, typeof reason === "string" ? reason : "");
     return json(200, { playerId, banned: body["banned"] }, { "cache-control": "no-store" });
   }
 
   // Recompute everything derived from the stored batches (roadmap D8), a page of players at a time.
   async function adminRebuild(request: Request): Promise<Response> {
-    await requireAdmin(request);
+    const actor = await requireAdmin(request);
     const body = ((await readJson(request)) as Record<string, unknown> | null) ?? {};
     const { after, limit, dryRun, force } = body;
     if (after !== undefined && after !== null && (typeof after !== "string" || after.length > 40)) throw new ApiError("bad_request", { field: "after" });
@@ -296,7 +317,78 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       after: (after as string | null | undefined) ?? null, ...(limit !== undefined ? { limit: limit as number } : {}),
       dryRun: dryRun === true, force: force === true,
     });
+    await audit(actor, dryRun === true ? "rebuild-dry-run" : "rebuild", "", `limit ${typeof limit === "number" ? limit : "default"}${force === true ? ", forced" : ""}`);
     return json(200, report, { "cache-control": "no-store" });
+  }
+
+  // Who is signed in to the panel, and whether Access is in front of it.
+  async function adminMe(request: Request): Promise<Response> {
+    const actor = await requireAdmin(request);
+    return json(200, { actor, access: deps.access !== undefined }, { "cache-control": "no-store" });
+  }
+
+  // Finding a player: by player id, display name or character name (with nothing typed, the newest players).
+  async function adminPlayers(request: Request, url: URL): Promise<Response> {
+    await requireAdmin(request);
+    const text = (url.searchParams.get("q") ?? "").trim();
+    if (text.length > 64 || /[\u0000-\u001f]/.test(text)) throw new ApiError("bad_request", { field: "q" });
+    const asked = Number(url.searchParams.get("limit") ?? 25);
+    const limit = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, 50) : 25;
+    return json(200, { players: await deps.admin.search(text, limit) }, { "cache-control": "no-store" });
+  }
+
+  // Everything the service holds about one player that a reviewer needs; never Discord ids, keys or events.
+  async function adminPlayer(request: Request, playerId: string): Promise<Response> {
+    await requireAdmin(request);
+    const found = await deps.admin.detail(playerId);
+    if (!found) throw new ApiError("not_found");
+    return json(200, { player: found }, { "cache-control": "no-store" });
+  }
+
+  // Delete a player's data, as they could themselves (/v1/delete). The body must repeat the player id, so a stray click or a
+  // wrong address cannot do it.
+  async function adminDelete(request: Request, playerId: string): Promise<Response> {
+    const actor = await requireAdmin(request);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    if (body?.["confirm"] !== playerId) throw new ApiError("bad_request", { field: "confirm" });
+    if (!(await deps.admin.detail(playerId))) throw new ApiError("not_found");
+    await deps.players.deletePlayer(playerId);
+    await audit(actor, "delete-player", playerId);
+    return json(200, { playerId, deleted: true }, { "cache-control": "no-store" });
+  }
+
+  // Reset a player's binder (it is archived, not lost: a restore brings it back). The body repeats the player id.
+  async function adminReset(request: Request, playerId: string): Promise<Response> {
+    const actor = await requireAdmin(request);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    if (body?.["confirm"] !== playerId) throw new ApiError("bad_request", { field: "confirm" });
+    const reason = body["reason"];
+    if (reason !== undefined && (typeof reason !== "string" || reason.length > 200)) throw new ApiError("bad_request", { field: "reason" });
+    if (!(await deps.admin.detail(playerId))) throw new ApiError("not_found");
+    if (!(await deps.admin.adminReset(playerId, newId(deps.now() * 1000), deps.now()))) throw new ApiError("bad_request", { field: "binder", reason: "nothing to reset" });
+    await audit(actor, "reset-binder", playerId, typeof reason === "string" ? reason : "");
+    return json(200, { playerId, reset: true }, { "cache-control": "no-store" });
+  }
+
+  // Bring one of the player's archived binders back as the current one.
+  async function adminRestore(request: Request, playerId: string): Promise<Response> {
+    const actor = await requireAdmin(request);
+    const body = (await readJson(request)) as Record<string, unknown> | null;
+    if (body?.["confirm"] !== playerId) throw new ApiError("bad_request", { field: "confirm" });
+    const archiveId = body["archiveId"];
+    if (typeof archiveId !== "string" || !/^[0-9A-Z]{26}$/.test(archiveId)) throw new ApiError("bad_request", { field: "archiveId" });
+    const reason = body["reason"];
+    if (reason !== undefined && (typeof reason !== "string" || reason.length > 200)) throw new ApiError("bad_request", { field: "reason" });
+    if (!(await deps.admin.restoreBinder(playerId, archiveId, newId(deps.now() * 1000)))) throw new ApiError("not_found");
+    await audit(actor, "restore-binder", playerId, (typeof reason === "string" && reason ? reason + " - " : "") + "binder " + archiveId);
+    return json(200, { playerId, restored: archiveId }, { "cache-control": "no-store" });
+  }
+
+  async function adminAudit(request: Request, url: URL): Promise<Response> {
+    await requireAdmin(request);
+    const asked = Number(url.searchParams.get("limit") ?? 100);
+    const limit = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, 200) : 100;
+    return json(200, { entries: await deps.admin.audit(limit) }, { "cache-control": "no-store" });
   }
 
   // ---- The website (src/site.ts): plain HTML from the same data as the API ----
@@ -372,8 +464,9 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
 
   // The review screen. It holds no data and no secret, so it needs no token to load; every call it makes does. With no admin
   // token configured it does not exist, like the routes it uses. Not cached, not indexed, and it may run only its own script.
-  async function adminScreen(): Promise<Response> {
+  async function adminScreen(request: Request): Promise<Response> {
     if (!deps.adminToken) throw new ApiError("not_found");
+    if (deps.access && !(await deps.access(request))) throw new ApiError("unauthorized"); // not through Access: no page
     return new Response(ADMIN_HTML(), {
       headers: {
         "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "x-robots-tag": "noindex, nofollow",
@@ -464,6 +557,10 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const reviewMatch = /^\/v1\/admin\/flags\/([0-9A-Za-z]{1,40})$/.exec(url.pathname);
     const banMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/ban$/.exec(url.pathname);
     const asset = siteAsset(url.pathname);
+    const deleteMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/delete$/.exec(url.pathname);
+    const resetMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/reset$/.exec(url.pathname);
+    const restoreMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/restore$/.exec(url.pathname);
+    const adminPlayerMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})$/.exec(url.pathname);
     const chosen =
       asset ? allow("site-asset", ["GET"], async () => asset)
       : url.pathname === "/" ? allow("site-home", ["GET"], async () => html(200, landingPage()))
@@ -497,12 +594,19 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/firsts" ? allow("firsts", ["GET"], firsts)
       : url.pathname === "/v1/wanted" ? allow("wanted", ["GET", "POST"], async () => retiredWanted(method))
       : url.pathname === "/v1/report" ? allow("report", ["POST"], () => report(request))
-      : url.pathname === "/admin" ? allow("admin-screen", ["GET"], adminScreen)
+      : url.pathname === "/admin" ? allow("admin-screen", ["GET"], () => adminScreen(request))
       : url.pathname === "/v1/admin/reports" ? allow("admin-reports", ["GET"], () => adminReports(request, url))
       : url.pathname === "/v1/admin/flags" ? allow("admin-flags", ["GET"], () => adminFlags(request, url))
       : reviewMatch ? allow("admin-review", ["POST"], () => adminReview(request, reviewMatch[1] as string))
       : url.pathname === "/v1/admin/rebuild" ? allow("admin-rebuild", ["POST"], () => adminRebuild(request))
       : banMatch ? allow("admin-ban", ["POST"], () => adminBan(request, banMatch[1] as string))
+      : deleteMatch ? allow("admin-delete-player", ["POST"], () => adminDelete(request, deleteMatch[1] as string))
+      : resetMatch ? allow("admin-reset-binder", ["POST"], () => adminReset(request, resetMatch[1] as string))
+      : restoreMatch ? allow("admin-restore-binder", ["POST"], () => adminRestore(request, restoreMatch[1] as string))
+      : adminPlayerMatch ? allow("admin-player", ["GET"], () => adminPlayer(request, adminPlayerMatch[1] as string))
+      : url.pathname === "/v1/admin/players" ? allow("admin-players", ["GET"], () => adminPlayers(request, url))
+      : url.pathname === "/v1/admin/audit" ? allow("admin-audit", ["GET"], () => adminAudit(request, url))
+      : url.pathname === "/v1/admin/me" ? allow("admin-me", ["GET"], () => adminMe(request))
       : playerMatch ? allow("player", ["GET"], () => player(playerMatch[1] as string))
       : { route: "unknown", response: Promise.resolve(errorResponse("not_found")) };
     return { route: chosen.route, response: await chosen.response };
