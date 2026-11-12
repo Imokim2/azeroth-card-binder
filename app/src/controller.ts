@@ -2,7 +2,7 @@
 // game folder, runs the sync engine and keeps a plain description of how things stand (`status()`) for whatever draws the
 // window. The Electron shell only supplies the parts that need Electron (opening the browser, a folder dialog, the
 // system's key protection), so all of this is tested without a screen.
-import { deleteAccount, exportAccount, resetBinder } from "./client.ts";
+import { deleteAccount, exportAccount, fetchReleases, resetBinder } from "./client.ts";
 import type { ClientOptions, FetchLike } from "./client.ts";
 import { Engine } from "./engine.ts";
 import type { PassReport } from "./engine.ts";
@@ -18,8 +18,8 @@ import type { SignInOptions } from "./signIn.ts";
 import { RELEASE_PUBLIC_KEY } from "./releaseKey.ts";
 import { downloadVerified, installAddon, verifiedManifest } from "./updates.ts";
 import type { Download, Manifest } from "./updates.ts";
-import { compareVersions } from "./versions.ts";
-import type { UpdateReport } from "./versions.ts";
+import { compareVersions, readAddonVersion, updateReport } from "./versions.ts";
+import type { Releases, UpdateReport } from "./versions.ts";
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -63,6 +63,8 @@ export type Status = {
   updates: UpdateReport | null; // whether the app and the add-on are out of date, once a sync has looked
   canUpdate: { addon: boolean; app: boolean }; // an update can be installed from here: it is signed, and newer than what is installed
   updating: "addon" | "app" | null; // an update is being downloaded or installed
+  checkingUpdates: boolean;
+  updateCheckMessage: string | null;
   newer: { addon: string | null; app: string | null; notes: { addon: string; app: string } } | null; // what the signed manifest offers
 };
 
@@ -100,6 +102,12 @@ export class Controller {
   #lastSyncAt: number | null = null;
   #manifest: Manifest | null = null; // the release manifest, once its signature has been checked against the trusted key
   #updating: "addon" | "app" | null = null;
+  #checkingUpdates = false;
+  #updateCheckMessage: string | null = null;
+  #releases: Releases | undefined;
+  #releasesAt = 0;
+  #lastUpdateAttempt = 0;
+  #updates: UpdateReport | null = null;
 
   constructor(deps: Deps) {
     this.#deps = deps;
@@ -127,8 +135,10 @@ export class Controller {
       tapeEntries: report?.tape && "count" in report.tape ? report.tape.count : null,
       standings: report?.standings ?? null,
       needsNewBinder: report?.accounts.some((entry) => entry.result.status === "diverged") ?? false,
-      message: this.#message, busy: this.#busy, updates: report?.updates ?? null,
+      message: this.#message, busy: this.#busy, updates: this.#updates ?? report?.updates ?? null,
       canUpdate: this.#canUpdate(), updating: this.#updating,
+      checkingUpdates: this.#checkingUpdates,
+      updateCheckMessage: this.#updateCheckMessage,
       newer: this.#manifest ? { addon: this.#manifest.addon.version, app: this.#manifest.app.version, notes: { addon: this.#manifest.addon.notes, app: this.#manifest.app.notes } } : null,
     };
   }
@@ -161,8 +171,47 @@ export class Controller {
         ? `Your key cannot be stored safely on this computer (${error.message}). The app cannot sign in or upload until that is fixed.`
         : `The key could not be loaded: ${error instanceof Error ? error.message : String(error)}`;
     }
+    await this.checkForUpdates();
     await this.#restartEngine();
     this.#changed();
+  }
+
+  async #readUpdates(): Promise<void> {
+    const folder = this.#settings.gameFolder;
+    this.#updates = updateReport(this.#deps.version, this.#releases,
+      folder ? await readAddonVersion(folder) : null, this.#lastReport?.updates.addon.running ?? null,
+      this.#lastReport?.updates.addon.rankedPaused ?? false);
+  }
+
+  // Public update checks also work before sign-in or choosing a game folder.
+  // They do not upload a binder or refresh the leaderboard.
+  async checkForUpdates(force = true): Promise<void> {
+    if (this.#checkingUpdates || this.#updating) return;
+    const now = this.#deps.now() * 1000;
+    if (!force && this.#lastUpdateAttempt > 0 && now - this.#lastUpdateAttempt < 60_000) return;
+    this.#lastUpdateAttempt = now;
+    this.#checkingUpdates = true;
+    this.#updateCheckMessage = null;
+    this.#changed();
+    try {
+      const reply = await fetchReleases({ baseUrl: this.#deps.server, fetch: this.#deps.fetch,
+        clientVersion: this.#deps.version, sleep: this.#deps.sleep, attempts: 1 });
+      if (reply.status === "releases") {
+        this.#releases = reply.releases;
+        this.#releasesAt = this.#deps.now() * 1000;
+        this.#engine?.useReleases(reply.releases, this.#releasesAt);
+        await this.#trustRelease(reply.releases.signed);
+        await this.#readUpdates();
+        this.#updateCheckMessage = this.#canUpdate().app || this.#canUpdate().addon ? "Updates are available." : "Update check complete.";
+      } else {
+        this.#updateCheckMessage = "Could not check for updates. Check your connection and try again.";
+      }
+    } catch {
+      this.#updateCheckMessage = "Could not check for updates. Check your connection and try again.";
+    } finally {
+      this.#checkingUpdates = false;
+      this.#changed();
+    }
   }
 
   async stop(): Promise<void> {
@@ -196,8 +245,12 @@ export class Controller {
       ...(timings.quietMs !== undefined ? { quietMs: timings.quietMs } : {}),
       ...(timings.everyMs !== undefined ? { everyMs: timings.everyMs } : {}),
       ...(timings.standingsEveryMs !== undefined ? { standingsEveryMs: timings.standingsEveryMs } : {}),
+      ...(this.#releases ? { initialReleases: this.#releases, initialReleasesAt: this.#releasesAt } : {}),
       onReport: (report) => {
         this.#lastReport = report;
+        this.#updates = report.updates;
+        if (report.releases) this.#releases = report.releases;
+        if (report.releasesCheckedAt !== undefined) this.#releasesAt = report.releasesCheckedAt;
         this.#lastSyncAt = this.#deps.now();
         this.#busy = false;
         void this.#trustRelease(report.signedRelease);
@@ -219,7 +272,7 @@ export class Controller {
 
   #canUpdate(): { addon: boolean; app: boolean } {
     const manifest = this.#manifest;
-    const installed = this.#lastReport?.updates.addon.installed ?? null;
+    const installed = this.#updates?.addon.installed ?? null;
     return {
       addon: manifest !== null && this.#deps.download !== undefined && this.#settings.gameFolder !== null
         && (installed === null || compareVersions(manifest.addon.version, installed) > 0),
@@ -241,6 +294,7 @@ export class Controller {
       this.#message = "Installing add-on " + manifest.addon.version + "...";
       this.#changed();
       await installAddon(file, folder, join(this.#deps.dataFolder, "addon-backups"), manifest.addon.version);
+      await this.#readUpdates();
       this.#updating = null;
       this.#say("Add-on " + manifest.addon.version + " is installed. Use /reload in the game, or restart it, to start using it.");
       void this.#engine?.syncOnce();
@@ -330,11 +384,13 @@ export class Controller {
     this.#settings = { ...this.#settings, gameFolder: folder };
     await this.#save();
     this.#message = message;
+    await this.#readUpdates();
     await this.#restartEngine();
     this.#changed();
   }
 
   async syncNow(): Promise<void> {
+    await this.checkForUpdates();
     if (!this.#settings.playerId) return this.#say("Sign in with Discord first.");
     if (!this.#settings.gameFolder) return this.#say("Choose your game folder first.");
     // Looking at the folder again also picks up an account that has used the add-on since the app started.

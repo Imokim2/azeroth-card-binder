@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld("warcards", {
   setStartAtLogin: (on) => ipcRenderer.invoke("setStartAtLogin", on === true),
   updateAddon: () => ipcRenderer.invoke("updateAddon"),
   updateApp: () => ipcRenderer.invoke("updateApp"),
+  checkForUpdates: () => ipcRenderer.invoke("checkForUpdates"),
   onStatus: (listener) => {
     const handler = (_event, status) => listener(status);
     ipcRenderer.on("status", handler);

@@ -30,6 +30,8 @@ export type EngineOptions = {
   quietMs?: number; // how long the game's file must stay unchanged before it is read (default 1.5 seconds)
   everyMs?: number; // optional diagnostic polling; no periodic pass by default (zero also disables it)
   releasesEveryMs?: number; // minimum gap between update checks during saved-file syncs (default six hours)
+  initialReleases?: Releases; // already checked by the controller on launch/manual check
+  initialReleasesAt?: number; // milliseconds; reusing the cache must not extend its age
   log?: (message: string) => void;
   onReport?: (report: PassReport) => void; // told after every pass, whoever asked for it
 };
@@ -48,6 +50,8 @@ export type PassReport = {
   wroteSync: boolean;
   updates: UpdateReport; // whether the app and the add-on are out of date
   signedRelease?: { manifest: string; signature: string }; // the server's signed release manifest, for the controller to check
+  releases?: Releases; // keep the controller's cache in step with saved-progress checks
+  releasesCheckedAt?: number;
   retryAfterMs?: number; // required Ranked data could not be fetched; the automatic runner retries with backoff
 };
 
@@ -64,11 +68,18 @@ export class Engine {
 
   constructor(options: EngineOptions) {
     this.#options = options;
+    this.#releases = options.initialReleases;
+    if (this.#releases) this.#releasesAt = options.initialReleasesAt ?? options.client.now() * 1000;
   }
 
   // The roll tape held for the player belongs to the binder they had; after a new binder it must not be written again.
   forgetTape(): void {
     this.#tape = undefined;
+  }
+
+  useReleases(releases: Releases, checkedAt: number): void {
+    this.#releases = releases;
+    this.#releasesAt = checkedAt;
   }
 
   // One pass. Passes never overlap: asking while one is running returns that one.
@@ -173,6 +184,7 @@ export class Engine {
     const written = await this.#writeSync(client.now());
     const report: PassReport = { accounts, tape, standings, wroteSync: written, updates,
       ...(this.#releases?.signed ? { signedRelease: this.#releases.signed } : {}),
+      ...(this.#releases ? { releases: this.#releases, releasesCheckedAt: this.#releasesAt } : {}),
       ...(retryAfterMs !== undefined ? { retryAfterMs } : {}) };
     this.#options.onReport?.(report);
     return report;

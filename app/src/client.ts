@@ -37,9 +37,10 @@ export type Outcome =
   | { status: "diverged"; serverSeq: number };
 
 type Reply = { status: number; body: Record<string, unknown>; retryAfter: number | null };
+export type PublicClientOptions = Pick<ClientOptions, "baseUrl" | "fetch" | "clientVersion" | "sleep" | "attempts">;
 
 // `body` is absent for a GET (the public pages: standings, firsts).
-async function send(options: ClientOptions, path: string, body?: Record<string, unknown>): Promise<Reply | { network: string }> {
+async function send(options: PublicClientOptions, path: string, body?: Record<string, unknown>): Promise<Reply | { network: string }> {
   try {
     const response = await options.fetch(options.baseUrl + path, body === undefined
       ? { method: "GET", headers: { "x-warcards-client": options.clientVersion } }
@@ -61,7 +62,7 @@ const errorOf = (reply: Reply): { code: string; detail?: Record<string, unknown>
 const worthRetrying = (reply: Reply): boolean => reply.status >= 500 || errorOf(reply).code === "conflict" || errorOf(reply).code === "rate_limited";
 
 // Send with a few retries and growing pauses; honours the server's Retry-After. Returns the reply, or why to wait.
-async function sendWithRetries(options: ClientOptions, path: string, body?: Record<string, unknown>): Promise<Reply | { later: number; reason: string }> {
+async function sendWithRetries(options: PublicClientOptions, path: string, body?: Record<string, unknown>): Promise<Reply | { later: number; reason: string }> {
   const attempts = options.attempts ?? 4;
   let pause = 500;
   for (let attempt = 1; ; attempt++) {
@@ -180,7 +181,7 @@ const record = (value: unknown): Record<string, unknown> => (typeof value === "o
 const whole = (value: unknown): number => (typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : 0);
 
 // The newest and oldest accepted versions of the app and the add-on (GET /v1/releases).
-export async function fetchReleases(options: ClientOptions): Promise<{ status: "releases"; releases: Releases } | Outcome> {
+export async function fetchReleases(options: PublicClientOptions): Promise<{ status: "releases"; releases: Releases } | Outcome> {
   const reply = await sendWithRetries(options, "/v1/releases");
   if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
   if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
