@@ -5,7 +5,8 @@ import type { ErrorCode } from "./errors.ts";
 import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import type { Catalog } from "./shared.ts";
 import { downloadsFrom, releasesPageFrom } from "./releases.ts";
-import { paypalSupport } from "./support.ts";
+import { paypalSupport, supportSetupPage } from "./support.ts";
+import { siteAsset } from "./siteAssets.ts";
 import type { Releases } from "./releases.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
@@ -53,7 +54,7 @@ export type Deps = {
   releases?: Releases;
   releasesUrl?: string; // the public page of the project's releases (GitHub), once there is one: the download page links to it
   privacyEmail?: string; // where people can write about their data, once there is an address (the privacy page shows it)
-  supportPayPalAccount?: string; // configured server-side; /support redirects to this recipient on PayPal
+  supportPayPalUrl?: string; // account-generated payment link; an email alone is insufficient
   version: string; // this server's version, shown by /v1/health
   // Turns the Discord sign-in the app obtained into a Discord account id, or null. Absent until registration opens.
   identity?: { verify(token: string): Promise<string | null> };
@@ -555,17 +556,26 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const pageMatch = /^\/player\/([0-9A-Z]{26})$/.exec(url.pathname);
     const reviewMatch = /^\/v1\/admin\/flags\/([0-9A-Za-z]{1,40})$/.exec(url.pathname);
     const banMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/ban$/.exec(url.pathname);
+    const asset = siteAsset(url.pathname);
     const deleteMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/delete$/.exec(url.pathname);
     const resetMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/reset$/.exec(url.pathname);
     const restoreMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/restore$/.exec(url.pathname);
     const adminPlayerMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})$/.exec(url.pathname);
     const chosen =
-      url.pathname === "/" ? allow("site-home", ["GET"], async () => html(200, landingPage()))
+      asset ? allow("site-asset", ["GET"], async () => asset)
+      : url.pathname === "/" ? allow("site-home", ["GET"], async () => html(200, landingPage()))
       : url.pathname === "/ladder" ? allow("site-ladder", ["GET"], siteLadder)
       : url.pathname === "/download" ? allow("site-download", ["GET"], async () => html(200, downloadPage({ ...downloadsFrom(deps.releases), releasesUrl: releasesPageFrom(deps.releasesUrl) })))
       : url.pathname === "/help" ? allow("site-help", ["GET"], async () => html(200, helpPage()))
       : url.pathname === "/faq" ? allow("site-faq", ["GET"], async () => html(200, faqPage()))
-      : url.pathname === "/support" ? allow("site-support", ["GET"], async () => paypalSupport(deps.supportPayPalAccount))
+      : url.pathname === "/support" ? allow("site-support", ["GET"], async () => {
+        const redirect = paypalSupport(deps.supportPayPalUrl);
+        if (redirect) return redirect;
+        const response = html(200, supportSetupPage());
+        response.headers.set("cache-control", "no-store");
+        response.headers.set("x-robots-tag", "noindex, nofollow");
+        return response;
+      })
       : url.pathname === "/status" ? allow("site-status", ["GET"], () => siteStatus())
       : url.pathname === "/status/badge.svg" ? allow("site-status-badge", ["GET"], () => siteStatus(true))
       : url.pathname === "/wanted" ? allow("site-wanted-retired", ["GET"], async () => new Response(null, { status: 302, headers: { location: "/help#trading", "cache-control": "no-store" } }))
