@@ -15,8 +15,9 @@ click, but only from a release that was **signed with our release key**: the app
 - **Worker variables** (`server/wrangler.toml`): `MIN_CLIENT` (oldest companion app the server accepts), `MIN_ADDON` (oldest
   add-on that still gets Ranked roll tape) and, until a manifest is signed, `LATEST_APP` / `LATEST_ADDON`. Raising a
   minimum never needs a new signature.
-- **Where the files live.** The manifest holds plain `https` addresses, so any host works: a public GitHub release, a
-  Cloudflare R2 bucket, a web server. The app downloads from the address in the signed manifest and nowhere else.
+- **Where the files live.** GitHub Releases on the public repository. The manifest holds plain `https` addresses, so any host
+  would do, and the app downloads from the address in the signed manifest and nowhere else. The website's download page shows
+  the same files, with checksums, from the manifest, and links to the releases page when `RELEASES_URL` is set.
 
 ## One-time setup
 
@@ -32,9 +33,11 @@ The first installer players run has to carry the key, so do this before anything
 
 1. Bump the versions together (`node tools/release.js bump <version>` for the add-on; `app/package.json` for the app) and
    update `CHANGELOG.md`. Run `node tools/release.js check` and the tests.
-2. Build the add-on zip (`node tools/release.js build` writes `dist/AzerothCardBinder-<version>.zip`) and the installer
-   (`cd app; npm run dist` writes `app/release/World of Warcards Setup <version>.exe`).
-3. Upload both files to the host and note their `https` addresses.
+2. Tag and push: `git tag v0.5.0` then `git push origin v0.5.0`. The release workflow (`.github/workflows/release.yml`) builds the
+   add-on zip and the installer (`World-of-Warcards-Setup-<version>.exe`), checks and tests everything, and publishes a GitHub
+   release with both and a `SHA256SUMS.txt`. (To build by hand instead: `node tools/release.js build` and `cd app; npm run dist`.)
+3. Note the two download addresses on the release page (right-click each file, copy link). Download both files once and use
+   those exact files for the signature in step 4: it hashes them.
 4. Sign:
    ```
    node tools/release-manifest.js sign --key <keyfile> --app "app/release/World of Warcards Setup 0.3.0.exe" --app-url <https address>
@@ -43,7 +46,7 @@ The first installer players run has to carry the key, so do this before anything
    ```
    `sign` warns if the key that signed is not the one built into the app. The add-on zip's file name must contain the add-on
    version.
-5. Set `LATEST_*` if you rely on them, deploy staging, look at the result, then deploy production:
+5. Set `LATEST_*` if you rely on them (and `RELEASES_URL` in `server/wrangler.toml` once the repository is public: `https://github.com/<owner>/<repo>/releases/latest`), deploy staging, look at the result, then deploy production:
    ```
    cd server; npx wrangler deploy --env staging
    ```

@@ -45,7 +45,7 @@ repository** (the tool refuses otherwise) and **private**: the dump holds Discor
 Run it every day. On Windows, once:
 
 ```
-schtasks /Create /SC DAILY /ST 04:30 /TN "WorldOfWarcards database backup" /TR "cmd /c cd /d C:\Users\Harry\azeroth-card-binder && node tools\backup-db.js --env production --out D:\warcards-backups >> D:\warcards-backups\backup.log 2>&1"
+schtasks /Create /SC DAILY /ST 04:30 /TN "WorldOfWarcards database backup" /TR "cmd /c cd /d C:\path\to\azeroth-card-binder && node tools\backup-db.js --env production --out D:\warcards-backups >> D:\warcards-backups\backup.log 2>&1"
 ```
 
 (Use your own folders. The computer must be on and signed in to Cloudflare through `wrangler login`; if the task fails the log

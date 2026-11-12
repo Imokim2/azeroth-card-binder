@@ -1,0 +1,72 @@
+name: Release
+
+# Pushing a tag that starts with "v" (for example v0.5.0) builds the add-on ZIP and the Windows installer and attaches both, with
+# their SHA-256 checksums, to a GitHub release. Nothing is signed here: the release key never goes into GitHub. After the release
+# exists, sign it on the maintainer's computer (docs/runbooks/RELEASES.md, `node tools/release-manifest.js sign`) so the companion
+# app will install it, and deploy the server.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  addon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install LuaJIT and zip
+        run: sudo apt-get update && sudo apt-get install -y luajit zip
+      - name: Type-check, check, test and build the add-on ZIP
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+        run: cd server && npm ci && npm run typecheck && cd ../app && npm ci && npm run typecheck && cd .. && node tools/release.js build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: addon-zip
+          path: dist/AzerothCardBinder-*.zip
+          if-no-files-found: error
+
+  installer:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Build the installer
+        working-directory: app
+        run: |
+          npm ci
+          npm run dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installer
+          path: app/release/World-of-Warcards-Setup-*.exe
+          if-no-files-found: error
+
+  publish:
+    needs: [addon, installer]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: files
+          merge-multiple: true
+      - name: Checksums
+        working-directory: files
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" files/* --title "$TAG" --notes "See CHANGELOG.md for what changed. The installer is not code-signed yet, so Windows may warn about an unknown publisher; check downloads against SHA256SUMS.txt."

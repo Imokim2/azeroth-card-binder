@@ -43,7 +43,7 @@ From this folder, with `npm ci` done once:
 
 ```
 npm run pack      # an unpacked app in release/win-unpacked, to try without installing
-npm run dist      # release/World of Warcards Setup <version>.exe
+npm run dist      # release/World-of-Warcards-Setup-<version>.exe
 ```
 
 The installer is a per-user install (no administrator rights) of about 116 MB, most of it Electron itself. It is **not code-signed**, so Windows SmartScreen shows an "unknown publisher" warning the first time; signing needs a certificate, which costs money and is a decision for later. There is no auto-update yet: the repository is private, and updates need a public release feed or a token. The installed app finds the catalog as a resource beside the program (`resources/catalog.json`).

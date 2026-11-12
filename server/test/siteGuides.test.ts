@@ -43,3 +43,39 @@ test("status and its badge check the database, are never cached and show failure
   // Help remains available when the collection database is down.
   for (const path of ["/", "/help", "/faq", "/download"]) assert.equal((await env.call(path)).status, 200, path);
 });
+
+test("the download page shows real downloads, with their size and checksum, only from a manifest it can read, and links GitHub only when told to", async () => {
+  const sha = (letter: string) => letter.repeat(64);
+  const manifest = JSON.stringify({
+    format: 1, issuedAt: 1,
+    app: { version: "0.3.0", url: "https://github.com/Imokim2/azeroth-card-binder/releases/download/v0.3.0/Setup.exe", size: 3 * 1024 * 1024, sha256: sha("a"), notes: "" },
+    addon: { version: "0.5.0", url: "https://github.com/Imokim2/azeroth-card-binder/releases/download/v0.3.0/AzerothCardBinder-0.5.0.zip", size: 2 * 1024 * 1024, sha256: sha("b"), notes: "" },
+  });
+  const env = setup();
+  env.deps.releases = { latestApp: "0.3.0", latestAddon: "0.5.0", minAddon: "0.0.0", signed: { manifest, signature: "ab".repeat(64) } };
+  const page = await (await env.call("/download")).text();
+  assert.ok(!/not available yet/.test(page));
+  assert.match(page, /Download the companion 0\.3\.0 \(3\.0 MB\)/);
+  assert.match(page, /Download the addon 0\.5\.0 \(2\.0 MB\)/);
+  assert.ok(page.includes('href="https://github.com/Imokim2/azeroth-card-binder/releases/download/v0.3.0/Setup.exe"'));
+  assert.ok(page.includes("<code>" + sha("a") + "</code>") && page.includes("<code>" + sha("b") + "</code>"));
+
+  // A link that is not https, or a file with a bad checksum, is not shown.
+  const bad = JSON.stringify({
+    app: { version: "0.3.0", url: "http://example.test/Setup.exe", size: 5, sha256: sha("a") },
+    addon: { version: "0.5.0", url: "https://example.test/a.zip", size: 5, sha256: "nope" },
+  });
+  env.deps.releases = { latestApp: "0.3.0", latestAddon: "0.5.0", minAddon: "0.0.0", signed: { manifest: bad, signature: "ab".repeat(64) } };
+  const refused = await (await env.call("/download")).text();
+  assert.match(refused, /not available yet/);
+  assert.ok(!/href="[^"]+\.(exe|zip)"/.test(refused));
+
+  // The GitHub link appears only when the setting names a GitHub releases page.
+  env.deps.releases = undefined as never;
+  env.deps.releasesUrl = "https://github.com/Imokim2/azeroth-card-binder/releases/latest";
+  const linked = await (await env.call("/download")).text();
+  assert.ok(linked.includes('href="https://github.com/Imokim2/azeroth-card-binder/releases/latest"'));
+  assert.ok(!/not available yet/.test(linked));
+  env.deps.releasesUrl = "https://evil.test/releases/latest";
+  assert.match(await (await env.call("/download")).text(), /not available yet/);
+});
