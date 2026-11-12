@@ -250,6 +250,16 @@ export async function deleteAccount(options: ClientOptions): Promise<{ status: "
   return { status: "deleted" };
 }
 
+// A copy of everything the server holds about this player (POST /v1/export), as the text to save. Signed with their key.
+export async function exportAccount(options: ClientOptions): Promise<{ status: "exported"; text: string } | Outcome> {
+  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now() };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "export" }));
+  const reply = await sendWithRetries(options, "/v1/export", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  return { status: "exported", text: JSON.stringify(reply.body, null, 2) + "\n" };
+}
+
 // Send reports about other players. Signed by the player's key. Returns the tokens the server has settled (stored, repeated,
 // or about the player themselves); the rest are kept by the add-on and sent again. At most 10 go in one request.
 export async function sendReports(options: ClientOptions, reports: { token: string; target: string; reason: string; note: string }[]): Promise<{ status: "reported"; done: string[] } | Outcome> {

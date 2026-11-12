@@ -29,6 +29,10 @@ export interface PlayerStore {
   // Delete everything held about the player: their record, their keys and Discord link, and any archives from earlier
   // binders. Trade halves other players recorded with them stay with those players.
   deletePlayer(playerId: string): Promise<void>;
+  // Everything held about the player, for them to keep (a copy of their data): the account, keys, characters, and for each
+  // binder (the current one and any archived by starting over) its events, saved state, score, trades, completed sets, wanted
+  // cards, flags and tape ranges, plus the reports they sent. Left out: reports about them, reviewers' notes, and secrets.
+  exportPlayer(playerId: string): Promise<Record<string, unknown> | null>;
 }
 
 // pity (kept under its old column name): how many misses in a row each card has had since its last drop, in ranked2; tapeNext: the tape position

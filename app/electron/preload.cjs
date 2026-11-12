@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld("warcards", {
   syncNow: () => ipcRenderer.invoke("syncNow"),
   startNewBinder: () => ipcRenderer.invoke("startNewBinder"),
   deleteMyData: () => ipcRenderer.invoke("deleteMyData"),
+  exportMyData: () => ipcRenderer.invoke("exportMyData"),
   setStartAtLogin: (on) => ipcRenderer.invoke("setStartAtLogin", on === true),
   updateAddon: () => ipcRenderer.invoke("updateAddon"),
   updateApp: () => ipcRenderer.invoke("updateApp"),

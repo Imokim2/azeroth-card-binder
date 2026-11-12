@@ -75,6 +75,37 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       "SELECT name, realm FROM characters WHERE player_id = ? ORDER BY last_seen DESC, name, realm", [playerId]);
   }
 
+  async exportPlayer(playerId: string): Promise<Record<string, unknown> | null> {
+    const account = (await this.#db.all<{ id: string; discord_id: string | null; created_at: number; status: string; visibility: string; epoch: number }>(
+      "SELECT id, discord_id, created_at, status, visibility, epoch FROM players WHERE id = ?", [playerId]))[0];
+    if (!account) return null;
+    const archives = await this.#db.all<{ id: string }>("SELECT id FROM players WHERE archived_from = ? ORDER BY created_at, id", [playerId]);
+    const binder = async (id: string, archived: boolean) => {
+      const where = "WHERE player_id = ?";
+      const events = (await this.batchesOf(id)).flatMap((batch) => batch.events);
+      const state = (await this.#db.all<{ head_seq: number; head_hash: string; state_json: string; tape_next: number; casual_drops: number; updated_at: number }>(
+        `SELECT head_seq, head_hash, state_json, tape_next, casual_drops, updated_at FROM ledger_state ${where}`, [id]))[0];
+      const row = (sql: string) => this.#db.all<Record<string, unknown>>(sql, [id]);
+      return {
+        binderId: id, archived, events,
+        saved: state ? { headSeq: state.head_seq, headHash: state.head_hash, state: JSON.parse(state.state_json) as unknown, tapeNext: state.tape_next, casualDrops: state.casual_drops, updatedAt: state.updated_at } : null,
+        score: (await row(`SELECT display_name AS displayName, score AS scoreTenths, unique_cards AS uniqueCards, sets_done AS setsDone, attempts, updated_at AS updatedAt FROM scores ${where}`))[0] ?? null,
+        trades: await row(`SELECT seq, trade_id AS tradeId, direction, card_key AS card, char AS character, partner, t, received_at AS receivedAt, state FROM trades ${where} ORDER BY seq`),
+        completedSets: await row(`SELECT set_code AS setCode, t, received_at AS receivedAt FROM set_completions ${where} ORDER BY set_code`),
+        wanted: await row(`SELECT card_key AS card, added_at AS addedAt FROM wanted ${where} ORDER BY card_key`),
+        flags: await row(`SELECT kind, state, created_at AS createdAt, reviewed_at AS reviewedAt FROM flags ${where} ORDER BY created_at`),
+        tapeRanges: await row(`SELECT start_idx AS first, end_idx AS last, commitment, issued_at AS issuedAt FROM tapes ${where} ORDER BY start_idx`),
+      };
+    };
+    return {
+      account: { playerId: account.id, discordId: account.discord_id, createdAt: account.created_at, status: account.status, visibility: account.visibility, epoch: account.epoch },
+      keys: await this.#db.all("SELECT public_key AS publicKey, status, created_at AS createdAt FROM keys WHERE player_id = ? ORDER BY created_at", [playerId]),
+      characters: await this.#db.all("SELECT name, realm, first_seen AS firstSeen, last_seen AS lastSeen FROM characters WHERE player_id = ? ORDER BY name, realm", [playerId]),
+      binders: [await binder(playerId, false), ...(await Promise.all(archives.map((archive) => binder(archive.id, true))))],
+      reportsSent: await this.#db.all("SELECT target_name AS targetName, reason, note, created_at AS createdAt FROM reports WHERE reporter_id = ? ORDER BY created_at", [playerId]),
+    };
+  }
+
   async resetBinder(playerId: string, archivedId: string, at: number): Promise<void> {
     const found = await this.findById(playerId);
     if (!found) throw new Error("no such player");

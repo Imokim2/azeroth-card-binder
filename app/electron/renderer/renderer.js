@@ -64,6 +64,8 @@ function render(status) {
   $("problem").hidden = !status.problem;
   $("problem").textContent = status.problem || "";
 
+  $("export-data").hidden = !status.signedIn;
+  $("export-data").disabled = status.busy;
   $("delete-data").hidden = !status.signedIn;
   $("delete-data").disabled = status.busy;
   $("new-binder").hidden = !status.needsNewBinder;
@@ -156,6 +158,7 @@ if (demo && demos[demo[1]]) {
   $("update-addon").addEventListener("click", () => api.updateAddon());
   $("update-app").addEventListener("click", () => api.updateApp());
   $("new-binder-button").addEventListener("click", () => api.startNewBinder());
+  $("export-data").addEventListener("click", () => api.exportMyData());
   $("delete-data").addEventListener("click", () => api.deleteMyData());
   $("start-at-login").addEventListener("change", (event) => api.setStartAtLogin(event.target.checked));
   api.onStatus(render);
