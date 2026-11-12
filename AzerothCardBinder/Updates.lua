@@ -28,6 +28,15 @@ function ACB.addonVersion()
     if ok and type(value) == "string" and parts(value) then return value end
 end
 
+-- Is this add-on older than the oldest version the server accepts (as the companion app last wrote it into Data/Sync.lua)?
+-- Ranked rolling pauses then (Tape.lua); Casual is never affected. With no word from the app, or no version of its own,
+-- nothing is ever paused, so a missing file cannot lock anyone out.
+function ACB.addonTooOld()
+    local releases = ACB.sync and ACB.sync.releases
+    if type(releases) ~= "table" then return false end
+    return ACB.compareVersions(ACB.addonVersion() or "", releases.minAddon) == -1
+end
+
 -- What to tell the player, or nil: `mine` is this add-on's version, `sync` the companion app's file (ACB.sync).
 function ACB.updateNotice(mine, sync)
     local releases = type(sync) == "table" and sync.releases

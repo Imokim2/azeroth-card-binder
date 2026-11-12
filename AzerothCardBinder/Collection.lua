@@ -169,7 +169,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             if not entry then
                 if not self.pausedNotice then
                     self.pausedNotice = true
-                    report("Ranked rolls are paused: the roll tape has run out. Type /reload so the companion app can refill it, or switch to Casual in Settings.")
+                    report(ACB.addonTooOld() and "Ranked rolls are paused: this add-on is older than the server accepts. Update it (type /acb version), then /reload, or switch to Casual in Settings."
+                        or "Ranked rolls are paused: the roll tape has run out. Type /reload so the companion app can refill it, or switch to Casual in Settings.")
                 end
                 return
             end

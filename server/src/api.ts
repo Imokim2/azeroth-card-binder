@@ -4,6 +4,7 @@ import { ApiError, ERRORS } from "./errors.ts";
 import type { ErrorCode } from "./errors.ts";
 import { canonicalJson, newId, verifySignature } from "../../packages/shared/src/crypto.ts";
 import type { Catalog } from "./shared.ts";
+import type { Releases } from "./releases.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
 import { binderSets, fairPlayPage, ladderPage, notFoundPage, playerPage, privacyPage, wantedPage } from "./site.ts";
@@ -42,7 +43,7 @@ export type Deps = {
   minClient: string; // the oldest companion app version still accepted, as x.y.z
   // The newest and the oldest accepted version of the add-on, and the newest companion app (the oldest is minClient), as
   // x.y.z. Served by /v1/releases so the app can say what is out of date. Absent: nothing is announced.
-  releases?: { latestApp: string; latestAddon: string; minAddon: string };
+  releases?: Releases;
   version: string; // this server's version, shown by /v1/health
   // Turns the Discord sign-in the app obtained into a Discord account id, or null. Absent until registration opens.
   identity?: { verify(token: string): Promise<string | null> };
@@ -137,13 +138,21 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     checkClient(request, deps);
     if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
     const body = (await readJson(request)) as Record<string, unknown> | null;
-    const { key, sentAt, sig } = body ?? {};
+    const { key, sentAt, sig, addon } = body ?? {};
     if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string") throw new ApiError("bad_request");
+    // The add-on version the player last ran, as the add-on wrote it (self-reported: it keeps honest players from rolling on
+    // a version the server no longer accepts, it is not a defence against cheating). Signed with the rest when present.
+    if (addon !== undefined && (typeof addon !== "string" || !/^\d+\.\d+\.\d+$/.test(addon))) throw new ApiError("bad_request", { field: "addon" });
     if (Math.abs(deps.now() - (sentAt as number)) > 86_400) throw new ApiError("bad_request", { field: "sentAt" });
     const holder = await deps.players.findByActiveKey(key);
     if (!holder) throw new ApiError("unknown_key");
     if (holder.status !== "active") throw new ApiError("banned");
-    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, purpose: "tape" })))) throw new ApiError("bad_signature");
+    const signedBody = addon === undefined ? { key, sentAt, purpose: "tape" } : { key, sentAt, addon, purpose: "tape" };
+    if (!(await verifySignature(key, sig, canonicalJson(signedBody)))) throw new ApiError("bad_signature");
+    // Tape comes only to an add-on the server still accepts. Tape already handed out stays valid, so nothing earned is lost.
+    if (typeof addon === "string" && deps.releases && compareVersions(addon, deps.releases.minAddon) < 0) {
+      throw new ApiError("addon_too_old", { minAddon: deps.releases.minAddon, latestAddon: deps.releases.latestAddon });
+    }
     const secret = await tapeKey(deps.tapeSecret);
     const next = await deps.tapes.tapeNext(holder.id);
     let issuedEnd = await deps.tapes.issuedEnd(holder.id);
@@ -386,6 +395,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     return json(200, {
       app: { latest: known?.latestApp ?? deps.minClient, min: deps.minClient },
       addon: { latest: known?.latestAddon ?? "0.0.0", min: known?.minAddon ?? "0.0.0" },
+      ...(known?.signed ? { signed: known.signed } : {}),
     }, { "cache-control": "public, max-age=300" });
   }
 

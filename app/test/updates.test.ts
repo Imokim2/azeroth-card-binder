@@ -26,12 +26,16 @@ const memoryStore = (): SecretStore => {
 
 // A game folder with a saved file (written by the real add-on) that says which add-on version last wrote it, and an add-on
 // folder whose .toc says which version is installed.
-async function gameFolder(options: { installed: string | null; running: string | null }) {
+async function gameFolder(options: { installed: string | null; running: string | null; ranked?: boolean }) {
   const folder = await mkdtemp(join(tmpdir(), "warcards-updates-"));
   const saved = join(folder, "WTF", "Account", "ACCOUNT1", "SavedVariables", "AzerothCardBinder.lua");
   await mkdir(join(saved, ".."), { recursive: true });
   const result = spawnSync(luajit, ["tests/tools/write-saved.lua", saved, "0"], { cwd: root, encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
   if (result.status !== 0) throw new Error(result.stderr);
+  if (options.ranked) {
+    const text = await readFile(saved, "utf8");
+    await writeFile(saved, text.replace('["mode"] = "casual"', '["mode"] = "ranked"'));
+  }
   if (options.running) {
     const text = await readFile(saved, "utf8");
     await writeFile(saved, text.replace("AzerothCardBinderDB = {", `AzerothCardBinderDB = {\n["addonVersion"] = "${options.running}",`));
@@ -100,7 +104,7 @@ test("a pass reports an add-on and an app that are out of date, and writes the v
     const w = await world();
     const install = await describeInstall(game.folder);
     const report = await new Engine({ install, client: w.client, playerId: w.playerId }).syncOnce();
-    assert.deepEqual(report.updates.addon, { installed: "0.4.1", running: "0.4.1", latest: "0.5.0", min: "0.4.0", state: "update", reloadNeeded: false });
+    assert.deepEqual(report.updates.addon, { installed: "0.4.1", running: "0.4.1", latest: "0.5.0", min: "0.4.0", state: "update", reloadNeeded: false, rankedPaused: false });
     assert.equal(report.updates.app.state, "update");
     assert.equal(report.updates.app.latest, "9.9.9");
     const text = await readFile(install.syncPath, "utf8");
@@ -153,6 +157,30 @@ test("an add-on that is not in the game folder is reported as not found", async 
     const report = await new Engine({ install: await describeInstall(game.folder), client: w.client, playerId: w.playerId }).syncOnce();
     assert.equal(report.updates.addon.installed, null);
     assert.equal(report.updates.addon.state, "unknown");
+  } finally {
+    await game.cleanup();
+  }
+});
+
+test("a Ranked player on an add-on older than the server accepts is told Ranked is paused, and gets no new tape", async () => {
+  const game = await gameFolder({ installed: "0.3.0", running: "0.3.0", ranked: true });
+  try {
+    const w = await world();
+    const tapesBefore = w.env.raw.prepare("SELECT COUNT(*) AS n FROM tapes").get()?.["n"];
+    const report = await new Engine({ install: await describeInstall(game.folder), client: w.client, playerId: w.playerId }).syncOnce();
+    assert.equal(report.accounts[0]?.mode, "ranked");
+    assert.equal(report.updates.addon.rankedPaused, true);
+    assert.deepEqual(report.tape, { status: "rejected" });
+    assert.equal(w.env.raw.prepare("SELECT COUNT(*) AS n FROM tapes").get()?.["n"], tapesBefore, "no tape was issued");
+    // The same player on a current add-on is not paused.
+    const current = await gameFolder({ installed: "0.4.0", running: "0.4.0", ranked: true });
+    try {
+      const fine = await new Engine({ install: await describeInstall(current.folder), client: w.client, playerId: w.playerId }).syncOnce();
+      assert.equal(fine.updates.addon.rankedPaused, false);
+      assert.equal((fine.tape as { count: number }).count > 0, true);
+    } finally {
+      await current.cleanup();
+    }
   } finally {
     await game.cleanup();
   }

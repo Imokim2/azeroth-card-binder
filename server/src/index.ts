@@ -11,6 +11,9 @@ import type { D1Like } from "./db.ts";
 import { SqlStore } from "./sqlStore.ts";
 import type { Catalog } from "./shared.ts";
 import catalog from "../../packages/shared/catalog.json";
+import bundledRelease from "./releases.json";
+import { releasesFrom } from "./releases.ts";
+import type { BundledRelease } from "./releases.ts";
 
 export interface Env {
   DB: D1Like;
@@ -39,7 +42,7 @@ export default {
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },
       minClient: env.MIN_CLIENT, version: env.VERSION,
-      releases: { latestApp: env.LATEST_APP ?? env.MIN_CLIENT, latestAddon: env.LATEST_ADDON ?? "0.0.0", minAddon: env.MIN_ADDON ?? "0.0.0" },
+      releases: releasesFrom(env, bundledRelease as BundledRelease),
       ...(env.RATE_GENERAL && env.RATE_STRICT ? { limits: { general: bindingLimiter(env.RATE_GENERAL), strict: bindingLimiter(env.RATE_STRICT) } } : {}),
       // Registration opens only when the Discord application is fully configured.
       ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.DISCORD_REDIRECT_URI

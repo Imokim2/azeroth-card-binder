@@ -43,6 +43,7 @@ export type PassReport = {
   standings: "fresh" | "kept" | "unavailable";
   wroteSync: boolean;
   updates: UpdateReport; // whether the app and the add-on are out of date
+  signedRelease?: { manifest: string; signature: string }; // the server's signed release manifest, for the controller to check
 };
 
 export class Engine {
@@ -122,8 +123,10 @@ export class Engine {
 
     // The tape is asked for after the uploads, so the server knows how far the add-on has got.
     let tape: PassReport["tape"] = null;
+    let rankedPaused = false;
     if (anyRanked) {
-      const reply = await fetchTape(client);
+      const reply = await fetchTape(client, running ?? undefined);
+      if (reply.status === "rejected" && reply.code === "addon_too_old") rankedPaused = true;
       if (reply.status === "tape") {
         this.#tape = { start: reply.start, entries: reply.entries };
         tape = { start: reply.start, count: reply.entries.length };
@@ -152,11 +155,11 @@ export class Engine {
         this.#releasesAt = now;
       }
     }
-    const updates = updateReport(client.clientVersion, this.#releases, await readAddonVersion(install.root), running);
+    const updates = updateReport(client.clientVersion, this.#releases, await readAddonVersion(install.root), running, rankedPaused);
 
     // Sync.lua is always written whole from what is known now.
     const written = await this.#writeSync(client.now());
-    const report: PassReport = { accounts, tape, standings, wroteSync: written, updates };
+    const report: PassReport = { accounts, tape, standings, wroteSync: written, updates, ...(this.#releases?.signed ? { signedRelease: this.#releases.signed } : {}) };
     this.#options.onReport?.(report);
     return report;
   }

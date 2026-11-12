@@ -5,7 +5,11 @@ import { join } from "node:path";
 import { ADDON_NAME } from "./files.ts";
 import { readText } from "./files.ts";
 
-export type Releases = { app: { latest: string; min: string }; addon: { latest: string; min: string } };
+export type Releases = {
+  app: { latest: string; min: string };
+  addon: { latest: string; min: string };
+  signed?: { manifest: string; signature: string }; // the release manifest as signed, when the server has one (see updates.ts)
+};
 
 // "current": up to date. "update": a newer one exists. "required": older than the oldest still accepted. "unknown": not known.
 export type UpdateState = "current" | "update" | "required" | "unknown";
@@ -19,6 +23,7 @@ export type UpdateReport = {
     min: string | null;
     state: UpdateState; // for the installed version
     reloadNeeded: boolean; // the folder holds a newer version than the one the game last ran
+    rankedPaused: boolean; // the server will not give this add-on new roll tape until it is updated
   };
 };
 
@@ -53,7 +58,7 @@ export async function readAddonVersion(root: string): Promise<string | null> {
   }
 }
 
-export function updateReport(app: string, releases: Releases | undefined, installed: string | null, running: string | null): UpdateReport {
+export function updateReport(app: string, releases: Releases | undefined, installed: string | null, running: string | null, rankedPaused = false): UpdateReport {
   const addonLatest = releases?.addon.latest ?? null;
   const addonMin = releases?.addon.min ?? null;
   return {
@@ -61,6 +66,7 @@ export function updateReport(app: string, releases: Releases | undefined, instal
     addon: {
       installed, running, latest: addonLatest, min: addonMin, state: updateState(installed, addonLatest, addonMin),
       reloadNeeded: installed !== null && running !== null && compareVersions(installed, running) > 0,
+      rankedPaused,
     },
   };
 }
