@@ -9,10 +9,7 @@ local label = kit.label
 local button = kit.button
 local backdrop = kit.backdrop
 
--- The Wanted tab: the cards you are looking for, and what other players are looking for, so you can see at once who
--- you could swap with. Other players' lists come from two places: the public board (public players, brought in by the
--- companion app, so as fresh as its last sync and your last reload) and players you asked directly with "Check my
--- target", which answer at once.
+-- The Wanted tab uses wanted lists shared directly in game, without a website or companion feed.
 
 ACB.heardWanted = ACB.heardWanted or {} -- peer -> { at, cards, total }, from players asked directly this session
 
@@ -48,21 +45,6 @@ function ACB.wantedRows(saved)
     end
     -- Players asked directly come first: what they said just now is the freshest.
     for peer, entry in pairs(ACB.heardWanted) do add(peer, { peer }, validKeys(entry.cards), true) end
-    local board = ACB.sync and ACB.sync.wanted
-    if type(board) == "table" then
-        for index, entry in ipairs(board) do
-            if index > 100 then break end
-            if type(entry) == "table" and type(entry.name) == "string" then
-                local characters = {}
-                if type(entry.characters) == "table" then
-                    for _, character in ipairs(entry.characters) do
-                        if type(character) == "string" then characters[#characters + 1] = character end
-                    end
-                end
-                add(entry.name, characters, validKeys(entry.cards), false)
-            end
-        end
-    end
     table.sort(rows, function(a, b)
         if #a.spares ~= #b.spares then return #a.spares > #b.spares end
         if a.direct ~= b.direct then return a.direct end
@@ -125,7 +107,7 @@ function ACB.createWantedView(frame, saved)
             saved.wanted = saved.wanted or {}
             saved.wanted[card.key] = true
             entry:SetText("")
-            status:SetText(card.name .. " is on your list. Other players see it once the companion app has shared it.")
+            status:SetText(card.name .. " is on your list. Other players can ask to see it in game.")
         end
         view:refresh()
     end
@@ -185,7 +167,7 @@ function ACB.createWantedView(frame, saved)
         for _, row in ipairs(rows) do
             if #row.spares > 0 then useful = useful + 1 end
         end
-        summary:SetText(#rows == 0 and "Nobody else's wanted cards are known yet. Check a player you target, or wait for the board to sync."
+        summary:SetText(#rows == 0 and "Nobody else's wanted cards are known yet. Target a player and choose Check my target."
             or useful > 0 and ("%d player%s looking for cards you have spare. Click a name to offer a trade."):format(useful, useful == 1 and " is" or "s are")
             or ("%d player%s listed; none is looking for a card you have spare."):format(#rows, #rows == 1 and " is" or "s are"))
         for index = 1, math.max(#rows, #others) do

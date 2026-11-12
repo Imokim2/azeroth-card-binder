@@ -43,7 +43,7 @@ test("the ladder page lists ranked players, links to them, and says plainly when
 test("pages carry safety headers, load nothing from anywhere else and run no script", async () => {
   const env = setup();
   await rankedPlayer(env, "Alice");
-  for (const path of ["/", "/ladder", "/wanted", "/download", "/help", "/faq", "/fair-play", "/privacy"]) {
+  for (const path of ["/", "/ladder", "/download", "/help", "/faq", "/fair-play", "/privacy"]) {
     const { response, text } = await page(env, path);
     assert.equal(response.status, 200, path);
     assert.match(response.headers.get("content-security-policy") ?? "", /default-src 'none'/);
@@ -104,7 +104,8 @@ test("the fair-play and privacy pages say what they must, and the privacy page m
   const env = setup();
   const fair = (await page(env, "/fair-play")).text;
   for (const heading of fairPlayHeadings) assert.ok(fair.includes(`<h2>${heading}</h2>`), heading);
-  assert.match(fair, /cheating cannot be made impossible/i);
+  assert.match(fair, /Do not edit your collection/);
+  assert.doesNotMatch(fair, /roll tape|random numbers|hash.chain|read ahead|within a week|statistical/i);
   assert.match(fair, /only <strong>Ranked<\/strong>/i);
   const privacy = (await page(env, "/privacy")).text;
   for (const heading of privacyHeadings) assert.ok(privacy.includes(`<h2>${heading}</h2>`), heading);

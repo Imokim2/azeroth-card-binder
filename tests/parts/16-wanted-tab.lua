@@ -18,7 +18,14 @@ end
 test("everyone whose wanted cards are known, most useful first, never yourself, never anything unusable", function()
     local saved = { counts = { ["npc:589"] = 3, ["npc:590"] = 1, ["npc:639"] = 2 }, shiny = {}, wanted = {} }
     local keepSync, keepHeard = ACB.sync, ACB.heardWanted
-    ACB.heardWanted = { ["carol-realmname"] = { at = 1, cards = { "npc:639", "npc:99999" }, total = 2 } }
+    ACB.heardWanted = {
+        ["carol-realmname"] = { at = 1, cards = { "npc:639", "npc:99999" }, total = 2 },
+        ["dave-realmname"] = { at = 1, cards = { "npc:589", "npc:639", "npc:573" }, total = 3 },
+        ["bob-realmname"] = { at = 1, cards = { "npc:573", "npc:590" }, total = 2 },
+        ["alice-realmname"] = { at = 1, cards = { "npc:589" }, total = 1 },
+        ["erin-realmname"] = { at = 1, cards = {}, total = 0 },
+        ["fay-realmname"] = { at = 1, cards = { "npc:99999" }, total = 1 },
+    }
     ACB.sync = { syncVersion = 1, acks = {}, wanted = {
         { name = "Bob-Realm Name", characters = { "bob-realmname" }, cards = { "npc:573", "npc:590" } }, -- nothing of theirs I have spare
         { name = "Dave-Realm Name", characters = { "dave-realmname" }, cards = { "npc:589", "npc:639", "npc:573" } }, -- two spares
@@ -31,7 +38,8 @@ test("everyone whose wanted cards are known, most useful first, never yourself, 
     local names = {}
     for _, row in ipairs(rows) do names[#names + 1] = row.name end
     -- Dave has two cards I could give; Carol (asked just now) and Bob each have one or none; Alice is me and is left out.
-    equal(names[1], "Dave-Realm Name")
+    equal(names[1], "dave-realmname")
+    equal(#rows, 3, "legacy remote wanted feeds are ignored")
     equal(#rows[1].spares, 2)
     assert(not table.concat(names, ","):find("Alice"))
     assert(not table.concat(names, ","):find("Erin"))
@@ -142,7 +150,7 @@ test("the Wanted tab shows your list, adds and removes cards, shows what others 
     local saved = AzerothCardBinderDB
     local keep = { saved.wanted, saved.counts["npc:639"], saved.counts["npc:589"], ACB.sync, ACB.heardWanted, ACB.prepareTrade, saved.counts["npc:573"], ACB.requestWanted }
     saved.wanted, saved.counts["npc:639"], saved.counts["npc:589"], saved.counts["npc:573"] = { ["npc:573"] = true }, nil, 3, nil
-    ACB.heardWanted = {}
+    ACB.heardWanted = { ["dave-realmname"] = { at = 1, cards = { "npc:589", "npc:639" }, total = 2 } }
     ACB.sync = { syncVersion = 1, acks = {}, wanted = {
         { name = "Dave-Realm Name", characters = { "dave-realmname" }, cards = { "npc:589", "npc:639" } },
     } }
@@ -153,7 +161,7 @@ test("the Wanted tab shows your list, adds and removes cards, shows what others 
     newestWidget(ACB.cards["npc:573"].name .. "   (click to remove)")
     -- Others: Dave wants a card you have spare, so the summary says so.
     newestWidget("1 player is looking for cards you have spare. Click a name to offer a trade.")
-    local row = firstWith("Dave-Realm Name: ")
+    local row = firstWith("dave-realmname (just now): ")
     assert(row.text:find("(you have a spare)", 1, true), row.text)
     row.parent:OnClick()
     equal(traded, "dave-realmname")
@@ -166,7 +174,7 @@ test("the Wanted tab shows your list, adds and removes cards, shows what others 
     entry:SetText("Edwin VanCleef")
     entry:OnEnterPressed()
     equal(saved.wanted["npc:639"], true)
-    newestWidget("Edwin VanCleef is on your list. Other players see it once the companion app has shared it.")
+    newestWidget("Edwin VanCleef is on your list. Other players can ask to see it in game.")
     entry:SetText("zzzz no such card")
     entry:OnEnterPressed()
     newestWidget("There is no card with that name.")
