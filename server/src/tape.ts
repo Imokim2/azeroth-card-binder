@@ -50,13 +50,14 @@ export async function checkTape(args: {
   const owned = new Set(Object.keys(args.stateBefore.shiny));
   let lastTape = args.stateBefore.lastTape;
   let editions = args.stateBefore.editions === true;
-  let balanced = args.stateBefore.balance === 1;
+  let balanced: false | number = (args.stateBefore.balance ?? 0) >= 1 ? (args.stateBefore.balance as number) : false; // the drop generation (1 or 2)
   let tiered = args.stateBefore.tieredPacks === true;
   let zone = args.stateBefore.packZone ?? ""; // the zone of the pack being opened (it can span two uploads)
   const entryAt = (position: number): Promise<string> => tapeEntry(args.key, args.playerId, position);
   for (const [index, event] of args.events.entries()) {
     if (event.kind === "mode" && event.key === "packs2") { tiered = true; continue; }
-    if (event.kind === "mode" && event.key === "chase1") { balanced = true; continue; }
+    if (event.kind === "mode" && event.key === "chase1") { balanced = 1; continue; }
+    if (event.kind === "mode" && event.key === "chase2") { balanced = 2; continue; }
     if (event.kind === "mode" && event.key === "editions1") { editions = true; continue; }
     if (event.kind === "mode" && event.key === "ranked2") {
       stack = {};

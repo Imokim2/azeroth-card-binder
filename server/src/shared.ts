@@ -7,7 +7,7 @@ import * as editions from "../../packages/shared/src/editions.js";
 export type Catalog = {
   catalogVersion: string;
   cards: Record<string, { name: string; rarity: string; rank: string; set: string; boss?: boolean; profession?: string; baseKey?: string; editionTitle?: string;
-    critter?: boolean; balanceOnly?: boolean; dropProfile?: { rate: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
+    critter?: boolean; balanceOnly?: boolean; dropProfile?: { rate: number; rate2?: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
   editions?: Record<string, { key: string; weight: number }[]>;
   sets: { code: string; title: string; group: string; reward: string; cards: string[] }[];
   dust: { recycle: Record<string, number>; craft: Record<string, number> };
@@ -60,7 +60,7 @@ export const packTier = packs.packTier as (entry: string, shinyOdds: number) => 
 export const baseCardKey = editions.baseKey as (catalog: Catalog, key: string) => string;
 export const editionKeys = editions.editionKeys as (catalog: Catalog, key: string) => string[];
 export const familyCount = editions.familyCount as (catalog: Catalog, counts: Record<string, number>, key: string) => number;
-export const pickEdition = editions.pickEdition as (catalog: Catalog, key: string, roll: number, balanced?: boolean) => string;
+export const pickEdition = editions.pickEdition as (catalog: Catalog, key: string, roll: number, balanced?: boolean | number) => string;
 // 1 on the attempts that found a pack; the card a tape entry gives from a zone's pack, or null for an unknown zone.
 export const packValue = packs.packValue as (entry: string, shinyOdds: number) => number;
-export const packPick = packs.packPick as (catalog: Catalog, zone: string, entry: string, shinyOdds: number, balanced?: boolean) => string | null;
+export const packPick = packs.packPick as (catalog: Catalog, zone: string, entry: string, shinyOdds: number, balanced?: boolean | number) => string | null;

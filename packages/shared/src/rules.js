@@ -37,7 +37,7 @@ const copyState = (state) => ({
     packs: { ...(state.packs || {}) }, packZone: state.packZone || "", packLeft: state.packLeft || 0, packFound: state.packFound || 0,
     lastAttempt: { key: (state.lastAttempt && state.lastAttempt.key) || "", tape: (state.lastAttempt && state.lastAttempt.tape) || 0 },
     ...(state.editions === true ? { editions: true } : {}),
-    ...(state.balance === 1 ? { balance: 1, balanceAttempts: { ...(state.balanceAttempts || {}) },
+    ...(state.balance >= 1 ? { balance: state.balance, balanceAttempts: { ...(state.balanceAttempts || {}) },
         balanceDrops: { ...(state.balanceDrops || {}) }, balanceReady: { ...(state.balanceReady || {}) } } : {}),
     ...(state.packOutputs ? { packOutputs: Object.fromEntries(Object.entries(state.packOutputs).map(([zone, cards]) => [zone, { ...cards }])) } : {}),
     ...(state.packType ? { packType: state.packType } : {}),
@@ -59,7 +59,7 @@ function applyEvent(state, event, catalog, strict = false) {
     if (isCardEvent && !card && !packTrade) return "unknown-card";
     if (card && card.baseKey && (event.kind === "miss" || event.kind === "craft")) return "edition";
     if (card && card.baseKey && !state.editions && (event.kind === "drop" || event.kind === "packCard")) return "edition";
-    if (card && card.balanceOnly && state.balance !== 1 && (event.kind === "drop" || event.kind === "packCard")) return "balance";
+    if (card && card.balanceOnly && !(state.balance >= 1) && (event.kind === "drop" || event.kind === "packCard")) return "balance";
     // Only a drop may be shiny; only a drop, a miss or the switch into ranked2 may use the tape; only a recycle or a craft moves dust.
     const usesTape = event.kind === "drop" || event.kind === "miss" || event.kind === "packFind" || event.kind === "packOpen" || event.kind === "packCard"
         || (event.kind === "mode" && event.key === "ranked2");
@@ -157,7 +157,7 @@ function applyEvent(state, event, catalog, strict = false) {
             break;
         }
         case "craft": {
-            if (state.balance === 1 && card.dropProfile?.noCraft) return "craft";
+            if (state.balance >= 1 && card.dropProfile?.noCraft) return "craft";
             if (before !== 0 || event.count !== 1) return "craft";
             if (event.dust !== -catalog.dust.craft[card.rarity]) return "dust";
             break;
@@ -196,8 +196,16 @@ function applyEvent(state, event, catalog, strict = false) {
                 break;
             }
             if (event.key === "chase1") {
-                if (event.count !== 0 || state.balance === 1) return "mode";
+                if (event.count !== 0 || state.balance >= 1) return "mode";
                 state.balance = 1;
+                state.balanceAttempts = {}; state.balanceDrops = {}; state.balanceReady = {};
+                break;
+            }
+            if (event.key === "chase2") {
+                // The second drop generation (rates in dropProfile.rate2). Only after chase1, once. Miss runs carry over; the luck statistics
+                // start afresh, because the chances they compare against have changed.
+                if (event.count !== 0 || state.balance !== 1) return "mode";
+                state.balance = 2;
                 state.balanceAttempts = {}; state.balanceDrops = {}; state.balanceReady = {};
                 break;
             }
@@ -221,7 +229,7 @@ function applyEvent(state, event, catalog, strict = false) {
         default:
             return "kind";
     }
-    if (state.balance === 1 && event.tape > 0 && (event.kind === "drop" || event.kind === "miss")) {
+    if (state.balance >= 1 && event.tape > 0 && (event.kind === "drop" || event.kind === "miss")) {
         const source = card.baseKey || event.key;
         // The first cycle may have inherited old pity. Start statistics after its
         // first drop, so only complete cycles under this policy are compared.

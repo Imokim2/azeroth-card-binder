@@ -15,7 +15,7 @@ import { integrityFlags } from "./integrity.ts";
 import { seasonalCandidates } from "./seasons.ts";
 import type { SqlSeasons } from "./seasons.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7]; // 7 adds server-authorised seasonal pack rewards
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8]; // 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates)
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -104,8 +104,12 @@ export async function acceptUpload(
     ((event["kind"] === "packFind" || event["kind"] === "packOpen") && String(event["key"]).includes(":"))))) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
-  if (upload.specVersion < 5 && (stored.state.balance === 1 || events.some((event) =>
+  if (upload.specVersion < 5 && ((stored.state.balance ?? 0) >= 1 || events.some((event) =>
     (event["kind"] === "mode" && event["key"] === "chase1") || deps.catalog.cards[String(event["key"])]?.balanceOnly))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
+  // A binder on the second drop generation (mode/chase2) can only be uploaded by a companion that knows its rates.
+  if (upload.specVersion < 8 && ((stored.state.balance ?? 0) >= 2 || events.some((event) => event["kind"] === "mode" && event["key"] === "chase2"))) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
   // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.

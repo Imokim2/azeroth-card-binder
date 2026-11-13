@@ -80,7 +80,8 @@ async function sendWithRetries(options: PublicClientOptions, path: string, body?
 
 async function uploadBody(options: ClientOptions, binder: Binder, events: BinderEvent[]): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {
-    specVersion: events.some(event => event.kind === "seasonReward") ? 7 : 6, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
+    // Spec 8 adds mode/chase2 (the second set of drop rates); 7 added seasonal rewards. The server refuses a binder that needs more than it is told.
+    specVersion: 8, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
     realm: binder.character?.realm ?? "Unknown", schema: binder.schema, catalogVersion: options.catalogVersion,
     events, snapshot: binder.snapshot, tapeIndex: binder.tapeNext, sentAt: options.now(),
   };

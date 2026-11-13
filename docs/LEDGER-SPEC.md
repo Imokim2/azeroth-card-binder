@@ -1,6 +1,6 @@
 # Ledger specification
 
-Version 7. Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 8. Version 8 adds `mode/chase2` (the second set of drop rates, below). Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
 
 ## Seasonal rewards (version 7)
 
@@ -17,6 +17,14 @@ Trade-only keys `pack:<pack-ID>` are allowed in `tradeIn` and `tradeOut`. Their 
 Replay uses `packType` to remember the full ID of an opened pack, and `packLeft` is 1, 3 or 5. When a pack is received, it initializes `packOutputs[pack-ID]`, then records subsequent packCard counts of that type. Pending, unmatched, Casual-origin or otherwise tainted pack trades exclude those outputs for Ranked scoring. Maintenance traces taint from packs to their opened cards and subsequent trades; when an honest pending pair matches, its outputs count again. This deliberately over-excludes when found and traded packs of the same type are mixed. Casual packFind events also constitute unverified provenance, even if they never drop a card or are traded before opening. Local integrity checks still cover card counts and dust; server replay is authoritative for pack counts.
 
 Specification 6 is required for `packs2`, tiered pack find/open IDs and pack trade keys; a collection that has used these cannot sync with an older companion. Legacy versions 2–5 remain replayable. See `satchel.json` and the Lua vectors for pack boundary/gift examples.
+
+## Drop balance version 2
+
+`mode/chase2` has count, dust, shiny and tape zero. It is valid only after `mode/chase1` and only once; it sets `balance=2`. From then on the chance of an attempt uses `dropProfile.rate2` where version 1 used `dropProfile.rate`; everything else (the style and its formulas, pack weights, crafting restrictions, edition and shiny draws) is unchanged. Events before `chase2` are checked at the version 1 rates, so every history written before this version replays exactly as it did. Miss counts carry over. The luck statistics (`balanceAttempts`, `balanceDrops`, `balanceReady`) start empty at `chase2`, so the first drop of each source afterwards is skipped and later cycles are compared against the new chances.
+
+The catalog carries both: `dropProfile.rate` (version 1, never changed) and `dropProfile.rate2`. `rate2` is **four times `rate` for critters** (capped at 10000), **`round(rate x 1.2)` for ordinary cards** (the regular and uncommon tiers and chase cards on ordinary creatures), and **equal to `rate` for chase cards on limited sources** (bosses, rare spawns, gathering and epics, which use stacking). A critter's protection ramp moves with its rate: it is guaranteed on attempt `ceil(10000/rate2)`.
+
+The add-on writes `chase1` (if the binder has not) and then `chase2` before its first roll after upgrading, after writing any run of misses at the old rates. A server must refuse an upload that contains `chase2`, or a binder already on generation 2, unless the upload's `specVersion` is at least 8 (`client_too_old`), including empty syncs. Vectors: `packages/shared/vectors/balance.json` (`balanced2`).
 
 ## Drop balance version 1
 
