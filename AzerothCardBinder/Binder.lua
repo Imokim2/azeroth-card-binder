@@ -35,19 +35,25 @@ function ACB.initUI(saved, trade)
     local wantedView = ACB.createWantedView(frame, saved)
     local seasonsView = ACB.createSeasonsView(frame, saved)
 
-    local invite = window("AzerothCardBinderTradeNotice", 360, 142, "Incoming trade")
+    local invite = window("AzerothCardBinderTradeNotice", 360, 198, "Incoming trade")
     invite:ClearAllPoints()
     invite:SetPoint("TOP", UIParent, "TOP", 0, -95)
     invite:SetFrameStrata("FULLSCREEN_DIALOG")
     local inviteText = label(invite, "GameFontHighlight", 24, 49, parchment, "")
     inviteText:SetWidth(312)
-    inviteText:SetHeight(36)
+    inviteText:SetHeight(100)
     inviteText:SetWordWrap(true)
     local invitePeer, inviteTime
-    invite.accept = button(invite, "Accept invitation", 24, 100, 145, function()
-        if ACB.prepareTrade(invitePeer, nil, true) ~= false then invite:Hide() end
+    invite.accept = button(invite, "Accept invitation", 24, 162, 145, function()
+        if ACB.prepareTrade(invitePeer, nil, true) ~= false then invite:Hide()
+        else
+            inviteTime = 0
+            inviteText:SetText(trade.status)
+            ACB.say(trade.status)
+            ACB.refresh()
+        end
     end)
-    invite.decline = button(invite, "Decline", 183, 100, 145, function() trade:cancel(); invite:Hide(); ACB.refresh() end)
+    invite.decline = button(invite, "Decline", 183, 162, 145, function() trade:cancel(); invite:Hide(); ACB.refresh() end)
     function ACB.notifyTrade(peer, gift)
         invitePeer, inviteTime = peer, 0
         inviteText:SetText(peer .. (gift and " sent you a gift." or " wants to trade cards or packs."))

@@ -6,6 +6,13 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.2 - 2026-11-13
+
+- Fix nearby gifts/trades being refused when Forever's interaction-distance check reports false despite a valid nearby distance. Prefer a checked distance reading or same-instance world positions in that case; actual out-of-range players are still refused.
+- Show blocked invitation reasons inside the invitation popup and in chat, with time to retry. Diagnostics now record invitation/acceptance blockers.
+- Resolve nearby party/raid partners after changing targets, and handle clients that return a complete two-part character name alongside a realm.
+- Existing collections, trades and the companion app remain compatible.
+
 ## 1.0.1 - 2026-11-13
 
 - Wider action framing for base cards, including rare/epic/legendary signatures; deliberately tight critter editions and selected boss variants keep their close-ups.

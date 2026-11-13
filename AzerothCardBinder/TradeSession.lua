@@ -73,10 +73,15 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         if not s or s.closed or s.cancelPending then return false end
         if not s.invited then return true end
         local ok, why = allowed(s.peer)
-        if not ok then self.status = why return false end
+        if not ok then
+            self.status = why or "Target your trade partner and move closer, then accept the invitation again."
+            if ACB.tradeDiagnostic then ACB.tradeDiagnostic("invitation blocked: " .. self.status) end
+            return false
+        end
         s.invited, s.connected, s.expires = nil, true, now() + 120
         self.status = s.gift and "Check the gift, then click Accept." or "Click your item slot to choose a card."
-        offer(s)
+        local sent = offer(s)
+        if ACB.tradeDiagnostic then ACB.tradeDiagnostic(sent and ("invitation joined; reply sent to " .. s.peer) or self.status) end
         return true
     end
 
@@ -85,7 +90,11 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         if old and not old.applied and not old.closed then return end
         if not peer or not owns(key) or (gift and not key) then self.status = "Choose a player and an item first." return end
         local ok, why = allowed(peer)
-        if not ok then self.status = why return end
+        if not ok then
+            self.status = why or "Target your trade partner and move closer, then start the trade again."
+            if ACB.tradeDiagnostic then ACB.tradeDiagnostic("start blocked: " .. self.status) end
+            return
+        end
         local s = { modern = true, initiator = true, peer = peer, id = makeID(), give = key, gift = gift == true,
             revision = 1, theirRevision = 0, expires = now() + 120 }
         self.session = s
@@ -126,7 +135,11 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         if not s then return legacyConfirm(self) end
         if not self:canAccept() then return end
         local ok, why = allowed(s.peer)
-        if not ok then self.status = why return end
+        if not ok then
+            self.status = why or "Target your trade partner and move closer, then click Accept again."
+            if ACB.tradeDiagnostic then ACB.tradeDiagnostic("accept blocked: " .. self.status) end
+            return
+        end
         s.sentConfirm, s.expires = true, math.huge
         self.status = "You accepted. Waiting for the other player."
         if not transmit(s, packet(s, "A")) then s.sentConfirm = nil return end

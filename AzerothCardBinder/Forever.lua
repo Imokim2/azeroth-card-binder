@@ -13,6 +13,7 @@ local function log(message)
     if #diagnostics == 80 then table.remove(diagnostics, 1) end
     diagnostics[#diagnostics + 1] = ("%7.1f  %s"):format(GetTime(), message)
 end
+ACB.tradeDiagnostic = function(message) log("Trade: " .. message) end
 
 local function report(message)
     print("|cffe8bc6bWorld of Warcards|r  " .. message)
@@ -290,7 +291,7 @@ function ACB.tradePeer(text)
     local peer = normalizePeer(text)
     local name, realm = UnitFullName("player")
     name, realm = read(name, "string"), read(realm, "string")
-    local own = name and normalizePeer(realm and realm ~= "" and (name .. "-" .. realm) or name)
+    local own = name and normalizePeer(name:find("%s") and name or realm and realm ~= "" and (name .. "-" .. realm) or name)
     if own and peer and peer ~= own then return peer end
 end
 
