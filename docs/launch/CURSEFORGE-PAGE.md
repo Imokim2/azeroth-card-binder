@@ -15,31 +15,33 @@ Collect cards from mobs, dungeon bosses and gathering nodes as you play. Browse 
 
 Find cards across different zones and dungeons. Your binder shows the cards you own, the cards you’re missing and the spare copies you can trade.
 
-![Binder screenshot placeholder — replace before submission](../media/gallery/binder.png)
+![The collection index with an undiscovered Wiry Swoop card selected](../media/gallery/binder.png)
 
 ## Open packs
 
 Keep sealed zone packs in the Warcards Satchel. Common packs hold one card, Rare packs three and Epic packs five. Right-click a pack to open it and turn the cards over to see what’s inside.
 
-![Pack screenshot placeholder — replace before submission](../media/gallery/packs.png)
+![The Warcards Satchel, shown empty before any packs have been found](../media/gallery/satchel.png)
+
+<!-- Still needed: a real pack-opening capture with cards being revealed. -->
 
 ## Trade with friends
 
 Right-click another player and choose **Trade cards or packs**. Swap a card or sealed pack for something you’re missing, or send a gift. The other player accepts the invitation, then both players review and accept the final offer.
 
-![Trade screenshot placeholder — replace before submission](../media/gallery/trading.png)
+![The card trade window with a Dragonmaw Bonewarder offered](../media/gallery/trading.png)
 
 ## Collect alternate editions
 
 Some cards have different poses and animations to collect alongside their original edition.
 
-![Variants screenshot placeholder — replace before submission](../media/gallery/variants.png)
+<!-- Still needed: an actual alternate-edition comparison screenshot. -->
 
 ## Achievements and titles
 
 Complete sets and earn titles that other players using the addon can see.
 
-![Achievements screenshot placeholder — replace before submission](../media/gallery/achievements.png)
+![Collection achievements showing card and set progress](../media/gallery/achievements.png)
 
 ## Seasonal collections
 
@@ -54,6 +56,8 @@ Some cards are held back from the launch collection and return through seasons. 
 Enable **World of Warcards** in the character screen’s AddOns list, then click the minimap button or type `/acb` to open your binder.
 
 You can collect in **Casual** mode with the addon alone. **Ranked** play and online syncing use the separate Windows companion app. The companion syncs saved files after a reload or logout; it does not automate play.
+
+![The Windows companion app with a synced Ranked binder](../media/gallery/companion.png)
 
 When upgrading for Ranked play, update the companion before the addon. Keep your saved data: installing an update does not mean starting a new binder.
 
