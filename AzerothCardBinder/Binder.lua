@@ -152,6 +152,9 @@ function ACB.initUI(saved, trade)
             tradeView:refresh()
             return
         end
+        -- The two windows have raised card/model children; do not leave the
+        -- trade underneath ordinary binder pages where those layers can show through.
+        tradeView:Hide()
         if not frame:IsShown() and ACB.playSound then ACB.playSound("binder") end
         if tabs[destination] then
             mode = destination
@@ -180,6 +183,7 @@ function ACB.initUI(saved, trade)
     function ACB.selectTradeCard(choose, allowed, key)
         if not allowed() then return false end
         if tradeSelection then endTradeSelection() end
+        tradeView:Hide()
         tradeSelection = { allowed = allowed, level = frame:GetFrameLevel() }
         collectionView:setTradePicker(function(cardKey)
             if not tradeSelection or not allowed() or (saved.counts[cardKey] or 0) == 0 then return false end

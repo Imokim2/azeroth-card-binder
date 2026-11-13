@@ -246,12 +246,12 @@ test("index searches categories and opens sets beyond the original tabs", functi
     end
 
     button("Index"):OnClick()
-    equal(button("More").enabled, true)
+    equal(button("Next").enabled, true)
     local search = findWidget(function(widget) return widget.OnTextChanged ~= nil end)
     search:SetText("Test Set")
     search:OnTextChanged()
-    equal(button("More").enabled, true)
-    button("More"):OnClick()
+    equal(button("Next").enabled, true)
+    button("Next"):OnClick()
     equal(indexRow("Test Set 12"):IsShown(), true)
     indexRow("Test Set 12"):OnClick()
     equal(button("Collection").enabled, false)
@@ -265,7 +265,7 @@ test("index searches categories and opens sets beyond the original tabs", functi
     search = findWidget(function(widget) return widget.OnTextChanged ~= nil end)
     search:SetText(" ZoNe ")
     search:OnTextChanged()
-    equal(button("More").enabled, true) -- many zones, listed over several pages
+    equal(button("Next").enabled, true) -- many zones, listed over several pages
     search:SetText("Westfall")
     search:OnTextChanged()
     equal(indexRow("Westfall"):IsShown(), true)

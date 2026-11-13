@@ -54,7 +54,7 @@ local function createIndex(parent, saved, selectSet, openCard)
         index:showSets(activeSet)
     end
     local back = turnButton(index, 23, "Previous", function() turn(-1) end)
-    local more = turnButton(index, 353, "More", function() turn(1) end)
+    local more = turnButton(index, 353, "Next", function() turn(1) end)
     local pageLabel = text(index, 105, 461, "", 12, SEPIA, 240, "CENTER")
     index:EnableMouseWheel(true)
     index:SetScript("OnMouseWheel", function(_, delta) turn(delta > 0 and -1 or 1) end)
