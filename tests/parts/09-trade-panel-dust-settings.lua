@@ -51,6 +51,8 @@ test("the simple Trade panel filters whispers and moves cards only after both ac
     equal(saved.tradeCount, tradesBefore + 1)
     equal(saved.counts[give] or 0, before - 1)
     equal(saved.counts["npc:573"], takeBefore + 1)
+    equal(ACB.tradeView:IsShown(), false, "a completed trade closes its window")
+    equal(c.mine.frame:IsShown(), false, "the offered card is cleared from view")
     saved.tradeRange = range
     ACB.tradeDistanceOk = oldDistance
 end)

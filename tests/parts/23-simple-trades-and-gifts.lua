@@ -217,6 +217,7 @@ test("the card slot opens a binder selection and the offered card represents jus
 end)
 
 test("a gift invitation opens the window with an empty local side and an Accept button", function()
+    local realPrepare = ACB.prepareTrade
     local saved = { counts = {}, shiny = {}, history = {} }
     local trade = ACB.newTrade(saved.counts, function() return 10 end, function() return "ui-gift" end,
         function() return true end, function() return true end)
@@ -230,4 +231,59 @@ test("a gift invitation opens the window with an empty local side and an Accept 
     view.controls.accept:OnClick()
     equal(view.controls.accept.text, "Accepted")
     view.controls.picker:Hide()
+    ACB.prepareTrade = realPrepare
+end)
+
+test("completed gifts close both trade views without discarding replay protection", function()
+    local realPrepare = ACB.prepareTrade
+    local mine, theirs = { ['npc:639'] = 1 }, {}
+    local a, b, messages, _, calls = peers(mine, theirs)
+    local av = ACB.createTradeView(UIParent, { counts = mine, shiny = {}, history = {} }, a)
+    local bv = ACB.createTradeView(UIParent, { counts = theirs, shiny = {}, history = {} }, b)
+    a:start('bob-realm', 'npc:639', true)
+    av:Show(); bv:Show(); av:refresh(); bv:refresh()
+    b:confirm(); bv:refresh()
+    equal(av:IsShown(), true)
+    equal(bv:IsShown(), true, 'a single acceptance must not close an unfinished gift')
+    a:confirm(); av:refresh(); bv:refresh()
+    equal(av:IsShown(), false)
+    equal(bv:IsShown(), false)
+    equal(av.controls.mine.frame:IsShown(), false)
+    equal(bv.controls.mine.frame:IsShown(), false)
+    equal(av.controls.accept.enabled, false)
+    equal(bv.controls.accept.enabled, false)
+    equal(av.controls.partner:GetText(), '')
+    equal(bv.controls.partner:GetText(), '')
+    equal(a.session.applied, true, 'the protocol session stays available for final/ack retries')
+    equal(b.session.applied, true)
+    local final
+    for _, message in ipairs(messages) do if message:sub(1, 2) == 'F|' then final = message break end end
+    assert(final)
+    b:receive('alice-realm', final)
+    equal(calls[1], 1)
+    equal(calls[2], 1, 'a late final packet cannot duplicate a hidden completed gift')
+    ACB.prepareTrade = realPrepare
+end)
+
+test("ordinary binder pages and the card picker hide every trade-window layer", function()
+    ACB.prepareTrade('bob-realmname')
+    equal(ACB.tradeView:IsShown(), true)
+    ACB.open('achievements')
+    equal(AzerothCardBinderWindow:IsShown(), true)
+    equal(ACB.tradeView:IsShown(), false)
+    ACB.open('trade')
+    equal(ACB.tradeView:IsShown(), true)
+    assert(ACB.selectTradeCard(ignore, function() return true end))
+    equal(AzerothCardBinderWindow:IsShown(), true)
+    equal(ACB.tradeView:IsShown(), false, 'the picker must not leave raised trade cards behind its page')
+    local back
+    for _, widget in ipairs(widgets) do
+        if widget.parent == AzerothCardBinderWindow and widget.text == 'Back to trade' and widget.OnClick then back = widget break end
+    end
+    assert(back)
+    back:OnClick()
+    equal(AzerothCardBinderWindow:IsShown(), false)
+    equal(ACB.tradeView:IsShown(), true, 'returning from selection restores the trade')
+    ACB.open('index')
+    equal(ACB.tradeView:IsShown(), false)
 end)

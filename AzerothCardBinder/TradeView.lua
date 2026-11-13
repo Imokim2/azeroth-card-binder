@@ -154,6 +154,23 @@ function ACB.createTradeView(parent, saved, trade)
 
     function view:refresh()
         local s = trade:active()
+        if s and s.applied then
+            -- Keep the protocol session for duplicate final/ack packets, but
+            -- remove the completed offer and its raised model frames from view.
+            selected, showHistory = nil, false
+            picker:Hide()
+            historyPanel:Hide()
+            partner:SetText("")
+            accept:SetEnabled(false)
+            mine.card.frame:Hide()
+            theirs.card.frame:Hide()
+            mine.pack.frame:Hide()
+            theirs.pack.frame:Hide()
+            mine.frame:SetBackdropBorderColor(unpack(kit.goldDark))
+            theirs.frame:SetBackdropBorderColor(unpack(kit.goldDark))
+            view:Hide()
+            return
+        end
         local live = s ~= nil and s.modern and not s.closed
         if live then partner:SetText(s.peer:gsub("%-", " ")) end
         if s and s.modern then gift = s.gift end

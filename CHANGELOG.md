@@ -6,6 +6,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.3 - 2026-11-13
+
+- Close the trade window and clear its displayed offers after a completed trade or gift. Keep the completed protocol session available for final-message retries so transfers cannot be duplicated.
+- Hide the trade window while viewing ordinary binder pages or picking a card, preventing accepted borders, controls and models from showing through the binder. Returning from card selection restores the trade.
+- Rename the binder index navigation to Previous and Next.
+
 ## 1.0.2 - 2026-11-13
 
 - Fix nearby gifts/trades being refused when Forever's interaction-distance check reports false despite a valid nearby distance. Prefer a checked distance reading or same-instance world positions in that case; actual out-of-range players are still refused.
