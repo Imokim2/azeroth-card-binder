@@ -22,6 +22,7 @@ Tape.lua
 Collection.lua
 Kills.lua
 Packs.lua
+Seasons.lua
 Trade.lua
 TradeSession.lua
 Range.lua
@@ -55,6 +56,7 @@ SoundSettingsView.lua
 SettingsView.lua
 LeaderboardView.lua
 WantedView.lua
+SeasonsView.lua
 PackView.lua
 SatchelSkin.lua
 Satchel.lua

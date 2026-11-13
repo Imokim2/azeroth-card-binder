@@ -1,20 +1,12 @@
 local _, ACB = ...
 
--- Another player's binder, read-only: the same pages as your own binder, filled from the cards they sent. The Wanted tab
--- lists what they are looking for; **Trade** on one of those cards (that you own) is how a swap starts: you give that
--- card, then pick the card you want in return from their binder, and they are sent the offer (Trade.lua).
+-- Another player's binder and wanted cards, read-only. New trades begin in the player's right-click menu.
 function ACB.initInspector(saved, report, now, after)
     local kit = ACB.uiKit
     local inspector = kit.window("AzerothCardBinderInspect", 940, 644, "Binder", true)
     local seen = { counts = {}, shiny = {}, wanted = {}, achievements = {}, attempts = {}, misses = {}, dust = 0 }
     local currentSet, showingIndex = 1, false
-    local picking -- { give = key } while you are choosing a card of theirs in return for one of yours
-    local folio, tradeButton, summary, drawSummary, wantedPanel, highlight
-
-    local function stopPicking()
-        picking = nil
-        if tradeButton then tradeButton:SetText("Offer a trade") end
-    end
+    local folio, summary, drawSummary, wantedPanel, highlight
 
     -- "bob-realmname" is shown the way the game writes the name: "Bob Realmname".
     local function displayName(peer)
@@ -26,24 +18,9 @@ function ACB.initInspector(saved, report, now, after)
         folio:showRegion(currentSet, false)
     end, {
         mine = function() return saved.counts end,
-        -- While you are choosing, the selected card of theirs gets a button that sends the offer.
-        buttonLabel = function()
-            return picking and ("Get this one for my %s"):format(ACB.cards[picking.give].name) or nil
-        end,
-        offer = function(entry)
-            if not (picking and inspector.peer and entry) then return end
-            local peer, give = inspector.peer, picking.give
-            stopPicking()
-            -- The trade opens on their side by itself, giving your card; the card you picked is asked for in chat, so they
-            -- know what you would like back.
-            ACB.startTrade(peer, give)
-            if ACB.askForCard then ACB.askForCard(peer, entry) end
-            inspector:Hide()
-            if ACB.prepareTrade then ACB.prepareTrade(peer) end
-        end,
     })
 
-    -- What they are looking for, as a list over the pages, each with a Trade button.
+    -- What they are looking for, with links to the matching card in your own binder.
     wantedPanel = CreateFrame("Frame", nil, inspector, "BackdropTemplate")
     wantedPanel:SetPoint("TOPLEFT", 20, -109)
     wantedPanel:SetSize(900, 515)
@@ -70,27 +47,6 @@ function ACB.initInspector(saved, report, now, after)
 
     local ROW = 40
     local rows = {}
-    local function startPicking(key)
-        local peer = inspector.peer
-        if not peer or (saved.counts[key] or 0) < 1 then return end
-        local theirs = 0
-        for _, count in pairs(seen.counts) do
-            if count > 0 then theirs = theirs + 1 end
-        end
-        if theirs == 0 then
-            report(displayName(peer) .. " has no cards in their binder to trade for.")
-            return
-        end
-        picking = { give = key }
-        tradeButton:SetText("Cancel pick")
-        wantedPanel:Hide()
-        showingIndex = false
-        highlight("collection")
-        drawSummary()
-        folio:showRegion(currentSet, false)
-        report(("Pick the card you want from %s's binder for your %s, then press the button on its panel."):format(
-            displayName(peer), ACB.cards[key].name))
-    end
     local function rowFor(index)
         local row = rows[index]
         if not row then
@@ -100,7 +56,7 @@ function ACB.initInspector(saved, report, now, after)
             row.text:SetWidth(690)
             row.text:SetJustifyH("LEFT")
             row.text:SetTextColor(unpack(kit.parchment))
-            row.button = kit.button(body, "Trade", 700, (index - 1) * ROW + 2, 110, function() startPicking(row.key) end)
+            row.button = kit.button(body, "View card", 700, (index - 1) * ROW + 2, 110, function() ACB.openCard(row.key) end)
             rows[index] = row
         end
         return row
@@ -114,7 +70,7 @@ function ACB.initInspector(saved, report, now, after)
         for _, key in ipairs(heard and heard.cards or {}) do
             if ACB.cards[key] then keys[#keys + 1] = key end
         end
-        wantedNote:SetText(#keys > 0 and "Press Trade on a card you own to give it, then pick a card of theirs in return."
+        wantedNote:SetText(#keys > 0 and "View a card in your binder. To trade, right-click this player and choose Trade cards or packs."
             or heard and "They are not looking for any card."
             or "Their list has not arrived. Close this window and view their binder again in a few seconds.")
         for index, key in ipairs(keys) do
@@ -127,7 +83,7 @@ function ACB.initInspector(saved, report, now, after)
                 ACB.rarities[card.rarity].name, note))
             row.text:Show()
             row.button:Show()
-            row.button:SetEnabled(mine >= 1)
+            row.button:SetEnabled(true)
         end
         for index = #keys + 1, #rows do
             rows[index].text:Hide()
@@ -180,19 +136,6 @@ function ACB.initInspector(saved, report, now, after)
         report(ok and ("Report about %s saved. The companion app sends it the next time it syncs."):format(inspector.peer) or problem)
     end)
 
-    -- The trade window, with this player already entered (for a swap made by hand). While you are choosing a card, the
-    -- same button cancels the choice.
-    tradeButton = kit.button(inspector, "Offer a trade", 30 + 4 * 127, 78, 116, function()
-        if picking then
-            stopPicking()
-            drawSummary()
-            folio:showRegion(currentSet, showingIndex)
-        elseif inspector.peer and ACB.prepareTrade then
-            ACB.prepareTrade(inspector.peer)
-            inspector:Hide()
-        end
-    end)
-
     -- How many cards they have, and what could be swapped.
     summary = inspector:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     summary:SetPoint("TOPLEFT", inspector, "TOPLEFT", 700, -80)
@@ -200,10 +143,6 @@ function ACB.initInspector(saved, report, now, after)
     summary:SetJustifyH("RIGHT")
     summary:SetTextColor(unpack(kit.brass))
     function drawSummary()
-        if picking then
-            summary:SetText(("Giving your %s.\nPick a card of theirs."):format(ACB.cards[picking.give].name))
-            return
-        end
         local owned, total = 0, 0
         for index = 1, #ACB.pages do
             local have, cards = ACB.progress(seen.counts, index)
@@ -229,7 +168,6 @@ function ACB.initInspector(saved, report, now, after)
         inspector.heading:SetText(displayName(peer) .. "'s Binder" .. (ACB.isVerified(peer) and " (verified)" or ""))
         if not sameBinder then
             currentSet, showingIndex = firstStartedSet(counts), false
-            stopPicking()
             wantedPanel:Hide()
             highlight("collection")
         end

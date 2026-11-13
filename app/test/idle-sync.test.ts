@@ -13,6 +13,7 @@ import type { PassReport } from "../src/engine.ts";
 import { describeInstall, writeFileAtomic } from "../src/files.ts";
 import { loadOrCreateIdentity } from "../src/identity.ts";
 import { syncFileText } from "../src/syncFile.ts";
+import { SqlSeasons } from "../../server/src/seasons.ts";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const flush = () => new Promise<void>((resolve) => setImmediate(resolve));
@@ -57,6 +58,27 @@ async function fixture() {
     playerId: () => registered.playerId, advance(seconds: number) { stamp += seconds; },
     cleanup: () => rm(folder, { recursive: true, force: true }) };
 }
+
+test("seasonal data is paired to a synced binder and cached between saves without idle requests", { timeout: 30_000 }, async () => {
+  const f = await fixture();
+  try {
+    const seasons = new SqlSeasons(f.env.db, catalog);
+    f.env.deps.seasons = seasons;
+    await seasons.schedule({ id: "first-hunt", title: "First Hunt", startsAt: NOW + 60, endsAt: NOW + 600,
+      selection: { mode: "manual", cards: ["npc:589"] } }, NOW);
+    const nonce = "b".repeat(32);
+    const source = await readFile(f.saved, "utf8");
+    await writeFile(f.saved, source.replace("AzerothCardBinderDB = {", 'AzerothCardBinderDB = { ["modeSetupID"] = "' + nonce + '",'));
+    const engine = new Engine({ install: f.install, client: f.client, playerId: f.playerId });
+    assert.equal((await engine.syncOnce({ saved: true })).wroteSync, true);
+    const sync = await readFile(f.install.syncPath, "utf8");
+    assert.ok(sync.includes("first-hunt")); assert.ok(sync.includes(nonce));
+    assert.ok(f.calls.includes("POST /v1/seasons"));
+    const count = f.calls.length;
+    await engine.syncOnce();
+    assert.equal(f.calls.length, count, "cached seasonal data adds no polling or idle requests");
+  } finally { await f.cleanup(); }
+});
 
 test("a blocked sync file repairs itself after folder access returns without extra network polling", { timeout: 30_000 }, async (t) => {
   const f = await fixture(), observed = observe();

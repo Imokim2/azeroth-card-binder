@@ -156,18 +156,10 @@ function ACB.initSlash(saved, tools)
             else
                 ACB.showToast(demo, { count = 1, first = true, shiny = true })
             end
-        elseif cmd == "trade" or cmd == "index" or cmd == "achievements" then
-            local unit = cmd == "trade" and apiValue("boolean", UnitIsPlayer, "target") == true
-            local name, realm
-            if unit then name, realm = UnitFullName("target") end
-            name, realm = read(name, "string"), read(realm, "string")
-            if name and ACB.prepareTrade then
-                ACB.prepareTrade(realm and realm ~= "" and (name .. "-" .. realm) or name)
-            else
-                ACB.open(cmd)
-            end
-        elseif cmd:match("^trade%s+%S") then
-            ACB.prepareTrade(message:match("^%s*%S+%s+(.-)%s*$"))
+        elseif cmd == "trade" or cmd:match("^trade%s+") then
+            report("Right-click a player and choose Trade cards or packs to start a trade or gift.")
+        elseif cmd == "index" or cmd == "achievements" or cmd == "seasons" then
+            ACB.open(cmd)
         elseif cmd == "" then
             ACB.open()
         else

@@ -4,6 +4,11 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- Added seasonal collections alongside Ranked: a shared manual or seeded card list, fixed dates, fresh-acquisition progress, completion rewards for everyone and first-finisher bonuses. The Seasons tab uses the existing binder pages, previews and title system; earned packs go to the normal satchel.
+- Added server-owned, single-use pack reward grants and protocol-7 validation. Old inventory, Casual gains and crafting do not count toward seasons. Verified gains retain their ordinary binder copies. Seasonal sync follows saved-file changes without idle polling, and recovery preserves reward claims and titles.
+- Added an inactive season template, local preview/scheduling tool and deployment/group-test guide in `docs/SEASONS.md`. No live season is created or published by these changes.
+- Seasons replaces Trade in the binder's top row. New trades and gifts begin from **Trade cards or packs** in a player's right-click menu. Removed initiation shortcuts from the inspected binder, Wanted, satchel and slash commands; active offer selection and incoming invitation acceptance remain.
+
 ## Companion 0.4.5 — 2026-11-13 (addon 0.6.4 unchanged)
 
 - Fixed the startup crash in companion 0.4.4. The recovery validator now uses a statically imported TypeScript module that is included in the compiled package. Builds clear old output first.

@@ -9,6 +9,7 @@ import { fromD1 } from "./db.ts";
 import { runMaintenance } from "./maintenance.ts";
 import type { D1Like } from "./db.ts";
 import { SqlStore } from "./sqlStore.ts";
+import { SqlSeasons } from "./seasons.ts";
 import type { Catalog } from "./shared.ts";
 import catalog from "../../packages/shared/catalog.json";
 import bundledRelease from "./releases.json";
@@ -64,6 +65,7 @@ export default {
     const db = fromD1(env.DB);
     const store = new SqlStore(db);
     const handle = createApi({
+      seasons: new SqlSeasons(db, catalog as Catalog),
       players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, admin: store, access: accessFrom(env), rebuild: store, wanted: store, reports: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },
@@ -86,6 +88,7 @@ export default {
   async scheduled(_event: unknown, env: Env): Promise<void> {
     const store = new SqlStore(fromD1(env.DB));
     const result = await runMaintenance({ ingest: store, trades: store, catalog: catalog as Catalog, now: () => Math.floor(Date.now() / 1000) });
+    await new SqlSeasons(fromD1(env.DB), catalog as Catalog).settlePending(Math.floor(Date.now() / 1000));
     log({ level: "info", msg: "maintenance", ...result });
   },
 };

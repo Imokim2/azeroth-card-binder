@@ -6,7 +6,7 @@
 local addon = "AzerothCardBinder"
 local ACB = {}
 for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "DropRates.lua", "Editions.lua", "Achievements.lua",
-    "Hash.lua", "Ledger.lua", "Updates.lua", "Tape.lua", "Collection.lua", "SavedData.lua" }) do
+    "Hash.lua", "Ledger.lua", "Updates.lua", "Tape.lua", "Collection.lua", "Seasons.lua", "SavedData.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 -- The app's file replaces the add-on's stub, exactly as it does in the game folder.

@@ -106,6 +106,12 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       characters: await this.#db.all("SELECT name, realm, first_seen AS firstSeen, last_seen AS lastSeen FROM characters WHERE player_id = ? ORDER BY name, realm", [playerId]),
       binders: [await binder(playerId, false), ...(await Promise.all(archives.map((archive) => binder(archive.id, true))))],
       reportsSent: await this.#db.all("SELECT target_name AS targetName, reason, note, created_at AS createdAt FROM reports WHERE reporter_id = ? ORDER BY created_at", [playerId]),
+      seasonal: {
+        acquisitions: await this.#db.all("SELECT * FROM season_acquisitions WHERE player_id = ?", [playerId]),
+        completions: await this.#db.all("SELECT * FROM season_completions WHERE player_id = ?", [playerId]),
+        grants: await this.#db.all("SELECT * FROM season_grants WHERE player_id = ?", [playerId]),
+        redemptions: await this.#db.all("SELECT * FROM season_redemptions WHERE player_id = ?", [playerId]),
+      },
     };
   }
 
@@ -182,6 +188,17 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
         params: [playerId, first.seq, last.seq, last.h, await gzip(JSON.stringify(commit.events)), commit.receivedAt],
       },
     ];
+    for (const { event, zone } of commit.seasonal?.cards ?? []) {
+      statements.push({ sql: `INSERT OR IGNORE INTO season_acquisitions (season_id, player_id, epoch, seq, card_key, zone, kind, received_at)
+        SELECT s.id, ?, ?, ?, ?, ?, ?, ? FROM seasons s
+        WHERE s.starts_at <= ? AND s.ends_at > ? AND s.starts_at <= ? AND s.ends_at > ?
+        AND EXISTS(SELECT 1 FROM json_each(s.cards_json) c WHERE c.value = ?)`,
+        params: [playerId, commit.seasonal!.epoch, event.seq, event.key, zone, event.kind, commit.receivedAt,
+          event.t, event.t, commit.receivedAt, commit.receivedAt, event.key] });
+    }
+    for (const event of commit.events) if (event.kind === "seasonReward") {
+      statements.push({ sql: "INSERT INTO season_redemptions (grant_id, player_id, seq) VALUES (?, ?, ?)", params: [event.trade, playerId, event.seq] });
+    }
     // Drops are small rows for fast queries. A statement may bind at most 100 values, so 16 rows of 6 per statement.
     const drops = commit.events.filter((event) => event.kind === "drop");
     for (let from = 0; from < drops.length; from += 16) {

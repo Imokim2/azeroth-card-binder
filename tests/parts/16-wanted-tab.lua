@@ -146,7 +146,7 @@ test("the binder view also takes the wanted list that follows the binder, and sh
     assert(not table.concat(ACB.inspectLines({}, {}, mine.counts, mine.wanted, {}), "\n"):find("looking for"))
 end)
 
-test("the Wanted tab shows your list, adds and removes cards, shows what others want and starts a trade from a click", function()
+test("the Wanted tab manages lists and shows others' needs without initiating trades", function()
     local saved = AzerothCardBinderDB
     local keep = { saved.wanted, saved.counts["npc:639"], saved.counts["npc:589"], ACB.sync, ACB.heardWanted, ACB.prepareTrade, saved.counts["npc:573"], ACB.requestWanted }
     saved.wanted, saved.counts["npc:639"], saved.counts["npc:589"], saved.counts["npc:573"] = { ["npc:573"] = true }, nil, 3, nil
@@ -160,11 +160,11 @@ test("the Wanted tab shows your list, adds and removes cards, shows what others 
     -- Your own list, with how to remove a card.
     newestWidget(ACB.cards["npc:573"].name .. "   (click to remove)")
     -- Others: Dave wants a card you have spare, so the summary says so.
-    newestWidget("1 player is looking for cards you have spare. Click a name to offer a trade.")
+    newestWidget("1 player is looking for cards you have spare. Right-click a player to trade.")
     local row = firstWith("dave-realmname (just now): ")
     assert(row.text:find("(you have a spare)", 1, true), row.text)
-    row.parent:OnClick()
-    equal(traded, "dave-realmname")
+    equal(row.parent.OnClick, nil)
+    equal(traded, nil)
     -- Adding a card by name, and the messages when it cannot be added.
     local entry
     for index = #widgets, 1, -1 do

@@ -79,7 +79,7 @@ test("a pack offered in a live trade stays sealed but unreserved spares can stil
     equal(saved.packs.DM, 1)
 end)
 
-test("the satchel pages every zone, shows stacks, selects a trade pack and right-clicks the existing reveal", function()
+test("the satchel pages zones and opens packs while new trades remain in the player menu", function()
     local saved = ACB.cleanSavedData({})
     for _, page in ipairs(ACB.pages) do if page.code then saved.packs[page.code] = 2 end end
     local view = ACB.createSatchel(saved)
@@ -94,8 +94,8 @@ test("the satchel pages every zone, shows stacks, selects a trade pack and right
     local first = view.slots[1].zone
     view.slots[1]:OnClick("LeftButton")
     equal(opened, nil)
-    view.controls.offer:OnClick()
-    equal(offered, "pack:" .. first)
+    equal(view.controls.offer, nil)
+    equal(offered, nil)
     view.slots[1]:OnClick("RightButton")
     equal(opened, first)
     view.controls.more:OnClick()
@@ -108,7 +108,6 @@ test("the satchel pages every zone, shows stacks, selects a trade pack and right
     local n = 0; for _ in pairs(seen) do n = n + 1 end
     equal(n, #ACB.packList(saved))
     saved.packs = {}; view:refresh()
-    equal(view.controls.offer.enabled, false)
     equal(view.slots[1].zone, nil)
     ACB.openPack, ACB.prepareTrade = keepOpen, keepTrade
     view.frame:Hide()

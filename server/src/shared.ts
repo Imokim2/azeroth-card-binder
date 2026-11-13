@@ -34,6 +34,7 @@ export type LedgerState = {
   packOutputs?: Record<string, Record<string, number>>;
   packType?: string;
   tieredPacks?: boolean;
+  seasonClaims?: Record<string, boolean>;
   packs?: Record<string, number>; // packs held, by zone (set code)
   packZone?: string; // the zone of the pack being opened
   packLeft?: number; // cards still to come from it

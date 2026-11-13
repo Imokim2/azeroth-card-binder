@@ -31,24 +31,13 @@ function ACB.createTradeView(parent, saved, trade)
     box:SetSize(640, 480)
     box:SetPoint("TOP", view, "TOP", 0, -64)
     label(box, "GameFontHighlightSmall", 20, 14, kit.muted, "PLAYER")
-    local partner = CreateFrame("EditBox", nil, box, "InputBoxTemplate")
-    partner:SetPoint("TOPLEFT", 78, -4)
-    partner:SetSize(238, 28)
-    partner:SetAutoFocus(false)
-    partner:SetMaxLetters(100)
-    partner:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    partner:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+    local partner = label(box, "GameFontHighlight", 78, 12, kit.parchment, "")
+    partner:SetWidth(350)
     local selected, gift, showHistory = nil, false, false
     local function refresh() view:refresh() end
-    local useTarget = button(box, "Use target", 326, 4, 110, function()
-        local peer, why = ACB.targetPeer()
-        if peer then partner:SetText(peer) else trade.status = why end
-        refresh()
-    end)
     local start = button(box, "Start trade", 446, 4, 174, function()
         local peer = ACB.tradePeer(partner:GetText())
-        partner:ClearFocus()
-        if peer then trade:start(peer, selected, gift) else trade.status = "Enter a player's name, or use your target." end
+        if peer then trade:start(peer, selected, gift) else trade.status = "Right-click a player and choose Trade cards or packs." end
         refresh()
     end)
     local function setMode(value)
@@ -146,7 +135,10 @@ function ACB.createTradeView(parent, saved, trade)
     local remove = button(mine.frame, "Clear", 224, 230, 54, function() if editable() then selectCard(nil) end end)
     local status = centered(box, "GameFontHighlight", 394, kit.brass, 600)
     local accept = button(box, "Accept", 20, 426, 150, function() trade:confirm() refresh() end)
-    local cancel = button(box, "Cancel", 180, 426, 120, function() trade:cancel() refresh() end)
+    local cancel = button(box, "Cancel", 180, 426, 120, function()
+        local s = trade:active()
+        if s and s.closed then trade:reset(); partner:SetText(""); selected = nil; view:Hide() else trade:cancel(); refresh() end
+    end)
     local history = button(box, "History", 510, 426, 110, function() showHistory = not showHistory refresh() end)
     centered(box, "GameFontHighlightSmall", 463, kit.muted, 600):SetText("Stay close and out of combat. Both players must accept before anything moves.")
     local historyPanel = CreateFrame("Frame", nil, box, "BackdropTemplate")
@@ -163,15 +155,14 @@ function ACB.createTradeView(parent, saved, trade)
     function view:refresh()
         local s = trade:active()
         local live = s ~= nil and s.modern and not s.closed
+        if live then partner:SetText(s.peer:gsub("%-", " ")) end
         if s and s.modern then gift = s.gift end
         if not live and selected and ACB.itemCount(saved, selected) == 0 then selected = nil end
         local give = selected
         if s then give = s.modern and s.give or nil end
         local take = s and s.modern and s.take
-        partner:SetEnabled(not live)
-        useTarget:SetEnabled(not live)
         start:SetText(live and "Trade open" or gift and "Send gift" or "Start trade")
-        start:SetEnabled(not live and (not gift or selected ~= nil))
+        start:SetEnabled(not live and not (s and s.closed) and partner:GetText() ~= "" and (not gift or selected ~= nil))
         local function mark(control, active)
             control:SetEnabled(not live and not active)
             control:SetAlpha(live and 0.6 or 1)
@@ -216,7 +207,7 @@ function ACB.createTradeView(parent, saved, trade)
         status:SetText(trade.status)
         accept:SetText(s and s.sentConfirm and "Accepted" or "Accept")
         accept:SetEnabled(not showHistory and trade:canAccept())
-        cancel:SetText(s and s.closed and "New trade" or "Cancel")
+        cancel:SetText(s and s.closed and "Close" or "Cancel")
         cancel:SetEnabled(s ~= nil and not s.cancelPending and not (s.decision and not s.closed))
         history:SetText(showHistory and "Back to trade" or "History")
         historyPanel:SetShown(showHistory)
@@ -226,9 +217,13 @@ function ACB.createTradeView(parent, saved, trade)
         end
     end
 
-    function ACB.prepareTrade(name, key)
+    function ACB.prepareTrade(name, key, acceptInvitation)
         local s = trade:active()
-        if s and s.invited and not trade:join() then return false end
+        if s and s.closed then trade:reset(); selected = nil; s = nil end
+        if s and s.invited then
+            if not acceptInvitation then ACB.open("trade"); return false end
+            if not trade:join() then return false end
+        end
         if type(name) == "string" and name ~= "" then partner:SetText(name:gsub("%-", " ")) end
         if key and ACB.itemCount(saved, key) > 0 then selectCard(key) end
         showHistory = false

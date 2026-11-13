@@ -3,6 +3,8 @@
 // a saved file can ever put code into a file the game will run.
 
 export type Ack = { seq: number; hash: string };
+import { parseSeasonData } from "./seasons.ts";
+import type { SeasonData } from "./seasons.ts";
 export type Standing = { rank: number; name: string; score: number; cards: number; sets: number };
 export type SyncData = {
   syncedAt: number; acks: Ack[]; tape?: { start: number; entries: string[] };
@@ -18,6 +20,7 @@ export type SyncData = {
   rankedIssue?: "binder-mismatch" | "position-mismatch";
   companionReady?: boolean;
   rankedSetups?: string[]; // local binder nonces eligible for the fresh-binder Ranked default
+  seasonal?: SeasonData;
 };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
@@ -57,6 +60,17 @@ export function syncFileText(data: SyncData): string {
   const standing = (entry: Standing, index: number) =>
     `        { rank = ${whole(entry.rank, "rank")}, name = ${luaString(entry.name, "name")}, score = ${whole(entry.score, "score")}, cards = ${whole(entry.cards, "cards")}, sets = ${whole(entry.sets, "sets")} }, -- ${index + 1}`;
   const extra: string[] = [];
+  if (data.seasonal) {
+    const checked = parseSeasonData(data.seasonal, data.seasonal.binders);
+    const literal = (v: unknown): string => {
+      if (typeof v === "string") return luaString(v, "seasonal text");
+      if (typeof v === "number") return String(whole(v, "seasonal number"));
+      if (Array.isArray(v)) return "{ " + v.map(literal).join(", ") + " }";
+      if (v && typeof v === "object") return "{ " + Object.entries(v).map(([k, value]) => "[" + luaString(k, "seasonal field") + "] = " + literal(value)).join(", ") + " }";
+      throw new Error("invalid seasonal value");
+    };
+    extra.push("    seasonal = " + literal(checked) + ",");
+  }
   if (data.companionReady === true) extra.push("    companionReady = true,");
   if (data.rankedSetups) {
     if (data.rankedSetups.length > 100 || data.rankedSetups.some(id => !/^[0-9a-f]{32}$/.test(id))) throw new Error("invalid Ranked setup pairing");

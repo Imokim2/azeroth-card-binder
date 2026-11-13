@@ -48,13 +48,11 @@ Open `/acb studio`, cycle through all eight dungeon bosses and compare Signature
 
 ## Trading and gifts
 
-Both players need addon **0.4.0 or newer**. Target the other player, open **Trade**, and click **Use target**. Click **Choose card**, search for a card you own and select it, then click **Start trade**. The other player's Trade window should open automatically. They choose their card; both players check **You give** and **You receive**, then click **Accept**. The picker shows how many you own, while the offer always represents one copy. Changing an offer clears the acceptance marks. A completed trade appears in **History**.
+Right-click the other player and choose **Trade cards or packs**. Their name is filled in and cannot be edited. **Choose card** opens your binder in front; select an owned card and press **Add to trade** under its large preview. The binder closes back to the trade window. **Choose pack** offers a sealed pack instead.
 
-For a gift, select **Gift a card** before starting and click **Send gift**. The recipient should see the offered card, an empty **You give** side and an **Accept** button. No return card is required. Confirm that one acceptance moves nothing, both acceptances transfer one copy, cancellation beforehand moves nothing, and a last-copy gift removes that card from the giver's binder. Try an exact collectible edition and check that the shiny unlock remains with its original owner. Reload, sync both companions and reload again; both histories should be accepted and the gift should appear in History.
+Press **Start trade** (or choose **Send a gift**, then **Send gift**). The recipient sees an invitation and must accept it before their trade window opens. Both players review what is offered and press **Accept**. Changing either offer clears acceptance. A gift needs no return item but still needs both players' acceptance. Test cancellation, last copies and reserved packs. Seasons now occupies the old Trade tab position.
 
-Move more than about 11 yards away before accepting: the addon should ask you to move closer. The recipient may need to target their partner before accepting. In **Settings**, "Trading distance" turns that check off. Trades remain outdoors and out of combat. Both players should keep the game open until completion; reloads and disconnected clients still need an in-game reliability pass.
-
-Right-click a player and choose **View their binder**: below the sets it should list useful spares, and **Offer a trade** should open Trade with their name. Open a missing card and click **Ask target**, or type `/acb ask target CardName`: they should see your request only if they own it, with repeated requests limited politely.
+Right-click a player and choose **View their binder** to inspect cards and wanted lists without starting a trade. Ask for a card with the existing Ask action; the reply explains the player menu.
 
 ## Update alerts
 
@@ -64,9 +62,9 @@ Type `/acb version`: chat should say which add-on version you run (it should mat
 
 This needs a release signed with the release key (docs/runbooks/RELEASES.md). With one announced, the companion window should show **Update add-on** and/or **Update companion**. Update add-on: it should say it is installed and to /reload; afterwards `/acb version` should show the new version and the old copy should be in the app's data folder (`addon-backups`). Your saved cards and `Data/Sync.lua` must be untouched. Update companion: it should ask first, then close and reopen as the new version. To check Ranked pausing, ask for `MIN_ADDON` to be raised above your version on staging: the window should say Ranked is paused, chat should say so on your next Ranked kill, and Casual should still roll.
 
-## Viewing a binder and trading from it
+## Viewing a binder
 
-Two players, both with this version, outdoors and out of combat. (1) Right-click the other player and choose **View their binder** (or `/acb view First Second`): their binder should open as the normal binder pages, with the title "Name's Binder". Check the Index, Collection and **Wanted** tabs. (2) On the **Wanted** tab press **Trade** on a card of theirs that you own: their binder should open, with **Cancel pick** in the top row. Select a card of theirs: its panel should show **Get this one for my ...**. Press it to send the offer. (3) The other player should get a chat line and, on the Trade tab, **Accept offer** and **Decline**. Accept: both sides should end with the swapped cards and a line in the trade history. Also try Decline (the first player is told), and let an offer sit for two minutes. Please say how the new window looks (the 940 pixel width on your screen, the list of your cards, the wanted tab).
+Right-click another player and choose **View their binder**. Check Index, Collection and Wanted. This is read-only; **View card** in their Wanted list opens the matching card in your own binder. Start a trade separately through the player's right-click menu. Private binders must not answer inspection requests.
 
 ## Card packs
 
@@ -86,7 +84,7 @@ With the companion app signed in and a binder that is Ranked: (1) `/acb mode ran
 
 ## Wanted tab
 
-With a second player: (1) Open the **Wanted** tab, type a card you do not own into the box and press Enter or **Add a card**; it should appear on the left, and clicking it removes it. (2) Target the other player and click **Check my target**: within a few seconds their wanted cards should appear on the right (marked "just now") and in chat. Cards you have two or more of are marked "you have a spare", and those players come first. Click a name: the Trade tab should open with their name. (3) With the companion app signed in as a public player, wait for it to sync, `/reload`, and the board should list other public players' cards. (4) Right-click them and **View their binder**: it should now also say what they are looking for. A player who keeps their binder private must not answer either.
+Add an unowned card by name and click a listed card to remove it. **Check my target** requests that player's wanted list in game; spares you can offer are marked. The list does not start trades or use a website wanted feed. Right-click the player and choose **Trade cards or packs** when you want to offer an item.
 
 ## Starting a new binder
 
@@ -129,13 +127,7 @@ Mob and node tooltips add a line saying whether the card is in your binder, its 
 
 ## Trading
 
-Both players need this version and at least one card each. Any card can be traded, including a last copy (the panel says "Your only copy"). Meet outdoors and out of combat, open `/acb trade`, then enter each other's character name. Use `Name-Realm` if needed.
-
-1. One player clicks **Listen**. The other chooses a duplicate with **<** or **>** and clicks **Send offer**.
-2. The listener chooses a different duplicate and clicks **Send reply**.
-3. Review the two displayed cards and click **Accept trade** on both clients. Each side's panel turns green when it accepts. When both have accepted, each client gives away its spare copy and adds the card it received. If a message was missed, use **Resend last step**; a client that already finished answers it. If both players started as the sender or the trade expired, click **Cancel** on both clients and begin again.
-
-This release exchanges offers and confirmations over addon whispers and applies the swap on each client. The two-player transport needs a live pass. Trading runs on trust: collection data is local and editable, so each client only checks its own spare copy, and a client that is modified can keep both cards.
+Use the **Trading and gifts** checklist above with two players outdoors and out of combat. Confirm that the binder, satchel and inspected Wanted list have no trade-start buttons, and that `/acb trade` explains the player menu without opening a window. Incoming invitations must still wait for explicit acceptance.
 
 ## Binder Dust, settings and artwork
 

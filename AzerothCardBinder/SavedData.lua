@@ -178,6 +178,8 @@ function ACB.cleanSavedData(saved)
         saved.tradeCount = #saved.history
     end
     saved.sets, saved.titles = tableOrEmpty(saved.sets), tableOrEmpty(saved.titles)
+    ACB.cleanSeasonData(saved)
+    ACB.seasonRewardTitles(saved)
     for key, value in pairs(saved.sets) do
         if value ~= true then saved.sets[key] = nil end
     end

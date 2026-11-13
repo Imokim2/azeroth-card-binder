@@ -1,6 +1,10 @@
 # Ledger specification
 
-Version 6. Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 7. Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+
+## Seasonal rewards (version 7)
+
+`seasonReward` has the canonical pack ID as `key`, the resulting pack inventory as `count` (exactly one higher), and the server-issued 32-hex grant ID as `trade`. Partner, dust, shiny and tape are zero/empty. It cannot interrupt a pack opening. Replay preserves `seasonClaims` and rejects a repeated grant. The server independently checks grant ownership, pack identity and non-redemption, then stores redemption atomically with the verified batch. These events need upload specification 7; ordinary uploads can remain version 6. No hashed field or historical event meaning changes. Seasonal progress itself is server-derived from eligible new acquisitions, not an inventory snapshot; see [SEASONS.md](SEASONS.md).
 
 ## Pack tiers and trades (version 6)
 

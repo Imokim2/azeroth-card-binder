@@ -42,6 +42,7 @@ const copyState = (state) => ({
     ...(state.packOutputs ? { packOutputs: Object.fromEntries(Object.entries(state.packOutputs).map(([zone, cards]) => [zone, { ...cards }])) } : {}),
     ...(state.packType ? { packType: state.packType } : {}),
     ...(state.tieredPacks ? { tieredPacks: true } : {}),
+    ...(state.seasonClaims ? { seasonClaims: { ...state.seasonClaims } } : {}),
 });
 
 // Returns the name of the rule an event breaks, or null. Mutates `state` only when the event is fine.
@@ -54,7 +55,7 @@ function applyEvent(state, event, catalog, strict = false) {
     const packTrade = isPackKey && (event.kind === "tradeIn" || event.kind === "tradeOut");
     if (packTrade && !pack) return "unknown-set";
     const before = packTrade ? state.packs[packZone] || 0 : state.counts[event.key] || 0;
-    const isCardEvent = event.kind !== "set" && event.kind !== "mode" && event.kind !== "packFind" && event.kind !== "packOpen";
+    const isCardEvent = event.kind !== "set" && event.kind !== "mode" && event.kind !== "packFind" && event.kind !== "packOpen" && event.kind !== "seasonReward";
     if (isCardEvent && !card && !packTrade) return "unknown-card";
     if (card && card.baseKey && (event.kind === "miss" || event.kind === "craft")) return "edition";
     if (card && card.baseKey && !state.editions && (event.kind === "drop" || event.kind === "packCard")) return "edition";
@@ -67,9 +68,16 @@ function applyEvent(state, event, catalog, strict = false) {
     if (state.packLeft > 0 && event.kind !== "packCard") return "pack";
     if (!usesTape && event.tape !== 0) return "field";
     if (event.kind !== "recycle" && event.kind !== "craft" && event.dust !== 0) return "dust";
-    if (event.kind !== "tradeIn" && event.kind !== "tradeOut" && (event.partner !== "" || event.trade !== "")) return "trade";
+    if (event.kind !== "tradeIn" && event.kind !== "tradeOut" && event.kind !== "seasonReward" && (event.partner !== "" || event.trade !== "")) return "trade";
     let counts = state.counts;
     switch (event.kind) {
+        case "seasonReward": {
+            if (!packInfo(catalog, event.key) || event.partner !== "" || !/^[0-9a-f]{32}$/.test(event.trade)) return "season-reward";
+            if (state.seasonClaims?.[event.trade] || event.count !== (state.packs[event.key] || 0) + 1) return "season-reward";
+            state.seasonClaims = { ...(state.seasonClaims || {}), [event.trade]: true };
+            state.packs[event.key] = event.count;
+            break;
+        }
         case "drop": {
             if (event.count !== before + 1) return "count";
             if (event.shiny === 1 && state.shiny[event.key]) return "shiny";

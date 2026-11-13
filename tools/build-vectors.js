@@ -59,6 +59,10 @@ const verified = ledger.verifyChain(events);
 if (!verified.ok) throw new Error("the sample ledger does not verify");
 write("ledger-valid.json", { genesis: ledger.GENESIS, events, head, texts: events.map(ledger.eventText) });
 
+// Additive protocol-7 vector: retain the historical 20-event ledger unchanged.
+const seasonalReward = ledger.makeEvent({ ...base, seq: 1, t: 1200, kind: "seasonReward", key: "WF", count: 1, trade: "a".repeat(32) }, ledger.GENESIS);
+write("season-rewards.json", { events: [seasonalReward], head: { seq: 1, hash: seasonalReward.h }, texts: [ledger.eventText(seasonalReward)] });
+
 // ---- Ledgers that must be rejected ----
 const copy = (list) => JSON.parse(JSON.stringify(list));
 const invalid = [];

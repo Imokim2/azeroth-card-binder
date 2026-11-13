@@ -288,7 +288,7 @@ function ACB.initSocial(saved, send, now, after, report)
                 local peer = playerName(context)
                 if not peer then return end
                 root:CreateDivider()
-                root:CreateButton("Offer a card trade", function() ACB.prepareTrade(peer) end)
+                root:CreateButton("Trade cards or packs", function() ACB.prepareTrade(peer) end)
                 root:CreateButton("View their binder", function()
                     local ok, reason = ACB.requestBinder(peer)
                     if ok then

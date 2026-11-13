@@ -39,7 +39,7 @@ function ACB.createSatchel(saved)
     kit.label(frame, "GameFontHighlightSmall", 20, noteY, kit.muted, "Right-click a pack to open it.")
     local selected, pages
     local pageText = kit.centered(frame, "GameFontHighlightSmall", navY + 7, kit.muted, 100)
-    local back, more, offer
+    local back, more
     for index = 1, PAGE_SIZE do
         local slot = CreateFrame("Button", nil, frame, "BackdropTemplate")
         slot:SetSize(size, size)
@@ -74,7 +74,7 @@ function ACB.createSatchel(saved)
             GameTooltip:AddLine(item.name, 1, .82, 0)
             local tier = ACB.packTiers[item.tier]
             GameTooltip:AddLine(("%s / %d card%s from this zone"):format(tier.name, item.size, item.size == 1 and "" or "s"), unpack(tier.color))
-            GameTooltip:AddLine("Right-click to open. Select, then Trade to offer one.", .65, .61, .54, true)
+            GameTooltip:AddLine("Right-click to open. Right-click a player to trade packs.", .65, .61, .54, true)
             if ACB.collection and ACB.collection:packAvailable(self.zone) < self.owned then
                 GameTooltip:AddLine("One pack is reserved for your current trade.", 1, .65, .2, true)
             end
@@ -85,9 +85,8 @@ function ACB.createSatchel(saved)
     end
     back = ACB.satchelButton(frame, "Previous", 20, navY, 82, function() view.page = view.page - 1 view:refresh() end)
     more = ACB.satchelButton(frame, "Next", width - 102, navY, 82, function() view.page = view.page + 1 view:refresh() end)
-    offer = ACB.satchelButton(frame, "Trade selected pack", 20, tradeY, width - 150, function()
-        if selected and ACB.prepareTrade then ACB.prepareTrade(nil, "pack:" .. selected) end
-    end)
+    local trading = kit.label(frame, "GameFontHighlightSmall", 20, tradeY + 6, kit.muted, "Right-click a player to trade packs.")
+    trading:SetWidth(width - 150)
     ACB.satchelButton(frame, "Binder", width - 120, tradeY, 100, function() ACB.open() end)
     function view:refresh()
         local list, total = ACB.packList(saved)
@@ -108,12 +107,11 @@ function ACB.createSatchel(saved)
         pageText:SetText(("%d / %d"):format(self.page, pages))
         back:SetEnabled(self.page > 1)
         more:SetEnabled(self.page < pages)
-        offer:SetEnabled(selected ~= nil)
     end
     frame:SetScript("OnShow", function() view:refresh() end)
     frame:SetScript("OnMouseWheel", function(_, delta) view.page = view.page + (delta < 0 and 1 or -1) view:refresh() end)
     frame:EnableMouseWheel(true)
-    view.controls = { offer = offer, back = back, more = more }
+    view.controls = { back = back, more = more }
     return view
 end
 

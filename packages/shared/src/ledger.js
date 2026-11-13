@@ -4,9 +4,9 @@
 // vectors are generated from and checked against, and the server and app may import it directly.
 const crypto = require("node:crypto");
 
-const SPEC_VERSION = 6;
+const SPEC_VERSION = 7;
 const GENESIS = "0".repeat(32);
-const KINDS = ["drop", "craft", "recycle", "tradeIn", "tradeOut", "set", "mode", "miss", "packFind", "packOpen", "packCard"];
+const KINDS = ["drop", "craft", "recycle", "tradeIn", "tradeOut", "set", "mode", "miss", "packFind", "packOpen", "packCard", "seasonReward"];
 // The order the fields are joined in when an event is hashed.
 const FIELDS = ["seq", "t", "kind", "key", "count", "dust", "shiny", "tape", "partner", "trade", "char", "prev"];
 const STRING_FIELDS = ["kind", "key", "partner", "trade", "char", "prev"];

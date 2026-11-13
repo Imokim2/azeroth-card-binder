@@ -131,18 +131,14 @@ function ACB.createWantedView(frame, saved)
     local others = {}
     local function otherRow(index)
         if others[index] then return others[index] end
-        local row = CreateFrame("Button", nil, body)
+        local row = CreateFrame("Frame", nil, body)
         row:SetSize(448, ROW_HEIGHT - 2)
         row:SetPoint("TOPLEFT", 0, -(index - 1) * ROW_HEIGHT)
-        row:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
         row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
         row.text:SetPoint("TOPLEFT", 4, -2)
         row.text:SetWidth(440)
         row.text:SetJustifyH("LEFT")
         row.text:SetJustifyV("TOP")
-        row:SetScript("OnClick", function(self)
-            if self.peer and ACB.prepareTrade then ACB.prepareTrade(self.peer) end
-        end)
         others[index] = row
         return row
     end
@@ -168,7 +164,7 @@ function ACB.createWantedView(frame, saved)
             if #row.spares > 0 then useful = useful + 1 end
         end
         summary:SetText(#rows == 0 and "Nobody else's wanted cards are known yet. Target a player and choose Check my target."
-            or useful > 0 and ("%d player%s looking for cards you have spare. Click a name to offer a trade."):format(useful, useful == 1 and " is" or "s are")
+            or useful > 0 and ("%d player%s looking for cards you have spare. Right-click a player to trade."):format(useful, useful == 1 and " is" or "s are")
             or ("%d player%s listed; none is looking for a card you have spare."):format(#rows, #rows == 1 and " is" or "s are"))
         for index = 1, math.max(#rows, #others) do
             local row, data = otherRow(index), rows[index]
