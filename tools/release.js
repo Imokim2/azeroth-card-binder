@@ -150,10 +150,12 @@ function build() {
     fs.rmSync(stage, { recursive: true, force: true });
     fs.mkdirSync(stage, { recursive: true });
     // Notes for developers are not shipped to players.
-    const notShipped = new Set(["Portrait-Backdrops.txt", "Portrait-Backdrops-Needed.txt"]);
+    const notShipped = new Set(["Portrait-Backdrops.txt", "Portrait-Backdrops-Needed.txt", "PLAYTEST.md", "CardStudio.lua"]);
     fs.cpSync(addonDir, path.join(stage, "AzerothCardBinder"), {
         recursive: true, filter: (source) => !notShipped.has(path.basename(source)),
     });
+    const shippedToc = path.join(stage, "AzerothCardBinder", "AzerothCardBinder.toc");
+    fs.writeFileSync(shippedToc, fs.readFileSync(shippedToc, "utf8").split(/\r?\n/).filter(line => !notShipped.has(line.trim())).join("\n"));
     const zip = path.join(dist, `AzerothCardBinder-${v}.zip`);
     fs.rmSync(zip, { force: true });
     const result = process.platform === "win32"

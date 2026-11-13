@@ -6,6 +6,15 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.0 — 2026-11-13 (addon, companion and server)
+
+- First coordinated 1.0 release, including the previously unpublished 0.7.0 candidate below. The addon, Windows companion and server now share the same version.
+- Removed the companion's preview-build badge. Player downloads omit the developer card studio and playtest instructions, and sound sample controls use ordinary player-facing labels. Development screenshot mode cannot replace live status in the packaged companion.
+- Collect cards, alternate editions and shiny cards; open zone packs from the satchel; trade cards and packs or send gifts through a player's right-click menu. Both players accept the final offer.
+- Seasonal collections run alongside Ranked, with rewards for completing a shared card list and bonuses for early finishers. Half the base catalog is held for seasonal returns; owned copies remain available, and cards released by a season stay available afterwards. No live season is created by installing this release.
+- Critters and ordinary cards use the new drop balance. Existing Ranked histories retain their original rules; upgrades preserve cards, variants, packs, dust, titles and history.
+- For Ranked upgrades, install companion 1.0.0 before updating the addon. Existing minimum versions remain unchanged during rollout. The signed update feed, download checksums and packaged Windows startup checks are retained. Windows publisher code signing is still pending.
+
 ## 0.7.0 — 2026-11-13 (companion 0.5.0, server 0.5.0)
 
 - **Group-test candidate.** Add-on 0.7.0, companion 0.5.0 (ledger protocol 9) and server 0.5.0 ship together: seasons, the second set of drop rates and the launch collection below. Nothing resets: cards, packs, dust, titles and history are kept, and every earlier Ranked history replays as before. Install the companion first. A companion older than 0.5.0 cannot upload a binder that has recorded the new markers (`client_too_old`: update it); an older add-on keeps working on the old rates until it is updated. Release steps and checks: `docs/launch/RELEASE-0.7.0.md`.

@@ -1,10 +1,10 @@
 # Group test and 1.0 release
 
-**Target: 1.0.0 after the group test passes.** This is the release plan, not a published release or a version bump. Keep the current development versions until the tested candidate is agreed.
+**Release preparation: addon, companion and server 1.0.0.** The merged 0.7.0 candidate has been promoted at the user's request. Publishing and verification are recorded in [RELEASE-1.0.0.md](RELEASE-1.0.0.md). The in-game checks below remain a checklist; automated checks alone do not mark them passed.
 
 ## Before the group starts
 
-- Give everyone the same candidate addon and companion builds, with the matching test server. Record their versions, catalog and commit in the test notes. The current candidate is addon 0.7.0 and companion 0.5.0, with server 0.5.0 (see [RELEASE-0.7.0.md](RELEASE-0.7.0.md) for the steps and checks). The sync savings require companion 0.4.0 or newer; older 0.3.0 installs retain their previous polling until updated.
+- Give everyone addon, companion and server **1.0.0**, with the matching test server. Record the catalog and commit in the test notes. The sync savings require companion 0.4.0 or newer; older 0.3.0 installs retain their previous polling until updated.
 - Test both a fresh install and an upgrade with an existing collection. Keep backups; moving to 1.0 must not reset players’ collections.
 - Use two or more separate player accounts for trades, gifts, binder viewing and wanted lists.
 

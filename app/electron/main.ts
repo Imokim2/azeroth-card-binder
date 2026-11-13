@@ -64,7 +64,8 @@ function createWindow(): BrowserWindow {
     event.preventDefault();
     created.hide();
   });
-  void created.loadFile(join(appRoot, "electron", "renderer", "index.html"), process.env["WARCARDS_DEMO"] ? { hash: "demo-" + process.env["WARCARDS_DEMO"] } : {});
+  const demo = !app.isPackaged && process.env["WARCARDS_DEMO"];
+  void created.loadFile(join(appRoot, "electron", "renderer", "index.html"), demo ? { hash: "demo-" + demo } : {});
   return created;
 }
 

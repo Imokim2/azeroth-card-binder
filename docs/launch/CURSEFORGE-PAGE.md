@@ -19,13 +19,13 @@ Find cards across different zones and dungeons. Your binder shows the cards you 
 
 ## Open packs
 
-Find a pack, open it and turn the cards over to see what’s inside.
+Keep sealed zone packs in the Warcards Satchel. Common packs hold one card, Rare packs three and Epic packs five. Right-click a pack to open it and turn the cards over to see what’s inside.
 
 ![Pack screenshot placeholder — replace before submission](../media/gallery/packs.png)
 
 ## Trade with friends
 
-Swap a spare for something you’re missing, or send a card as a gift. Both players need the addon and must accept before the exchange completes.
+Right-click another player and choose **Trade cards or packs**. Swap a card or sealed pack for something you’re missing, or send a gift. The other player accepts the invitation, then both players review and accept the final offer.
 
 ![Trade screenshot placeholder — replace before submission](../media/gallery/trading.png)
 
@@ -41,11 +41,21 @@ Complete sets and earn titles that other players using the addon can see.
 
 ![Achievements screenshot placeholder — replace before submission](../media/gallery/achievements.png)
 
-## Getting started
+## Seasonal collections
+
+When a season is running, everyone gets the same list of cards to collect before the deadline. Find or trade for fresh copies alongside your normal Ranked binder. Complete the list for titles and packs, with extra rewards for the first finishers.
+
+Some cards are held back from the launch collection and return through seasons. Once a season releases them, they stay available. Cards you already own are kept when the catalog changes.
+
+<!-- Add an actual Seasons screenshot from the uploaded build before submission. -->
+
+## Installation
 
 Enable **World of Warcards** in the character screen’s AddOns list, then click the minimap button or type `/acb` to open your binder.
 
 You can collect in **Casual** mode with the addon alone. **Ranked** play and online syncing use the separate Windows companion app. The companion syncs saved files after a reload or logout; it does not automate play.
+
+When upgrading for Ranked play, update the companion before the addon. Keep your saved data: installing an update does not mean starting a new binder.
 
 <!-- Obtain CurseForge guidance on describing the optional external companion and
      Forever compatibility before submission. Do not add direct external EXE links. -->
