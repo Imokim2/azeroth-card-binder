@@ -4,6 +4,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+## Companion 0.4.5 — 2026-11-13 (addon 0.6.4 unchanged)
+
+- Fixed the startup crash in companion 0.4.4. The recovery validator now uses a statically imported TypeScript module that is included in the compiled package. Builds clear old output first.
+- Added checks that import compiled modules outside the repository, inspect the actual ASAR and start the real Windows executable with an isolated profile and loopback-only test server. Publishing is blocked if packaged startup fails. The check rejects the previously published broken installer.
+- Companion 0.4.4 was withdrawn and the website temporarily offered the working 0.4.3 installer during the fix. This changes no game saved-data format, collection or account identity; addon 0.6.4 is unchanged.
+
 ## 0.6.4 — 2026-11-12 (companion 0.4.4)
 
 - New binders default to Ranked after a verified companion setup. The local setup pairing prevents an unrelated or stale sync file from choosing a mode. Without it, a one-time choice appears before the first card or pack is rolled. Casual requires an explicit choice, the mode stays visible in the binder, and switching away from Ranked asks for confirmation. Existing Casual cards are kept and are not silently relabelled as Ranked.

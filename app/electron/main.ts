@@ -18,6 +18,11 @@ import { gameClosed } from "./gameProcess.ts";
 const here = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(here, "..", "..", ".."); // the app/ folder, from app/dist/app/electron
 const version = JSON.parse(await readFile(join(appRoot, "package.json"), "utf8")).version as string;
+const startupCheck = process.argv.includes("--warcards-smoke-test");
+if (startupCheck && (!process.env["WARCARDS_DATA"] || !/^http:\/\/127\.0\.0\.1:\d+$/.test(process.env["WARCARDS_SERVER"] ?? ""))) {
+  process.stderr.write("Packaged checks require isolated data and a loopback server.\n");
+  process.exit(2);
+}
 
 app.setName("World of Warcards");
 // A separate data folder for tests and screenshots, so they never touch the real settings or key.
@@ -125,7 +130,7 @@ async function main(): Promise<void> {
     fetch: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(15_000) }),
     now: () => Math.floor(Date.now() / 1000),
     sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-    applyStartAtLogin: (on) => app.setLoginItemSettings({ openAtLogin: on }),
+    applyStartAtLogin: (on) => { if (!startupCheck) app.setLoginItemSettings({ openAtLogin: on }); },
     saveFile: async (name, text) => {
       const picked = await dialog.showSaveDialog(window as BrowserWindow, { title: "Save a copy of your data", defaultPath: join(app.getPath("downloads"), name), filters: [{ name: "JSON", extensions: ["json"] }] });
       if (picked.canceled || !picked.filePath) return null;
@@ -166,9 +171,29 @@ async function main(): Promise<void> {
   window = createWindow();
   // Listen for the page loading before anything else is awaited, so the event cannot be missed.
   const loaded = new Promise<void>((resolve) => window?.webContents.once("did-finish-load", () => resolve()));
-  buildTray();
+  if (!startupCheck) buildTray();
   await controller.start();
   await loaded;
+
+  if (startupCheck) {
+    try {
+      const ready = await window.webContents.executeJavaScript(`(async () => {
+        if (!window.warcards || typeof window.warcards.status !== "function") throw new Error("Preload bridge unavailable");
+        const status = await window.warcards.status();
+        if (status.signedIn || status.gameFolder !== null) throw new Error("Startup check used non-isolated data");
+        for (let i = 0; i < 50 && !document.getElementById("version")?.textContent; i++) await new Promise(r => setTimeout(r, 50));
+        return !!document.getElementById("repair-sync") && !!document.getElementById("sync-now") && !!document.getElementById("version")?.textContent;
+      })()`);
+      if (!ready || catalogVersion === "unknown") throw new Error("Packaged renderer or catalog did not load");
+      await writeFile(join(userData, "startup-proof.json"), JSON.stringify({ ready, version, catalogVersion }));
+      await controller.stop();
+      quitting = true; app.exit(0);
+    } catch (error) {
+      process.stderr.write(String(error) + "\n");
+      quitting = true; app.exit(1);
+    }
+    return;
+  }
 
   const shot = process.env["WARCARDS_SCREENSHOT"];
   {

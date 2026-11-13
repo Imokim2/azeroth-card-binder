@@ -1,6 +1,6 @@
 {
   "name": "warcards-app",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "private": true,
   "license": "GPL-3.0-or-later",
   "type": "module",
@@ -8,12 +8,14 @@
   "scripts": {
     "test": "node --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "node tools/build.cjs",
     "start": "npm run build && electron .",
     "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder && npm run check:package",
+    "check:package": "node tools/check-package.cjs"
   },
   "devDependencies": {
+    "@electron/asar": "3.4.1",
     "@types/node": "24.10.1",
     "electron": "45.2.3",
     "electron-builder": "26.18.1",
