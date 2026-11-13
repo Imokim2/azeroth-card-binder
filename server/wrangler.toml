@@ -12,6 +12,12 @@ name = "warcards-api"
 main = "src/index.ts"
 compatibility_date = "2026-11-01"
 
+# Only public screenshots and their cache headers. Matching images bypass the API Worker.
+[assets]
+directory = "./public"
+run_worker_first = false
+not_found_handling = "none"
+
 [env.staging]
 name = "warcards-api-staging"
 vars = { MIN_CLIENT = "0.4.0", LATEST_APP = "1.0.0", LATEST_ADDON = "1.0.0", RELEASES_URL = "https://github.com/Imokim2/azeroth-card-binder/releases/latest", MIN_ADDON = "0.6.0", VERSION = "1.0.0", DISCORD_CLIENT_ID = "1569844563957260298", DISCORD_REDIRECT_URI = "http://127.0.0.1:53682/callback" }

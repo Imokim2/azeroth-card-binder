@@ -1,6 +1,6 @@
 // The public website (roadmap B8): the ladder, a player's page with a read-only view of their binder, the fair-play rules and
 // the privacy page. Plain HTML made on the server from the same data as the API, with no scripts, no outside resources and
-// no game art (card names and numbers only, as the policy notes require). Every piece of text that came from a player or the
+// supplied screenshots on the homepage. Every piece of text that came from a player or the
 // data is escaped before it goes into a page.
 import type { Catalog } from "./shared.ts";
 import { editionKeys, familyCount } from "./shared.ts";

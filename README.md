@@ -14,19 +14,18 @@ Browse cards by zone or dungeon, see what you’re missing and take a closer loo
 
 Seasonal collections give everyone a shared list to hunt for alongside their normal Ranked binder. Finish in time for titles and packs, with extra rewards for the first finishers. Cards held back from the launch collection can return through seasons; copies you already own stay yours.
 
-![Binder layout illustration showing a collection page and a selected card. Screenshot placeholder.](docs/media/gallery/binder.png)
+![The collection index with an undiscovered Wiry Swoop card selected.](docs/media/gallery/binder.png)
 
-*The gallery currently uses labelled layout illustrations. We’ll replace these with actual in-game screenshots.*
-
-| Open packs | Trade or send a gift |
+| Trade cards and packs | Earn achievements and titles |
 |:---:|:---:|
-| ![Pack opening layout illustration. Screenshot placeholder.](docs/media/gallery/packs.png) | ![Two-player trade layout illustration. Screenshot placeholder.](docs/media/gallery/trading.png) |
-| Turn the cards over to see what you found. | Choose your offer. Both players accept before the trade completes. |
+| ![The card trade window with a Dragonmaw Bonewarder offered.](docs/media/gallery/trading.png) | ![Collection achievements showing card and set progress.](docs/media/gallery/achievements.png) |
+| Swap spares or send a gift. Both players accept before anything moves. | Collect cards, finish sets and work towards titles. |
 
-| Collect alternate editions | Earn achievements and titles |
-|:---:|:---:|
-| ![Alternate card editions layout illustration. Screenshot placeholder.](docs/media/gallery/variants.png) | ![Collection achievements layout illustration. Screenshot placeholder.](docs/media/gallery/achievements.png) |
-| Find different versions of selected cards, including different poses and animations. | Complete sets and unlock titles other addon users can see. |
+### Keep packs in your satchel
+
+Zone packs stay sealed in the Warcards Satchel until you open or trade them. Common packs hold one card, Rare packs three and Epic packs five, all from the pack’s zone.
+
+![The Warcards Satchel, shown empty before any packs have been found.](docs/media/gallery/satchel.png)
 
 ## Start collecting
 
@@ -50,7 +49,7 @@ You can collect in **Casual** mode with just the addon. For **Ranked** play and 
 
 The Windows app connects your saved binder to the server. Sign in with Discord, choose your game folder and keep it running while you play. It syncs after `/reload` or logout and checks for addon and app updates.
 
-![Companion app layout illustration showing collection and sync controls. Screenshot placeholder.](docs/media/gallery/companion.png)
+![The Windows companion app signed in with a synced Ranked binder.](docs/media/gallery/companion.png)
 
 - **Windows 64-bit.** Installs for your user without administrator rights.
 - **Public or private.** Choose whether your binder appears on the website.
