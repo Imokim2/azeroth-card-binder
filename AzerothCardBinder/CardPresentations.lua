@@ -1,13 +1,13 @@
 local _, ACB = ...
 
 -- Artwork is shared content, not a roll made when a player opens the binder.
--- Keep this v1 pool and its order fixed. Add a card override to refine an existing
--- card, or a new versioned pool for future cards, rather than reshuffling v1.
+-- Keep the v1 IDs and order fixed: framing can be refined without reshuffling
+-- which shared action each card receives. Use a new pool for future choices.
 local signatureV1 = {
-    { id = "v1-guard", name = "The Sentinel", zoom = 0.56, facing = -0.48, animation = 25, frame = 12 },
-    { id = "v1-strike", name = "The Challenge", zoom = 0.53, facing = 0.32, animation = 17, frame = 22 },
-    { id = "v1-cast", name = "Arcane Moment", zoom = 0.57, facing = -0.28, animation = 32, frame = 20 },
-    { id = "v1-living", name = "Living Portrait", zoom = 0.54, facing = 0.46, animation = 0, frame = 0, animated = true, duration = 4 },
+    { id = "v1-guard", name = "The Sentinel", zoom = 0.08, facing = -0.48, animation = 25, frame = 12 },
+    { id = "v1-strike", name = "The Challenge", zoom = 0.12, facing = 0.32, animation = 17, frame = 22 },
+    { id = "v1-cast", name = "Arcane Moment", zoom = 0.10, facing = -0.28, animation = 32, frame = 20 },
+    { id = "v1-living", name = "Living Portrait", zoom = 0.06, facing = 0.46, animation = 0, frame = 0, animated = true, duration = 4 },
 }
 
 local function seed(key)

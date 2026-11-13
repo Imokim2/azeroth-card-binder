@@ -6,6 +6,13 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.1 - 2026-11-13
+
+- Wider action framing for base cards, including rare/epic/legendary signatures; deliberately tight critter editions and selected boss variants keep their close-ups.
+- Lift the reported hunched troll and orc models inside the portrait, including Bloodlord Mandokir, High Priest Venoxis, Gurubashi Champion, Sacrificed Troll, the Skullsplitter tribe and Dragonmaw Bonewarder.
+- Stop forcing the fixed face camera and let clicks reach the card for drag rotation. Loaded-model events now enable movement even if the client does not expose a model file ID; the load watcher no longer reloads those ready models. Left-page thumbnails remain stationary.
+- Artwork only: existing collections, drop rules and the companion app are unchanged.
+
 ## 1.0.0 — 2026-11-13 (addon, companion and server)
 
 - First coordinated 1.0 release, including the previously unpublished 0.7.0 candidate below. The addon, Windows companion and server now share the same version.

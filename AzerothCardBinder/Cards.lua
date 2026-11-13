@@ -125,6 +125,9 @@ function ACB.createCard(parent, previewUnowned, share, options)
     card.model:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
     card.model:SetSize(inner.width, inner.height)
     card.model:SetFrameLevel(level + 3)
+    -- The card handles dragging and shift-click links. A PlayerModel must not
+    -- swallow those clicks before they reach its parent.
+    card.model:EnableMouse(false)
     safe(card.model.SetKeepModelOnHide, card.model, true)
 
     local swayPhase, animationElapsed, modelReady = 0, 0, false
@@ -136,9 +139,8 @@ function ACB.createCard(parent, previewUnowned, share, options)
         local entry = card.entry
         if not entry or entry.key ~= card.modelFor then return end
         setModelFinish(model, card.owned > 0)
-        local loaded = ACB.read(safe(model.GetModelFileID, model), "number")
-        modelReady = loaded and loaded > 0 and (not entry.profession or loaded == entry.model)
-        if not loaded or loaded <= 0 then return end
+        modelReady = ACB.cardModelReady(card, model)
+        if not modelReady then return end
         if entry.profession then
             card.node:SetShown(not modelReady)
         else
@@ -368,6 +370,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
         if showModel and self.modelFor ~= entry.key then
             self.playing = false
             self.modelFor = nil
+            self.modelLoadedFor = nil
             safe(self.model.ClearModel, self.model)
             self.modelFor = entry.key
             self.facing = entry.profession and 0.6 or presentation.pose.facing
