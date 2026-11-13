@@ -119,7 +119,8 @@ test("every collectible edition has a substantially different camera and action 
             local entry, pose = family[slot], family[slot].presentation
             assert(math.abs(pose.facing) <= .85, entry.name .. " must keep the face visible")
             equal(pose.y, 0, "editions stay centred")
-            assert(math.abs(pose.zoom - base.zoom) >= .08, entry.name .. " needs a different crop")
+            assert(math.abs(pose.zoom - base.zoom) >= .08 or math.abs(pose.facing - base.facing) >= .3,
+                entry.name .. " needs a different crop or viewing angle")
             assert(pose.animation ~= base.animation, entry.name .. " must use a different action")
             assert(pose.composition and pose.frame >= 400)
             for _, fallback in ipairs(pose.fallbacks) do assert(fallback ~= base.animation) end
@@ -155,4 +156,61 @@ test("animated editions keep their supported fallback action when looping and re
         equal(card.model.position[2], 0)
         equal(card.model.position[3], -.05)
     end end
+end)
+
+test("loaded creature portraits rotate without a readable file ID and never pin the face camera", function()
+    local card = ACB.createCard(UIParent, true, ignore)
+    local entry = ACB.cards["npc:1057"]
+    card.model.GetModelFileID = function() return 0 end
+    card.model.SetCamera = function(self, camera) self.fixedCamera = camera end
+    card:set(entry, 1)
+    card.model.supportedAnimation = 25
+    card.model:OnModelLoaded()
+    equal(card.model.fixedCamera, nil)
+    equal(card.model.mouseEnabled, false)
+    equal(card.model.frozen[1], 25)
+    local facing = card.model.facing
+    card.frame:OnUpdate(2)
+    assert(card.model.facing > facing, "a loaded model sways even without a file ID")
+    card.model.creature = nil
+    card.model:OnUpdate(.3)
+    card.model:OnUpdate(.3)
+    card.model:OnUpdate(2)
+    equal(card.model.creature, nil, "the watcher must not reload a model confirmed by its load event")
+    card.model.mouseOver, leftDown = true, true
+    card.frame:OnMouseDown("LeftButton")
+    local before = card.model.facing
+    cursorX = cursorX + 30
+    card.frame:OnUpdate(0)
+    assert(math.abs(card.model.facing - before) > .5, "dragging rotates the portrait")
+    leftDown = false
+    cursorX = cursorX - 30
+    card.frame:OnMouseUp("LeftButton")
+    card:set(ACB.cards["npc:639"], 1)
+    local pending = card.model.facing
+    card.frame:OnUpdate(2)
+    equal(card.model.facing, pending, "the previous card's ready flag cannot start a pending model")
+end)
+
+test("normal cards use wide action framing and hunched creatures have an upward correction", function()
+    for _, id in ipairs({ 1057, 11382, 14507, 11356, 14826, 11390, 782 }) do
+        local entry = ACB.cards["npc:" .. id]
+        local card = ACB.createCard(UIParent, true)
+        card:set(entry, 1)
+        card.model.fileID = 8100
+        card.model:OnModelLoaded()
+        assert(card.model.portraitZoom <= .12, entry.name .. " should show more than a face")
+        assert(card.model.position[3] > 0, entry.name .. " needs lifting inside the portrait")
+        equal(card.model.position[2], 0)
+    end
+    for _, entry in pairs(ACB.cards) do
+        if not entry.baseKey and not entry.profession then
+            assert(ACB.cardPresentation(entry).pose.zoom <= .12, entry.name .. " needs wider base framing")
+        elseif entry.presentationId and entry.presentationId:find("critter-face-", 1, true) then
+            assert(entry.presentation.zoom >= .9, "the deliberate critter close-ups stay collectible")
+        end
+    end
+    local thumbnail = ACB.createCard(UIParent, true)
+    thumbnail:set(ACB.cards["npc:11382"], 1)
+    equal(thumbnail.frame.OnUpdate, nil, "left-page previews stay still")
 end)

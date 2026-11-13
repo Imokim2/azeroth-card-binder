@@ -5,7 +5,7 @@ local methods = {
     GetHeight = function(self) return self.height end,
     SetPoint = function(self, ...) self.point = { ... } end,
     SetFrameStrata = function(self, strata) self.strata = strata end, SetClampedToScreen = ignore,
-    SetMovable = ignore, EnableMouse = ignore,
+    SetMovable = ignore, EnableMouse = function(self, enabled) self.mouseEnabled = enabled end,
     SetBackdrop = function(self) equal(self.template, "BackdropTemplate") end,
     SetBackdropColor = ignore,
     SetBackdropBorderColor = ignore, SetHeight = ignore, RegisterForDrag = ignore,

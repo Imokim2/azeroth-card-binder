@@ -6,18 +6,36 @@ local safe = ACB.safe
 
 -- AnimationData IDs. Use the neutral frame when a model lacks its assigned combat animation.
 local STAND, ATTACK_UNARMED, ATTACK_ONE_HAND, READY_UNARMED, READY_TWO_HAND, SPELL_CAST = 0, 16, 17, 25, 27, 32
-local humanoid = { zoom = 0.57, facing = -0.40, animation = READY_UNARMED, frame = 12 }
-local wide = { zoom = 0.28, facing = -0.34, animation = ATTACK_UNARMED, frame = 20 }
+local humanoid = { zoom = 0.08, facing = -0.40, animation = READY_UNARMED, frame = 12 }
+local wide = { zoom = 0, facing = -0.34, animation = ATTACK_UNARMED, frame = 20 }
 local portraitPresets = {
-    [639] = { zoom = 0.60, facing = -0.47, animation = ATTACK_ONE_HAND, frame = 24 }, -- Edwin VanCleef
-    [589] = { zoom = 0.54, facing = 0.36, animation = SPELL_CAST, frame = 20 }, -- Defias Pillager
-    [646] = { zoom = 0.36, facing = -0.42, animation = READY_TWO_HAND, frame = 12 }, -- Mr. Smite
+    [639] = { zoom = 0.12, facing = -0.47, animation = ATTACK_ONE_HAND, frame = 24 }, -- Edwin VanCleef
+    [589] = { zoom = 0.10, facing = 0.36, animation = SPELL_CAST, frame = 20 }, -- Defias Pillager
+    [646] = { zoom = 0, facing = -0.42, animation = READY_TWO_HAND, frame = 12 }, -- Mr. Smite
     [644] = wide, -- Rhahk'Zor
     [645] = wide, -- Cookie
     [642] = wide, -- Sneed's Shredder
     [114] = wide, -- Harvest Watcher
     [573] = wide, -- Foe Reaper 4000
 }
+
+-- These hunched models need room above the shoulders. Keep this artwork-only:
+-- editions inherit the lift without losing their separately authored action/crop.
+local postureLift = {}
+for _, id in ipairs({ 1057, 1034, 1035, 1036, 1037, 1038, 2102, 2103,
+    435, 436, 437, 440, 485, 615, 4064, 4065, 4462, 4463, 4464,
+    7025, 7026, 7027, 7028, 7029 }) do postureLift[id] = .12 end
+for _, id in ipairs({ 11382, 14507, 11356, 14826, 11390, -- reported Zul'Gurub trolls
+    781, 782, 783, 784, 669, 670, 672, -- Skullsplitter tribe
+    587, 588, 595, 597, 660, 671, 694, 697, 699, 701, 702,
+    11350, 11351, 11353, 11355, 11389, 14750 }) do postureLift[id] = .18 end
+
+function ACB.cardModelReady(card, model)
+    local file = ACB.read(safe(model.GetModelFileID, model), "number")
+    if card.entry.profession then return file and file > 0 and file == card.entry.model end
+    -- OnModelLoaded is authoritative even when the client's file ID is unavailable.
+    return (file and file > 0) or card.modelLoadedFor == card.modelFor
+end
 
 local function loadModel(model, entry)
     if entry.profession then
@@ -114,10 +132,11 @@ end
 function ACB.watchCardModel(card, update, canLoad)
     local elapsed, attempts, key, settled, passes = 0, 0, nil, false, 0
     local function ready(model)
-        local file = ACB.read(safe(model.GetModelFileID, model), "number")
-        return file and file > 0 and (not card.entry.profession or file == card.entry.model)
+        return ACB.cardModelReady(card, model)
     end
     safe(card.model.SetScript, card.model, "OnModelLoaded", function(model)
+        if not card.entry or card.entry.key ~= card.modelFor then return end
+        card.modelLoadedFor = card.modelFor
         update(model)
         elapsed, passes, settled = 0, 0, false
     end)
@@ -152,6 +171,7 @@ end
 local function poseCreature(model, entry, facing, presentation, animate)
     presentation = presentation or ACB.cardPresentation(entry)
     local preset = presentation.pose
+    safe(model.SetPaused, model, false)
     local animation = preset.animation
     local supported = ACB.read(safe(model.HasAnimation, model, animation), "boolean")
     if not supported then
@@ -173,12 +193,13 @@ local function poseCreature(model, entry, facing, presentation, animate)
             if not pcall(model.FreezeAnimation, model, STAND, 0, 0) then safe(model.SetPaused, model, true) end
         end
     end
-    -- Pose first, then reset and apply the camera. Its bounds must come from the
-    -- same frozen frame in both thumbnails and the detail, including late loads.
-    safe(model.SetCamera, model, 0)
+    -- Do not select the model's built-in face camera: hunched models can put only
+    -- their hair in view, and a fixed camera can ignore the model's facing.
+    -- PortraitZoom selects the normal adjustable camera; clear any old transform.
+    safe(model.ClearTransform, model)
     safe(model.SetCamDistanceScale, model, 1.05)
     if not pcall(model.SetPortraitZoom, model, preset.zoom) then safe(model.SetCamDistanceScale, model, .8) end
-    safe(model.SetPosition, model, preset.x or 0, preset.y or 0, preset.z or -.05)
+    safe(model.SetPosition, model, preset.x or 0, preset.y or 0, (preset.z or -.05) + (postureLift[entry.id] or 0))
     safe(model.SetFacing, model, facing)
     return playing, animation
 end
@@ -187,5 +208,5 @@ ACB.loadCardModel, ACB.setModelFinish, ACB.poseCreature = loadModel, setModelFin
 
 -- The pose chosen for a creature (a few have their own).
 function ACB.portraitPreset(entry)
-    return portraitPresets[entry.id] or ACB.signaturePresentation(entry) or humanoid
+    return portraitPresets[entry.id] or (entry.critter and wide) or ACB.signaturePresentation(entry) or humanoid
 end
