@@ -9,7 +9,8 @@ export type SeasonReward = { title: string; packs: { pack: string; count: number
 export type Season = { id: string; title: string; startsAt: number; endsAt: number; cards: string[];
   rewards: { completion: SeasonReward; first: SeasonReward & { places: number } }; selection: Record<string, unknown> };
 export type SeasonStatus = Season & { collected: string[]; place: number; completedAt: number; titles: string[] };
-export type SeasonSync = { at: number; seasons: SeasonStatus[]; titles: string[]; knownTitles: string[]; grants: { id: string; pack: string }[] };
+export type SeasonSync = { at: number; seasons: SeasonStatus[]; titles: string[]; knownTitles: string[]; grants: { id: string; pack: string }[];
+  released: string[] }; // the cards held back for seasons that a season has already released: available for good (docs/proposals/SMALLER-LAUNCH-COLLECTION.md)
 type Row = { id: string; title: string; starts_at: number; ends_at: number; cards_json: string; rewards_json: string; selection_json: string };
 const unpack = (row: Row): Season => ({ id: row.id, title: row.title, startsAt: row.starts_at, endsAt: row.ends_at,
   cards: JSON.parse(row.cards_json) as string[], rewards: JSON.parse(row.rewards_json) as Season["rewards"], selection: JSON.parse(row.selection_json) as Record<string, unknown> });
@@ -86,6 +87,19 @@ export class SqlSeasons {
     return season;
   }
 
+  // The cards held back for seasons that a season has released, and when each was: the start of the first season that features it (an
+  // edition counts for its base card). A released card stays available for good, after its season ends too.
+  async released(): Promise<Record<string, number>> {
+    const released: Record<string, number> = {};
+    for (const row of await this.db.all<{ starts_at: number; cards_json: string }>("SELECT starts_at, cards_json FROM seasons")) {
+      for (const key of JSON.parse(row.cards_json) as string[]) {
+        const base = this.catalog.cards[key]?.baseKey ?? key;
+        if (released[base] === undefined || row.starts_at < released[base]) released[base] = row.starts_at;
+      }
+    }
+    return released;
+  }
+
   async list(now = 0): Promise<Season[]> {
     return (await this.db.all<Row>(`SELECT * FROM seasons ORDER BY
       CASE WHEN starts_at <= ? AND ends_at > ? THEN 0 WHEN starts_at > ? THEN 1 ELSE 2 END,
@@ -157,7 +171,9 @@ export class SqlSeasons {
       .flatMap(row => JSON.parse(row.titles_json) as string[]);
     const knownTitles = (await this.db.all<{ rewards_json: string }>("SELECT rewards_json FROM seasons ORDER BY starts_at DESC LIMIT 500"))
       .flatMap(row => { const r = JSON.parse(row.rewards_json) as Season["rewards"]; return [r.completion.title, r.first.title].filter(Boolean); });
-    return { at: now, seasons, grants, titles: [...new Set(titles)], knownTitles: [...new Set(knownTitles)] };
+    const releasedAt = await this.released();
+    const released = Object.keys(releasedAt).filter(key => (releasedAt[key] as number) <= now && this.catalog.cards[key]?.seasonal).sort();
+    return { at: now, seasons, grants, titles: [...new Set(titles)], knownTitles: [...new Set(knownTitles)], released };
   }
 
   async checkGrants(playerId: string, events: LedgerEvent[]): Promise<boolean> {

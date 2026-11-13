@@ -38,6 +38,7 @@ local parts = {
     "31-trade-picker",
     "32-collection-mode",
     "33-seasons",
+    "34-launch-collection",
 }
 
 local source, ranges, line = {}, {}, 1

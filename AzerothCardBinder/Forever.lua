@@ -353,6 +353,7 @@ local function initialize()
         if name then gatherNames[name] = skill end
     end
     ACB.initUI(saved, trade)
+    ACB.refreshVisibleCards(saved) -- pages show launch cards, released season cards and any the binder owns (Availability.lua)
     ACB.initCollectionMode(saved, ledger, report)
     ACB.initPacks(saved, collection)
     ACB.initSatchel(saved, collection, trade)

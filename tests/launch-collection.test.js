@@ -52,4 +52,6 @@ test("the committed draft files are what the rule produces from the current cata
     const how = " is out of date: run `node tools/launch-collection.js --write` (or delete the draft if the proposal was adopted or dropped)";
     assert.equal(read("launch-collection-draft.json"), out.json, "launch-collection-draft.json" + how);
     assert.equal(read("launch-collection-draft.csv"), out.csv, "launch-collection-draft.csv" + how);
+    const lua = fs.readFileSync(path.join(__dirname, "..", "AzerothCardBinder", "LaunchCollection.lua"), "utf8").replace(/\r\n/g, "\n");
+    assert.equal(lua, out.lua, "AzerothCardBinder/LaunchCollection.lua" + how);
 });

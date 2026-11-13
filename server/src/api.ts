@@ -35,6 +35,8 @@ export type Deps = {
   moderation: ModerationStore;
   admin: AdminStore; // finding players and the record of what reviewers did (the admin panel)
   seasons?: SqlSeasons;
+  // When each card held back for seasons was released (from the scheduled seasons when absent): the start of the first season featuring it.
+  released?: () => Promise<Record<string, number>>;
   // Rate limits per client address: `general` for everything, `strict` for the routes that create or destroy things.
   // Absent means no limiting.
   limits?: { general: Limiter; strict: Limiter } | undefined;
@@ -342,7 +344,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     if (after !== undefined && after !== null && (typeof after !== "string" || after.length > 40)) throw new ApiError("bad_request", { field: "after" });
     if (limit !== undefined && (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 200)) throw new ApiError("bad_request", { field: "limit" });
     if ((dryRun !== undefined && typeof dryRun !== "boolean") || (force !== undefined && typeof force !== "boolean")) throw new ApiError("bad_request", { field: "dryRun" });
-    const report = await rebuild({ rebuild: deps.rebuild, catalog: deps.catalog }, {
+    const report = await rebuild({ rebuild: deps.rebuild, catalog: deps.catalog, releasedAt: deps.released ? await deps.released() : deps.seasons ? await deps.seasons.released() : {} }, {
       after: (after as string | null | undefined) ?? null, ...(limit !== undefined ? { limit: limit as number } : {}),
       dryRun: dryRun === true, force: force === true,
     });

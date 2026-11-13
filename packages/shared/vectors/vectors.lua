@@ -966,7 +966,7 @@ return {
         },
     },
     ["balance"] = {
-        ["catalogVersion"] = "af339d7f58f6",
+        ["catalogVersion"] = "3d0b62359bee",
         ["chances"] = {
             {
                 ["key"] = "npc:589",

@@ -1,6 +1,6 @@
 # Proposal: a smaller launch collection, with the rest as season targets
 
-**Status: the split and the rates below are agreed in principle (Harry, confirmed with Ollie, 13 Nov 2026). Nothing here has been built: no catalog, add-on, server or rate has changed yet.** It supports the open question in [SEASONS.md](../SEASONS.md): "The retirement list and whether a returning card stays available after its season still need to be agreed."
+**Status: agreed (Harry, confirmed with Ollie, 13 Nov 2026). Built on `feat/drop-rates-v2` (the rates) and `feat/seasonal-availability` (the split and its rules); not released.** After a season ends its cards stay available for good, and pages are finished by launch cards alone (season cards are extras). It supports the open question in [SEASONS.md](../SEASONS.md): "The retirement list and whether a returning card stays available after its season still need to be agreed."
 
 ## The idea
 

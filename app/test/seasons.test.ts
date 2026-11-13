@@ -25,3 +25,15 @@ test("oversized and malformed seasonal data cannot enter Sync.lua", () => {
   const unknown = data(); unknown.seasons[0]!.collected = ["npc:1"] as never[];
   assert.throws(() => parseSeasonData(unknown));
 });
+test("the cards a season has released reach the add-on in Sync.lua, are bounded, and an older server's silence means none", () => {
+  const withReleased = { ...data(), released: ["npc:589", "npc:594", "edition:5891"] };
+  const parsed = parseSeasonData(withReleased, ["b".repeat(32)]);
+  assert.deepEqual(parsed.released, ["npc:589", "npc:594", "edition:5891"]);
+  const lua = syncFileText({ syncedAt: 100, acks: [], seasonal: parsed });
+  const tables = parseSavedVariables(lua.replace("local _, ACB = ...", "").replace("ACB.sync =", "RELEASED ="));
+  const seasonal = (tables["RELEASED"] as Record<string, unknown>)["seasonal"] as Record<string, unknown>;
+  assert.deepEqual(Object.values(seasonal["released"] as Record<string, string>), ["npc:589", "npc:594", "edition:5891"]);
+  assert.deepEqual(parseSeasonData(data(), []).released, [], "no list from an older server");
+  assert.throws(() => parseSeasonData({ ...data(), released: Array(2001).fill("npc:589") }));
+  assert.throws(() => parseSeasonData({ ...data(), released: ['npc:1"; os.execute("bad")'] }));
+});

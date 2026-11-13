@@ -123,7 +123,7 @@ function ACB.inventoryPages()
     if not inventory then
         local cards = {}
         for _, page in ipairs(ACB.pages) do
-            for _, base in ipairs(page.cards) do
+            for _, base in ipairs(page.all or page.cards) do
                 for _, edition in ipairs(ACB.cardEditions(base)) do cards[#cards + 1] = edition end
             end
         end

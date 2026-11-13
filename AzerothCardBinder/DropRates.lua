@@ -86,6 +86,11 @@ function ACB.activateDropBalance(saved, ledger)
         if ledger then ledger:flushRun(); ledger:record("mode", "chase2") end
         saved.balanceLedger2 = true
     end
+    -- The launch collection: from here on a card held back for seasons is not acquired until a season has released it (Availability.lua).
+    if saved.balancedDrops == 2 and saved.balanceLedger2 and not saved.launchLedger then
+        if ledger then ledger:flushRun(); ledger:record("mode", "launch1") end
+        saved.launchLedger = true
+    end
 end
 
 function ACB.discoveryText(card)

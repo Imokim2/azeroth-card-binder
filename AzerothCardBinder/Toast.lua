@@ -153,7 +153,7 @@ function ACB.initToast(saved)
     function ACB.showSetToast(page, reward)
         if not page then return end
         if saved.popups == false then ACB.playSound("set_complete") return end
-        queue[#queue + 1] = { set = page, reward = reward, total = #page.cards }
+        queue[#queue + 1] = { set = page, reward = reward, total = #(page.required or page.cards) }
         if current then
             if #queue > MAX_QUEUE then table.remove(queue, 1) end
         else

@@ -15,7 +15,7 @@ import { integrityFlags } from "./integrity.ts";
 import { seasonalCandidates } from "./seasons.ts";
 import type { SqlSeasons } from "./seasons.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8]; // 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates)
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8, 9]; // 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates); 9 adds mode/launch1 (cards held back for seasons)
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -84,7 +84,7 @@ const CHAIN_ERRORS: Record<string, ErrorCode> = {
 // Verify a signed upload from a registered player and store it. Uploading the same batch twice is safe: the
 // second time nothing is written and the answer is the same.
 export async function acceptUpload(
-  deps: { ingest: IngestStore; tapes: TapeStore; trades: TradeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined; seasons?: SqlSeasons },
+  deps: { ingest: IngestStore; tapes: TapeStore; trades: TradeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined; seasons?: SqlSeasons; released?: () => Promise<Record<string, number>> },
   player: Player,
   upload: Upload,
 ): Promise<Ack> {
@@ -110,6 +110,10 @@ export async function acceptUpload(
   }
   // A binder on the second drop generation (mode/chase2) can only be uploaded by a companion that knows its rates.
   if (upload.specVersion < 8 && ((stored.state.balance ?? 0) >= 2 || events.some((event) => event["kind"] === "mode" && event["key"] === "chase2"))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
+  // A binder on the launch collection (mode/launch1) can only be uploaded by a companion that knows which cards are held back.
+  if (upload.specVersion < 9 && (stored.state.launch === 1 || events.some((event) => event["kind"] === "mode" && event["key"] === "launch1"))) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
   // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.
@@ -146,7 +150,12 @@ export async function acceptUpload(
   if (upload.specVersion < 4 && events.some((event) => (event["kind"] === "mode" && event["key"] === "editions1") || deps.catalog.cards[String(event["key"])]?.baseKey)) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
-  const played = replay(events, deps.catalog, stored.state, { strict: true });
+  // Cards held back for seasons are available from the start of a season that features them. The time counted is the earlier of the event's
+  // own and the server's now, so a clock set ahead gains nothing. With no seasons store, nothing is released.
+  const released = deps.released ? await deps.released() : deps.seasons ? await deps.seasons.released() : {};
+  const now = deps.now();
+  const available = (key: string, t: number): boolean => released[key] !== undefined && (released[key] as number) <= Math.min(t, now);
+  const played = replay(events, deps.catalog, stored.state, { strict: true, available });
   if (!played.ok) throw new ApiError("rule_broken", { rule: played.rule, index: played.index });
 
   // Every ranked attempt (a drop, or a run of misses) must match the tape entries the server issued, with the chance
@@ -157,7 +166,7 @@ export async function acceptUpload(
     if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
     const checked = await checkTape({
       key: await tapeKey(deps.tapeSecret), playerId: tapeOwner(player), events: events as unknown as LedgerEvent[], stateBefore: stored.state,
-      catalog: deps.catalog, issuedEnd: await deps.tapes.issuedEnd(player.id), stack: stored.pity, tapeNext: upload.tapeIndex,
+      catalog: deps.catalog, issuedEnd: await deps.tapes.issuedEnd(player.id), stack: stored.pity, tapeNext: upload.tapeIndex, available,
     });
     if (checked.failure) throw new ApiError("tape_invalid", { reason: checked.failure.reason, index: checked.failure.index });
     pity = checked.stack;

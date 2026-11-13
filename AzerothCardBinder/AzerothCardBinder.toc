@@ -14,6 +14,8 @@ CatalogNodes.lua
 Lore.lua
 DropRates.lua
 Editions.lua
+LaunchCollection.lua
+Availability.lua
 Achievements.lua
 Hash.lua
 Ledger.lua

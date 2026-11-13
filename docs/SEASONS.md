@@ -14,6 +14,12 @@ Card retirement is a separate catalog change, not part of scheduling a checklist
 
 The retirement list and whether a returning card stays available after its season still need to be agreed. This change retires no cards and does not yet switch their availability through season scheduling. That availability policy must be enforced consistently by the addon and server when the actual catalog reduction is prepared.
 
+## Held-back cards and releasing them
+
+The launch collection is half the cards (`docs/proposals/SMALLER-LAUNCH-COLLECTION.md`). The other half is **held back**: marked `seasonal` in the catalog from `AzerothCardBinder/LaunchCollection.lua`, not dropped, not in packs, not crafted and not shown in a binder that does not own one. **Scheduling a season that features a held-back card releases it: from the season's start the card is available to everyone, and it stays available after the season ends.** A season therefore gives early access and rewards to the players who collect it during the window. Pages are finished by their launch cards alone; released season cards are extras.
+
+The server enforces this once a binder has recorded `mode/launch1` (ledger spec 9): see [the ledger spec](LEDGER-SPEC.md), "Launch collection". The add-on knows which cards are released from `sync.seasonal.released`, which the companion writes from the seasons sync, so a player who does not run the companion sees only the launch cards until they do.
+
 ## Timing and fairness
 
 Both the event time and the server's receipt must fall in `[start, end)`. Players must log out or `/reload` to save and sync before the deadline. An offline or late upload still preserves normal cards, but does not qualify for the ended season. The client clock alone never decides a win.

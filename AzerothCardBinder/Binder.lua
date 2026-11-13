@@ -78,6 +78,7 @@ function ACB.initUI(saved, trade)
         if tradeView:IsShown() then tradeView:refresh() end
         if tradeSelection and not tradeSelection.allowed() then endTradeSelection() end
         if not frame:IsShown() then return end
+        ACB.refreshVisibleCards(saved) -- cards held back for seasons appear once released, or once owned
         for destination, control in pairs(tabs) do
             local active = destination == mode
             control.frame:SetEnabled(not active and (not tradeSelection or destination == "index" or destination == "collection"))

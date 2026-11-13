@@ -37,6 +37,7 @@ const copyState = (state) => ({
     packs: { ...(state.packs || {}) }, packZone: state.packZone || "", packLeft: state.packLeft || 0, packFound: state.packFound || 0,
     lastAttempt: { key: (state.lastAttempt && state.lastAttempt.key) || "", tape: (state.lastAttempt && state.lastAttempt.tape) || 0 },
     ...(state.editions === true ? { editions: true } : {}),
+    ...(state.launch === 1 ? { launch: 1 } : {}),
     ...(state.balance >= 1 ? { balance: state.balance, balanceAttempts: { ...(state.balanceAttempts || {}) },
         balanceDrops: { ...(state.balanceDrops || {}) }, balanceReady: { ...(state.balanceReady || {}) } } : {}),
     ...(state.packOutputs ? { packOutputs: Object.fromEntries(Object.entries(state.packOutputs).map(([zone, cards]) => [zone, { ...cards }])) } : {}),
@@ -46,7 +47,10 @@ const copyState = (state) => ({
 });
 
 // Returns the name of the rule an event breaks, or null. Mutates `state` only when the event is fine.
-function applyEvent(state, event, catalog, strict = false) {
+// `available(baseKey, t)`, when given, says whether a card held back for seasons (catalog card.seasonal) may be acquired at time t. It is
+// consulted only on a binder that has recorded mode/launch1; the server supplies it from the scheduled seasons (a card is available from the
+// start of the first season that features it, for good).
+function applyEvent(state, event, catalog, strict = false, available = null) {
     if (event.t < state.lastT) return "time";
     const card = catalog.cards[event.key];
     const isPackKey = event.key.startsWith("pack:");
@@ -59,6 +63,10 @@ function applyEvent(state, event, catalog, strict = false) {
     if (isCardEvent && !card && !packTrade) return "unknown-card";
     if (card && card.baseKey && (event.kind === "miss" || event.kind === "craft")) return "edition";
     if (card && card.baseKey && !state.editions && (event.kind === "drop" || event.kind === "packCard")) return "edition";
+    if (state.launch === 1 && available && card && (event.kind === "drop" || event.kind === "miss" || event.kind === "packCard" || event.kind === "craft")) {
+        const baseKey = card.baseKey || event.key;
+        if (catalog.cards[baseKey]?.seasonal && !available(baseKey, event.t)) return "retired";
+    }
     if (card && card.balanceOnly && !(state.balance >= 1) && (event.kind === "drop" || event.kind === "packCard")) return "balance";
     // Only a drop may be shiny; only a drop, a miss or the switch into ranked2 may use the tape; only a recycle or a craft moves dust.
     const usesTape = event.kind === "drop" || event.kind === "miss" || event.kind === "packFind" || event.kind === "packOpen" || event.kind === "packCard"
@@ -185,7 +193,7 @@ function applyEvent(state, event, catalog, strict = false) {
             const set = catalog.sets.find((entry) => entry.code === event.key);
             if (!set) return "unknown-set";
             if (event.count !== 0 || state.sets[set.code]) return "set";
-            if (!set.cards.every((key) => familyCount(catalog, counts, key) > 0)) return "set";
+            if (!(set.required || set.cards).every((key) => familyCount(catalog, counts, key) > 0)) return "set"; // a page is finished by its launch cards (set.required, when the catalog names them)
             state.sets[set.code] = true;
             break;
         }
@@ -207,6 +215,13 @@ function applyEvent(state, event, catalog, strict = false) {
                 if (event.count !== 0 || state.balance !== 1) return "mode";
                 state.balance = 2;
                 state.balanceAttempts = {}; state.balanceDrops = {}; state.balanceReady = {};
+                break;
+            }
+            if (event.key === "launch1") {
+                // The launch collection: from here on a card held back for seasons is not acquired until a season has released it. Only after
+                // chase2, once. Nothing already owned changes.
+                if (event.count !== 0 || state.balance !== 2 || state.launch === 1) return "mode";
+                state.launch = 1;
                 break;
             }
             if (event.key === "editions1") {
@@ -260,7 +275,7 @@ function replay(events, catalog, start = newState(), options = {}) {
         const event = events[index];
         const next = events[index + 1];
         const quiet = event.kind === "mode" && event.key === "ranked" && next !== undefined && next.kind === "mode";
-        const rule = applyEvent(state, event, catalog, options.strict === true && !quiet);
+        const rule = applyEvent(state, event, catalog, options.strict === true && !quiet, options.available || null);
         if (rule) return { ok: false, error: "rule", rule, index };
     }
     return { ok: true, state };

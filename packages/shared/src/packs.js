@@ -34,21 +34,22 @@ const byNumber = (a, b) => (Number(a.split(":")[1]) - Number(b.split(":")[1])) |
 
 // The cards of a zone by rarity, each rarity in order of card number (then key), leaving out rarities the zone has none of.
 // The order is fixed here so that every implementation numbers the cards of a pool the same way.
-function packPools(catalog, zone) {
+// `available(key)`, when given, leaves out cards that may not be found yet (cards held back for seasons: see rules.js).
+function packPools(catalog, zone, available = null) {
     const set = catalog.sets.find((entry) => entry.code === zone);
     if (!set) return [];
     return PACK_RARITIES
         .map(([rarity, weight]) => ({
             rarity, weight,
-            cards: set.cards.filter((key) => catalog.cards[key] && catalog.cards[key].rarity === rarity).sort(byNumber),
+            cards: set.cards.filter((key) => catalog.cards[key] && catalog.cards[key].rarity === rarity && (!available || available(key))).sort(byNumber),
         }))
         .filter((pool) => pool.cards.length > 0);
 }
 
 // The card a tape entry gives from a zone's pack: the rarity from the roll, then a card of that rarity from the rest.
 // Only whole numbers are used, so every implementation gets the same answer. Returns the card key, or null for an unknown zone.
-function packPick(catalog, zone, entry, shinyOdds, balanced = false) {
-    const pools = packPools(catalog, zone);
+function packPick(catalog, zone, entry, shinyOdds, balanced = false, available = null) {
+    const pools = packPools(catalog, zone, available);
     if (pools.length === 0) return null;
     const total = pools.reduce((sum, pool) => sum + pool.weight, 0);
     const scaled = (rollOf(entry) - 1) * total; // 0 up to 10000 * total, compared with weights scaled by 10000

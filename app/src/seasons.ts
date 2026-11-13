@@ -4,7 +4,7 @@ export type SeasonData = { at: number; binders: string[]; titles: string[]; know
   id: string; title: string; startsAt: number; endsAt: number; cards: string[]; collected: string[];
   place: number; completedAt: number; titles: string[];
   rewards: { completion: SeasonReward; first: SeasonReward & { places: number } };
-}[]; grants: { id: string; pack: string }[] };
+}[]; grants: { id: string; pack: string }[]; released: string[] };
 const row = (v: unknown): Record<string, unknown> => v && typeof v === "object" && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const whole = (v: unknown) => { if (!Number.isSafeInteger(v) || Number(v) < 0) throw new Error("invalid seasonal number"); return Number(v); };
 const text = (v: unknown) => { if (typeof v !== "string" || v.length > 80) throw new Error("invalid seasonal text"); return v; };
@@ -32,5 +32,7 @@ export function parseSeasonData(input: unknown, binders: string[] = []): SeasonD
     if (!cards.length || startsAt >= endsAt || places > 100 || collected.some(k => !cards.includes(k))) throw new Error("invalid season");
     return { id, title: text(s["title"]), startsAt, endsAt, cards, collected, place: whole(s["place"]), completedAt: whole(s["completedAt"]),
       titles: list(s["titles"], 2).map(text), rewards: { completion: reward(r["completion"]), first: { ...reward(first), places } } };
-  }), grants: list(data["grants"], 100).map(v => { const g = row(v); return { id: token(g["id"]), pack: pack(g["pack"]) }; }) };
+  }), grants: list(data["grants"], 100).map(v => { const g = row(v); return { id: token(g["id"]), pack: pack(g["pack"]) }; }),
+    // The cards held back for seasons that are available now (a season released them). Old servers send none.
+    released: list(data["released"] ?? [], 2000).map(card) };
 }
