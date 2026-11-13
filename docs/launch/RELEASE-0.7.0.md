@@ -47,6 +47,8 @@ Then on `main`: `node tools/release.js check`, `node tools/release.js test`, `cd
 
 ## Staging checks
 
+**`node tools/staging-walkthrough.js` does the part that needs no player**, and lists the rest. It checks this checkout (versions agree, the ledger protocol is the same in the rules, server and companion, the catalog and the held-back list are current, the minimum versions do not shut out the release), runs `tools/smoke.js` against the server, then checks the deployed server is this release: its version and catalog match, it accepts every protocol up to this one and refuses the next, the seasons routes are mounted and the scheduling door is shut. Run it against staging after step 3; **before the deploy it should fail on the server section, and after the deploy it should pass**. Options: `--env production` or `--url <address>`, `--offline` (checkout only), `--wrangler` (also ask Cloudflare whether a migration is still waiting) and `--season-draft <file>`, which writes a draft staging season releasing two held-back cards from one page, starting in 15 minutes, and prints the preview and schedule commands. Whatever is left, it prints as a checklist for the two-account test below. It changes nothing on any server.
+
 Use two Ranked accounts (one fresh, one with an existing collection) and one Casual.
 
 - **Upgrade keeps everything.** Cards, shiny cards, editions, packs, dust, titles and history are unchanged after installing the companion then the add-on. The saved file's ledger gains `chase1` (if absent), `chase2`, `launch1`, in that order, once.
