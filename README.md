@@ -12,6 +12,8 @@ Free and open source. Built for **Forever**; Retail and other Classic clients ar
 
 Browse cards by zone or dungeon, see what you’re missing and take a closer look at your favourites. Some cards have separate collectible editions with different poses or animations.
 
+Seasonal collections give everyone a shared list to hunt for alongside their normal Ranked binder. Finish in time for titles and packs, with extra rewards for the first finishers. Cards held back from the launch collection can return through seasons; copies you already own stay yours.
+
 ![Binder layout illustration showing a collection page and a selected card. Screenshot placeholder.](docs/media/gallery/binder.png)
 
 *The gallery currently uses labelled layout illustrations. We’ll replace these with actual in-game screenshots.*

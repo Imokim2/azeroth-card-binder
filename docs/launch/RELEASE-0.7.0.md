@@ -1,6 +1,6 @@
 # Release 0.7.0: add-on 0.7.0, companion 0.5.0, server 0.5.0 (group-test candidate)
 
-**Status: prepared, not published.** Versions are bumped on `release/0.7.0-candidate`; nothing has been tagged, signed, built into an installer or deployed. This is a group-test candidate on the way to 1.0 (see [V1-RELEASE.md](V1-RELEASE.md)), not 1.0 itself.
+**Historical candidate: not published.** This candidate was merged and promoted into the coordinated 1.0.0 release preparation. See [V1-RELEASE.md](V1-RELEASE.md) for the current record. The original candidate versions and checklist below document what was prepared before promotion.
 
 ## What it contains
 

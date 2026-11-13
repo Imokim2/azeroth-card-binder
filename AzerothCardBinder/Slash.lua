@@ -143,7 +143,7 @@ function ACB.initSlash(saved, tools)
             if ACB.refresh then ACB.refresh() end
         elseif cmd == "studio" or cmd == "designs" or cmd:match("^studio%s+") then
             local query = message:match("^%s*%S+%s+(.-)%s*$")
-            ACB.openCardStudio(query and ACB.findAnyCard(query))
+            if ACB.openCardStudio then ACB.openCardStudio(query and ACB.findAnyCard(query)) else report("Open the binder with /acb to browse your cards.") end
         elseif cmd == "settings" or cmd == "options" then
             ACB.open("settings")
         elseif cmd == "popup" then
@@ -163,7 +163,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, trade, achievements, settings, studio, packs, dust, link, view, ask, privacy, title, popup, sound, sound test, hints, bar, newbinder, diag, log, version, boss.")
+            report("/acb opens the binder. Options: index, seasons, achievements, settings, bag, packs, dust, link, view, ask, privacy, title, popup, sound, hints, bar, version.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end
