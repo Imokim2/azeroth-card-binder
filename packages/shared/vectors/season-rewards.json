@@ -1,0 +1,26 @@
+{
+  "events": [
+    {
+      "dust": 0,
+      "shiny": 0,
+      "tape": 0,
+      "partner": "",
+      "trade": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "char": "Alice-RealmName",
+      "seq": 1,
+      "t": 1200,
+      "kind": "seasonReward",
+      "key": "WF",
+      "count": 1,
+      "prev": "00000000000000000000000000000000",
+      "h": "87b9c7cb527f12b42ece62d86529fe07"
+    }
+  ],
+  "head": {
+    "seq": 1,
+    "hash": "87b9c7cb527f12b42ece62d86529fe07"
+  },
+  "texts": [
+    "1|1200|seasonReward|WF|1|0|0|0||aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa|Alice-RealmName|00000000000000000000000000000000"
+  ]
+}

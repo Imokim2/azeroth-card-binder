@@ -6,7 +6,8 @@
 // whole on every pass, so a crash, a restart or a failed request cannot leave the two out of step.
 import { readBinder, BinderFileError } from "./binderFile.ts";
 import type { Binder } from "./binderFile.ts";
-import { fetchReleases, fetchStandings, fetchTape, sendReports, syncBinder } from "./client.ts";
+import { fetchReleases, fetchStandings, fetchTape, fetchSeasons, sendReports, syncBinder } from "./client.ts";
+import type { SeasonData } from "./seasons.ts";
 import { cachedStandings } from "./communityCache.ts";
 import type { PendingReport } from "./binderFile.ts";
 import type { ClientOptions, Outcome, Standings } from "./client.ts";
@@ -66,6 +67,9 @@ export class Engine {
   #rankedSetups: string[] = [];
   #standings: Standings | undefined;
   #loadedCommunity = false;
+  #seasons: SeasonData | undefined;
+  #seasonBinders: string[] = [];
+  #checkedSeasons = false;
   #releases: Releases | undefined; // the versions the server last announced
   #releasesAt = 0;
   #reportsDone: string[] = []; // tokens of reports the server has settled, newest last; written to Sync.lua for the add-on
@@ -109,6 +113,7 @@ export class Engine {
     let tapeNext = 1; // the furthest tape position any Ranked add-on file says it will use next
     let uploadedProgress = false;
     const reports = new Map<string, PendingReport>();
+    const seasonBinders: string[] = [];
     let running: string | null = null; // the oldest add-on version that last wrote an account's file
     for (const file of install.savedFiles) {
       let binder: Binder;
@@ -136,6 +141,7 @@ export class Engine {
       if (wantsRanked && result.status === "rejected") rankedBlocked = true;
       if (result.status === "synced" && result.uploaded > 0) uploadedProgress = true;
       if (result.status === "synced" && result.ack) this.#acks.set(file.account, result.ack);
+      if (result.status === "synced" && binder.modeSetupID) seasonBinders.push(binder.modeSetupID);
       if (result.status === "synced" && result.ack?.seq === binder.head.seq && result.ack.hash === binder.head.hash) {
         try { await this.#options.keepSavedBackup?.(file.account, source); }
         catch { this.#options.log?.("The local recovery copy could not be saved; the game save is unchanged."); }
@@ -148,6 +154,7 @@ export class Engine {
       });
     }
 
+    this.#seasonBinders = seasonBinders;
     // Reports the player made in the game go up once; the ones the server has settled are written for the add-on to forget.
     const pending = [...reports.values()].filter((report) => !this.#reportsDone.includes(report.token));
     if (accounts.length > 0 && pending.length > 0) {
@@ -204,6 +211,12 @@ export class Engine {
         standings = "fresh";
       }
     }
+    if (seasonBinders.length && (!this.#checkedSeasons || savedFileChanged || uploadedProgress)) {
+      const reply = await fetchSeasons(client, seasonBinders);
+      if (reply.status === "seasons") this.#seasons = reply.data;
+      else if (reply.status === "retry-later") retryAfterMs = Math.max(retryAfterMs ?? 0, reply.afterMs);
+      if (reply.status !== "retry-later") this.#checkedSeasons = true;
+    }
 
     // Which versions are current: asked every so often, and kept when the server cannot be reached.
     if (!this.#releases || now - this.#releasesAt >= (this.#options.releasesEveryMs ?? 21_600_000)) {
@@ -231,6 +244,7 @@ export class Engine {
       ...(this.#rankedIssue ? { rankedIssue: this.#rankedIssue } : {}),
       ...(this.#releases ? { releases: { latestAddon: this.#releases.addon.latest, minAddon: this.#releases.addon.min } } : {}),
       ...(this.#tape ? { tape: this.#tape } : {}),
+      ...(this.#seasons ? { seasonal: { ...this.#seasons, binders: this.#seasons.binders.filter(id => this.#seasonBinders.includes(id)) } } : {}),
       ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts } : {}),
     });
     try {

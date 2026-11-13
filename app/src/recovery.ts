@@ -12,7 +12,7 @@ type RecordValue = Record<string, unknown>;
 const record = (value: unknown): RecordValue => value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 const mapText = (value: unknown) => JSON.stringify(Object.entries(record(value)).sort(([a], [b]) => a.localeCompare(b)));
-const progressKeys = new Set(("schema counts shiny dust sets titles achievements tradeCount history ledger head stateSum tape run mode modeChoice casualDrops attempts misses rolledGuids rolledNext legacy exactMode balancedDrops balanceLedger editionDrops editionLedger tieredPacks packTiersLedger packs levels").split(" "));
+const progressKeys = new Set(("schema counts shiny dust sets titles achievements tradeCount history ledger head stateSum tape run mode modeChoice casualDrops attempts misses rolledGuids rolledNext legacy exactMode balancedDrops balanceLedger editionDrops editionLedger tieredPacks packTiersLedger packs levels seasonClaims seasonTitles").split(" "));
 
 export type RecoveryServer = {
   head: { seq: number; hash: string }; tapeNext: number; casualDrops: number; state: RecordValue; events: RecordValue[];
@@ -62,7 +62,7 @@ export async function planRecovery(path: string, current: string, backup: string
       const expected = before.head.seq === server.head.seq ? server.head.hash : server.events.find(e => e["seq"] === before.head.seq)?.["h"];
       if (before.head.hash !== expected) return null;
     } else if (Object.keys(before.snapshot.counts).length > 0 || before.snapshot.dust > 0 || Object.keys(record(raw["packs"])).length > 0) return null;
-    for (const key of ["counts", "shiny", "packs", "sets"]) if (mapText(restored[key]) !== mapText(server.state[key])) return null;
+    for (const key of ["counts", "shiny", "packs", "sets", "seasonClaims"]) if (mapText(restored[key]) !== mapText(server.state[key])) return null;
     if (restored["dust"] !== server.state["dust"] || restored["stateSum"] !== stateSum(restored)) return null;
     if (Number(restored["casualDrops"] ?? 0) !== server.casualDrops) return null;
     if (candidate.mode !== (server.state["mode"] === "casual" ? "casual" : "ranked")) return null;
@@ -70,7 +70,7 @@ export async function planRecovery(path: string, current: string, backup: string
     const verified = await checkChain(candidate.events, first ? { seq: first.seq - 1, hash: first.prev } : candidate.head);
     if (!verified.ok || verified.head?.seq !== candidate.head.seq || verified.head.hash !== candidate.head.hash) return null;
     // Refuse even a matching backup if any local inventory, achievement or attempt would be lost.
-    for (const field of ["counts", "shiny", "packs", "titles", "sets", "achievements", "attempts", "misses"]) {
+    for (const field of ["counts", "shiny", "packs", "titles", "sets", "achievements", "attempts", "misses", "seasonClaims", "seasonTitles"]) {
       const target = record(restored[field]);
       for (const [key, value] of Object.entries(record(raw[field]))) {
         if (value === true && target[key] !== true) return null;

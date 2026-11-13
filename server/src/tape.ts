@@ -45,18 +45,23 @@ export type TapeFailure = { reason: "not-issued" | "roll" | "shiny" | "pack" | "
 export async function checkTape(args: {
   key: TapeKey; playerId: string; events: LedgerEvent[]; stateBefore: LedgerState; catalog: Catalog;
   issuedEnd: number; stack: Record<string, number>; tapeNext: number;
+  // Whether a card held back for seasons may be found at time t (see packages/shared/src/rules.js); used for packs once mode/launch1 is recorded.
+  available?: (key: string, t: number) => boolean;
 }): Promise<{ failure: TapeFailure } | { failure: null; stack: Record<string, number> }> {
   let stack = { ...args.stack };
   const owned = new Set(Object.keys(args.stateBefore.shiny));
   let lastTape = args.stateBefore.lastTape;
   let editions = args.stateBefore.editions === true;
-  let balanced = args.stateBefore.balance === 1;
+  let balanced: false | number = (args.stateBefore.balance ?? 0) >= 1 ? (args.stateBefore.balance as number) : false; // the drop generation (1 or 2)
   let tiered = args.stateBefore.tieredPacks === true;
+  let launched = args.stateBefore.launch === 1;
   let zone = args.stateBefore.packZone ?? ""; // the zone of the pack being opened (it can span two uploads)
   const entryAt = (position: number): Promise<string> => tapeEntry(args.key, args.playerId, position);
   for (const [index, event] of args.events.entries()) {
     if (event.kind === "mode" && event.key === "packs2") { tiered = true; continue; }
-    if (event.kind === "mode" && event.key === "chase1") { balanced = true; continue; }
+    if (event.kind === "mode" && event.key === "chase1") { balanced = 1; continue; }
+    if (event.kind === "mode" && event.key === "chase2") { balanced = 2; continue; }
+    if (event.kind === "mode" && event.key === "launch1") { launched = true; continue; }
     if (event.kind === "mode" && event.key === "editions1") { editions = true; continue; }
     if (event.kind === "mode" && event.key === "ranked2") {
       stack = {};
@@ -79,7 +84,7 @@ export async function checkTape(args: {
       if (event.tape === 0) continue;
       if (event.tape > args.issuedEnd) return { failure: { reason: "not-issued", index } };
       const entry = await entryAt(event.tape);
-      const base = packPick(args.catalog, zone, entry, args.catalog.shinyOdds, balanced);
+      const base = packPick(args.catalog, zone, entry, args.catalog.shinyOdds, balanced, launched && args.available ? (key) => !args.catalog.cards[key]?.seasonal || args.available!(key, event.t) : null);
       const expected = editions && base ? pickEdition(args.catalog, base, await editionValue(entry), balanced) : base;
       if (expected !== event.key) return { failure: { reason: "pack", index } };
       if (!owned.has(event.key) && (shinyValue(entry, args.catalog.shinyOdds) === 1) !== (event.shiny === 1)) return { failure: { reason: "shiny", index } };

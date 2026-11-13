@@ -77,7 +77,7 @@ for (const [tier, draw, size] of [['common', 1, 1], ['rare', 71, 3], ['epic', 96
         assert.equal(packInfo(catalog, run.zone).tier, tier);
         assert.equal(run.recipient.events.filter(event => event.kind === 'packCard').length, size);
         async function upload(who, character, played) {
-            const result = await env.call('/v1/ledger', { body: h.signedUpload(who.player, played.events, { specVersion: 6,
+            const result = await env.call('/v1/ledger', { body: h.signedUpload(who.player, played.events, { specVersion: 9,
                 character, tapeIndex: played.tapeIndex, snapshot: { ...snapshot(played), attempts: played.attempts } }) });
             assert.equal(result.status, 200, await result.text());
         }
@@ -99,11 +99,11 @@ for (const [tier, draw, size] of [['common', 1, 1], ['rare', 71, 3], ['epic', 96
         const give = h.chain([partial('tradeOut', card, bStored.state.counts[card] - 1, {
             seq: bStored.head.seq + 1, t: 1700000001, partner: 'carl-realmname', trade: 'pack-output-resale' })], bStored.head.hash);
         const bCounts = { ...bStored.state.counts, [card]: bStored.state.counts[card] - 1 };
-        const sent = await env.call('/v1/ledger', { body: h.signedUpload(bob.player, give, { specVersion: 6, character: 'Bob', tapeIndex: run.recipient.tapeIndex,
+        const sent = await env.call('/v1/ledger', { body: h.signedUpload(bob.player, give, { specVersion: 9, character: 'Bob', tapeIndex: run.recipient.tapeIndex,
             snapshot: { ...snapshot(bStored.state), counts: bCounts } }) });
         assert.equal(sent.status, 200, await sent.text());
         const receive = h.chain([partial('tradeIn', card, 1, { char: 'Carl-RealmName', t: 1700000001, partner: 'bob-realmname', trade: 'pack-output-resale' })]);
-        const taken = await env.call('/v1/ledger', { body: h.signedUpload(carl.player, receive, { specVersion: 6, character: 'Carl', snapshot: { counts: { [card]: 1 }, dust: 0, sets: {}, attempts: {}, titles: {} } }) });
+        const taken = await env.call('/v1/ledger', { body: h.signedUpload(carl.player, receive, { specVersion: 9, character: 'Carl', snapshot: { counts: { [card]: 1 }, dust: 0, sets: {}, attempts: {}, titles: {} } }) });
         assert.equal(taken.status, 200, await taken.text());
         await maintenance(); assert.ok(score(carl.id) > 0);
         env.raw.prepare('UPDATE ledger_state SET casual_drops = 1 WHERE player_id = ?').run(alice.id);

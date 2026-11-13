@@ -46,6 +46,9 @@ export function setup(options: { identity?: boolean } = {}) {
     now: () => clock.now, log: (entry) => logs.push(entry),
     health: async () => { if (!healthy) throw new Error("database down"); await db.all("SELECT 1"); },
     minClient: "0.1.0", version: "test", ...(identity ? { identity } : {}),
+    // The older tests were written before cards were held back for seasons: here every such card is released from the start of time. The
+    // tests about holding cards back replace this (server/test/availability.test.ts).
+    released: async () => Object.fromEntries(Object.entries(catalog.cards).filter(([, card]) => card.seasonal).map(([key]) => [key, 0])),
   };
   const api = createApi(deps);
   return {

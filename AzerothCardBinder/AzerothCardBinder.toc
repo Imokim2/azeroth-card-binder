@@ -14,6 +14,8 @@ CatalogNodes.lua
 Lore.lua
 DropRates.lua
 Editions.lua
+LaunchCollection.lua
+Availability.lua
 Achievements.lua
 Hash.lua
 Ledger.lua
@@ -22,6 +24,7 @@ Tape.lua
 Collection.lua
 Kills.lua
 Packs.lua
+Seasons.lua
 Trade.lua
 TradeSession.lua
 Range.lua
@@ -55,6 +58,7 @@ SoundSettingsView.lua
 SettingsView.lua
 LeaderboardView.lua
 WantedView.lua
+SeasonsView.lua
 PackView.lua
 SatchelSkin.lua
 Satchel.lua

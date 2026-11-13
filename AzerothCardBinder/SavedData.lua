@@ -141,7 +141,7 @@ function ACB.cleanSavedData(saved)
     local upgraded = saved.schema ~= ACB.schema
     saved.schema = ACB.schema
     saved.editionDrops = true
-    saved.balancedDrops = true
+    saved.balancedDrops = 2 -- the drop generation in use (see DropRates.lua): 2 = mode/chase2 rates
     saved.tieredPacks = true
     saved.counts, saved.achievements = tableOrEmpty(saved.counts), tableOrEmpty(saved.achievements)
     saved.levels = nil -- levels were shown on cards in an earlier build and are no longer kept
@@ -178,6 +178,8 @@ function ACB.cleanSavedData(saved)
         saved.tradeCount = #saved.history
     end
     saved.sets, saved.titles = tableOrEmpty(saved.sets), tableOrEmpty(saved.titles)
+    ACB.cleanSeasonData(saved)
+    ACB.seasonRewardTitles(saved)
     for key, value in pairs(saved.sets) do
         if value ~= true then saved.sets[key] = nil end
     end

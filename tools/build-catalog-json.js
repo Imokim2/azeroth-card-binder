@@ -19,7 +19,7 @@ const output = process.env.CATALOG_OUT || path.join(root, "packages", "shared", 
 const dump = String.raw`
 local addon = "AzerothCardBinder"
 local ACB = {}
-for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "DropRates.lua", "Editions.lua" }) do
+for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "DropRates.lua", "Editions.lua", "LaunchCollection.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 
@@ -59,12 +59,17 @@ for _, page in ipairs(ACB.pages) do
         keys[#keys + 1] = card.key
         local entry = { name = card.name, rarity = card.rarity, rank = card.rank, set = page.code }
         if card.boss then entry.boss = true end
+        if card.seasonal then entry.seasonal = true end -- held back for seasons (LaunchCollection.lua)
         if card.profession then entry.profession = card.profession end
         entry.dropProfile, entry.critter = card.dropProfile, card.critter
         cards[card.key] = entry
     end
     table.sort(keys)
-    sets[#sets + 1] = { code = page.code, title = page.title, group = page.group, reward = page.reward, cards = keys }
+    local required = {}
+    for _, card in ipairs(page.required or page.cards) do required[#required + 1] = card.key end
+    table.sort(required)
+    sets[#sets + 1] = { code = page.code, title = page.title, group = page.group, reward = page.reward, cards = keys,
+        required = #required ~= #keys and required or nil }
 end
 table.sort(sets, function(a, b) return a.code < b.code end)
 local editions = {}

@@ -65,14 +65,15 @@ end
 function ACB.packID(zone, tier) return tier == "epic" and zone or zone .. ":" .. tier end
 
 -- The card key an entry gives from a zone's pack, or nil for an unknown zone.
-function ACB.packPick(zone, entry, balanced)
+-- `available(card)`, when given, leaves out cards that may not be found yet (those held back for seasons: Availability.lua).
+function ACB.packPick(zone, entry, balanced, available)
     local page = ACB.pageOfZone(zone)
     if not page then return end
     local pools, total = {}, 0
     for _, rarity in ipairs(RARITIES) do
         local cards = {}
-        for _, card in ipairs(page.cards) do
-            if card.rarity == rarity[1] then cards[#cards + 1] = card.key end
+        for _, card in ipairs(page.all or page.cards) do
+            if card.rarity == rarity[1] and (not available or available(card)) then cards[#cards + 1] = card.key end
         end
         table.sort(cards, function(a, b)
             local x, y = ACB.cards[a].id, ACB.cards[b].id
@@ -193,7 +194,7 @@ function ACB.addPackMethods(collection, ctx)
         for index = 1, info.size do
             local entry, tapeIndex
             if ranked then entry, tapeIndex = ACB.takeTape(saved) else entry = ACB.randomEntry(random) end
-            local key = ACB.packPick(info.zone, entry, saved.balancedDrops)
+            local key = ACB.packPick(info.zone, entry, saved.balancedDrops, ACB.cardAvailable)
             if saved.editionDrops then key = ACB.pickEdition(ACB.cards[key], ACB.editionRoll(entry), saved.balancedDrops).key end
             local before = saved.counts[key] or 0
             saved.counts[key] = before + 1

@@ -66,7 +66,7 @@ test("a verified backup restores real Lua data while retaining settings and both
     assert.deepEqual(restored.wanted, { "npc:639": true });
     assert.equal(Object.values(readBinder(await readFile(f.path, "utf8")).snapshot.counts).reduce((a, b) => a + b, 0), copies);
     // Verify the repaired literal and checksum under the real addon code as well as the TypeScript reader.
-    const code = `local A={}; for _,n in ipairs({"Catalog.lua","CatalogForever.lua","CatalogExtra.lua","CatalogNodes.lua","Lore.lua","DropRates.lua","Editions.lua","Achievements.lua","Hash.lua","Ledger.lua","Collection.lua","Packs.lua","SavedData.lua"}) do assert(loadfile("AzerothCardBinder/"..n))("AzerothCardBinder",A) end; assert(loadfile(arg[1]))(); local s=A.cleanSavedData(AzerothCardBinderDB); local l=A.newLedger(s,function()return 1 end,function()return "A-B" end); assert(l:check())`;
+    const code = `local A={}; for _,n in ipairs({"Catalog.lua","CatalogForever.lua","CatalogExtra.lua","CatalogNodes.lua","Lore.lua","DropRates.lua","Editions.lua","Achievements.lua","Hash.lua","Ledger.lua","Collection.lua","Packs.lua","Seasons.lua", "SavedData.lua"}) do assert(loadfile("AzerothCardBinder/"..n))("AzerothCardBinder",A) end; assert(loadfile(arg[1]))(); local s=A.cleanSavedData(AzerothCardBinderDB); local l=A.newLedger(s,function()return 1 end,function()return "A-B" end); assert(l:check())`;
     const checker = join(f.dir, "check.lua"); await writeFile(checker, code);
     const checked = spawnSync(luajit, [checker, f.path], { cwd: root, encoding: "utf8" });
     assert.equal(checked.status, 0, checked.stderr);
@@ -123,6 +123,8 @@ test("repair refuses foreign, newer, incomplete or conflicting inventory and exe
     for (const text of [changed(d => { d.head = { seq: f.server.head.seq + 1, hash: "a".repeat(32) }; }),
       changed(d => { d.head = { seq: f.server.head.seq, hash: "f".repeat(32) }; }),
       changed(d => { d.counts = { "npc:639": 999 }; }), changed(d => { d.dust = 99999; }),
+      changed(d => { d.seasonClaims = { ["a".repeat(32)]: true }; }),
+      changed(d => { d.seasonTitles = { "Season Seeker": true }; }),
       changed(d => { d.run = { key: "npc:589", n: 1, last: 1 }; }), "AzerothCardBinderDB = os.execute('bad')"]) {
       assert.equal(await planRecovery(f.path, text, f.backup, f.server), null);
     }

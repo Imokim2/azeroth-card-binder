@@ -12,8 +12,10 @@ import { casualDropsOf, completionsOf, dropCountsOf, tradeRowsOf } from "./deriv
 import type { IngestStore, Player, TapeStore, TradeStore } from "./store.ts";
 import { checkTape, tapeKey, tapeOwner } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
+import { seasonalCandidates } from "./seasons.ts";
+import type { SqlSeasons } from "./seasons.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6]; // 6 adds trade-only pack:<zone> keys
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8, 9]; // 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates); 9 adds mode/launch1 (cards held back for seasons)
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -82,7 +84,7 @@ const CHAIN_ERRORS: Record<string, ErrorCode> = {
 // Verify a signed upload from a registered player and store it. Uploading the same batch twice is safe: the
 // second time nothing is written and the answer is the same.
 export async function acceptUpload(
-  deps: { ingest: IngestStore; tapes: TapeStore; trades: TradeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined },
+  deps: { ingest: IngestStore; tapes: TapeStore; trades: TradeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined; seasons?: SqlSeasons; released?: () => Promise<Record<string, number>> },
   player: Player,
   upload: Upload,
 ): Promise<Ack> {
@@ -102,8 +104,16 @@ export async function acceptUpload(
     ((event["kind"] === "packFind" || event["kind"] === "packOpen") && String(event["key"]).includes(":"))))) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
-  if (upload.specVersion < 5 && (stored.state.balance === 1 || events.some((event) =>
+  if (upload.specVersion < 5 && ((stored.state.balance ?? 0) >= 1 || events.some((event) =>
     (event["kind"] === "mode" && event["key"] === "chase1") || deps.catalog.cards[String(event["key"])]?.balanceOnly))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
+  // A binder on the second drop generation (mode/chase2) can only be uploaded by a companion that knows its rates.
+  if (upload.specVersion < 8 && ((stored.state.balance ?? 0) >= 2 || events.some((event) => event["kind"] === "mode" && event["key"] === "chase2"))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
+  // A binder on the launch collection (mode/launch1) can only be uploaded by a companion that knows which cards are held back.
+  if (upload.specVersion < 9 && (stored.state.launch === 1 || events.some((event) => event["kind"] === "mode" && event["key"] === "launch1"))) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
   // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.
@@ -131,14 +141,21 @@ export async function acceptUpload(
   }
 
   const chain = await checkChain(events, stored.head);
+  if (!chain.ok) throw new ApiError(CHAIN_ERRORS[chain.error] ?? "bad_field", { index: chain.index, ackSeq: stored.head.seq, ackHash: stored.head.hash });
+  const rewardEvents = events.filter(event => event["kind"] === "seasonReward");
+  if (rewardEvents.length && upload.specVersion < 7) throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  if (rewardEvents.length && (!deps.seasons || !(await deps.seasons.checkGrants(player.id, rewardEvents as LedgerEvent[])))) {
+    throw new ApiError("rule_broken", { rule: "season-reward" });
+  }
   if (upload.specVersion < 4 && events.some((event) => (event["kind"] === "mode" && event["key"] === "editions1") || deps.catalog.cards[String(event["key"])]?.baseKey)) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
-  if (!chain.ok) {
-    // Where the stored chain stands is included so the app can work out what to send next.
-    throw new ApiError(CHAIN_ERRORS[chain.error] ?? "bad_field", { index: chain.index, ackSeq: stored.head.seq, ackHash: stored.head.hash });
-  }
-  const played = replay(events, deps.catalog, stored.state, { strict: true });
+  // Cards held back for seasons are available from the start of a season that features them. The time counted is the earlier of the event's
+  // own and the server's now, so a clock set ahead gains nothing. With no seasons store, nothing is released.
+  const released = deps.released ? await deps.released() : deps.seasons ? await deps.seasons.released() : {};
+  const now = deps.now();
+  const available = (key: string, t: number): boolean => released[key] !== undefined && (released[key] as number) <= Math.min(t, now);
+  const played = replay(events, deps.catalog, stored.state, { strict: true, available });
   if (!played.ok) throw new ApiError("rule_broken", { rule: played.rule, index: played.index });
 
   // Every ranked attempt (a drop, or a run of misses) must match the tape entries the server issued, with the chance
@@ -149,7 +166,7 @@ export async function acceptUpload(
     if (!deps.tapeSecret) throw new ApiError("ranked_unavailable");
     const checked = await checkTape({
       key: await tapeKey(deps.tapeSecret), playerId: tapeOwner(player), events: events as unknown as LedgerEvent[], stateBefore: stored.state,
-      catalog: deps.catalog, issuedEnd: await deps.tapes.issuedEnd(player.id), stack: stored.pity, tapeNext: upload.tapeIndex,
+      catalog: deps.catalog, issuedEnd: await deps.tapes.issuedEnd(player.id), stack: stored.pity, tapeNext: upload.tapeIndex, available,
     });
     if (checked.failure) throw new ApiError("tape_invalid", { reason: checked.failure.reason, index: checked.failure.index });
     pity = checked.stack;
@@ -175,12 +192,16 @@ export async function acceptUpload(
   // The trade halves and finished sets in this batch, for matching and the firsts feed.
   const trades = tradeRowsOf(events);
   const completions = completionsOf(events);
+  const seasons = deps.seasons ? (await deps.seasons.list(deps.now())).filter(s => s.startsAt <= deps.now() && deps.now() < s.endsAt) : [];
+  const seasonKeys = new Set(seasons.flatMap(s => s.cards));
+  const seasonCards = seasonalCandidates(events as LedgerEvent[], stored.state.mode).filter(e => seasonKeys.has(e.key));
   try {
     await deps.ingest.commit(player.id, {
       events: events as unknown as LedgerEvent[], head: chain.head, state: played.state, pity, drops, tapeNext, receivedAt: deps.now(),
       character: { name: upload.character, realm: upload.realm },
       score: { displayName: `${upload.character}-${upload.realm}`, ...score, attempts, rulesVersion: RULES_VERSION },
       flags, trades, completions, casualDrops: casualDropsOf(events),
+      ...(seasonCards.length ? { seasonal: { epoch: player.epoch, cards: seasonCards.map(event => ({ event, zone: deps.catalog.cards[event.key]!.set })) } } : {}),
     });
   } catch (error) {
     if (error instanceof StoreConflict) throw new ApiError("conflict", undefined, 1);

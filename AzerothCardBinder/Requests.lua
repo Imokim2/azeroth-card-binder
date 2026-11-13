@@ -99,8 +99,8 @@ function ACB.newRequests(saved, send, now, after, report)
                 local owned = saved.counts[key] or 0
                 if card and owned >= 1 and not (askedBy[peer] and at < askedBy[peer]) then
                     askedBy[peer] = at + ASK_HEARD_GAP
-                    report(("%s is looking for %s. You have %d (%d spare). Type /acb trade %s to offer a swap."):format(
-                        peer, ACB.cardLink(card, saved.shiny and saved.shiny[key] == true), owned, owned - 1, peer))
+                    report(("%s is looking for %s. You have %d (%d spare). Right-click the player and choose Trade cards or packs."):format(
+                        peer, ACB.cardLink(card, saved.shiny and saved.shiny[key] == true), owned, owned - 1))
                 end
             end
             return true

@@ -9,6 +9,8 @@ import type { Identity } from "./identity.ts";
 import type { Ack } from "./syncFile.ts";
 import { isVersion } from "./versions.ts";
 import type { Releases } from "./versions.ts";
+import { parseSeasonData } from "./seasons.ts";
+import type { SeasonData } from "./seasons.ts";
 
 export type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => Promise<{
   status: number;
@@ -78,7 +80,8 @@ async function sendWithRetries(options: PublicClientOptions, path: string, body?
 
 async function uploadBody(options: ClientOptions, binder: Binder, events: BinderEvent[]): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {
-    specVersion: 6, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
+    // Spec 9 adds mode/launch1 (cards held back for seasons), 8 mode/chase2 (the second set of drop rates), 7 seasonal rewards. The server refuses a binder that needs more than it is told.
+    specVersion: 9, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
     realm: binder.character?.realm ?? "Unknown", schema: binder.schema, catalogVersion: options.catalogVersion,
     events, snapshot: binder.snapshot, tapeIndex: binder.tapeNext, sentAt: options.now(),
   };
@@ -168,6 +171,16 @@ export async function fetchTape(options: ClientOptions, addon?: string): Promise
   const { start, entries } = reply.body;
   if (typeof start !== "number" || !Array.isArray(entries) || !entries.every((entry) => typeof entry === "string")) return { status: "rejected", code: "bad_reply" };
   return { status: "tape", start, entries: entries as string[] };
+}
+
+export async function fetchSeasons(options: ClientOptions, binders: string[]): Promise<{ status: "seasons"; data: SeasonData } | Outcome> {
+  const body = { key: options.identity.publicKeyHex, sentAt: options.now() };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "seasons" }));
+  const reply = await sendWithRetries(options, "/v1/seasons", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  try { return { status: "seasons", data: parseSeasonData(reply.body, binders) }; }
+  catch { return { status: "rejected", code: "bad_reply" }; }
 }
 
 // Link this key to a Discord account (the sign-in itself is obtained by the app's window; here it is just a token).

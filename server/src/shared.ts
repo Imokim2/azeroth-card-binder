@@ -7,7 +7,7 @@ import * as editions from "../../packages/shared/src/editions.js";
 export type Catalog = {
   catalogVersion: string;
   cards: Record<string, { name: string; rarity: string; rank: string; set: string; boss?: boolean; profession?: string; baseKey?: string; editionTitle?: string;
-    critter?: boolean; balanceOnly?: boolean; dropProfile?: { rate: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
+    critter?: boolean; balanceOnly?: boolean; seasonal?: boolean; dropProfile?: { rate: number; rate2?: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
   editions?: Record<string, { key: string; weight: number }[]>;
   sets: { code: string; title: string; group: string; reward: string; cards: string[] }[];
   dust: { recycle: Record<string, number>; craft: Record<string, number> };
@@ -28,12 +28,14 @@ export type LedgerState = {
   exact?: boolean; // the binder has entered ranked2, in which every attempt is written down
   editions?: boolean;
   balance?: number;
+  launch?: number; // 1 after mode/launch1: cards held back for seasons are not acquired before a season releases them
   balanceAttempts?: Record<string, number>;
   balanceDrops?: Record<string, number>;
   balanceReady?: Record<string, boolean>;
   packOutputs?: Record<string, Record<string, number>>;
   packType?: string;
   tieredPacks?: boolean;
+  seasonClaims?: Record<string, boolean>;
   packs?: Record<string, number>; // packs held, by zone (set code)
   packZone?: string; // the zone of the pack being opened
   packLeft?: number; // cards still to come from it
@@ -46,7 +48,7 @@ export type ReplayResult =
   | { ok: false; error: "rule"; rule: string; index: number };
 
 export const newState = shared.newState as () => LedgerState;
-export const replay = shared.replay as (events: unknown[], catalog: Catalog, start?: LedgerState, options?: { strict?: boolean }) => ReplayResult;
+export const replay = shared.replay as (events: unknown[], catalog: Catalog, start?: LedgerState, options?: { strict?: boolean; available?: (key: string, t: number) => boolean }) => ReplayResult;
 export const snapshotDifferences = shared.snapshotDifferences as (
   snapshot: { counts?: Record<string, number>; dust?: number; sets?: Record<string, boolean> },
   state: LedgerState,
@@ -59,7 +61,7 @@ export const packTier = packs.packTier as (entry: string, shinyOdds: number) => 
 export const baseCardKey = editions.baseKey as (catalog: Catalog, key: string) => string;
 export const editionKeys = editions.editionKeys as (catalog: Catalog, key: string) => string[];
 export const familyCount = editions.familyCount as (catalog: Catalog, counts: Record<string, number>, key: string) => number;
-export const pickEdition = editions.pickEdition as (catalog: Catalog, key: string, roll: number, balanced?: boolean) => string;
+export const pickEdition = editions.pickEdition as (catalog: Catalog, key: string, roll: number, balanced?: boolean | number) => string;
 // 1 on the attempts that found a pack; the card a tape entry gives from a zone's pack, or null for an unknown zone.
 export const packValue = packs.packValue as (entry: string, shinyOdds: number) => number;
-export const packPick = packs.packPick as (catalog: Catalog, zone: string, entry: string, shinyOdds: number, balanced?: boolean) => string | null;
+export const packPick = packs.packPick as (catalog: Catalog, zone: string, entry: string, shinyOdds: number, balanced?: boolean | number, available?: ((key: string) => boolean) | null) => string | null;

@@ -36,6 +36,7 @@ end
 function ACB.isBinderTitle(title)
     if type(title) ~= "string" or #title > 100 then return false end
     if milestoneTitles[title] then return true end
+    if ACB.seasonTitleKnown and ACB.seasonTitleKnown(title) then return true end
     for _, page in ipairs(ACB.pages) do
         if page.reward == title then return true end
     end
@@ -53,6 +54,14 @@ function ACB.earnedTitles(saved)
         for _, entry in ipairs(track.entries) do
             if titles[entry.title] then earned[#earned + 1] = entry.title end
         end
+    end
+    local seasonal = {}
+    for title in pairs(saved.seasonTitles or {}) do if titles[title] then seasonal[#seasonal + 1] = title end end
+    table.sort(seasonal)
+    for _, title in ipairs(seasonal) do
+        local seen = false
+        for _, existing in ipairs(earned) do if existing == title then seen = true end end
+        if not seen then earned[#earned + 1] = title end
     end
     return earned
 end

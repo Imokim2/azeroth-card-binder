@@ -65,6 +65,7 @@ export type Commit = {
   completions: { setCode: string; t: number }[];
   // Drop events in this batch that were rolled in Casual mode (tape position 0); added to the player's running count.
   casualDrops: number;
+  seasonal?: { epoch: number; cards: { event: LedgerEvent; zone: string }[] };
 };
 
 export type TradeRow = { seq: number; tradeId: string; direction: "in" | "out"; key: string; char: string; partner: string; t: number };

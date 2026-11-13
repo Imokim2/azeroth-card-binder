@@ -59,6 +59,10 @@ const verified = ledger.verifyChain(events);
 if (!verified.ok) throw new Error("the sample ledger does not verify");
 write("ledger-valid.json", { genesis: ledger.GENESIS, events, head, texts: events.map(ledger.eventText) });
 
+// Additive protocol-7 vector: retain the historical 20-event ledger unchanged.
+const seasonalReward = ledger.makeEvent({ ...base, seq: 1, t: 1200, kind: "seasonReward", key: "WF", count: 1, trade: "a".repeat(32) }, ledger.GENESIS);
+write("season-rewards.json", { events: [seasonalReward], head: { seq: 1, hash: seasonalReward.h }, texts: [ledger.eventText(seasonalReward)] });
+
 // ---- Ledgers that must be rejected ----
 const copy = (list) => JSON.parse(JSON.stringify(list));
 const invalid = [];
@@ -346,10 +350,12 @@ const balanceKeys = [...new Set(["npc:589", "npc:639", "node:1731",
 ])];
 const balance = {
     catalogVersion: catalog.catalogVersion,
+    // legacy: the original rank rates; balanced: after mode/chase1; balanced2: after mode/chase2 (dropProfile.rate2).
     chances: balanceKeys.flatMap(key => {
-        const limit = Math.ceil(10000 / catalog.cards[key].dropProfile.rate), start = Math.floor(limit * .75);
-        return [...new Set([0, 1, start, start + 1, limit - 2, limit - 1])].map(misses => ({ key, misses,
-            legacy: chanceFor(catalog, key, misses), balanced: chanceFor(catalog, key, misses, true) }));
+        const boundaries = rate => { const limit = Math.ceil(10000 / rate), start = Math.floor(limit * .75); return [0, 1, start, start + 1, limit - 2, limit - 1]; };
+        const profile = catalog.cards[key].dropProfile;
+        return [...new Set([...boundaries(profile.rate), ...boundaries(profile.rate2)])].sort((a, b) => a - b).map(misses => ({ key, misses,
+            legacy: chanceFor(catalog, key, misses), balanced: chanceFor(catalog, key, misses, true), balanced2: chanceFor(catalog, key, misses, 2) }));
     }),
     packs: packCases.flatMap(item => ["AQT", "AHX", "ABX", "DM"].map(zone => ({ zone, entry: item.entry,
         key: packs.packPick(catalog, zone, item.entry, catalog.shinyOdds, true) }))),

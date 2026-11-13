@@ -3,7 +3,7 @@
 import { sha256Hex } from "../../packages/shared/src/crypto.ts";
 
 export const GENESIS = "0".repeat(32);
-const KINDS = ["drop", "craft", "recycle", "tradeIn", "tradeOut", "set", "mode", "miss", "packFind", "packOpen", "packCard"];
+const KINDS = ["drop", "craft", "recycle", "tradeIn", "tradeOut", "set", "mode", "miss", "packFind", "packOpen", "packCard", "seasonReward"];
 const STRING_FIELDS = ["kind", "key", "partner", "trade", "char", "prev"] as const;
 
 export type LedgerEvent = {

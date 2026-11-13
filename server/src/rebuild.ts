@@ -20,7 +20,7 @@ export type RebuildReport = {
 };
 
 export async function rebuild(
-  deps: { rebuild: RebuildStore; catalog: Catalog },
+  deps: { rebuild: RebuildStore; catalog: Catalog; releasedAt?: Record<string, number> }, // releasedAt: when each card held back for seasons was released
   options: { after?: string | null; limit?: number; dryRun?: boolean; force?: boolean } = {},
 ): Promise<RebuildReport> {
   const limit = options.limit ?? 50;
@@ -30,7 +30,9 @@ export async function rebuild(
     report.checked += 1;
     const batches = await deps.rebuild.batchesOf(playerId);
     const events = batches.flatMap((batch) => batch.events);
-    const played = replay(events, deps.catalog, newState());
+    // A recompute of what was accepted: cards held back for seasons count as available from the start of the season that released them.
+    const released = deps.releasedAt ?? {};
+    const played = replay(events, deps.catalog, newState(), { available: (key, at) => released[key] !== undefined && (released[key] as number) <= at });
     if (!played.ok) {
       report.failed.push({ playerId, rule: played.rule, index: played.index });
       continue;

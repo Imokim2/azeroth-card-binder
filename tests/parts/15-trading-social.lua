@@ -55,14 +55,15 @@ test("swap suggestions: what they have spare that you lack, what you have spare 
     assert(table.concat(ACB.inspectLines(big, {}, {}), "\n"):find("%(%+%d+ more%)"))
 end)
 
-test("the binder window of another player has a button that starts a trade with them", function()
+test("another player's binder stays read-only and cannot initiate a trade", function()
     local opened
     local real = ACB.prepareTrade
     ACB.prepareTrade = function(peer) opened = peer end
+    local before = #widgets
     ACB.initSocial({ counts = {}, wanted = {} }, function() return true end, function() return 1 end, ignore)
     ACB.showInspect("bob-realmname", { ["npc:589"] = 1 }, {})
-    widgetNamed("Offer a trade"):OnClick()
-    equal(opened, "bob-realmname")
+    for index = before + 1, #widgets do assert(widgets[index].text ~= "Offer a trade") end
+    equal(opened, nil)
     ACB.prepareTrade = real
 end)
 
@@ -106,7 +107,7 @@ test("asking for a card: the sender is held to a pace, the receiver is only told
     equal(#heard, 1)
     assert(heard[1]:find("bob%-realmname is looking for"), heard[1])
     assert(heard[1]:find("You have 3 %(2 spare%)"), heard[1])
-    assert(heard[1]:find("/acb trade bob%-realmname"), heard[1])
+    assert(heard[1]:find("Right-click the player", 1, true), heard[1])
     assert(heard[1]:find("Haddon:AzerothCardBinder:card:npc:589", 1, true), "the card is a link you can click")
     -- Again straight away from the same player: ignored; later: heard.
     ACB.receiveView("bob-realmname", "A|npc:589")
@@ -265,66 +266,23 @@ test("another player's binder opens as the binder's own pages, filled with their
     ACB.refresh()
 end)
 
-test("on a card they are looking for, Trade starts the swap: you pick a card from their binder and the offer is sent", function()
-    local oldDistance = ACB.tradeDistanceOk
-    ACB.tradeDistanceOk = function() return true end
+test("an inspected wanted card opens your own binder without sending a trade offer", function()
     local saved = AzerothCardBinderDB
-    local keepCounts = { saved.counts["npc:589"], saved.tradeRange }
-    saved.counts["npc:589"], saved.tradeRange = 2, false
-    ACB.initSocial(saved, function() return true end, function() return 1 end, ignore)
-    local theirKey = ACB.pages[ACB.cards["npc:639"].page].cards[1].key
-    local wantedKey = theirKey == "npc:589" and "npc:590" or "npc:589"
-    saved.counts[wantedKey] = saved.counts[wantedKey] or 1
     local function newest(value)
-        for index = #widgets, 1, -1 do
-            if widgets[index].text == value then return widgets[index] end
-        end
+        for index = #widgets, 1, -1 do if widgets[index].text == value then return widgets[index] end end
     end
-    local function newestStarting(prefix)
-        for index = #widgets, 1, -1 do
-            if type(widgets[index].text) == "string" and widgets[index].text:sub(1, #prefix) == prefix then return widgets[index] end
-        end
-    end
-    local originalSend, originalCodes, sent = C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult, {}
-    Enum.SendAddonMessageResult = { Success = 0 }
-    C_ChatInfo.SendAddonMessage = function(prefix, message, channel, peer)
-        sent[#sent + 1] = { prefix = prefix, message = message, channel = channel, peer = peer }
-        return 0
-    end
-    -- Bob has the first card of the page, and is looking for a card of mine.
-    ACB.heardWanted = { ["bob-realmname"] = { cards = { wantedKey }, total = 1 } }
-    ACB.showInspect("bob-realmname", { [theirKey] = 1 }, {})
-    -- Nothing offers a trade from a card of his until one is picked from the Wanted tab.
-    equal(newestStarting("Get this one for my ") == nil or newestStarting("Get this one for my ").parent.shown == false, true)
-    newest("Wanted").OnClick(newest("Wanted"))
-    assert(newest("Bob Realmname is looking for"), "the wanted list is titled with his name")
-    local row = newestStarting(ACB.cards[wantedKey].name .. "    ")
-    assert(row, "and names the card he is looking for")
-    -- The Trade button on the row: you give that card, and his binder is shown to pick from.
-    local trade
-    for _, widget in ipairs(widgets) do
-        if widget.text == "Trade" and widget.parent == row.parent and widget.OnClick then trade = widget end
-    end
-    assert(trade, "a Trade button sits on his wanted card")
-    trade:OnClick()
-    assert(newest("Cancel pick"), "the button now cancels the choice")
-    local ask = newest("Get this one for my " .. ACB.cards[wantedKey].name)
-    assert(ask and ask.parent.shown ~= false, "his selected card has a button that sends the offer")
-    ask.parent:OnClick()
-    local last = sent[#sent]
-    assert(last, "an offer was sent")
-    equal(last.prefix, ACB.tradePrefix)
-    equal(last.channel, "WHISPER")
-    equal(last.peer, "Bob Realmname")
-    -- The trade opens on his side by itself, with the card you give (the card you picked is asked for in chat).
-    assert(last.message:match("^I|[%w%-]+|" .. wantedKey .. "|t$"), last.message)
-    -- Clean up: cancel the trade that is now open.
-    for _, widget in ipairs(widgets) do
-        if widget.text == "Cancel" and widget.OnClick then widget:OnClick() break end
-    end
-    C_ChatInfo.SendAddonMessage, Enum.SendAddonMessageResult = originalSend, originalCodes
-    saved.counts["npc:589"], saved.tradeRange = keepCounts[1], keepCounts[2]
-    ACB.tradeDistanceOk = oldDistance
+    local originalSend, sent = C_ChatInfo.SendAddonMessage, 0
+    C_ChatInfo.SendAddonMessage = function() sent = sent + 1 return 0 end
+    ACB.initSocial(saved, function() return true end, function() return 1 end, ignore)
+    ACB.heardWanted = { ["bob-realmname"] = { cards = { "npc:589" }, total = 1 } }
+    ACB.showInspect("bob-realmname", { ["npc:639"] = 1 }, {})
+    newest("Wanted"):OnClick()
+    local card = assert(newest("View card"))
+    local before = saved.counts["npc:589"]
+    card:OnClick()
+    equal(AzerothCardBinderWindow:IsShown(), true)
+    equal(saved.counts["npc:589"], before)
+    equal(sent, 0, "inspection cannot initiate a trade")
+    C_ChatInfo.SendAddonMessage = originalSend
     ACB.heardWanted = nil
-    ACB.refresh()
 end)

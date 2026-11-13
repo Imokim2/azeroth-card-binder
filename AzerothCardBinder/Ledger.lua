@@ -10,7 +10,7 @@ ACB.GENESIS = GENESIS
 
 local KINDS = {
     drop = true, craft = true, recycle = true, tradeIn = true, tradeOut = true, set = true, mode = true, miss = true,
-    packFind = true, packOpen = true, packCard = true,
+    packFind = true, packOpen = true, packCard = true, seasonReward = true,
 }
 -- Un-synced events at which Ranked rolls pause until the companion app has picked them up.
 ACB.backlogLimit = 5000

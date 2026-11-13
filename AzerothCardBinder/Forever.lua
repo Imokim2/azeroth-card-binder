@@ -344,12 +344,6 @@ local function initialize()
         ACB.refresh()
         return done
     end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.tradeDistanceOk(saved, peer) end, saved)
-    -- Start a trade giving one card; the other player's window opens by itself (TradeSession.lua).
-    function ACB.startTrade(peer, give)
-        trade:start(peer, give, false)
-        report(trade.status)
-        ACB.refresh()
-    end
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.tradePrefix)
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.viewPrefix)
@@ -359,6 +353,7 @@ local function initialize()
         if name then gatherNames[name] = skill end
     end
     ACB.initUI(saved, trade)
+    ACB.refreshVisibleCards(saved) -- pages show launch cards, released season cards and any the binder owns (Availability.lua)
     ACB.initCollectionMode(saved, ledger, report)
     ACB.initPacks(saved, collection)
     ACB.initSatchel(saved, collection, trade)

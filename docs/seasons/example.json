@@ -1,0 +1,18 @@
+{
+  "id": "first-hunt",
+  "title": "The First Hunt",
+  "startsAt": null,
+  "endsAt": null,
+  "selection": {
+    "mode": "random",
+    "seed": "first-hunt-preview-one",
+    "count": 12,
+    "sets": ["WF", "DM"],
+    "rarities": ["common", "rare", "epic", "legendary"],
+    "bossesOnly": false
+  },
+  "rewards": {
+    "completion": { "title": "Season Seeker", "packs": [{ "pack": "WF:rare", "count": 1 }] },
+    "first": { "places": 3, "title": "First of the Hunt", "packs": [{ "pack": "DM", "count": 1 }] }
+  }
+}

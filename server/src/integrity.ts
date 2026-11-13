@@ -50,7 +50,7 @@ function normalTail(z: number): number {
 
 // How lucky the player's drops are: -log10 of the chance of at least this many drops from this many attempts.
 // 0 or less means ordinary luck; 4 means about 1 in 10,000. Uses lifetime attempts and the drops stored for each card.
-export function luckScore(catalog: Catalog, attempts: Record<string, number>, drops: Record<string, number>, balanced = false): number {
+export function luckScore(catalog: Catalog, attempts: Record<string, number>, drops: Record<string, number>, balanced: boolean | number = false): number {
   let mean = 0;
   let variance = 0;
   let observed = 0;
@@ -79,9 +79,10 @@ export function integrityFlags(args: {
 }): Flag[] {
   const flags: Flag[] = [];
   const open = new Set(args.openKinds);
-  const balanced = args.state.balance === 1;
+  const generation = (args.state.balance ?? 0) >= 1 ? (args.state.balance as number) : 0; // 1 after mode/chase1, 2 after mode/chase2
+  const balanced = generation >= 1;
   const luck = luckScore(args.catalog, balanced ? args.state.balanceAttempts || {} : args.attempts,
-    balanced ? args.state.balanceDrops || {} : args.drops, balanced);
+    balanced ? args.state.balanceDrops || {} : args.drops, balanced ? generation : false);
   // Luck a reviewer has already cleared is not flagged again until it grows by two more orders of magnitude.
   const worth = luck >= (args.clearedLuck ?? 0) + (args.clearedLuck ? 2 : 0);
   if (luck >= LUCK_HOLD && worth && !open.has("luck-hold")) flags.push({ kind: "luck-hold", notes: `luck ${luck.toFixed(1)}` });

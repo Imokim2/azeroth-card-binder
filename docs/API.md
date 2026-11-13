@@ -18,7 +18,7 @@ Version 1, served under `/v1`. The server is `server/`; the ledger and signing r
 | 0.3.x | `/v1` | 5 (server retains 2–4 for legacy histories) | 2 |
 | 0.4.x | `/v1` | 6 (server retains 2–5 for legacy histories) | 2 |
 
-The server rejects uploads whose `specVersion` it does not support (`client_too_old`). It supports versions 2–6. Version 3 adds packs; version 4 adds collectible editions and `editions1`; version 5 adds per-card drop profiles and `chase1`; version 6 adds pack tiers (`packs2`) and trade-only pack keys. Old chain hashes remain valid. After `chase1`, uploads require at least version 5; after tier activation or incoming pack trades they require version 6, including empty syncs. All components need the matching generated catalog. Update the addon, companion and server together.
+The server rejects uploads whose `specVersion` it does not support (`client_too_old`). It supports versions 2–9. Version 3 adds packs; version 4 adds collectible editions and `editions1`; version 5 adds per-card drop profiles and `chase1`; version 6 adds pack tiers (`packs2`) and trade-only pack keys. Old chain hashes remain valid. Version 9 adds `launch1` (cards held back for seasons); once a binder has it, uploads (even empty ones) require at least version 9. Version 8 adds `chase2`, the second set of drop rates; once a binder has `chase2`, uploads (even empty ones) require at least version 8. After `chase1`, uploads require at least version 5; after tier activation or incoming pack trades they require version 6, including empty syncs. All components need the matching generated catalog. Update the addon, companion and server together.
 
 ## Endpoints
 

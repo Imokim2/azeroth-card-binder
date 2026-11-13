@@ -344,9 +344,9 @@ test("player and enemy portrait menus offer the relevant binder actions", functi
     local buttons = {}
     local root = { CreateDivider = ignore, CreateButton = function(_, text, action) buttons[text] = action end }
     playerMenu(nil, root, { name = "Bob", server = "RealmName" })
-    assert(buttons["Offer a card trade"] and buttons["View their binder"])
+    assert(buttons["Trade cards or packs"] and buttons["View their binder"])
     AzerothCardBinderWindow:Hide()
-    buttons["Offer a card trade"]()
+    buttons["Trade cards or packs"]()
     equal(AzerothCardBinderWindow:IsShown(), false)
     equal(ACB.tradeView:IsShown(), true)
     buttons = {}

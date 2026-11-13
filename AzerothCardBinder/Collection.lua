@@ -27,7 +27,10 @@ function ACB.source(guid)
     -- The numeric entry ID identifies the card. Treat the whole spawn token as opaque.
     local kind, id = guid:match("^(%a+)%-[^%-]+%-[^%-]+%-[^%-]+%-[^%-]+%-(%d+)%-[^%-]+$")
     local entries = kind and ACB.sources[kind]
-    if entries then return entries[tonumber(id)], kind end
+    local card = entries and entries[tonumber(id)]
+    -- A card held back for seasons is not a source until a season has released it (Availability.lua).
+    if card and ACB.cardAvailable and not ACB.cardAvailable(card) then return end
+    if entries then return card, kind end
 end
 
 -- Remember finished trades, newest first.
@@ -93,7 +96,9 @@ end
 
 function ACB.progress(counts, page, bossesOnly)
     local owned, total = 0, 0
-    for _, card in ipairs(ACB.pages[page].cards) do
+    -- A page is finished by its launch cards: the held-back ones are extras (page.required, LaunchCollection.lua).
+    local needed = ACB.pages[page].required or ACB.pages[page].cards
+    for _, card in ipairs(needed) do
         if not bossesOnly or card.boss then
             total = total + 1
             if ACB.familyCount(counts, card) > 0 then owned = owned + 1 end
@@ -315,6 +320,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             return false
         end
         if not card or card.baseKey or (saved.counts[key] or 0) > 0 then return false end
+        if ACB.cardAvailable and not ACB.cardAvailable(card) then return false end -- still held back for a season
         local _, cost = ACB.dustFor(card)
         if (saved.dust or 0) < cost then return false end
         saved.dust = saved.dust - cost

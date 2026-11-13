@@ -163,7 +163,7 @@ end)
 test("incoming gifts wait for invitation acceptance before opening the trade or sending a reply", function()
     local realPrepare, realSend = ACB.prepareTrade, C_ChatInfo.SendAddonMessage
     local opened
-    ACB.prepareTrade = function(peer) opened = peer realPrepare(peer) end
+    ACB.prepareTrade = function(peer, ...) opened = peer realPrepare(peer, ...) end
     C_ChatInfo.SendAddonMessage = function() return 0 end
     AzerothCardBinderWindow:Hide()
     ACB.tradeView:Hide()
@@ -173,6 +173,9 @@ test("incoming gifts wait for invitation acceptance before opening the trade or 
     equal(ACB.tradeView:IsShown(), false)
     equal(AzerothCardBinderTradeNotice:IsShown(), true)
     equal(ACB.tradeView.controls.accept.enabled, false)
+    equal(realPrepare("harry-dexter"), false, "a player-menu click cannot accept a pending invitation")
+    equal(ACB.tradeView:IsShown(), false)
+    equal(AzerothCardBinderTradeNotice:IsShown(), true)
     local oldDistance = ACB.tradeDistanceOk
     ACB.tradeDistanceOk = function() return true end
     AzerothCardBinderTradeNotice.accept:OnClick()

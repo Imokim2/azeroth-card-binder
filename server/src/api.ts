@@ -18,6 +18,7 @@ import { acceptReports, parseReports } from "./reports.ts";
 import type { AdminStore, FlagRecord, IngestStore, LeaderboardStore, ModerationStore, PlayerStore, RebuildStore, ReportStore, TapeStore, TradeStore, Visibility, WantedStore } from "./store.ts";
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
+import type { SqlSeasons } from "./seasons.ts";
 
 export const MAX_BODY_BYTES = 2_000_000;
 const PUBLIC_CACHE_SECONDS = 60;
@@ -33,6 +34,9 @@ export type Deps = {
   trades: TradeStore;
   moderation: ModerationStore;
   admin: AdminStore; // finding players and the record of what reviewers did (the admin panel)
+  seasons?: SqlSeasons;
+  // When each card held back for seasons was released (from the scheduled seasons when absent): the start of the first season featuring it.
+  released?: () => Promise<Record<string, number>>;
   // Rate limits per client address: `general` for everything, `strict` for the routes that create or destroy things.
   // Absent means no limiting.
   limits?: { general: Limiter; strict: Limiter } | undefined;
@@ -140,6 +144,8 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     if (!player) throw new ApiError("unknown_key");
     if (player.status !== "active") throw new ApiError("banned");
     const ack = await acceptUpload(deps, player, upload);
+    try { await deps.seasons?.settle(player.id, deps.now()); }
+    catch { deps.log({ level: "error", msg: "season settlement deferred", playerId: player.id }); }
     return json(200, { ...ack, minClient: deps.minClient, syncVersion: 1 });
   }
 
@@ -186,6 +192,29 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       entries.push(...fresh);
     }
     return json(200, { start: next, entries, issued }, { "cache-control": "no-store" });
+  }
+
+  async function seasonal(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.seasons) throw new ApiError("not_found");
+    const body = await readJson(request) as Record<string, unknown>;
+    const { key, sentAt, sig } = body ?? {};
+    if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string"
+      || Math.abs(deps.now() - Number(sentAt)) > 86400) throw new ApiError("bad_request");
+    const player = await deps.players.findByActiveKey(key);
+    if (!player) throw new ApiError("unknown_key");
+    if (player.status !== "active") throw new ApiError("banned");
+    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, purpose: "seasons" })))) throw new ApiError("bad_signature");
+    return json(200, await deps.seasons.sync(player.id, deps.now()), { "cache-control": "no-store" });
+  }
+
+  async function adminSeasons(request: Request): Promise<Response> {
+    const actor = await requireAdmin(request);
+    if (!deps.seasons) throw new ApiError("not_found");
+    if (request.method === "GET") return json(200, { seasons: await deps.seasons.list() }, { "cache-control": "no-store" });
+    const season = await deps.seasons.schedule(await readJson(request), deps.now());
+    await audit(actor, "schedule-season", season.id, season.title);
+    return json(201, { season }, { "cache-control": "no-store" });
   }
 
   // Start a new binder: the old record is archived and the player begins again with an empty chain. Signed by the
@@ -315,7 +344,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     if (after !== undefined && after !== null && (typeof after !== "string" || after.length > 40)) throw new ApiError("bad_request", { field: "after" });
     if (limit !== undefined && (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 200)) throw new ApiError("bad_request", { field: "limit" });
     if ((dryRun !== undefined && typeof dryRun !== "boolean") || (force !== undefined && typeof force !== "boolean")) throw new ApiError("bad_request", { field: "dryRun" });
-    const report = await rebuild({ rebuild: deps.rebuild, catalog: deps.catalog }, {
+    const report = await rebuild({ rebuild: deps.rebuild, catalog: deps.catalog, releasedAt: deps.released ? await deps.released() : deps.seasons ? await deps.seasons.released() : {} }, {
       after: (after as string | null | undefined) ?? null, ...(limit !== undefined ? { limit: limit as number } : {}),
       dryRun: dryRun === true, force: force === true,
     });
@@ -589,6 +618,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/register" ? allow("register", ["POST"], () => register(request))
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
+      : url.pathname === "/v1/seasons" ? allow("seasons", ["POST"], () => seasonal(request))
       : url.pathname === "/v1/reset" ? allow("reset", ["POST"], () => reset(request))
       : url.pathname === "/v1/export" ? allow("export", ["POST"], () => exportAccount(request))
       : url.pathname === "/v1/delete" ? allow("delete", ["POST"], () => deleteAccount(request))
@@ -609,6 +639,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/admin/players" ? allow("admin-players", ["GET"], () => adminPlayers(request, url))
       : url.pathname === "/v1/admin/audit" ? allow("admin-audit", ["GET"], () => adminAudit(request, url))
       : url.pathname === "/v1/admin/me" ? allow("admin-me", ["GET"], () => adminMe(request))
+      : url.pathname === "/v1/admin/seasons" ? allow("admin-seasons", ["GET", "POST"], () => adminSeasons(request))
       : playerMatch ? allow("player", ["GET"], () => player(playerMatch[1] as string))
       : { route: "unknown", response: Promise.resolve(errorResponse("not_found")) };
     return { route: chosen.route, response: await chosen.response };

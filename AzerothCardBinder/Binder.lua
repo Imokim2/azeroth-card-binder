@@ -33,6 +33,7 @@ function ACB.initUI(saved, trade)
     local settingsView = ACB.createSettingsView(frame, saved)
     local ladderView = ACB.createLadderView(frame, saved)
     local wantedView = ACB.createWantedView(frame, saved)
+    local seasonsView = ACB.createSeasonsView(frame, saved)
 
     local invite = window("AzerothCardBinderTradeNotice", 360, 142, "Incoming trade")
     invite:ClearAllPoints()
@@ -44,7 +45,7 @@ function ACB.initUI(saved, trade)
     inviteText:SetWordWrap(true)
     local invitePeer, inviteTime
     invite.accept = button(invite, "Accept invitation", 24, 100, 145, function()
-        if ACB.prepareTrade(invitePeer) ~= false then invite:Hide() end
+        if ACB.prepareTrade(invitePeer, nil, true) ~= false then invite:Hide() end
     end)
     invite.decline = button(invite, "Decline", 183, 100, 145, function() trade:cancel(); invite:Hide(); ACB.refresh() end)
     function ACB.notifyTrade(peer, gift)
@@ -60,7 +61,7 @@ function ACB.initUI(saved, trade)
     end)
 
     local tabs = {}
-    for index, destination in ipairs({ "index", "collection", "trade", "achievements", "ladder", "wanted", "settings" }) do
+    for index, destination in ipairs({ "index", "collection", "seasons", "achievements", "ladder", "wanted", "settings" }) do
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
@@ -77,6 +78,7 @@ function ACB.initUI(saved, trade)
         if tradeView:IsShown() then tradeView:refresh() end
         if tradeSelection and not tradeSelection.allowed() then endTradeSelection() end
         if not frame:IsShown() then return end
+        ACB.refreshVisibleCards(saved) -- cards held back for seasons appear once released, or once owned
         for destination, control in pairs(tabs) do
             local active = destination == mode
             control.frame:SetEnabled(not active and (not tradeSelection or destination == "index" or destination == "collection"))
@@ -93,11 +95,17 @@ function ACB.initUI(saved, trade)
         titleMark:SetAlpha(tradeSelection and 0 or 1)
         local inTrade, inSettings = mode == "trade", mode == "settings"
         local inAchievements, inLadder, inWanted = mode == "achievements", mode == "ladder", mode == "wanted"
-        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder and not inWanted)
+        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder and not inWanted and mode ~= "seasons")
+        seasonsView:SetShown(mode == "seasons")
         settingsView:SetShown(inSettings)
         achievementView:SetShown(inAchievements)
         ladderView:SetShown(inLadder)
         wantedView:SetShown(inWanted)
+        if mode == "seasons" then
+            regionMark:SetText("BINDER  /  SEASONS")
+            seasonsView:refresh()
+            return
+        end
         if inWanted then
             regionMark:SetText("BINDER  /  WANTED")
             wantedView:refresh()
