@@ -286,3 +286,46 @@ test("an inspected wanted card opens your own binder without sending a trade off
     C_ChatInfo.SendAddonMessage = originalSend
     ACB.heardWanted = nil
 end)
+
+test("Forever's full character names and grouped partners resolve without an exact target", function()
+    local oldFull, oldPlayer, oldNear = UnitFullName, UnitIsPlayer, CheckInteractDistance
+    UnitIsPlayer = function(unit) return unit == "player" or unit == "party1" end
+    UnitFullName = function(unit)
+        if unit == "player" then return "Harry Dexter", "Forever" end
+        if unit == "party1" then return "Filfred Whizzlebang", "Forever" end
+    end
+    CheckInteractDistance = function(unit, index) equal(unit, "party1"); equal(index, 2); return true end
+    equal(ACB.tradePeer("Harry Dexter"), nil, "your full name is still recognised as yourself")
+    equal(ACB.unitPeer("party1"), "filfred-whizzlebang")
+    equal(ACB.partnerUnit("filfred-whizzlebang"), "party1")
+    equal(ACB.tradeDistanceOk({}, "filfred-whizzlebang"), true)
+    CheckInteractDistance = function() return false end
+    equal(ACB.tradeDistanceOk({}, "filfred-whizzlebang"), false, "finding a group member does not bypass distance")
+    UnitFullName, UnitIsPlayer, CheckInteractDistance = oldFull, oldPlayer, oldNear
+end)
+
+test("measured player distance corrects a false interaction-range result without allowing distant trades", function()
+    local oldFull, oldPlayer, oldNear = UnitFullName, UnitIsPlayer, CheckInteractDistance
+    local oldDistance, oldPosition = UnitDistanceSquared, UnitPosition
+    UnitIsPlayer = function(unit) return unit == "player" or unit == "target" end
+    UnitFullName = function(unit)
+        if unit == "player" then return "Alice", "RealmName" end
+        if unit == "target" then return "Bob", "RealmName" end
+    end
+    CheckInteractDistance = function() return false end
+    UnitDistanceSquared = function() return 4, true end
+    equal(ACB.tradeDistanceOk({}, "bob-realmname"), true)
+    UnitDistanceSquared = function() return 400, true end
+    equal(ACB.tradeDistanceOk({}, "bob-realmname"), false)
+    UnitDistanceSquared = function() return 0, false end
+    UnitPosition = function(unit) return unit == "player" and 1 or 3, 2, 3, 0 end
+    equal(ACB.tradeDistanceOk({}, "bob-realmname"), true)
+    UnitPosition = function(unit) return unit == "player" and 1 or 30, 2, 3, 0 end
+    equal(ACB.tradeDistanceOk({}, "bob-realmname"), false)
+    UnitPosition = function(unit) return 1, 2, 3, unit == "player" and 0 or 1 end
+    equal(ACB.tradeDistanceOk({}, "bob-realmname"), false)
+    UnitPosition = function() return secret, secret, secret, 0 end
+    equal(ACB.tradeDistanceOk({}, "bob-realmname"), false)
+    UnitFullName, UnitIsPlayer, CheckInteractDistance = oldFull, oldPlayer, oldNear
+    UnitDistanceSquared, UnitPosition = oldDistance, oldPosition
+end)

@@ -54,12 +54,14 @@ GGET UIParent
 GGET UISpecialFrames
 GGET UnitAffectingCombat
 GGET UnitClassification
+GGET UnitDistanceSquared
 GGET UnitFullName
 GGET UnitGUID
 GGET UnitIsDeadOrGhost
 GGET UnitIsPlayer
 GGET UnitIsTapDenied
 GGET UnitIsUnit
+GGET UnitPosition
 GGET UnitTokenFromGUID
 GGET _G
 GGET bit

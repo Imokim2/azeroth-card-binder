@@ -163,7 +163,7 @@ end)
 test("incoming gifts wait for invitation acceptance before opening the trade or sending a reply", function()
     local realPrepare, realSend = ACB.prepareTrade, C_ChatInfo.SendAddonMessage
     local opened
-    ACB.prepareTrade = function(peer, ...) opened = peer realPrepare(peer, ...) end
+    ACB.prepareTrade = function(peer, ...) opened = peer return realPrepare(peer, ...) end
     C_ChatInfo.SendAddonMessage = function() return 0 end
     AzerothCardBinderWindow:Hide()
     ACB.tradeView:Hide()
@@ -177,6 +177,16 @@ test("incoming gifts wait for invitation acceptance before opening the trade or 
     equal(ACB.tradeView:IsShown(), false)
     equal(AzerothCardBinderTradeNotice:IsShown(), true)
     local oldDistance = ACB.tradeDistanceOk
+    local reason = "Target your trade partner first. As in the game, trading works within about 11 yards."
+    ACB.tradeDistanceOk = function() return false, reason end
+    AzerothCardBinderTradeNotice.accept:OnClick()
+    equal(AzerothCardBinderTradeNotice:IsShown(), true)
+    equal(ACB.tradeView:IsShown(), false)
+    local shownReason = false
+    for _, widget in ipairs(widgets) do
+        if widget.parent == AzerothCardBinderTradeNotice and widget.text == reason then shownReason = true end
+    end
+    assert(shownReason, "a blocked invitation explains the reason inside its own popup")
     ACB.tradeDistanceOk = function() return true end
     AzerothCardBinderTradeNotice.accept:OnClick()
     ACB.tradeDistanceOk = oldDistance
