@@ -124,11 +124,11 @@ test("repair refuses foreign, newer, incomplete or conflicting inventory and exe
       changed(d => { d.head = { seq: f.server.head.seq, hash: "f".repeat(32) }; }),
       changed(d => { d.counts = { "npc:639": 999 }; }), changed(d => { d.dust = 99999; }),
       changed(d => { d.run = { key: "npc:589", n: 1, last: 1 }; }), "AzerothCardBinderDB = os.execute('bad')"]) {
-      assert.equal(planRecovery(f.path, text, f.backup, f.server), null);
+      assert.equal(await planRecovery(f.path, text, f.backup, f.server), null);
     }
     const altered = parseSavedVariables(f.backup).AzerothCardBinderDB as Record<string, unknown>;
     altered.shiny = { "npc:639": true };
-    assert.equal(planRecovery(f.path, f.current, "AzerothCardBinderDB = " + luaLiteral(altered as never), f.server), null);
+    assert.equal(await planRecovery(f.path, f.current, "AzerothCardBinderDB = " + luaLiteral(altered as never), f.server), null);
     assert.equal(await readFile(f.path, "utf8"), f.current);
   } finally { await f.cleanup(); }
 });

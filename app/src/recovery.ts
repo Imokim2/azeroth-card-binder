@@ -1,19 +1,16 @@
 // Conservative, opt-in recovery of an exact server-matching .bak. Never merge branches or manufacture history.
 import { createHash } from "node:crypto";
-import { createRequire } from "node:module";
 import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { readBinder } from "./binderFile.ts";
 import { parseSavedVariables } from "./luaTable.ts";
 import type { LuaValue } from "./luaTable.ts";
 import { writeFileAtomic } from "./files.ts";
+import { checkChain } from "../../server/src/ledger.ts";
 
 type RecordValue = Record<string, unknown>;
 const record = (value: unknown): RecordValue => value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
-const reference = createRequire(import.meta.url)("../../packages/shared/src/ledger.js") as {
-  verifyChain(events: unknown[], head: { seq: number; hash: string }): { ok: boolean; head?: { seq: number; hash: string } };
-};
 const mapText = (value: unknown) => JSON.stringify(Object.entries(record(value)).sort(([a], [b]) => a.localeCompare(b)));
 const progressKeys = new Set(("schema counts shiny dust sets titles achievements tradeCount history ledger head stateSum tape run mode modeChoice casualDrops attempts misses rolledGuids rolledNext legacy exactMode balancedDrops balanceLedger editionDrops editionLedger tieredPacks packTiersLedger packs levels").split(" "));
 
@@ -48,7 +45,7 @@ function stateSum(raw: RecordValue): string {
 
 export type RecoveryPlan = { path: string; current: string; backup: string; backupPath: string; restored: string; head: RecoveryServer["head"]; tapeNext: number; mode: string; copies: number };
 
-export function planRecovery(path: string, current: string, backup: string, server: RecoveryServer): RecoveryPlan | null {
+export async function planRecovery(path: string, current: string, backup: string, server: RecoveryServer): Promise<RecoveryPlan | null> {
   try {
     const before = readBinder(current), candidate = readBinder(backup);
     const raw = record(parseSavedVariables(current)["AzerothCardBinderDB"]);
@@ -58,7 +55,7 @@ export function planRecovery(path: string, current: string, backup: string, serv
     if (before.head.seq === 0 && (before.head.hash !== "0".repeat(32) || before.events.length > 0)) return null;
     if (before.events.length > 0) {
       const first = before.events[0]!;
-      const checked = reference.verifyChain(before.events, { seq: first.seq - 1, hash: first.prev });
+      const checked = await checkChain(before.events, { seq: first.seq - 1, hash: first.prev });
       if (!checked.ok || checked.head?.seq !== before.head.seq || checked.head.hash !== before.head.hash) return null;
     }
     if (before.head.seq > 0) {
@@ -70,7 +67,7 @@ export function planRecovery(path: string, current: string, backup: string, serv
     if (Number(restored["casualDrops"] ?? 0) !== server.casualDrops) return null;
     if (candidate.mode !== (server.state["mode"] === "casual" ? "casual" : "ranked")) return null;
     const first = candidate.events[0];
-    const verified = reference.verifyChain(candidate.events, first ? { seq: first.seq - 1, hash: first.prev } : candidate.head);
+    const verified = await checkChain(candidate.events, first ? { seq: first.seq - 1, hash: first.prev } : candidate.head);
     if (!verified.ok || verified.head?.seq !== candidate.head.seq || verified.head.hash !== candidate.head.hash) return null;
     // Refuse even a matching backup if any local inventory, achievement or attempt would be lost.
     for (const field of ["counts", "shiny", "packs", "titles", "sets", "achievements", "attempts", "misses"]) {
@@ -109,7 +106,7 @@ export async function findRecovery(path: string, server: RecoveryServer, additio
   try { current = await readFile(path, "utf8"); } catch { return null; }
   for (const backupPath of [path + ".bak", ...additional]) {
     try {
-      const plan = planRecovery(path, current, await readFile(backupPath, "utf8"), server);
+      const plan = await planRecovery(path, current, await readFile(backupPath, "utf8"), server);
       if (plan) return { ...plan, backupPath };
     } catch { /* another saved copy may still be usable */ }
   }

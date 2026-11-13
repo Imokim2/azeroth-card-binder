@@ -42,12 +42,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - name: Build the installer
+      - name: Build and launch-check the packaged installer
         working-directory: app
         run: |
           npm ci
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test test/updatePreservation.test.ts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           npm run dist
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # dist checks the actual ASAR and starts the packaged executable with isolated data.
       - name: Test native installer process detection
         working-directory: app
         env:
