@@ -6,6 +6,8 @@ Players reported the whole client repeatedly minimising and restoring roughly tw
 
 Addon 1.0.5 removes 3D pickup models, releases hidden/transition models and suspends them on taxis. These are mitigations. Card motion changes in 1.0.6 are artwork changes, not another claimed display-loop fix.
 
+Addon 1.0.7 restores pickup models when the player's 3D setting is enabled, correcting the unconditional icon-only popups introduced in 1.0.5. Notifications wait through loading/world transitions and taxi travel, preserve their queue and visible lifetime, and use the existing model-release-on-hide lifecycle. Disabling 3D still gives 2D notifications. This removes the blanket pickup-model suppression, so include normal card finds in further stability testing; the original loop is still unresolved.
+
 ## Evidence reviewed
 
 - Local Windows Application/System events for the preceding two days contained no matching WoW, Warcards, DWM or display-driver failure in the queried events.

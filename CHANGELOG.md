@@ -6,6 +6,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.7 - 2026-11-14
+
+- Restore 3D models in card-unlock popups when 3D card models is enabled. The icon-only popup introduced as a precaution in 1.0.5 no longer overrides the player's setting. Turning 3D off still uses the 2D artwork/icon presentation.
+- Defer notifications during loading screens, world transitions and taxi travel, then resume them in order without consuming their visible lifetime. Popup models use the existing visibility guards and release their resources when hidden or dismissed.
+- No inventory, drop, trade, save-format or companion changes. Companion 1.0.1 remains current. The intermittent fullscreen minimise/restore issue remains under investigation; this is a popup correction, not a confirmed resolution.
+
 ## 1.0.6 - 2026-11-14
 
 - Most cards now keep their authored pose and viewing angle. Common creatures, gathering cards and critter portraits do not rock automatically, while loaded 3D models can still be rotated by dragging.

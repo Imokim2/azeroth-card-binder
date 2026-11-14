@@ -26,8 +26,9 @@ test("hidden cards do not request models and release their resources when hidden
     parent:Hide(); card.model:OnHide()
 end)
 
-test("pickup popups never allocate or load a PlayerModel", function()
+test("pickup popups follow the 3D setting and release their model when dismissed", function()
     local toast, oldPopups = ACB.toast, AzerothCardBinderDB.popups
+    local saved, oldModels = AzerothCardBinderDB, AzerothCardBinderDB.cardModels
     while toast:IsShown() do toast:OnUpdate(100) end
     AzerothCardBinderDB.popups = true
     local function inToast(widget)
@@ -36,18 +37,82 @@ test("pickup popups never allocate or load a PlayerModel", function()
             widget = widget.parent
         end
     end
-    for _, widget in ipairs(widgets) do
-        if inToast(widget) then assert(widget.kind ~= "PlayerModel", "a find cannot wake the 3D renderer") end
-    end
+    local model
+    for _, widget in ipairs(widgets) do if inToast(widget) and widget.kind == "PlayerModel" then model = widget end end
+    assert(model)
+    ACB.setSetting(saved, "cardModels", true)
     ACB.showToast(ACB.cards["npc:639"], { first = true, count = 1 })
     equal(toast:IsShown(), true)
+    model:OnShow() -- the game sends this after the toast's hidden parent is shown
+    equal(model.creature, 639)
+    equal(model.keepModel, false)
+    ACB.setSetting(saved, "cardModels", false)
+    equal(model.creature, nil)
+    equal(model:IsShown(), false)
+    equal(toast:IsShown(), true, "the 2D setting does not suppress the notification")
+    ACB.setSetting(saved, "cardModels", true)
+    model:OnShow()
+    equal(model.creature, 639, "turning models back on restores the active popup")
     local named = false
     for _, widget in ipairs(widgets) do
         if inToast(widget) and widget.text == "Edwin VanCleef" then named = true end
     end
     assert(named, "the notification still identifies the card")
     toast:OnUpdate(100)
+    model:OnHide()
+    equal(model.creature, nil)
+    equal(model.fileID, nil)
+    ACB.setSetting(saved, "cardModels", oldModels ~= false)
+    saved.cardModels = oldModels
     AzerothCardBinderDB.popups = oldPopups
+end)
+
+test("pickup popups wait through loading and taxi travel without losing queued finds", function()
+    local toast, saved = ACB.toast, AzerothCardBinderDB
+    local oldPopups, oldModels = saved.popups, saved.cardModels
+    saved.popups = true
+    while toast:IsShown() do toast:OnUpdate(100) end
+    local model
+    for _, widget in ipairs(widgets) do
+        if widget.kind == "PlayerModel" then
+            local parent = widget.parent
+            while parent and parent ~= toast do parent = parent.parent end
+            if parent == toast then model = widget end
+        end
+    end
+    ACB.setSetting(saved, "cardModels", true)
+    emit("PLAYER_LEAVING_WORLD"); emit("LOADING_SCREEN_ENABLED")
+    ACB.showToast(ACB.cards["npc:639"], { count = 1 })
+    ACB.showToast(ACB.cards["npc:589"], { count = 1 })
+    equal(toast:IsShown(), false)
+    model:OnShow(); model:OnUpdate(10); toast:OnUpdate(100)
+    equal(model.creature, nil)
+    emit("PLAYER_ENTERING_WORLD")
+    equal(toast:IsShown(), false)
+    emit("LOADING_SCREEN_DISABLED")
+    equal(toast:IsShown(), true)
+    model:OnShow()
+    equal(model.creature, 639, "the first find resumes after loading")
+    toast:OnEnter() -- hiding a hovered popup must not leave it paused after travel
+    ACB.setModelWorldState("onTaxi", true)
+    equal(toast:IsShown(), false)
+    equal(model.creature, nil)
+    toast:OnUpdate(100)
+    ACB.setModelWorldState("onTaxi", false)
+    model:OnShow()
+    equal(model.creature, 639, "travel does not consume the popup's visible lifetime")
+    toast:OnUpdate(100)
+    model:OnShow()
+    equal(model.creature, 589, "the queued second find follows")
+    toast:OnUpdate(100); model:OnHide()
+    equal(toast:IsShown(), false)
+    ACB.setSetting(saved, "cardModels", false)
+    ACB.showToast(ACB.cards["npc:639"], { count = 1 })
+    equal(toast:IsShown(), true)
+    equal(model:IsShown(), false)
+    toast:OnUpdate(100)
+    ACB.setSetting(saved, "cardModels", oldModels ~= false)
+    saved.popups, saved.cardModels = oldPopups, oldModels
 end)
 
 test("world transitions release both displayed and retained warming models", function()
