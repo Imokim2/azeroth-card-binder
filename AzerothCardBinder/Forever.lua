@@ -343,7 +343,7 @@ local function initialize()
         if done then ACB.logTrade(saved, give, take, peer, time(), report) end
         ACB.refresh()
         return done
-    end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.tradeDistanceOk(saved, peer) end, saved)
+    end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.rankedTradeAllowed(saved, peer) end, saved)
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.tradePrefix)
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.viewPrefix)

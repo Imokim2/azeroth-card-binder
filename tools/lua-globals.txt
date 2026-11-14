@@ -55,8 +55,10 @@ GGET UISpecialFrames
 GGET UnitAffectingCombat
 GGET UnitClassification
 GGET UnitDistanceSquared
+GGET UnitFactionGroup
 GGET UnitFullName
 GGET UnitGUID
+GGET UnitIsConnected
 GGET UnitIsDeadOrGhost
 GGET UnitIsPlayer
 GGET UnitIsTapDenied
@@ -76,6 +78,7 @@ GGET pairs
 GGET pcall
 GGET print
 GGET select
+GGET setmetatable
 GGET string
 GGET table
 GGET time

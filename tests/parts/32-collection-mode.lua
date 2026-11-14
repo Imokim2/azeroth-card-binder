@@ -51,7 +51,8 @@ end)
 
 test("a new player cannot roll their first Casual card or open a pack without choosing", function()
     local oldDB, keepSync = AzerothCardBinderDB, ACB.sync
-    local keep = { ACB.ensureCollectionMode, ACB.chooseCollectionMode, ACB.requestCollectionMode, ACB.modeChoicePrompt }
+    local keep = { ACB.ensureCollectionMode, ACB.chooseCollectionMode, ACB.requestCollectionMode, ACB.modeChoicePrompt,
+        ACB.warnCasualFind, ACB.explainRankedTrading, ACB.casualWarningPrompt }
     local saved, ledger = modeBinder()
     AzerothCardBinderDB, ACB.sync = saved, {}
     ACB.initCollectionMode(saved, ledger, ignore)
@@ -68,6 +69,10 @@ test("a new player cannot roll their first Casual card or open a pack without ch
     equal(collection:openPack("DM"), nil)
     equal(saved.packs.DM, 1)
     ACB.modeChoicePrompt.ranked:OnClick()
+    equal(saved.mode, "casual", "a new player without the companion cannot enable Ranked")
+    equal(ACB.modeChoicePrompt:IsShown(), true)
+    ACB.sync = { companionReady = true, rankedSetups = { saved.modeSetupID } }
+    ACB.modeChoicePrompt.ranked:OnClick()
     equal(saved.mode, "ranked")
     equal(ACB.modeChoicePrompt:IsShown(), false)
     equal(collection:roll(guid(589, "waiting-for-companion"), "loot"), nil)
@@ -79,5 +84,6 @@ test("a new player cannot roll their first Casual card or open a pack without ch
     assert(collection:roll(guid(589, "deliberate-casual"), "loot"))
     equal(saved.casualDrops, 1)
     AzerothCardBinderDB, ACB.sync = oldDB, keepSync
-    ACB.ensureCollectionMode, ACB.chooseCollectionMode, ACB.requestCollectionMode, ACB.modeChoicePrompt = unpack(keep)
+    ACB.ensureCollectionMode, ACB.chooseCollectionMode, ACB.requestCollectionMode, ACB.modeChoicePrompt,
+        ACB.warnCasualFind, ACB.explainRankedTrading, ACB.casualWarningPrompt = unpack(keep)
 end)

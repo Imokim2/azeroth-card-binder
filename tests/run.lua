@@ -41,6 +41,7 @@ local parts = {
     "34-launch-collection",
     "35-model-lifecycle",
     "36-rarity-motion",
+    "37-casual-warning-trading",
 }
 
 local source, ranges, line = {}, {}, 1

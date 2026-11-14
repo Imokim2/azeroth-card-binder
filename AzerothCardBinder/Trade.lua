@@ -10,7 +10,12 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed, saved)
     local trade = { seen = {}, status = "Choose a player and a card, then click Start trade." }
     apply = apply or function() return true end
     -- `allowed(peer)` may say no, with a reason (the trading distance); with none given every trade may go ahead.
-    allowed = allowed or function() return true end
+    local distanceAllowed = allowed or function() return true end
+    allowed = function(peer)
+        local why = ACB.tradeModeReason(saved)
+        if why then return false, why end
+        return distanceAllowed(peer)
+    end
 
     function trade:reset(status)
         self.session = nil
@@ -43,6 +48,8 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed, saved)
 
     function trade:listen(peer)
         if busy(self) or not peer then return end
+        local ok, why = allowed(peer)
+        if not ok then self.status = why return false end
         self.session = { peer = peer, expires = now() + 120 }
         self.status = "Listening for an offer from " .. peer .. "."
     end
@@ -200,5 +207,6 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed, saved)
     end
 
     if ACB.addTradeSession then ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, saved) end
+    ACB.trackTrade(saved, trade)
     return trade
 end

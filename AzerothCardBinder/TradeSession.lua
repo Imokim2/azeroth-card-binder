@@ -4,7 +4,7 @@ local _, ACB = ...
 -- I/U/A/F/D messages carry revisioned offers and a single coordinator's decision.
 function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, saved)
     local legacyReceive, legacyConfirm = trade.receive, trade.confirm
-    local lastInvite, elapsed
+    local lastInvite, lastRefusal, elapsed
     local terminal, terminalOrder = {}, {}
     local function wire(key) return key or "0" end
     local function valid(key) return key == "0" or ACB.tradeItem(key) ~= nil end
@@ -62,7 +62,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
 
     function trade:canAccept()
         local s = current()
-        return s ~= nil and not s.closed and not s.cancelPending and s.connected == true and not s.sentConfirm
+        return not ACB.tradeModeReason(saved) and s ~= nil and not s.closed and not s.cancelPending and s.connected == true and not s.sentConfirm
             and not s.invited
             and (s.give ~= nil or s.take ~= nil) and s.give ~= s.take and owns(s.give) == true
     end
@@ -160,6 +160,12 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         local id, key, mode = message:match("^I|([%w%-]+)|([%w:]+)|([tg])$")
         if id then
             if #id > 36 or not valid(key) or (mode == "g" and key == "0") then return end
+            local why = ACB.tradeModeReason(saved)
+            if why then
+                self.status = why
+                if not lastRefusal or now() - lastRefusal >= 3 then send(peer, "N|" .. id); lastRefusal = now() end
+                return false
+            end
             local s = self:active()
             if s and s.modern and s.id == id and s.peer == peer then
                 if s.cancelled then transmit(s, "X|" .. id)
@@ -180,6 +186,11 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         local s = current()
         if not s or not s.modern then return legacyReceive(self, peer, message) end
         if s.peer ~= peer then return end
+        local refused = message:match("^N|([%w%-]+)$")
+        if refused == s.id and not s.sentConfirm and not s.peerConfirmed and not s.decision and not s.applied then
+            self:reset("The other player needs the companion and a Ranked binder to trade or receive gifts.")
+            return false
+        end
         local updateId, revision, newKey = message:match("^U|([%w%-]+)|(%d+)|([%w:]+)$")
         if updateId then
             local number = tonumber(revision)

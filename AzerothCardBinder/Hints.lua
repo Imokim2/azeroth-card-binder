@@ -33,6 +33,14 @@ function ACB.initHints(saved)
     local function tooltipGUID(data)
         return ACB.read(type(data) == "table" and data.guid or nil, "string")
     end
+    local function canAskTitle(unit)
+        if not UnitFactionGroup then return false end
+        local mine = ACB.read(ACB.safe(UnitFactionGroup, "player"), "string")
+        local theirs = ACB.read(ACB.safe(UnitFactionGroup, unit), "string")
+        if not mine or mine ~= theirs then return false end
+        if UnitIsConnected and ACB.read(ACB.safe(UnitIsConnected, unit), "boolean") ~= true then return false end
+        return true
+    end
 
     local function addTitle(tooltip, guid)
         if tooltip ~= GameTooltip or not guid:match("^Player%-") then return end
@@ -53,7 +61,7 @@ function ACB.initHints(saved)
             local peer = name and ACB.tradePeer(realm and realm ~= "" and name .. "-" .. realm or name)
             if peer then
                 watchedPeer, watchedGUID = peer, guid
-                title = ACB.peerTitle(peer)
+                title = ACB.peerTitle(peer, canAskTitle(unit))
             end
         end
         if title then tooltip:AddLine("Binder title: " .. title, 0.88, 0.69, 0.40) end

@@ -1,7 +1,7 @@
 -- An actual two-accept Lua pack gift, then a Ranked pack reveal using the recipient's issued tape.
 local addon, ACB = "AzerothCardBinder", {}
 for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "DropRates.lua", "Editions.lua", "Availability.lua",
-    "Achievements.lua", "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Updates.lua", "Tape.lua", "Collection.lua", "Packs.lua", "Trade.lua", "TradeSession.lua", "Seasons.lua", "SavedData.lua" }) do
+    "Achievements.lua", "Hash.lua", "Ledger.lua", "Data/Sync.lua", "Updates.lua", "RankedAccess.lua", "Tape.lua", "Collection.lua", "Packs.lua", "Trade.lua", "TradeSession.lua", "Seasons.lua", "SavedData.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 local function binder(name)
@@ -24,9 +24,13 @@ assert(aSaved.packs[zone] == 1)
 ACB.sync.tape = { start = 1, entries = assert(loadfile(arg[1]))() }
 assert(ACB.setMode(bSaved, bLedger, "ranked"))
 local a, b
+-- This fixture replays a historical Casual-origin gift to test server
+-- provenance. Arrange Ranked transport access separately from that unchanged
+-- historical ledger; current Casual access denial is covered in part 37.
+local historicalTransport = { mode = "ranked", counts = aSaved.counts, packs = aSaved.packs }
 a = ACB.newTrade(aSaved.counts, function() return 1 end, function() return "pack-gift-real" end,
     function(_, message) b:receive("alice-realmname", message) return true end,
-    function(give, take, peer, id) return aCollection:swap(give, take, peer, id) end, nil, nil, aSaved)
+    function(give, take, peer, id) return aCollection:swap(give, take, peer, id) end, nil, nil, historicalTransport)
 b = ACB.newTrade(bSaved.counts, function() return 1 end, function() return "pack-gift-real" end,
     function(_, message) a:receive("bob-realmname", message) return true end,
     function(give, take, peer, id) return bCollection:swap(give, take, peer, id) end, nil, nil, bSaved)

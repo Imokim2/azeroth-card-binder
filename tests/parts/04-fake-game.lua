@@ -113,6 +113,7 @@ C_ChatInfo = {
     InChatMessagingLockdown = function() return locked or false end,
 }
 function GetBuildInfo() return "1.60.1", "70862", "Nov 4 2026", 16001 end
+function UnitFactionGroup() return "Alliance" end
 function GetTime() return clock end
 function GetNumLootItems() return #slots end
 function GetLootSourceInfo(index)
@@ -203,4 +204,18 @@ end
 
 local function cast(event, token, spell, unit)
     emit("UNIT_SPELLCAST_" .. event, unit or "player", token, spell)
+end
+
+-- UI/protocol fixtures that test trading arrange an eligible, paired Ranked
+-- binder explicitly; general acquisition fixtures continue collecting Casual.
+local function rankedTradeFixture(saved)
+    local mode, casual, legacy, setupID, sync = saved.mode, saved.casualDrops, saved.legacy, saved.modeSetupID, ACB.sync
+    saved.mode, saved.casualDrops, saved.legacy = "ranked", 0, nil
+    saved.modeSetupID = saved.modeSetupID or string.rep("f", 32)
+    local paired = {}; for key, value in pairs(sync or {}) do paired[key] = value end
+    paired.companionReady, paired.rankedSetups = true, { saved.modeSetupID }
+    ACB.sync = paired
+    return function()
+        saved.mode, saved.casualDrops, saved.legacy, saved.modeSetupID, ACB.sync = mode, casual, legacy, setupID, sync
+    end
 end
