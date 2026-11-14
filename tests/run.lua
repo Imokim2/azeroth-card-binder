@@ -39,6 +39,7 @@ local parts = {
     "32-collection-mode",
     "33-seasons",
     "34-launch-collection",
+    "35-model-lifecycle",
 }
 
 local source, ranges, line = {}, {}, 1

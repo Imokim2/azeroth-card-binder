@@ -121,6 +121,7 @@ test("cinematic detail sways, pauses for dragging and keeps the combat pose", fu
     card.model.desaturation = nil -- Simulate the client completing a new load.
     card.model.fileID, card.model.supportedAnimation = 1000, 17
     card.model:OnModelLoaded()
+    card.model:OnUpdate(.21)
     equal(card.model.desaturation, 1)
     equal(card.model.frozen[1], 17)
     equal(card.model.frozen[3], 24)
@@ -156,6 +157,7 @@ test("cinematic detail sways, pauses for dragging and keeps the combat pose", fu
     card:set(ACB.cards["npc:573"], 0)
     card.model.fileID, card.model.supportedAnimation = 1001, nil
     card.model:OnModelLoaded()
+    card.model:OnUpdate(.21)
     equal(card.model.frozen[1], 0)
     equal(card.model.facing, -0.34)
     assert(card.model.portraitZoom < humanoidZoom)

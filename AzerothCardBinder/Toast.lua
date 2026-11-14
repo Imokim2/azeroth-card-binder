@@ -40,7 +40,7 @@ function ACB.initToast(saved)
     header:SetPoint("TOP", frame, "TOP", 0, -12)
     header:SetFont(FONT, 13, "OUTLINE")
 
-    local card = ACB.createCard(frame)
+    local card = ACB.createCard(frame, nil, nil, { models = false })
     card.frame:SetPoint("TOP", frame, "TOP", 0, -34)
     card.frame:EnableMouse(false) -- let the pop-up itself take the clicks
 

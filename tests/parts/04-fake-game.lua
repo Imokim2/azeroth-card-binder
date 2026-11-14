@@ -47,6 +47,10 @@ local methods = {
     Hide = function(self) self.shown = false end,
     SetShown = function(self, shown) self.shown = shown end,
     IsShown = function(self) return self.shown end,
+    IsVisible = function(self)
+        if self.shown == false then return false end
+        return not self.parent or self.parent:IsVisible()
+    end,
     IsMouseOver = function(self) return self.mouseOver ~= false end,
     GetEffectiveScale = function(self) return self.scale or 1 end,
     SetText = function(self, text) self.text = text end,
@@ -61,7 +65,7 @@ local methods = {
 }
 local eventFrame, widgets = nil, {}
 function CreateFrame(kind, name, parent, template)
-    local frame = setmetatable({ parent = parent, template = template }, { __index = methods })
+    local frame = setmetatable({ kind = kind, parent = parent, template = template }, { __index = methods })
     if not eventFrame then eventFrame = frame end
     if name then _G[name] = frame end
     widgets[#widgets + 1] = frame

@@ -6,6 +6,14 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.5 - 2026-11-14
+
+- Pickup pop-ups now use zone artwork and a binder seal instead of a 3D model. Finding a card with the binder closed no longer starts a model request.
+- Release card models and retained portrait-preload resources when their windows close or a loading/world transition begins. Hidden cards cannot load or retry models. Suspend 3D cards during flight paths, then restore visible portraits after landing.
+- Apply camera and animation changes outside model-loaded callbacks. Pack faces still preload behind their opaque covers when the pack window is visible.
+- Add a 3D card models switch in Settings for players experiencing display problems. Turning it off uses zone artwork and a seal without changing collection progress.
+- These changes address suspect model-rendering paths identified during investigation of an intermittent fullscreen minimise/restore loop. The whole-client failure still needs verification in the actual game; automated tests cannot confirm that it is resolved. Existing saves, drops and trading rules are unchanged.
+
 ## 1.0.4 - 2026-11-14
 
 - Keep prepared pack faces behind opaque covers until each card crosses its flip midpoint, instead of relying on near-transparent parent frames. Suppress concealed-card tooltips and reset covers for every new pack; models and backgrounds still preload normally.
