@@ -126,7 +126,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
 
     local swayPhase, animationElapsed, modelReady = 0, 0, false
     local function portraitFacing()
-        return card.facing + SWAY_ANGLE * math.sin(swayPhase)
+        return card.facing + (card.presentation.motion == "sway" and card.owned > 0 and SWAY_ANGLE * math.sin(swayPhase) or 0)
     end
 
     local function updateModel(model)
@@ -137,6 +137,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
         modelReady = ACB.cardModelReady(card, model)
         if not modelReady then return end
         if entry.profession then
+            safe(model.SetFacing, model, card.facing)
             card.node:SetShown(not modelReady)
         else
             card.playing, card.playbackAnimation = poseCreature(model, entry, portraitFacing(), card.presentation,
@@ -276,7 +277,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
     end
     if share then
         frame:SetScript("OnMouseDown", function(self, button)
-            if button == "RightButton" and card.presentation and card.presentation.animated then
+            if button == "RightButton" and card.presentation and card.presentation.motion ~= "still" then
                 card:setMotionPaused(not card.motionPaused)
                 return
             end
@@ -285,22 +286,23 @@ function ACB.createCard(parent, previewUnowned, share, options)
                 linkEntry = card.entry
                 return
             end
-            if card.entry.profession or not modelReady or not card.model:IsMouseOver() then return end
+            if not modelReady or not card.model:IsMouseOver() then return end
             previousX = GetCursorPosition()
             radiansPerPixel = 0.025 / self:GetEffectiveScale()
         end)
         frame:SetScript("OnUpdate", function(_, elapsed)
             if ACB.modelsBlocked() or not card.model:IsVisible() then return end
             if not modelReady then return end
-            if previousX and IsMouseButtonDown("LeftButton") then
+            local turning, sways = previousX and IsMouseButtonDown("LeftButton"), ACB.cardSways(card)
+            if turning then
                 local x = GetCursorPosition()
                 card.facing = (card.facing + (x - previousX) * radiansPerPixel) % FULL_TURN
                 previousX = x
             else
                 previousX = nil
-                if not card.motionPaused then swayPhase = (swayPhase + elapsed * SWAY_SPEED) % FULL_TURN end
+                if sways then swayPhase = (swayPhase + elapsed * SWAY_SPEED) % FULL_TURN end
             end
-            safe(card.model.SetFacing, card.model, portraitFacing())
+            if turning or sways then safe(card.model.SetFacing, card.model, portraitFacing()) end
             if card.playing then
                 animationElapsed = animationElapsed + elapsed
                 local duration = card.presentation.duration or 4
@@ -319,13 +321,13 @@ function ACB.createCard(parent, previewUnowned, share, options)
         frame:SetScript("OnHide", function()
             stopInteraction()
             swayPhase = 0
-            if card.presentation then card.facing = card.presentation.pose.facing end
+            if card.presentation then card.facing = card.entry.profession and 0.6 or card.presentation.pose.facing end
         end)
     end
 
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
     function card:set(entry, count, shiny, wanted)
-        local found = count > 0
+        local found, had = count > 0, self.owned > 0
         self.showModels = useModels and not ACB.modelsBlocked()
         local showModel = self.showModels and (found or previewUnowned)
         shiny = found and shiny == true
@@ -338,7 +340,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
         self.entry, self.owned, self.shiny = entry, count, shiny
         self.wantedFlag = wanted
         local presentation = ACB.cardPresentation(entry, options.presentation)
-        local changedPresentation = not self.presentation or self.presentation.id ~= presentation.id
+        local changedPresentation = not self.presentation or self.presentation.id ~= presentation.id or found ~= had
         self.presentation = presentation
         local rarity = ACB.rarities[entry.rarity]
         local color = found and rarity.color or LOCKED
@@ -394,7 +396,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
         elseif showModel and self.model:IsVisible() then
             setModelFinish(self.model, found)
             if changedPresentation then
-                self.facing, swayPhase, animationElapsed = presentation.pose.facing, 0, 0
+                self.facing, swayPhase, animationElapsed = entry.profession and 0.6 or presentation.pose.facing, 0, 0
                 updateModel(self.model)
             elseif not entry.profession then
                 local shouldPlay = share ~= nil and found and presentation.animated and not self.motionPaused

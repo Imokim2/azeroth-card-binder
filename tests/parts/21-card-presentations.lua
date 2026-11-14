@@ -175,7 +175,7 @@ test("loaded creature portraits rotate without a readable file ID and never pin 
     equal(card.model.frozen[1], 25)
     local facing = card.model.facing
     card.frame:OnUpdate(2)
-    assert(card.model.facing > facing, "a loaded model sways even without a file ID")
+    equal(card.model.facing, facing, "ordinary cards stay still even after a load callback")
     card.model.creature = nil
     card.model:OnUpdate(.3)
     card.model:OnUpdate(.3)
@@ -247,6 +247,6 @@ test("loading-screen events pause model requests and resume only after the trans
     card.model:OnUpdate(.21)
     equal(card.model.frozen[1], 17)
     card.frame:OnUpdate(2)
-    assert(card.model.facing > card.facing, 'normal motion resumes')
+    equal(card.model.facing, card.facing, 'the authored angle resumes without an extra camera sway')
     warm(nil)
 end)

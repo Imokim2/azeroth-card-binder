@@ -6,6 +6,14 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.6 - 2026-11-14
+
+- Most cards now keep their authored pose and viewing angle. Common creatures, gathering cards and critter portraits do not rock automatically, while loaded 3D models can still be rotated by dragging.
+- Owned epic and legendary still portraits sway gently on the large detail card. Authored animated editions play their action loops without also rocking the camera. Missing cards and left-page previews stay still; right-click pauses or resumes motion on moving cards.
+- Edwin VanCleef's legendary Signature card loops the flex emote when supported. Unsupported flex playback falls back to a still combat pose. The separate Blades Drawn edition retains its spinning attack.
+- Add an optional, manually started maintainer tool to record foreground-process and WoW window-state changes during the unresolved fullscreen loop. It is excluded from game/companion downloads. Document the Kobold source review and controlled testing needed before declaring the issue fixed.
+- No changes to inventory keys, ownership, edition odds, drop rules or saved progress. Companion 1.0.1 remains current. This card-motion update is not a confirmed fix for the intermittent fullscreen minimise/restore loop.
+
 ## 1.0.5 - 2026-11-14
 
 - Companion 1.0.1: background sync conflicts now set a passive tray hint instead of showing, restoring and focusing the app window. This removes a confirmed focus-stealing path that could interrupt fullscreen play; it is not yet confirmed as the cause of the reported loop.

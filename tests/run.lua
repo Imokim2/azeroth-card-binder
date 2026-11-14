@@ -40,6 +40,7 @@ local parts = {
     "33-seasons",
     "34-launch-collection",
     "35-model-lifecycle",
+    "36-rarity-motion",
 }
 
 local source, ranges, line = {}, {}, 1

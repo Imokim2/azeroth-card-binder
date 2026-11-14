@@ -20,6 +20,14 @@ local function special(entry)
     return not entry.profession and (entry.rarity == "epic" or entry.rarity == "legendary")
 end
 
+-- Full action loops are authored rewards, not a random idle animation on an
+-- ordinary card. AnimationData 82 is EmoteFlex; use a still combat pose when
+-- the creature does not support it on this client.
+local legendaryLoops = {
+    [639] = { zoom = .12, facing = -.47, animation = 82, frame = 850, duration = 3.6,
+        fallbacks = { 17, 25 }, fallbackFrame = 24, loopPrimaryOnly = true },
+}
+
 -- Foe Reaper's alternates are studio previews. The sixteen dungeon editions
 -- below come from Editions.lua, which also supplies the live binder poses.
 local alternates = {
@@ -42,7 +50,9 @@ function ACB.cardPresentations(entry, base)
         return { { id = entry.presentationId, name = entry.editionTitle, pose = entry.presentation,
             animated = entry.presentation.animated == true, duration = entry.presentation.duration } }
     end
-    local result = { { id = "signature", name = "Signature", pose = base, animated = base.animated == true, duration = base.duration } }
+    local loop = entry.rarity == "legendary" and legendaryLoops[entry.id] or nil
+    local result = { { id = "signature", name = "Signature", pose = loop or base,
+        animated = loop ~= nil, duration = loop and loop.duration } }
     if ACB.editions[entry.key] then
         for index = 2, #ACB.editions[entry.key] do
             local edition = ACB.editions[entry.key][index]
@@ -60,8 +70,14 @@ end
 
 function ACB.cardPresentation(entry, id)
     local choices = ACB.cardPresentations(entry, ACB.portraitPreset(entry))
-    for _, choice in ipairs(choices) do if choice.id == id then return choice end end
-    return choices[1]
+    local selected = choices[1]
+    for _, choice in ipairs(choices) do if choice.id == id then selected = choice break end end
+    selected.motion = selected.animated and "animated" or (special(entry) and not entry.critter and "sway" or "still")
+    return selected
+end
+
+function ACB.cardSways(card)
+    return card.owned > 0 and card.presentation.motion == "sway" and not card.motionPaused
 end
 
 ACB.presentationSeed = seed
