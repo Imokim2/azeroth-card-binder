@@ -235,6 +235,8 @@ function ACB.createTradeView(parent, saved, trade)
     end
 
     function ACB.prepareTrade(name, key, acceptInvitation)
+        local why = ACB.tradeModeReason(saved)
+        if why then ACB.explainRankedTrading(why) return false end
         local s = trade:active()
         if s and s.closed then trade:reset(); selected = nil; s = nil end
         if s and s.invited then

@@ -121,10 +121,11 @@ function ACB.initSocial(saved, send, now, after, report)
     function ACB.askForCard(peer, card) return requests:ask(peer, card) end
     local titleChecks, titleServed = {}, {}
 
-    function ACB.peerTitle(peer)
+    function ACB.peerTitle(peer, query)
         local at = now()
         local check = titleChecks[peer]
         if check and at < check.expires then return check.title end
+        if query == false then return end -- Passive tooltips cannot whisper unsupported faction/units.
         check = { expires = at + TITLE_RETRY, pendingUntil = at + TITLE_REPLY_WINDOW }
         titleChecks[peer] = check
         if not send(peer, "T?") then check.pendingUntil = nil end

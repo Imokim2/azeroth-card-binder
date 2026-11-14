@@ -161,6 +161,7 @@ test("gift inventory events contain only the real transfer and gift history surv
 end)
 
 test("incoming gifts wait for invitation acceptance before opening the trade or sending a reply", function()
+    local restoreTrading = rankedTradeFixture(AzerothCardBinderDB)
     local realPrepare, realSend = ACB.prepareTrade, C_ChatInfo.SendAddonMessage
     local opened
     ACB.prepareTrade = function(peer, ...) opened = peer return realPrepare(peer, ...) end
@@ -196,6 +197,7 @@ test("incoming gifts wait for invitation acceptance before opening the trade or 
     equal(ACB.tradeView.controls.accept.enabled, true)
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "X|incoming-gift-ui", "WHISPER", "Harry Dexter")
     ACB.prepareTrade, C_ChatInfo.SendAddonMessage = realPrepare, realSend
+    restoreTrading()
 end)
 
 test("the card slot opens a binder selection and the offered card represents just one copy", function()
@@ -266,6 +268,7 @@ test("completed gifts close both trade views without discarding replay protectio
 end)
 
 test("ordinary binder pages and the card picker hide every trade-window layer", function()
+    local restoreTrading = rankedTradeFixture(AzerothCardBinderDB)
     ACB.prepareTrade('bob-realmname')
     equal(ACB.tradeView:IsShown(), true)
     ACB.open('achievements')
@@ -286,4 +289,5 @@ test("ordinary binder pages and the card picker hide every trade-window layer", 
     equal(ACB.tradeView:IsShown(), true, 'returning from selection restores the trade')
     ACB.open('index')
     equal(ACB.tradeView:IsShown(), false)
+    restoreTrading()
 end)

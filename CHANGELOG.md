@@ -6,6 +6,14 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.8 - 2026-11-14
+
+- Show a one-time warning on the first Casual card find, including a pack reveal. Explain that trading, gifting, Ranked scores and seasonal collection progress are unavailable for this binder. The warning works with card popups disabled, persists across reloads and never resets progress.
+- Require Ranked collections for card/pack trades and gifts, including incoming invitations and legacy offers. Casual attempts explain how to get the companion and enable Ranked; updated senders get an explicit refusal from Casual recipients. Prevent collection-mode changes during an unfinished transfer.
+- New players cannot enable Ranked before matching companion setup has been loaded. Existing Ranked binders are never silently downgraded when setup or roll supply is unavailable; they retain their collection and pause the affected features.
+- Stop passive tooltip title whispers to opposite-faction, disconnected or unknown-faction players, avoiding unsolicited “No player named … is currently playing” errors. Explicit binder requests and trade errors remain visible.
+- Update the website's mode/trading guidance. Historical saved collections and server trade provenance remain valid. Companion 1.0.1 remains current; the fullscreen display issue is still under investigation.
+
 ## 1.0.7 - 2026-11-14
 
 - Restore 3D models in card-unlock popups when 3D card models is enabled. The icon-only popup introduced as a precaution in 1.0.5 no longer overrides the player's setting. Turning 3D off still uses the 2D artwork/icon presentation.

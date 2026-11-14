@@ -79,6 +79,10 @@ end
 function ACB.setMode(saved, ledger, mode)
     if mode ~= "casual" and mode ~= "ranked" then return false, "The mode is casual or ranked." end
     if saved.mode == mode then saved.modeChoice = mode return true end
+    if ACB.tradeModeLocked(saved) then return false, "Finish or cancel your trade before changing collection mode." end
+    if mode == "ranked" and saved == AzerothCardBinderDB and not ACB.companionPaired(saved) then
+        return false, "Download the companion from worldofwarcards.co.uk/download, connect your game folder and reload before enabling Ranked."
+    end
     ledger:flushRun()
     if mode == "ranked" then
         if saved.legacy then

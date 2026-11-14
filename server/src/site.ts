@@ -84,7 +84,7 @@ export function fairPlayPage(): string {
 </ul>
 
 <h2>Trading and gifts</h2>
-<p>Use the addon’s trade window for exchanges and gifts. Both players must agree to what is offered and complete the trade normally. Both players should sync afterwards.</p>
+<p>Trading and gifting require Ranked mode and companion setup for both players. Casual collections cannot send or receive cards or packs. Use the addon’s trade window, agree to what is offered and complete the trade normally. Both players should sync afterwards.</p>
 <p>Cards received through a trade must also be eligible for Ranked play. A trade that is incomplete or under review may not count towards your score. Do not use other accounts or arranged trades to get around these rules.</p>
 
 <h2>Reviews and restrictions</h2>

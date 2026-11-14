@@ -1,4 +1,5 @@
 test("the simple Trade panel filters whispers and moves cards only after both accept and finish", function()
+    local restoreTrading = rankedTradeFixture(AzerothCardBinderDB)
     local saved, sent = AzerothCardBinderDB, {}
     local oldDistance = ACB.tradeDistanceOk
     ACB.tradeDistanceOk = function() return true end -- this test isolates the whisper protocol
@@ -55,6 +56,7 @@ test("the simple Trade panel filters whispers and moves cards only after both ac
     equal(c.mine.frame:IsShown(), false, "the offered card is cleared from view")
     saved.tradeRange = range
     ACB.tradeDistanceOk = oldDistance
+    restoreTrading()
 end)
 
 test("binder dust recycles spares, keeps the last copy, and crafts a missing card once", function()
