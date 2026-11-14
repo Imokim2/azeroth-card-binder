@@ -38,6 +38,7 @@ function ACB.cardModelReady(card, model)
 end
 
 local function loadModel(model, entry)
+    if ACB.worldChanging or ACB.loadingScreen then return end
     if entry.profession then
         if entry.model then safe(model.SetModel, model, entry.model) end
     else
@@ -66,6 +67,7 @@ function ACB.createPortraitLoader(parent, paper)
         loadModel(model, model.entry)
     end
     driver:SetScript("OnUpdate", function(_, elapsed)
+        if ACB.worldChanging or ACB.loadingScreen then return end
         for _, model in ipairs(driver.models) do
             if model.active then
                 model.age = model.age + elapsed
@@ -135,6 +137,7 @@ function ACB.watchCardModel(card, update, canLoad)
         return ACB.cardModelReady(card, model)
     end
     safe(card.model.SetScript, card.model, "OnModelLoaded", function(model)
+        if ACB.worldChanging or ACB.loadingScreen then return end
         if not card.entry or card.entry.key ~= card.modelFor then return end
         card.modelLoadedFor = card.modelFor
         update(model)
@@ -142,12 +145,13 @@ function ACB.watchCardModel(card, update, canLoad)
     end)
     local function resume(model)
         elapsed, attempts, key, settled, passes = 0, 0, card.modelFor, false, 0
-        if not card.entry or card.entry.key ~= card.modelFor or not canLoad() then return end
+        if ACB.worldChanging or ACB.loadingScreen or not card.entry or card.entry.key ~= card.modelFor or not canLoad() then return end
         if not ready(model) then loadModel(model, card.entry) end
         update(model)
     end
     card.model:SetScript("OnShow", resume)
     card.model:SetScript("OnUpdate", function(model, dt)
+        if ACB.worldChanging or ACB.loadingScreen then return end
         if not card.entry or not canLoad() then return end
         if key ~= card.modelFor then elapsed, attempts, key, settled, passes = 0, 0, card.modelFor, false, 0 end
         if settled or attempts >= 2 then return end
@@ -169,6 +173,7 @@ local function setModelFinish(model, found)
 end
 
 local function poseCreature(model, entry, facing, presentation, animate)
+    if ACB.worldChanging or ACB.loadingScreen then return false end
     presentation = presentation or ACB.cardPresentation(entry)
     local preset = presentation.pose
     safe(model.SetPaused, model, false)

@@ -23,7 +23,7 @@ local methods = {
     SetAlpha = function(self, alpha) self.alpha = alpha end, SetMultiLine = ignore,
     SetFontObject = ignore, SetScrollChild = ignore, SetVerticalScroll = ignore, HighlightText = ignore,
     ClearFocus = ignore, SetClipsChildren = ignore,
-    SetColorTexture = function(self) self.colorTexture = true end, SetFont = ignore, SetBlendMode = ignore,
+    SetColorTexture = function(self, ...) self.colorTexture, self.fillColor = true, { ... } end, SetFont = ignore, SetBlendMode = ignore,
     SetVertexColor = function(self, r, g, b) self.vertex = { r, g, b } end,
     SetFrameLevel = function(self, level) self.level = level end,
     GetFrameLevel = function(self) return self.level or 1 end, SetMaxLines = ignore,

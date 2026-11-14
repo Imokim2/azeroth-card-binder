@@ -136,6 +136,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
     end
 
     local function updateModel(model)
+        if ACB.worldChanging or ACB.loadingScreen then return end
         local entry = card.entry
         if not entry or entry.key ~= card.modelFor then return end
         setModelFinish(model, card.owned > 0)
@@ -293,6 +294,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
             radiansPerPixel = 0.025 / self:GetEffectiveScale()
         end)
         frame:SetScript("OnUpdate", function(_, elapsed)
+            if ACB.worldChanging or ACB.loadingScreen then return end
             if not modelReady then return end
             if previousX and IsMouseButtonDown("LeftButton") then
                 local x = GetCursorPosition()

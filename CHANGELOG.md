@@ -6,6 +6,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.4 - 2026-11-14
+
+- Keep prepared pack faces behind opaque covers until each card crosses its flip midpoint, instead of relying on near-transparent parent frames. Suppress concealed-card tooltips and reset covers for every new pack; models and backgrounds still preload normally.
+- Pause addon model requests, camera/pose updates, portrait warming and pack animation while changing worlds or showing a loading screen. This is a precaution; the reported intermittent whole-client minimise/restore loop has not been reproduced or confirmed as an addon problem.
+- Existing binder data, pack draws and collection rules are unchanged.
+
 ## 1.0.3 - 2026-11-13
 
 - Close the trade window and clear its displayed offers after a completed trade or gift. Keep the completed protocol session available for final-message retries so transfers cannot be duplicated.
