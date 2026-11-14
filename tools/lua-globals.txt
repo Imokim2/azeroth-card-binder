@@ -25,6 +25,7 @@ GGET GetAddOnMetadata
 GGET GetBuildInfo
 GGET GetCursorPosition
 GGET GetFileIDFromPath
+GGET GetGuildInfo
 GGET GetInstanceInfo
 GGET GetLootSourceInfo
 GGET GetNormalizedRealmName
@@ -34,6 +35,7 @@ GGET GetTime
 GGET GetZoneText
 GGET InCombatLockdown
 GGET IsInGroup
+GGET IsInGuild
 GGET IsInInstance
 GGET IsInRaid
 GGET IsMouseButtonDown

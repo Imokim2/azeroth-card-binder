@@ -11,11 +11,28 @@ ACB.settings = {
         note = "Takes the reputation bar's place (in green) to show the cards you own in the zone or dungeon you are in." },
     { key = "inspectable", name = "Let others view my binder", default = true,
         note = "Other players using the add-on can ask to see which cards you own." },
-    { key = "announceCards", name = "Announce cards in chat", default = true,
-        note = "Share card finds in group chat, or /say when solo. Your private clickable card messages always stay on." },
     { key = "cardModels", name = "3D card models", default = true,
         note = "Turn off if card models cause display problems. Cards use their zone artwork and a binder seal instead." },
 }
+
+ACB.chatSettings = {
+    { key = "announceCards", name = "Announce cards in group chat or /say", default = true,
+        note = "Share card finds in your group, or /say when solo. This is separate from guild chat." },
+    { key = "guildCards", name = "Announce cards in guild chat", default = false,
+        note = "Share cards at or above your chosen rarity. Includes cards revealed from packs." },
+    { key = "guildPacks", name = "Announce pack finds in guild chat", default = false,
+        note = "Share packs you find, with their zone and pack rarity. Does not reveal the cards inside." },
+}
+ACB.guildRarities = {
+    { key = "common", name = "All cards" }, { key = "rare", name = "Rare and above" },
+    { key = "epic", name = "Epic and Legendary" }, { key = "legendary", name = "Legendary only" },
+}
+function ACB.guildRarity(saved)
+    for index, rarity in ipairs(ACB.guildRarities) do
+        if saved.guildMinRarity == rarity.key then return rarity, index end
+    end
+    return ACB.guildRarities[3], 3
+end
 
 ACB.soundSettings = {
     { key = "sounds", name = "Enable addon sounds", default = true, note = "Master switch. Sounds respect the game's sound-effects volume." },
@@ -26,6 +43,7 @@ ACB.soundSettings = {
 }
 local byKey = {}
 for _, setting in ipairs(ACB.settings) do byKey[setting.key] = setting end
+for _, setting in ipairs(ACB.chatSettings) do byKey[setting.key] = setting end
 for _, setting in ipairs(ACB.soundSettings) do byKey[setting.key] = setting end
 -- Diagnostics remain available to support through slash commands, outside player settings.
 byKey.diagnostics = { key = "diagnostics", default = false }
@@ -46,8 +64,9 @@ function ACB.setSetting(saved, key, on)
         ACB.releaseCardModels()
         ACB.refreshCardModels()
     end
-    if key == "announceCards" and not on and ACB.collection and ACB.collection.announcements then
-        ACB.collection.announcements:clear()
+    if (key == "announceCards" or key == "guildCards" or key == "guildPacks") and not on
+        and ACB.collection and ACB.collection.announcements then
+        ACB.collection.announcements:clear(key)
     end
     if byKey[key] and (key == "sounds" or key:find("Sounds$")) and ACB.stopSounds then ACB.stopSounds() end
     return true
