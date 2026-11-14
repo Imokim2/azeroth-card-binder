@@ -110,13 +110,23 @@ function ACB.createPackView(saved)
         slot.card = ACB.createCard(slot.holder)
         slot.card.frame:SetPoint("CENTER", slot.holder, "CENTER", 0, 0)
         slot.card.frame:EnableMouse(false)
-        slot.back:SetFrameLevel(slot.card.frame:GetFrameLevel() + 20)
+        -- Opaque concealment, rather than alpha: some clients draw model/effect
+        -- layers through nearly transparent parents while warming the face.
+        slot.cover = CreateFrame("Frame", nil, slot.holder)
+        slot.cover:SetAllPoints(slot.card.frame)
+        slot.cover:SetFrameLevel(slot.card.frame:GetFrameLevel() + 30)
+        local conceal = slot.cover:CreateTexture(nil, "OVERLAY")
+        conceal:SetAllPoints(slot.cover)
+        conceal:SetColorTexture(0.072, 0.057, 0.049, 1)
+        slot.back:SetFrameLevel(slot.cover:GetFrameLevel() + 1)
         slot.holder:Hide()
         slot.caption = label(stage, "GameFontNormal", left, SLOT_TOP + CARD_H + 8, parchment, "")
         slot.caption:SetWidth(CARD_W)
         slot.caption:SetJustifyH("CENTER")
         view.slots[index] = slot
     end
+    -- The pack animation stays above the covered warm-up faces until dealing.
+    art:SetFrameLevel(view.slots[1].cover:GetFrameLevel() + 10)
 
     local flipAll = button(stage, "Flip all", 560, WINDOW_H - 70, 110, function() view:flipAll() end)
     local done = button(stage, "Done", 680, WINDOW_H - 70, 100, function() view:finish() end)
@@ -159,10 +169,12 @@ function ACB.createPackView(saved)
             slot.state, slot.t, slot.delay = result and "down" or "unused", 0, 0
             slot.back:Hide()
             slot.back:SetAlpha(0)
-            -- Keep the actual faces shown and effectively transparent so the client can load them
-            -- throughout the opening animation, before the player turns a card over.
+            -- Load at normal opacity underneath an opaque cover. Names, models
+            -- and foil remain covered until this card crosses the flip midpoint.
+            slot.card.concealed = true
+            slot.cover:SetShown(result ~= nil)
             slot.holder:SetWidth(CARD_W)
-            slot.holder:SetAlpha(0.001)
+            slot.holder:SetAlpha(1)
             slot.holder:SetShown(result ~= nil)
             slot.caption:SetShown(result ~= nil)
             slot.holder:SetPoint("TOPLEFT", stage, "TOPLEFT", self.left + (index - 1) * (CARD_W + GAP), -SLOT_TOP)
@@ -224,6 +236,7 @@ function ACB.createPackView(saved)
 
     -- Advance the animation by `dt` seconds.
     function view:step(dt)
+        if ACB.worldChanging or ACB.loadingScreen then return end
         if self.phase == "list" then return end
         self.t = self.t + dt
         if self.phase == "shake" then
@@ -266,6 +279,8 @@ function ACB.createPackView(saved)
                     else
                         if slot.back:IsShown() then
                             slot.back:Hide()
+                            slot.cover:Hide()
+                            slot.card.concealed = false
                             if ACB.playSound then ACB.playSound("paper", "packs") end
                             slot.holder:SetAlpha(1)
                             slot.card:refreshPortrait()

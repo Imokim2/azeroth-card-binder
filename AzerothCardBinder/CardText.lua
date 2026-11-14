@@ -24,7 +24,7 @@ end
 function ACB.installCardTooltip(card, typeName, interactive)
     card.frame:SetScript("OnEnter", function(self)
         local entry = card.entry
-        if not entry or not GameTooltip then return end
+        if not entry or card.concealed or not GameTooltip then return end
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         local rarity = ACB.rarities[entry.rarity]
         GameTooltip:AddLine(entry.name, unpack(rarity.color))

@@ -387,7 +387,11 @@ local handlers = {
     PLAYER_REGEN_ENABLED = function() if kills then kills:combatChanged() end end,
     UPDATE_MOUSEOVER_UNIT = watchBoss,
     PLAYER_FOCUS_CHANGED = watchBoss,
+    PLAYER_LEAVING_WORLD = function() ACB.worldChanging = true end,
+    LOADING_SCREEN_ENABLED = function() ACB.loadingScreen = true end,
+    LOADING_SCREEN_DISABLED = function() ACB.loadingScreen = false end,
     PLAYER_ENTERING_WORLD = function()
+        ACB.worldChanging = false
         ACB.announceUpdates(report)
         readyLoot, gather, pickpocketAt, encounter = nil, nil, nil, nil
         if kills then kills:reset() end
