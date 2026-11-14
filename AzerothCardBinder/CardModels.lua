@@ -13,8 +13,12 @@ function ACB.cardModelsEnabled()
     return not ACB.modelSettings or ACB.modelSettings.cardModels ~= false
 end
 
+function ACB.modelTransition()
+    return ACB.worldChanging or ACB.loadingScreen or ACB.onTaxi
+end
+
 function ACB.modelsBlocked()
-    return not ACB.cardModelsEnabled() or ACB.worldChanging or ACB.loadingScreen or ACB.onTaxi
+    return not ACB.cardModelsEnabled() or ACB.modelTransition()
 end
 
 function ACB.releaseCardModels()
@@ -29,6 +33,7 @@ function ACB.setModelWorldState(key, on)
     ACB[key] = on
     if on then ACB.releaseCardModels() end
     if not ACB.modelsBlocked() then ACB.refreshCardModels(); if ACB.refresh then ACB.refresh() end end
+    if ACB.refreshToast then ACB.refreshToast() end
 end
 
 local taxiElapsed = 0
@@ -41,7 +46,7 @@ function ACB.updateModelTravel(elapsed)
 end
 
 function ACB.createPortraitModel(window, inner, level, useModels)
-    -- Notifications need only a layout anchor, with no engine model at all.
+    -- Callers can opt for a plain layout anchor without an engine model.
     local model = CreateFrame(useModels and "PlayerModel" or "Frame", nil, window)
     model:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
     model:SetSize(inner.width, inner.height)

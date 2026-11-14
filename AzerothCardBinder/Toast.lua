@@ -40,7 +40,7 @@ function ACB.initToast(saved)
     header:SetPoint("TOP", frame, "TOP", 0, -12)
     header:SetFont(FONT, 13, "OUTLINE")
 
-    local card = ACB.createCard(frame, nil, nil, { models = false })
+    local card = ACB.createCard(frame)
     card.frame:SetPoint("TOP", frame, "TOP", 0, -34)
     card.frame:EnableMouse(false) -- let the pop-up itself take the clicks
 
@@ -68,6 +68,16 @@ function ACB.initToast(saved)
         if item then ACB.beginToast(item) end
     end
 
+    -- Keep pending finds in memory while the client changes worlds or flies.
+    -- Showing their parent resumes the card's normal, visibility-gated loader.
+    function ACB.refreshToast()
+        if current then
+            local visible = not ACB.modelTransition()
+            if not visible then current.paused = false end
+            frame:SetShown(visible)
+        end
+    end
+
     function ACB.beginToast(item)
         if item.set then
             header:SetText("SET COMPLETE")
@@ -80,7 +90,7 @@ function ACB.initToast(saved)
             current = { elapsed = 0, item = item, paused = false }
             frame:SetAlpha(0)
             frame:SetScale(0.85)
-            frame:Show()
+            ACB.refreshToast()
             ACB.playSound("set_complete")
             return
         end
@@ -101,12 +111,12 @@ function ACB.initToast(saved)
         current = { elapsed = 0, item = item, paused = false }
         frame:SetAlpha(0)
         frame:SetScale(0.85)
-        frame:Show()
+        ACB.refreshToast()
         ACB.playCardSound(entry, info)
     end
 
     frame:SetScript("OnUpdate", function(self, delta)
-        if not current or current.paused then return end
+        if not current or current.paused or ACB.modelTransition() then return end
         current.elapsed = current.elapsed + delta
         local t = current.elapsed
         if t < FADE_IN then
