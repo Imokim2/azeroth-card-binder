@@ -6,6 +6,14 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.9 - 2026-11-14
+
+- Add a Chat page under Settings, with separate opt-in guild announcements for cards and pack finds. Guild cards default to Epic and Legendary when enabled; choose All, Rare and above, Epic and Legendary, or Legendary only. Existing group and solo announcements keep their own switch.
+- Pack finds announce only their zone and pack rarity. Cards inside a pack are shared only after revealing them. Private clickable card messages remain available with all public announcements disabled.
+- Rate-limit chat messages and discard queued guild messages when their setting is disabled, their rarity no longer qualifies, or the player leaves or changes guilds. Client-refused messages are not retried or redirected.
+- Verify that explicit binder requests and nearby Ranked trade invitations still have no faction restriction in the addon. Only passive title queries are filtered; actual cross-faction delivery remains subject to Forever's addon whisper support.
+- No collection, drop-rate, companion or server changes. Companion 1.0.1 remains current; the fullscreen display issue still needs in-game confirmation.
+
 ## 1.0.8 - 2026-11-14
 
 - Show a one-time warning on the first Casual card find, including a pack reveal. Explain that trading, gifting, Ranked scores and seasonal collection progress are unavailable for this binder. The warning works with card popups disabled, persists across reloads and never resets progress.

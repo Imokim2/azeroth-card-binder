@@ -35,6 +35,30 @@ test("the first committed Casual find warns once per binder even with card popup
     end)
 end)
 
+test("explicit Ranked trade checks allow a nearby opposite-faction player", function()
+    local oldFull, oldPlayer, oldNear, oldFaction = UnitFullName, UnitIsPlayer, CheckInteractDistance, UnitFactionGroup
+    local oldSync = ACB.sync
+    UnitIsPlayer = function(unit) return unit == "player" or unit == "target" end
+    UnitFullName = function(unit)
+        if unit == "player" then return "Alice", "RealmName" end
+        if unit == "target" then return "Bob", "RealmName" end
+    end
+    UnitFactionGroup = function(unit) return unit == "player" and "Alliance" or "Horde" end
+    CheckInteractDistance = function() return true end
+    local saved = ACB.cleanSavedData({ mode = "ranked", modeSetupID = string.rep("a", 32), counts = { ["npc:639"] = 1 } })
+    ACB.sync = { companionReady = true, rankedSetups = { saved.modeSetupID } }
+    equal(ACB.rankedTradeAllowed(saved, "bob-realmname"), true)
+    local messages = {}
+    local trade = ACB.newTrade(saved.counts, function() return 1 end, function() return "cross-faction" end,
+        function(peer, message) equal(peer, "bob-realmname"); messages[#messages + 1] = message; return true end,
+        ignore, nil, function(peer) return ACB.rankedTradeAllowed(saved, peer) end, saved)
+    trade:start("bob-realmname", "npc:639", true)
+    assert(messages[1]:find("^I|cross%-faction|npc:639|g$"))
+    equal(saved.counts["npc:639"], 1)
+    trade:cancel()
+    UnitFullName, UnitIsPlayer, CheckInteractDistance, UnitFactionGroup, ACB.sync = oldFull, oldPlayer, oldNear, oldFaction, oldSync
+end)
+
 test("a first Casual pack card warns at acquisition notification and Ranked notifications never warn", function()
     withCasualModeUI(function(saved, ledger)
         saved.packs.DM = 1

@@ -173,8 +173,12 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     checks[1].checked = false
     checks[1]:OnClick()
     equal(saved.popups, false)
-    checks[5].checked = true
-    checks[5]:OnClick()
+    local publicChat
+    for _, widget in ipairs(widgets) do
+        if widget.settingKey == "announceCards" then publicChat = widget break end
+    end
+    publicChat.checked = true
+    publicChat:OnClick()
     equal(saved.announceCards, true)
     -- The slash command flips the same switch and the open tab follows.
     SlashCmdList.AZEROTHCARDBINDER("hints")

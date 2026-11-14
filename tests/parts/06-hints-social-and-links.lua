@@ -110,6 +110,8 @@ test("player tooltip titles come from solicited replies and an equipped title ca
 end)
 
 test("binder requests use the addon whisper result when the general chat flags are unavailable", function()
+    local originalFaction = UnitFactionGroup
+    UnitFactionGroup = function(unit) return unit == "player" and "Alliance" or "Horde" end
     local originalSend, originalFlag = C_ChatInfo.SendAddonMessage, C_ChatInfo.AreOutgoingAddonChatMessagesRestricted
     local originalCodes = Enum.SendAddonMessageResult
     local result, sends = 0, 0
@@ -131,6 +133,7 @@ test("binder requests use the addon whisper result when the general chat flags a
     equal(sends, 2)
     C_ChatInfo.SendAddonMessage, C_ChatInfo.AreOutgoingAddonChatMessagesRestricted = originalSend, originalFlag
     Enum.SendAddonMessageResult = originalCodes
+    UnitFactionGroup = originalFaction
 end)
 
 test("card links round-trip and unknown links are ignored", function()
