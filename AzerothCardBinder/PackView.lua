@@ -187,6 +187,9 @@ function ACB.createPackView(saved)
         status:SetText("")
         list:Hide()
         stage:Show()
+        for _, slot in ipairs(self.slots) do
+            if slot.state ~= "unused" then slot.card:refreshPortrait() end
+        end
         flipAll:Hide()
         done:Hide()
     end

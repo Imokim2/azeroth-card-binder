@@ -70,7 +70,7 @@ test("cards draw for missing, owned and gathering entries", function()
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
 end)
 
-test("opening a set preloads four portraits together, retains loaded models and stops outside the collection", function()
+test("opening a set preloads four portraits together and releases them outside the collection", function()
     local cards = ACB.pages[2].cards
     local driver
     for _, widget in ipairs(widgets) do if widget.acbPortraitLoader then driver = widget break end end
@@ -91,7 +91,8 @@ test("opening a set preloads four portraits together, retains loaded models and 
     equal(driver.models[5].creature, cards[5].id)
     ACB.open("wanted"); driver.parent:OnHide()
     equal(driver:IsShown(), false)
-    equal(driver.models[1].fileID, 1001, "closing the collection keeps loaded resources")
+    equal(driver.models[1].fileID, nil, "closing the collection releases loaded resources")
+    for _, model in ipairs(driver.models) do equal(model.creature, nil) end
     ACB.openCard(cards[1].key)
     equal(driver:IsShown(), true)
     driver.parent:OnHide()

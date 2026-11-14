@@ -13,6 +13,8 @@ ACB.settings = {
         note = "Other players using the add-on can ask to see which cards you own." },
     { key = "announceCards", name = "Announce cards in chat", default = true,
         note = "Share card finds in group chat, or /say when solo. Your private clickable card messages always stay on." },
+    { key = "cardModels", name = "3D card models", default = true,
+        note = "Turn off if card models cause display problems. Cards use their zone artwork and a binder seal instead." },
 }
 
 ACB.soundSettings = {
@@ -40,6 +42,10 @@ end
 function ACB.setSetting(saved, key, on)
     if not byKey[key] then return false end
     saved[key] = on == true
+    if key == "cardModels" then
+        ACB.releaseCardModels()
+        ACB.refreshCardModels()
+    end
     if key == "announceCards" and not on and ACB.collection and ACB.collection.announcements then
         ACB.collection.announcements:clear()
     end

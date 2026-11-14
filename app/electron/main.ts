@@ -14,6 +14,7 @@ import { Controller } from "../src/controller.ts";
 import type { Status } from "../src/controller.ts";
 import { encryptedFileStore } from "../src/secrets.ts";
 import { gameClosed } from "./gameProcess.ts";
+import { windowActions } from "./attention.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const appRoot = join(here, "..", "..", ".."); // the app/ folder, from app/dist/app/electron
@@ -38,13 +39,10 @@ let controller: Controller;
 
 const DISCORD_PAGE = "https://discord.com/oauth2/authorize?";
 
-function showWindow(): void {
-  if (!window) return;
-  if (window.isMinimized()) window.restore();
-  window.show();
-  window.focus();
+const attention = windowActions(() => window, () => tray, () => {
   if (controller) void controller.checkForUpdates(false);
-}
+});
+const showWindow = attention.open;
 
 function createWindow(): BrowserWindow {
   const created = new BrowserWindow({
@@ -107,7 +105,7 @@ async function main(): Promise<void> {
   controller = new Controller({
     dataFolder: userData,
     gameClosed,
-    onSyncIssue: showWindow,
+    onSyncIssue: attention.syncIssue,
     secrets: encryptedFileStore(join(userData, "key.bin"), {
       available: () => safeStorage.isAsyncEncryptionAvailable(),
       encrypt: (text) => safeStorage.encryptStringAsync(text),

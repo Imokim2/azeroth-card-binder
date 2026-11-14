@@ -121,14 +121,8 @@ function ACB.createCard(parent, previewUnowned, share, options)
     card.art:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
     card.art:SetFrameLevel(level + 2)
 
-    card.model = CreateFrame("PlayerModel", nil, window)
-    card.model:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
-    card.model:SetSize(inner.width, inner.height)
-    card.model:SetFrameLevel(level + 3)
-    -- The card handles dragging and shift-click links. A PlayerModel must not
-    -- swallow those clicks before they reach its parent.
-    card.model:EnableMouse(false)
-    safe(card.model.SetKeepModelOnHide, card.model, true)
+    local useModels = options.models ~= false
+    card.model = ACB.createPortraitModel(window, inner, level, useModels)
 
     local swayPhase, animationElapsed, modelReady = 0, 0, false
     local function portraitFacing()
@@ -136,7 +130,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
     end
 
     local function updateModel(model)
-        if ACB.worldChanging or ACB.loadingScreen then return end
+        if not useModels or ACB.modelsBlocked() or not model:IsVisible() then return end
         local entry = card.entry
         if not entry or entry.key ~= card.modelFor then return end
         setModelFinish(model, card.owned > 0)
@@ -149,7 +143,12 @@ function ACB.createCard(parent, previewUnowned, share, options)
                 share ~= nil and card.owned > 0 and not card.motionPaused)
         end
     end
-    card.refreshPortrait = ACB.watchCardModel(card, updateModel, function() return card.owned > 0 or previewUnowned end)
+    local function releaseModel()
+        modelReady, card.modelLoadedFor, card.playing = false, nil, false
+        if useModels then safe(card.model.ClearModel, card.model) end
+    end
+    card.refreshPortrait = ACB.bindCardModel(card, useModels, updateModel,
+        function() return card.showModels and (card.owned > 0 or previewUnowned) end, releaseModel)
 
     card.glow = CreateFrame("Frame", nil, window, "BackdropTemplate")
     card.glow:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
@@ -202,11 +201,8 @@ function ACB.createCard(parent, previewUnowned, share, options)
     end)
     card.foil:Hide()
 
-    -- Only used when the client cannot load a gathering node's model.
-    card.node = card.model:CreateTexture(nil, "ARTWORK")
-    card.node:SetSize(inner.width * 0.42, inner.width * 0.42)
-    card.node:SetPoint("CENTER")
-    card.node:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    -- A normal texture also covers notifications and the optional 2D mode.
+    card.node = ACB.createPortraitFallback(window, card.model, inner, level)
 
     -- The duplicate count sits on the window's top right corner.
     local badges = CreateFrame("Frame", nil, frame)
@@ -294,7 +290,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
             radiansPerPixel = 0.025 / self:GetEffectiveScale()
         end)
         frame:SetScript("OnUpdate", function(_, elapsed)
-            if ACB.worldChanging or ACB.loadingScreen then return end
+            if ACB.modelsBlocked() or not card.model:IsVisible() then return end
             if not modelReady then return end
             if previousX and IsMouseButtonDown("LeftButton") then
                 local x = GetCursorPosition()
@@ -330,7 +326,8 @@ function ACB.createCard(parent, previewUnowned, share, options)
     -- Fill the card for a catalog entry. `count` is how many copies the player owns.
     function card:set(entry, count, shiny, wanted)
         local found = count > 0
-        local showModel = found or previewUnowned
+        self.showModels = useModels and not ACB.modelsBlocked()
+        local showModel = self.showModels and (found or previewUnowned)
         shiny = found and shiny == true
         wanted = not found and wanted == true
         if self.entry ~= entry then
@@ -339,6 +336,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
             self.motionPaused = false
         end
         self.entry, self.owned, self.shiny = entry, count, shiny
+        self.wantedFlag = wanted
         local presentation = ACB.cardPresentation(entry, options.presentation)
         local changedPresentation = not self.presentation or self.presentation.id ~= presentation.id
         self.presentation = presentation
@@ -366,6 +364,8 @@ function ACB.createCard(parent, previewUnowned, share, options)
         self.veil:SetShown(not found)
         self.node:SetDesaturated(not found)
         self.node:SetAlpha(found and 1 or 0.68)
+        self.node:SetTexture(entry.profession and entry.icon or ACB.folioArt .. "Seal.tga")
+        self.node:SetShown(not self.showModels or (entry.profession ~= nil and not (modelReady and self.modelFor == entry.key)))
 
         -- Creatures use their in-game model by NPC ID, gathering nodes by the model file of the node.
         self.model:SetShown(showModel == true)
@@ -379,19 +379,19 @@ function ACB.createCard(parent, previewUnowned, share, options)
             animationElapsed = 0
             self.node:SetShown(entry.profession ~= nil)
             if entry.profession then self.node:SetTexture(entry.icon) end
-            if entry.profession then
+            if entry.profession and self.model:IsVisible() then
                 safe(self.model.SetPaused, self.model, false)
                 safe(self.model.SetPortraitZoom, self.model, 0)
                 safe(self.model.SetFacing, self.model, self.facing)
                 safe(self.model.SetCamDistanceScale, self.model, 1)
                 safe(self.model.SetPosition, self.model, 0, 0, -0.05)
-            else
+            elseif self.model:IsVisible() then
                 safe(self.model.SetCamDistanceScale, self.model, 1.05)
             end
             loadModel(self.model, entry)
             -- Cached models may already be ready. Newly loaded models also run the hook above.
             updateModel(self.model)
-        elseif showModel then
+        elseif showModel and self.model:IsVisible() then
             setModelFinish(self.model, found)
             if changedPresentation then
                 self.facing, swayPhase, animationElapsed = presentation.pose.facing, 0, 0
@@ -400,6 +400,8 @@ function ACB.createCard(parent, previewUnowned, share, options)
                 local shouldPlay = share ~= nil and found and presentation.animated and not self.motionPaused
                 if (self.playing == true) ~= (shouldPlay == true) then updateModel(self.model) end
             end
+        elseif not showModel then
+            releaseModel()
         end
 
         local name = entry.name

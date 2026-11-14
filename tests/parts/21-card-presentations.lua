@@ -32,6 +32,7 @@ test("authored animated editions play only on an owned detail, and pause or fall
     card:set(entry, 1)
     card.model.fileID, card.model.supportedAnimation = 1000, 17
     card.model:OnModelLoaded()
+    card.model:OnUpdate(.21)
     equal(card.playing, false)
     card.model.supportedAnimation = 126
     card:setPresentation("vancleef-blades")
@@ -140,6 +141,7 @@ test("animated editions keep their supported fallback action when looping and re
         card:set(entry, 1)
         card.model.fileID, card.model.supportedAnimation = 7000, fallback
         card.model:OnModelLoaded()
+        card.model:OnUpdate(.21)
         equal(card.playing, true)
         equal(card.model.animation, fallback)
         equal(card.model.position[2], entry.presentation.y)
@@ -153,6 +155,7 @@ test("animated editions keep their supported fallback action when looping and re
         card:set(family[1], 1)
         card.model.fileID = 7000
         card.model:OnModelLoaded()
+        card.model:OnUpdate(.21)
         equal(card.model.position[2], 0)
         equal(card.model.position[3], -.05)
     end end
@@ -166,6 +169,7 @@ test("loaded creature portraits rotate without a readable file ID and never pin 
     card:set(entry, 1)
     card.model.supportedAnimation = 25
     card.model:OnModelLoaded()
+    card.model:OnUpdate(.21)
     equal(card.model.fixedCamera, nil)
     equal(card.model.mouseEnabled, false)
     equal(card.model.frozen[1], 25)
@@ -199,6 +203,7 @@ test("normal cards use wide action framing and hunched creatures have an upward 
         card:set(entry, 1)
         card.model.fileID = 8100
         card.model:OnModelLoaded()
+        card.model:OnUpdate(.21)
         assert(card.model.portraitZoom <= .12, entry.name .. " should show more than a face")
         assert(card.model.position[3] > 0, entry.name .. " needs lifting inside the portrait")
         equal(card.model.position[2], 0)
@@ -227,17 +232,19 @@ test("loading-screen events pause model requests and resume only after the trans
     local driver = widgets[start + 1]
     warm({ ACB.cards['npc:589'] })
     driver:OnUpdate(10)
-    equal(driver.models[1].creature, nil, 'background warming also pauses')
+    equal(#driver.models, 0, 'loading cannot even allocate a warming model')
     emit('PLAYER_ENTERING_WORLD')
     card.model:OnUpdate(1)
     equal(card.model.creature, nil, 'an active loading screen still blocks model work')
     emit('LOADING_SCREEN_DISABLED')
     card.model:OnUpdate(.3)
     equal(card.model.creature, 639, 'the deferred portrait is requested after loading')
+    warm({ ACB.cards['npc:589'] })
     driver:OnUpdate(.1)
     equal(driver.models[1].creature, 589)
     card.model.fileID, card.model.supportedAnimation = 9000, 17
     card.model:OnModelLoaded()
+    card.model:OnUpdate(.21)
     equal(card.model.frozen[1], 17)
     card.frame:OnUpdate(2)
     assert(card.model.facing > card.facing, 'normal motion resumes')

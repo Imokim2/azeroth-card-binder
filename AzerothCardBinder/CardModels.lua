@@ -1,6 +1,76 @@
 local _, ACB = ...
 local safe = ACB.safe
 
+-- Model frames belong to visible windows, never to the background collection.
+-- In particular, release engine resources before a world transition, not just
+-- the Lua work that would otherwise run during it.
+local modelUsers = {}
+function ACB.registerCardModels(owner, release, refresh)
+    modelUsers[owner] = { release = release, refresh = refresh }
+end
+
+function ACB.cardModelsEnabled()
+    return not ACB.modelSettings or ACB.modelSettings.cardModels ~= false
+end
+
+function ACB.modelsBlocked()
+    return not ACB.cardModelsEnabled() or ACB.worldChanging or ACB.loadingScreen or ACB.onTaxi
+end
+
+function ACB.releaseCardModels()
+    for _, user in pairs(modelUsers) do user.release() end
+end
+
+function ACB.refreshCardModels()
+    for _, user in pairs(modelUsers) do if user.refresh then user.refresh() end end
+end
+
+function ACB.setModelWorldState(key, on)
+    ACB[key] = on
+    if on then ACB.releaseCardModels() end
+    if not ACB.modelsBlocked() then ACB.refreshCardModels(); if ACB.refresh then ACB.refresh() end end
+end
+
+local taxiElapsed = 0
+function ACB.updateModelTravel(elapsed)
+    taxiElapsed = taxiElapsed + elapsed
+    if not ACB.modelSettings or taxiElapsed < .25 then return end
+    taxiElapsed = 0
+    local onTaxi = ACB.read(safe(UnitOnTaxi, "player"), "boolean") == true
+    if onTaxi ~= (ACB.onTaxi == true) then ACB.setModelWorldState("onTaxi", onTaxi) end
+end
+
+function ACB.createPortraitModel(window, inner, level, useModels)
+    -- Notifications need only a layout anchor, with no engine model at all.
+    local model = CreateFrame(useModels and "PlayerModel" or "Frame", nil, window)
+    model:SetPoint("TOPLEFT", window, "TOPLEFT", 1, -1)
+    model:SetSize(inner.width, inner.height)
+    model:SetFrameLevel(level + 3)
+    model:EnableMouse(false) -- dragging and links belong to the card
+    if useModels then safe(model.SetKeepModelOnHide, model, false) end
+    return model
+end
+
+function ACB.bindCardModel(card, useModels, update, canLoad, release)
+    if not useModels then return function() end end
+    card.model:SetScript("OnHide", release)
+    ACB.registerCardModels(card, function() card.model:Hide(); release() end, function()
+        if card.entry then card:set(card.entry, card.owned, card.shiny, card.wantedFlag) end
+    end)
+    return ACB.watchCardModel(card, update, canLoad)
+end
+
+function ACB.createPortraitFallback(window, model, inner, level)
+    local fallback = CreateFrame("Frame", nil, window)
+    fallback:SetAllPoints(model)
+    fallback:SetFrameLevel(level + 3)
+    local icon = fallback:CreateTexture(nil, "ARTWORK")
+    icon:SetSize(inner.width * 0.42, inner.width * 0.42)
+    icon:SetPoint("CENTER")
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    return icon
+end
+
 -- Putting a creature or object model into a card's portrait window: which way it faces, how close the camera
 -- is, and which animation frame it is frozen on. Every game call is optional and guarded.
 
@@ -38,7 +108,7 @@ function ACB.cardModelReady(card, model)
 end
 
 local function loadModel(model, entry)
-    if ACB.worldChanging or ACB.loadingScreen then return end
+    if ACB.modelsBlocked() or not model:IsVisible() then return end
     if entry.profession then
         if entry.model then safe(model.SetModel, model, entry.model) end
     else
@@ -48,7 +118,8 @@ end
 
 -- Retain one model per unique creature/node in the selected set. Clearing a
 -- single scratch model immediately after loading let the client evict it again.
--- Four requests run together; completed frames keep their resources while hidden.
+-- Four requests run together. Resources are retained only while the folio is
+-- visible; closing it releases the entire set, including in-flight requests.
 function ACB.createPortraitLoader(parent, paper)
     local driver = CreateFrame("Frame", nil, parent)
     driver.acbPortraitLoader, driver.models = true, {}
@@ -56,6 +127,16 @@ function ACB.createPortraitLoader(parent, paper)
     driver:SetFrameLevel(parent:GetFrameLevel())
     driver:Hide()
     local source, queue, nextSlot, active = nil, {}, 1, 0
+    local function release()
+        driver:Hide()
+        source, queue, nextSlot, active = nil, {}, 1, 0
+        for _, model in ipairs(driver.models) do
+            model.active, model.entry = false, nil
+            model:Hide()
+            safe(model.ClearModel, model)
+        end
+    end
+    ACB.registerCardModels(driver, release)
     local function ready(model)
         local file = ACB.read(safe(model.GetModelFileID, model), "number")
         return file and file > 0 and (not model.entry.profession or file == model.entry.model)
@@ -67,7 +148,7 @@ function ACB.createPortraitLoader(parent, paper)
         loadModel(model, model.entry)
     end
     driver:SetScript("OnUpdate", function(_, elapsed)
-        if ACB.worldChanging or ACB.loadingScreen then return end
+        if ACB.modelsBlocked() or not parent:IsVisible() then release() return end
         for _, model in ipairs(driver.models) do
             if model.active then
                 model.age = model.age + elapsed
@@ -90,6 +171,7 @@ function ACB.createPortraitLoader(parent, paper)
         if active == 0 and nextSlot > #queue then driver:Hide() end
     end)
     return function(entries)
+        if not entries or ACB.modelsBlocked() or not parent:IsVisible() then release() return end
         if source == entries and entries then
             if nextSlot <= #queue or active > 0 then
                 driver:Show()
@@ -97,13 +179,7 @@ function ACB.createPortraitLoader(parent, paper)
             end
             return
         end
-        driver:Hide()
-        for _, model in ipairs(driver.models) do model:Hide() end
-        if not entries then return end
-        for _, model in ipairs(driver.models) do
-            model.active = false
-            safe(model.ClearModel, model)
-        end
+        release()
         source, queue, nextSlot, active = entries, {}, 1, 0
         local seen, count = {}, 0
         for _, entry in ipairs(entries) do
@@ -137,21 +213,22 @@ function ACB.watchCardModel(card, update, canLoad)
         return ACB.cardModelReady(card, model)
     end
     safe(card.model.SetScript, card.model, "OnModelLoaded", function(model)
-        if ACB.worldChanging or ACB.loadingScreen then return end
+        if ACB.modelsBlocked() or not model:IsVisible() or not canLoad() then return end
         if not card.entry or card.entry.key ~= card.modelFor then return end
         card.modelLoadedFor = card.modelFor
-        update(model)
+        -- The engine can deliver this callback inside SetCreature/SetModel.
+        -- Camera and animation setters run on a later UI tick instead.
         elapsed, passes, settled = 0, 0, false
     end)
     local function resume(model)
         elapsed, attempts, key, settled, passes = 0, 0, card.modelFor, false, 0
-        if ACB.worldChanging or ACB.loadingScreen or not card.entry or card.entry.key ~= card.modelFor or not canLoad() then return end
+        if ACB.modelsBlocked() or not model:IsVisible() or not card.entry or card.entry.key ~= card.modelFor or not canLoad() then return end
         if not ready(model) then loadModel(model, card.entry) end
         update(model)
     end
     card.model:SetScript("OnShow", resume)
     card.model:SetScript("OnUpdate", function(model, dt)
-        if ACB.worldChanging or ACB.loadingScreen then return end
+        if ACB.modelsBlocked() or not model:IsVisible() then return end
         if not card.entry or not canLoad() then return end
         if key ~= card.modelFor then elapsed, attempts, key, settled, passes = 0, 0, card.modelFor, false, 0 end
         if settled or attempts >= 2 then return end
@@ -173,7 +250,7 @@ local function setModelFinish(model, found)
 end
 
 local function poseCreature(model, entry, facing, presentation, animate)
-    if ACB.worldChanging or ACB.loadingScreen then return false end
+    if ACB.modelsBlocked() or not model:IsVisible() then return false end
     presentation = presentation or ACB.cardPresentation(entry)
     local preset = presentation.pose
     safe(model.SetPaused, model, false)
