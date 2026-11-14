@@ -16,4 +16,3 @@ Current card/pack trades and gifts require an eligible Ranked binder. Casual pla
 New clients may reply `N|<trade-id>` to an initial invitation when their binder cannot trade. The sender handles this only before either acceptance or a commit decision; completed-session acknowledgements retain their existing replay protection. Collection mode cannot change during an unfinished transfer. Legacy trade entry points also check collection mode.
 
 These are current client access rules, not a change to historical ledger replay or the provenance of old Casual-origin trades. The historical pack-transfer fixture arranges Ranked transport access separately while keeping its old ledger unchanged. Server checks continue to exclude Casual-origin value as before. Neither a saved mode nor a companion setup file is a cryptographic proof of a live desktop process.
-
