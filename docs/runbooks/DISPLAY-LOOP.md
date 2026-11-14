@@ -8,6 +8,16 @@ Addon 1.0.5 removes 3D pickup models, releases hidden/transition models and susp
 
 Addon 1.0.7 restores pickup models when the player's 3D setting is enabled, correcting the unconditional icon-only popups introduced in 1.0.5. Notifications wait through loading/world transitions and taxi travel, preserve their queue and visible lifetime, and use the existing model-release-on-hide lifecycle. Disabling 3D still gives 2D notifications. This removes the blanket pickup-model suppression, so include normal card finds in further stability testing; the original loop is still unresolved.
 
+## Recurrence reported on 14 November 2026
+
+Harry and Nick both reported another dungeon-entry loop. Harry was confirmed to have addon 1.0.7. Nick may have updated from an earlier version immediately before entering; whether he actually reloaded the UI or restarted the game is unknown. Changing zones or entering a dungeon does not load newly installed addon files. Nick recovered by repeatedly pressing Escape. Neither exact companion version nor which Warcards windows were open has been confirmed.
+
+This is evidence that the 1.0.7 mitigation was insufficient in at least one affected setup. Addons 1.0.8 and 1.0.9 did not change `CardModels.lua`, `Cards.lua` or `Toast.lua`; do not present updating to 1.0.9 alone as another display-loop fix. Escape helping is a clue about UI/focus interaction, not proof that a particular Warcards window or the companion caused it.
+
+Ollie's completed local recorder run from 17:46 to 18:46 UTC captured 132 state changes, zero minimised-game snapshots and zero companion-foreground snapshots. It did not capture the reported failure and cannot rule out the same issue on another PC.
+
+For a comparable test, confirm the active addon version after an explicit `/reload` or game restart, and confirm companion 1.0.1. Capture the next normal session on an affected PC. Change one variable at a time: first keep the addon enabled and fully quit the companion; if it recurs, retain that setup and disable **3D card models**. A successful short test is not conclusive. Preserve the recorder output and `Logs/gx.log` from an actual recurrence before relaunching WoW.
+
 ## Evidence reviewed
 
 - Local Windows Application/System events for the preceding two days contained no matching WoW, Warcards, DWM or display-driver failure in the queried events.
@@ -28,6 +38,8 @@ Start-Process .local-tools/CaptureDisplay.exe -WindowStyle Hidden -ArgumentList 
 ```
 
 The default output folder is `display-captures` beside the helper, in the ignored `.local-tools` directory. The helper stops automatically. It does not need administrator access or any PowerShell execution-policy change. It is not bundled in the addon or companion, and never starts automatically. A first draft using a PowerShell script could not run under this machine's script policy; that draft was removed and no policy was changed.
+
+The helper now defaults to 60 minutes when double-clicked without arguments. For affected testers, compile it with `/target:winexe` and package the executable with a short README in a standalone ZIP. They can double-click it immediately before testing, without a terminal or script-policy change. It writes only window/focus observations locally and does not diagnose or repair the problem automatically. Do not start this manual recorder for someone without their action or instruction.
 
 When the loop happens, record the approximate time, whether it started during loading/flight, and the exact addon/companion versions and enabled addons. After exiting the stuck client, preserve `Logs/gx.log` before starting WoW again. Keep the JSONL local until reviewed. A foreground process alternating with WoW would support a focus-interference hypothesis; WoW staying foreground while its own window changes needs a different investigation. Neither result alone identifies a specific addon.
 

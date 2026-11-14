@@ -20,7 +20,7 @@ internal static class CaptureDisplay {
     private static readonly string[] GameNames = { "Wow", "WowClassic", "WowB", "WowT", "WowForever" };
 
     private static int Main(string[] args) {
-        int seconds = 600;
+        int seconds = 3600;
         if (args.Length > 0 && (!int.TryParse(args[0], out seconds) || seconds < 10 || seconds > 3600)) return 2;
         string folder = Path.GetFullPath(args.Length > 1 ? args[1] : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "display-captures"));
         Directory.CreateDirectory(folder);
