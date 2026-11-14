@@ -30,8 +30,9 @@ function ACB.installCardTooltip(card, typeName, interactive)
         GameTooltip:AddLine(entry.name, unpack(rarity.color))
         GameTooltip:AddLine(rarity.name .. " " .. typeName(entry), 0.8, 0.8, 0.8)
         if card.shiny then GameTooltip:AddLine("Shiny", 0.55, 0.92, 1) end
-        if card.presentation and card.presentation.animated and interactive then
-            GameTooltip:AddLine("Right-click to pause or resume model animation.", 0.65, 0.61, 0.54, true)
+        if interactive then GameTooltip:AddLine("Drag the model to rotate it.", 0.65, 0.61, 0.54, true) end
+        if card.presentation and card.presentation.motion ~= "still" and interactive then
+            GameTooltip:AddLine("Right-click to pause or resume motion.", 0.65, 0.61, 0.54, true)
         end
         GameTooltip:AddLine(ACB.discoveryText(entry), 0.65, 0.61, 0.54, true)
         if entry.baseKey then

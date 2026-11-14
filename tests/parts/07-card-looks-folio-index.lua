@@ -108,7 +108,7 @@ test("pop-ups queue, fade away, play a sound and can be turned off", function()
     equal(ACB.playToastSound("epic", false), nil) -- no sound system, nothing breaks
 end)
 
-test("cinematic detail sways, pauses for dragging and keeps the combat pose", function()
+test("cinematic detail stays at its authored angle, allows dragging and keeps the combat pose", function()
     local card = ACB.createCard(UIParent, true, ignore)
     card:set(ACB.cards["npc:639"], 0)
     equal(card.model.creature, 639)
@@ -130,7 +130,7 @@ test("cinematic detail sways, pauses for dragging and keeps the combat pose", fu
     equal(defaultFacing, -0.47)
     card.frame:OnUpdate(2)
     local swing = card.model.facing - defaultFacing
-    assert(swing > 0 and swing < math.rad(10))
+    equal(swing, 0, "a full-animation card does not also rock its camera")
     card.frame:OnUpdate(4)
     assert(math.abs(card.model.facing - (defaultFacing - swing)) < 0.0001)
     card.frame:OnUpdate(2)
@@ -169,7 +169,7 @@ test("cinematic detail sways, pauses for dragging and keeps the combat pose", fu
     equal(card.node:IsShown(), false)
     equal(card.art.base.texture, ACB.folioArt .. "Elwynn.tga")
     card.frame:OnUpdate(2)
-    assert(card.model.facing > 0.6)
+    equal(card.model.facing, 0.6, "gathering cards stay stationary")
 
     for _, entry in ipairs(ACB.pages[3].cards) do
         if not entry.model then

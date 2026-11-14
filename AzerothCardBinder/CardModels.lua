@@ -265,12 +265,14 @@ local function poseCreature(model, entry, facing, presentation, animate)
         end
     end
     local playing = false
-    if supported and animate and presentation.animated and type(model.SetAnimation) == "function" then
+    if supported and animate and presentation.animated and (not preset.loopPrimaryOnly or animation == preset.animation)
+        and type(model.SetAnimation) == "function" then
         safe(model.SetPaused, model, false)
         playing = pcall(model.SetAnimation, model, animation, 0)
     end
     if not playing then
-        if not (supported and pcall(model.FreezeAnimation, model, animation, 0, preset.frame)) then
+        local frame = animation ~= preset.animation and preset.fallbackFrame or preset.frame
+        if not (supported and pcall(model.FreezeAnimation, model, animation, 0, frame)) then
             animation = STAND
             if not pcall(model.FreezeAnimation, model, STAND, 0, 0) then safe(model.SetPaused, model, true) end
         end
