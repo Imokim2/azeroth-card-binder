@@ -46,7 +46,7 @@ export type Deps = {
   runInstaller?: (path: string) => void; // starts the new companion installer and quits this app
   saveFile?: (suggestedName: string, text: string) => Promise<string | null>; // asks where to save a file and writes it; null when cancelled
   gameClosed?: (folder: string) => Promise<boolean>; // a failed process check must return false
-  onSyncIssue?: () => void; // bring the repair prompt into view once per changed history conflict
+  onSyncIssue?: () => void; // passive attention hint once per changed history conflict; never focus a window
 };
 
 export type Status = {

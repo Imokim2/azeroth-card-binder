@@ -15,6 +15,7 @@ test("compiled startup imports work outside the repository with only build outpu
     await writeFile(join(root, "package.json"), '{"type":"module"}');
     const files = ["controller.js", "recovery.js"].map(name => pathToFileURL(join(root, "dist", "app", "src", name)).href);
     files.push(pathToFileURL(join(root, "dist", "app", "electron", "gameProcess.js")).href);
+    files.push(pathToFileURL(join(root, "dist", "app", "electron", "attention.js")).href);
     const result = spawnSync(process.execPath, ["--input-type=module", "-e", "for(const file of process.argv.slice(1)) await import(file)", ...files], {
       cwd: root, encoding: "utf8", env: { ...process.env, NODE_PATH: "" }, timeout: 20_000,
     });

@@ -8,6 +8,7 @@ Nothing yet.
 
 ## 1.0.5 - 2026-11-14
 
+- Companion 1.0.1: background sync conflicts now set a passive tray hint instead of showing, restoring and focusing the app window. This removes a confirmed focus-stealing path that could interrupt fullscreen play; it is not yet confirmed as the cause of the reported loop.
 - Pickup pop-ups now use zone artwork and a binder seal instead of a 3D model. Finding a card with the binder closed no longer starts a model request.
 - Release card models and retained portrait-preload resources when their windows close or a loading/world transition begins. Hidden cards cannot load or retry models. Suspend 3D cards during flight paths, then restore visible portraits after landing.
 - Apply camera and animation changes outside model-loaded callbacks. Pack faces still preload behind their opaque covers when the pack window is visible.
