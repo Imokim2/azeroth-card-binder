@@ -38,6 +38,7 @@ const copyState = (state) => ({
     lastAttempt: { key: (state.lastAttempt && state.lastAttempt.key) || "", tape: (state.lastAttempt && state.lastAttempt.tape) || 0 },
     ...(state.editions === true ? { editions: true } : {}),
     ...(state.launch === 1 ? { launch: 1 } : {}),
+    ...(state.faction === 1 ? { faction: 1, sides: { ...(state.sides || {}) } } : {}),
     ...(state.balance >= 1 ? { balance: state.balance, balanceAttempts: { ...(state.balanceAttempts || {}) },
         balanceDrops: { ...(state.balanceDrops || {}) }, balanceReady: { ...(state.balanceReady || {}) } } : {}),
     ...(state.packOutputs ? { packOutputs: Object.fromEntries(Object.entries(state.packOutputs).map(([zone, cards]) => [zone, { ...cards }])) } : {}),
@@ -66,6 +67,13 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
     if (state.launch === 1 && available && card && (event.kind === "drop" || event.kind === "miss" || event.kind === "packCard" || event.kind === "craft")) {
         const baseKey = card.baseKey || event.key;
         if (catalog.cards[baseKey]?.seasonal && !available(baseKey, event.t)) return "retired";
+    }
+    // Cards added in spec 10 (catalog card.since) are not acquired before mode/faction1, and a card only one faction can win (card.faction) is
+    // acquired only by a character that has declared that faction (mode/side:alliance or mode/side:horde, once per character).
+    if (card && (event.kind === "drop" || event.kind === "miss" || event.kind === "packCard" || event.kind === "craft")) {
+        const added = catalog.cards[card.baseKey || event.key];
+        if (added?.since && state.faction !== 1) return "retired";
+        if (added?.faction && state.sides?.[event.char] !== added.faction) return "faction";
     }
     if (card && card.balanceOnly && !(state.balance >= 1) && (event.kind === "drop" || event.kind === "packCard")) return "balance";
     // Only a drop may be shiny; only a drop, a miss or the switch into ranked2 may use the tape; only a recycle or a craft moves dust.
@@ -222,6 +230,19 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
                 // chase2, once. Nothing already owned changes.
                 if (event.count !== 0 || state.balance !== 2 || state.launch === 1) return "mode";
                 state.launch = 1;
+                break;
+            }
+            if (event.key === "faction1") {
+                // Spec 10: the cards added with factions exist from here on, and a character declares its faction. Only after launch1, once.
+                if (event.count !== 0 || state.launch !== 1 || state.faction === 1) return "mode";
+                state.faction = 1;
+                state.sides = {};
+                break;
+            }
+            if (event.key === "side:alliance" || event.key === "side:horde") {
+                // A character's faction, declared once, before it acquires a card only one faction can win.
+                if (event.count !== 0 || state.faction !== 1 || state.sides[event.char]) return "mode";
+                state.sides = { ...state.sides, [event.char]: event.key.slice(5) };
                 break;
             }
             if (event.key === "editions1") {

@@ -61,6 +61,8 @@ for _, page in ipairs(ACB.pages) do
         if card.boss then entry.boss = true end
         if card.seasonal then entry.seasonal = true end -- held back for seasons (LaunchCollection.lua)
         if card.unobtainable then entry.unobtainable = true end -- its creature cannot be killed (UnobtainableCards.lua)
+        if card.faction then entry.faction = card.faction end -- only that faction can win it ("alliance" or "horde"; ledger spec 10)
+        if card.since then entry.since = card.since end -- added in this ledger spec: not acquired before mode/faction1
         if card.profession then entry.profession = card.profession end
         entry.dropProfile, entry.critter = card.dropProfile, card.critter
         cards[card.key] = entry

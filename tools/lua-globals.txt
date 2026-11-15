@@ -54,6 +54,7 @@ GGET UIParent
 GGET UISpecialFrames
 GGET UnitAffectingCombat
 GGET UnitClassification
+GGET UnitFactionGroup
 GGET UnitFullName
 GGET UnitGUID
 GGET UnitIsDeadOrGhost

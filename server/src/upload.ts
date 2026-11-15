@@ -15,7 +15,7 @@ import { integrityFlags } from "./integrity.ts";
 import { seasonalCandidates } from "./seasons.ts";
 import type { SqlSeasons } from "./seasons.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8, 9]; // 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates); 9 adds mode/launch1 (cards held back for seasons)
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10]; // 10 adds mode/faction1 and mode/side:* (cards only one faction can win); 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates); 9 adds mode/launch1 (cards held back for seasons)
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -114,6 +114,10 @@ export async function acceptUpload(
   }
   // A binder on the launch collection (mode/launch1) can only be uploaded by a companion that knows which cards are held back.
   if (upload.specVersion < 9 && (stored.state.launch === 1 || events.some((event) => event["kind"] === "mode" && event["key"] === "launch1"))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
+  // A binder on spec 10 (mode/faction1) can only be uploaded by a companion that knows which cards each faction can win.
+  if (upload.specVersion < 10 && (stored.state.faction === 1 || events.some((event) => event["kind"] === "mode" && (event["key"] === "faction1" || String(event["key"]).startsWith("side:"))))) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
   // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.

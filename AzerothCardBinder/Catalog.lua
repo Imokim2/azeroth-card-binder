@@ -207,7 +207,8 @@ function ACB.addPlace(slug, name, kind, levels, rows)
     local normal, every = {}, {}
     local floor = (kind == "Dungeon" or kind == "Raid" or kind == "Battleground") and 8 or 1 -- no level 1 helpers in instances
     for _, row in ipairs(rows) do
-        if row[4] and row[4] >= floor then
+        -- A row with a tag (row[5]) is a card added in ledger spec 10; it does not move the levels of the page.
+        if row[4] and row[4] >= floor and not row[5] then
             every[#every + 1] = row[4]
             if row[3] == "n" then normal[#normal + 1] = row[4] end
         end
@@ -226,11 +227,18 @@ function ACB.addPlace(slug, name, kind, levels, rows)
             parent = ACB.instanceZones[slug] }
     end
     for _, row in ipairs(rows) do
-        local id, creature, rank, level = row[1], row[2], row[3], row[4]
+        local id, creature, rank, level, tag = row[1], row[2], row[3], row[4], row[5]
         if not ACB.cards["npc:" .. id] then
             card(index, slug, id, creature, rankNames[rank] or "normal", "INV_Misc_QuestionMark",
                 ACB.autoLore(rank, level, name), rank == "b")
-            ACB.cards["npc:" .. id].generated = true -- Lore.lua writes a better line for these
+            local added = ACB.cards["npc:" .. id]
+            added.generated = true -- Lore.lua writes a better line for these
+            if tag then
+                -- Added in ledger spec 10 (mode/faction1): not acquired before a binder has recorded that marker. "A": only the Alliance can win it
+                -- (the creature is friendly to the Horde), "H": only the Horde can. "S": either (a creature inside a dungeon).
+                added.since = 10
+                added.faction = tag == "A" and "alliance" or tag == "H" and "horde" or nil
+            end
         end
     end
 end

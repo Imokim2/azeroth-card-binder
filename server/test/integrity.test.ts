@@ -129,7 +129,7 @@ test("ordinary luck and a big collection built over a long time raise no flag", 
 test("a huge collection in a brand new account's first hour is flagged for a look", async () => {
   const env = setup();
   const { player } = await registered(env);
-  const keys = Object.keys(catalog.cards).filter((key) => !catalog.cards[key]?.baseKey).slice(0, 210);
+  const keys = Object.keys(catalog.cards).filter((key) => !catalog.cards[key]?.baseKey && !catalog.cards[key]?.since).slice(0, 210); // cards added in spec 10 need mode/faction1 first
   const events = chain(keys.map((key, index) => ({ seq: index + 1, t: 1000 + index, kind: "drop", key, count: 1, ...base })));
   const counts = Object.fromEntries(keys.map((key) => [key, 1]));
   const attempts = Object.fromEntries(keys.map((key) => [key, 100]));

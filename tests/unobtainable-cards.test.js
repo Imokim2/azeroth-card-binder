@@ -12,13 +12,15 @@ const listed = [...fs.readFileSync(path.join(__dirname, '..', 'AzerothCardBinder
 const flagged = Object.entries(catalog.cards).filter(([, card]) => card.unobtainable).map(([key]) => key);
 
 test('the add-on list and the catalog name the same cards, each with a reason, and every key is a real creature card', () => {
-    assert.equal(listed.length, 10);
+    assert.equal(listed.length, 31);
     assert.deepEqual(flagged.sort(), listed.map(item => item.key).sort());
     for (const { key, reason } of listed) {
         assert.ok(catalog.cards[key] && !catalog.cards[key].baseKey, key + ' is a base card');
         assert.ok(reason.length > 12, key + ' says why');
     }
     assert.equal(listed.filter(item => /companion pet/.test(item.reason)).length, 6, 'the six companion pets');
+    assert.equal(listed.filter(item => /one-off/.test(item.reason)).length, 8, 'the eight one-off kills');
+    assert.equal(listed.filter(item => /dungeon creature the data lists as friendly/.test(item.reason)).length, 13, 'the thirteen friendly dungeon characters');
 });
 
 test('an unobtainable card is held back for good: not at launch, not required by its page, and not counted against the half', () => {
@@ -31,7 +33,7 @@ test('an unobtainable card is held back for good: not at launch, not required by
         assert.ok(!(set.required || set.cards).includes(key), key + ' is not needed to finish its page');
     }
     assert.deepEqual(result.unobtainable.slice().sort(), flagged.slice().sort());
-    assert.equal(result.launch.length, Math.floor((result.launch.length + result.seasons.length) / 2), 'the launch collection is still exactly half');
+    assert.equal(result.launch.length, Math.floor((result.launch.length + result.seasons.length) / 2), 'the launch collection is still exactly half of the cards both factions can win');
 });
 
 test('the draft files mark them "never" so a reviewer can see them', () => {

@@ -30,6 +30,7 @@ export async function seasonDefinition(input: unknown, catalog: Catalog, now: nu
   if (selection["mode"] === "manual") {
     if (!Array.isArray(selection["cards"]) || selection["cards"].some(key => typeof key !== "string" || !catalog.cards[key])) fail("cards");
     if ((selection["cards"] as string[]).some(key => catalog.cards[key]?.unobtainable)) fail("a card that cannot be won (its creature cannot be killed)");
+    if ((selection["cards"] as string[]).some(key => catalog.cards[key]?.faction)) fail("a card only one faction can win");
     cards = [...new Set(selection["cards"] as string[])];
     if (cards.length !== (selection["cards"] as unknown[]).length) fail("duplicate cards");
   } else if (selection["mode"] === "random") {
@@ -38,7 +39,7 @@ export async function seasonDefinition(input: unknown, catalog: Catalog, now: nu
     if (!Array.isArray(sets) || !sets.length || sets.some(code => !catalog.sets.some(set => set.code === code))) fail("sets");
     if (rarities !== undefined && (!Array.isArray(rarities) || rarities.some(r => !["common", "rare", "epic", "legendary"].includes(String(r))))) fail("rarities");
     const pool = Object.entries(catalog.cards).filter(([, card]) => (sets as unknown[]).includes(card.set) && !card.baseKey &&
-      (!rarities || (rarities as unknown[]).includes(card.rarity)) && (selection["bossesOnly"] !== true || card.boss) && !card.unobtainable);
+      (!rarities || (rarities as unknown[]).includes(card.rarity)) && (selection["bossesOnly"] !== true || card.boss) && !card.unobtainable && !card.faction);
     if (!Number.isInteger(count) || count < 1 || count > 64 || count > pool.length) fail("count");
     const ranked = await Promise.all(pool.map(async ([key]) => ({ key, hash: await sha256Hex(id + ":" + seed + ":" + key) })));
     ranked.sort((a, b) => a.hash.localeCompare(b.hash) || a.key.localeCompare(b.key));

@@ -131,9 +131,16 @@ test("the generated catalog is large, consistent and fits the card", function()
         end
     end
     assert(count > 3000, "the catalog should hold thousands of cards, has " .. count)
-    -- Only neutral and hostile creatures: nothing that is friendly to one faction, so no guards or faction leaders.
-    equal(ACB.cards["npc:1423"], nil) -- Stormwind Guard
-    equal(ACB.cards["npc:10162"], nil) -- Lord Victor Nefarius, friendly to both
+    -- A creature friendly to one faction is a card only the other faction can win (added in ledger spec 10), the same number for each side; a
+    -- dungeon creature friendly to both still has a card, though nobody can win it.
+    assert(ACB.cards["npc:10162"] and ACB.cards["npc:10162"].since == 10, "Lord Victor Nefarius has a card (it is added in spec 10)")
+    local alliance, horde = 0, 0
+    for _, card in pairs(ACB.cards) do
+        if card.faction == "alliance" then alliance = alliance + 1 elseif card.faction == "horde" then horde = horde + 1 end
+        if card.faction then equal(card.since, 10) end
+    end
+    equal(alliance, 162)
+    equal(horde, 162)
     assert(ACB.cards["npc:639"], "hostile creatures stay")
     assert(#ACB.pages > 60, "sets for every dungeon, raid and zone with data")
     -- Hand-made cards keep their lore; new cards get a short generated line.

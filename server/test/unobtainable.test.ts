@@ -22,7 +22,7 @@ test("a random season never draws one, even when it asks for every card its filt
   for (const key of unobtainable) {
     const card = catalog.cards[key]!;
     const filters = { sets: [card.set], rarities: [card.rarity], bossesOnly: card.boss === true };
-    const pool = Object.entries(catalog.cards).filter(([, other]) => other.set === card.set && !other.baseKey && other.rarity === card.rarity && (!filters.bossesOnly || other.boss) && !other.unobtainable).length;
+    const pool = Object.entries(catalog.cards).filter(([, other]) => other.set === card.set && !other.baseKey && other.rarity === card.rarity && (!filters.bossesOnly || other.boss) && !other.unobtainable && !other.faction).length;
     if (pool < 1 || pool > 64) continue; // too many to ask for all of them at once
     const everything = await seasonDefinition(season({ mode: "random", seed: "all", count: pool, ...filters }), catalog, NOW);
     assert.equal(everything.cards.length, pool, key);

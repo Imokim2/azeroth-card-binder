@@ -22,7 +22,7 @@ const SERVERS = { production: "https://worldofwarcards.co.uk", staging: "https:/
 const HAND = [
   ["Upgrade, with an existing collection (back up the saved file first)", [
     "Install the companion, then the add-on, over an account that already has cards, packs, dust and titles: nothing is lost.",
-    "After the first roll the saved file's ledger gains chase1 (if it was missing), chase2 and launch1, in that order, once each.",
+    "After the first roll the saved file's ledger gains chase1 (if it was missing), chase2, launch1 and faction1, in that order, once each, and a side:alliance or side:horde for the character.",
     "Sync: the companion uploads and the server accepts; the ladder and standings still refresh.",
     "An old companion (0.4.5) with the new add-on shows \"The server refused it (client_too_old)\".",
   ]],
@@ -80,7 +80,7 @@ function checkout(options = {}) {
   });
   guard("the catalog carries both sets of rates and the held-back list, and the committed list is what the rule gives", () => {
     const catalog = JSON.parse(read("packages/shared/catalog.json"));
-    const base = Object.values(catalog.cards).filter((card) => !card.baseKey);
+    const base = Object.values(catalog.cards).filter((card) => !card.baseKey && !card.faction); // the cards both factions can win: the launch half is of these
     const withRates = base.filter((card) => Number.isInteger(card.dropProfile.rate2)).length;
     const held = base.filter((card) => card.seasonal).length;
     const { draft, files } = require("./launch-collection.js");

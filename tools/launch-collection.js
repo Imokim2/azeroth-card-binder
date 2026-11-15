@@ -7,6 +7,8 @@
 //   node tools/launch-collection.js --chase keep    keep chase cards on ordinary creatures at launch (default: hold them back)
 //
 // The rule (deterministic, so two people get the same list and a review can be repeated):
+//   Cards only one faction can win (catalog card.faction, ledger spec 10; docs/FACTION-CARDS.md) are outside this split: they are all available
+//   from the start, a page never needs them, and the half is of the cards both factions can win.
 //   0. Never at launch: a card whose creature cannot be killed (catalog card.unobtainable, from AzerothCardBinder/UnobtainableCards.lua). It is held
 //      back for good, never released, and left out of every page's list of required cards.
 //   1. Always kept: every elite, rare-elite and boss card; every critter; every gathering node.
@@ -26,7 +28,10 @@ const luaPath = path.join(root, "AzerothCardBinder", "LaunchCollection.lua");
 
 function draft(catalog, options = {}) {
   const chase = options.chase === "keep" ? "keep" : "season";
-  const baseKeys = Object.keys(catalog.cards).filter((key) => !catalog.cards[key].baseKey);
+  const everyKey = Object.keys(catalog.cards).filter((key) => !catalog.cards[key].baseKey);
+  const faction = everyKey.filter((key) => catalog.cards[key].faction && !catalog.cards[key].unobtainable);
+  const factionSet = new Set(faction);
+  const baseKeys = everyKey.filter((key) => !factionSet.has(key)); // the cards both factions can win (and any faction card that cannot be won at all)
   const target = Math.floor(baseKeys.length / 2);
   const pageOf = new Map();
   for (const set of catalog.sets) for (const key of set.cards) pageOf.set(key, set);
@@ -78,9 +83,10 @@ function draft(catalog, options = {}) {
   const unobtainable = baseKeys.filter((key) => catalog.cards[key].unobtainable);
   const byPage = {};
   for (const set of catalog.sets) {
-    byPage[set.code] = { title: set.title, group: set.group, launch: set.cards.filter((key) => keep.has(key)).length, seasons: set.cards.filter((key) => !keep.has(key)).length };
+    byPage[set.code] = { title: set.title, group: set.group, launch: set.cards.filter((key) => keep.has(key)).length,
+      seasons: set.cards.filter((key) => !keep.has(key) && !factionSet.has(key)).length, faction: set.cards.filter((key) => factionSet.has(key)).length };
   }
-  return { launch, seasons, unobtainable, byPage, chase };
+  return { launch, seasons, unobtainable, faction, byPage, chase };
 }
 
 function summary(catalog, result) {
@@ -94,7 +100,7 @@ function summary(catalog, result) {
     }
     return out;
   };
-  lines.push(`Base cards: ${result.launch.length + result.seasons.length}. Launch collection: ${result.launch.length}. Held back for seasons: ${result.seasons.length} (${result.unobtainable.length} of them can never be won: their creature cannot be killed). (chase cards on ordinary creatures: ${result.chase === "keep" ? "kept at launch" : "held back"})`);
+  lines.push(`Cards both factions can win: ${result.launch.length + result.seasons.length}. Cards only one faction can win (always available, never required): ${result.faction.length}. Launch collection: ${result.launch.length}. Held back for seasons: ${result.seasons.length} (${result.unobtainable.length} of them can never be won: their creature cannot be killed). (chase cards on ordinary creatures: ${result.chase === "keep" ? "kept at launch" : "held back"})`);
   lines.push("Launch by kind:   " + JSON.stringify(kind(result.launch)));
   lines.push("Seasons by kind:  " + JSON.stringify(kind(result.seasons)));
   const groups = {};
@@ -112,14 +118,16 @@ function files(catalog, result) {
   const decision = new Map();
   for (const key of result.launch) decision.set(key, "launch");
   for (const key of result.seasons) decision.set(key, "seasons");
+  for (const key of result.faction) decision.set(key, "faction");
   for (const key of result.unobtainable) decision.set(key, "never");
   const json = JSON.stringify({
     format: 1,
     status: "DRAFT: a proposal for review. Nothing in the catalog, add-on or server uses this file.",
     catalogVersion: catalog.catalogVersion,
     rule: "tools/launch-collection.js (chase cards on ordinary creatures: " + result.chase + ")",
-    counts: { launch: result.launch.length, seasons: result.seasons.length, unobtainable: result.unobtainable.length },
+    counts: { launch: result.launch.length, seasons: result.seasons.length, unobtainable: result.unobtainable.length, faction: result.faction.length },
     unobtainable: result.unobtainable,
+    faction: result.faction,
     pages: result.byPage,
     launch: result.launch,
     seasons: result.seasons,
@@ -152,13 +160,14 @@ ${lines.join("\n")}
 ACB.seasonalCards = {}
 for _, key in ipairs(heldBack) do ACB.seasonalCards[key] = true end
 
--- page.all is every card of the page; page.required the ones a page needs to be finished (the launch cards). page.cards, what the
+-- page.all is every card of the page; page.required the ones a page needs to be finished (the launch cards, not the cards only one faction can win). page.cards, what the
 -- binder shows, is rebuilt by ACB.refreshVisibleCards (Availability.lua) and starts out as every card.
 for _, page in ipairs(ACB.pages) do
     page.all, page.required = {}, {}
     for _, card in ipairs(page.cards) do
         page.all[#page.all + 1] = card
-        if ACB.seasonalCards[card.key] then card.seasonal = true else page.required[#page.required + 1] = card end
+        if ACB.seasonalCards[card.key] then card.seasonal = true
+        elseif not card.faction then page.required[#page.required + 1] = card end
     end
 end
 `;

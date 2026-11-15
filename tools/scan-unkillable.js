@@ -70,7 +70,9 @@ function analyse(pages, catalog, listed = []) {
     const noData = /not known/i.test(f.level) || f.alliance === "Unknown" || f.horde === "Unknown";
     if (PET.test(f.type)) certain.push({ ...item, why: "a companion pet (type \"Non-combat Pet\"): cannot be attacked" });
     else if (noData) unknown.push({ ...item, why: "no level, reaction or location in the data (a new Forever creature)" });
-    else if (f.alliance === "Friendly" && f.horde === "Friendly") certain.push({ ...item, why: "friendly to both factions" });
+    // A dungeon or raid creature the data lists as friendly to both (card.since) is often a scripted event creature that can be fought, so it is
+    // reported as unknown; the ones known to be story characters are on UnobtainableCards.lua. Anywhere else, friendly to both cannot be killed.
+    else if (f.alliance === "Friendly" && f.horde === "Friendly") (card.since ? unknown : certain).push({ ...item, why: card.since ? "a dungeon or raid creature friendly to both in the data: check in game" : "friendly to both factions" });
     else if (!critter && (f.healthText === "0" || /^Health\s*0$/.test(f.healthText))) likely.push({ ...item, why: "no health in the data" });
     else if (/Totem/.test(f.type) && /^1$/.test(f.level)) likely.push({ ...item, why: "a level 1 totem" });
     else if (/\bportal$/i.test(card.name)) likely.push({ ...item, why: "a portal, not a creature" }); // "C'Thun Portal", not "Portal Seeker"

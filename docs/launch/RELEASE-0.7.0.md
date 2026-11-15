@@ -11,13 +11,13 @@
 | **Launch collection** (`feat/seasonal-availability`) | Half the cards held back for seasons; released for good by the first season that features them; pages finished by launch cards alone. Marker `mode/launch1`. Protocol 9. |
 | **Admin panel** | Already live (it deployed earlier from `main`); not part of this release. |
 
-Players keep everything: no reset, no removed card, and every earlier history replays as it always did. The new rules start at once-only markers the add-on writes before its first roll after upgrading (`chase1`, `chase2`, `launch1`, in that order).
+Players keep everything: no reset, no removed card, and every earlier history replays as it always did. The new rules start at once-only markers the add-on writes before its first roll after upgrading (`chase1`, `chase2`, `launch1`, `faction1`, in that order, then a `side:alliance` or `side:horde` for each character).
 
 ## Who works with whom
 
 | Server 0.5.0 with... | Companion 0.4.5 and older | Companion 0.5.0 |
 |---|---|---|
-| **Add-on 0.6.x** | Works as today. | Works; uploads say protocol 9, which the add-on's history does not need. |
+| **Add-on 0.6.x** | Works as today. | Works; uploads say protocol 10, which the add-on's history does not need. |
 | **Add-on 0.7.0** | **Refused** at upload (`client_too_old`): the companion cannot describe the new markers. The player must update the companion. | Works. |
 
 An old server refuses a new companion (it does not know protocol 8 or 9), so **the server goes first** (step 3). Casual play uses the new rates too but is not checked. A player who does not run the companion sees only the launch cards until it syncs, because the release list reaches the add-on through `Data/Sync.lua`.
@@ -52,7 +52,7 @@ Then on `main`: `node tools/release.js check`, `node tools/release.js test`, `cd
 Use two Ranked accounts (one fresh, one with an existing collection) and one Casual.
 
 - **Upgrade keeps everything.** Cards, shiny cards, editions, packs, dust, titles and history are unchanged after installing the companion then the add-on. The saved file's ledger gains `chase1` (if absent), `chase2`, `launch1`, in that order, once.
-- **Sync.** The companion uploads at protocol 9; the server accepts; the ladder and standings still refresh. An old companion (0.4.5) with the new add-on shows "The server refused it (client_too_old)".
+- **Sync.** The companion uploads at protocol 10; the server accepts; the ladder and standings still refresh. An old companion (0.4.5) with the new add-on shows "The server refused it (client_too_old)".
 - **Rates.** `node tools/report-drop-balance.js` shows critters at about 450 expected attempts; `/acb diag` in game shows the new first-attempt chances; a critter's guarantee arrives far sooner than before. Casual and Ranked use the same rates.
 - **Launch collection.** A held-back creature (see `docs/seasons/launch-collection-draft.csv`) gives no card and no attempt; a launch creature does. A fresh binder shows launch cards only; an existing binder that owns a held-back card still shows it. Packs never contain a held-back card. Every page can be finished from its launch cards. Look at the sparse leveling-zone pages (for example Teldrassil, Ashenvale) in game.
 - **A season releases cards.** Schedule a staging season featuring two held-back cards. After it starts and the companion syncs (`Data/Sync.lua` has `seasonal.released`), `/reload`: those cards drop, appear in packs and can be crafted; after the season ends they still do. Cards that were not featured stay held back.

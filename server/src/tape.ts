@@ -55,6 +55,8 @@ export async function checkTape(args: {
   let balanced: false | number = (args.stateBefore.balance ?? 0) >= 1 ? (args.stateBefore.balance as number) : false; // the drop generation (1 or 2)
   let tiered = args.stateBefore.tieredPacks === true;
   let launched = args.stateBefore.launch === 1;
+  let factioned = args.stateBefore.faction === 1; // mode/faction1: the cards added in spec 10 are in the pools
+  const sides: Record<string, string> = { ...(args.stateBefore.sides ?? {}) }; // each character's declared faction
   let zone = args.stateBefore.packZone ?? ""; // the zone of the pack being opened (it can span two uploads)
   const entryAt = (position: number): Promise<string> => tapeEntry(args.key, args.playerId, position);
   for (const [index, event] of args.events.entries()) {
@@ -62,6 +64,8 @@ export async function checkTape(args: {
     if (event.kind === "mode" && event.key === "chase1") { balanced = 1; continue; }
     if (event.kind === "mode" && event.key === "chase2") { balanced = 2; continue; }
     if (event.kind === "mode" && event.key === "launch1") { launched = true; continue; }
+    if (event.kind === "mode" && event.key === "faction1") { factioned = true; continue; }
+    if (event.kind === "mode" && (event.key === "side:alliance" || event.key === "side:horde")) { sides[event.char] = event.key.slice(5); continue; }
     if (event.kind === "mode" && event.key === "editions1") { editions = true; continue; }
     if (event.kind === "mode" && event.key === "ranked2") {
       stack = {};
@@ -84,7 +88,14 @@ export async function checkTape(args: {
       if (event.tape === 0) continue;
       if (event.tape > args.issuedEnd) return { failure: { reason: "not-issued", index } };
       const entry = await entryAt(event.tape);
-      const base = packPick(args.catalog, zone, entry, args.catalog.shinyOdds, balanced, launched && args.available ? (key) => !args.catalog.cards[key]?.seasonal || args.available!(key, event.t) : null);
+      // The pool for this character: no card added in spec 10 before mode/faction1, none only the other faction can win, and none held back for a season that has not started.
+      const winnable = (key: string): boolean => {
+        const card = args.catalog.cards[key];
+        if (card?.since && !factioned) return false;
+        if (card?.faction && sides[event.char] !== card.faction) return false;
+        return !(launched && args.available && card?.seasonal && !args.available(key, event.t));
+      };
+      const base = packPick(args.catalog, zone, entry, args.catalog.shinyOdds, balanced, winnable);
       const expected = editions && base ? pickEdition(args.catalog, base, await editionValue(entry), balanced) : base;
       if (expected !== event.key) return { failure: { reason: "pack", index } };
       if (!owned.has(event.key) && (shinyValue(entry, args.catalog.shinyOdds) === 1) !== (event.shiny === 1)) return { failure: { reason: "shiny", index } };

@@ -1,445 +1,863 @@
 {
  "format": 1,
  "status": "DRAFT: a proposal for review. Nothing in the catalog, add-on or server uses this file.",
- "catalogVersion": "9846362a4c21",
+ "catalogVersion": "9fe9fd264ff3",
  "rule": "tools/launch-collection.js (chase cards on ordinary creatures: season)",
  "counts": {
-  "launch": 1711,
-  "seasons": 1712,
-  "unobtainable": 10
+  "launch": 1729,
+  "seasons": 1730,
+  "unobtainable": 31,
+  "faction": 324
  },
  "unobtainable": [
+  "npc:10116",
+  "npc:10117",
+  "npc:10162",
   "npc:11446",
+  "npc:11491",
+  "npc:12242",
+  "npc:12243",
   "npc:13916",
+  "npc:14459",
   "npc:15481",
   "npc:15896",
+  "npc:16381",
+  "npc:1983",
+  "npc:3395",
+  "npc:3475",
+  "npc:3678",
+  "npc:3679",
+  "npc:4093",
+  "npc:4094",
+  "npc:4096",
   "npc:7381",
   "npc:7382",
   "npc:7384",
   "npc:7385",
   "npc:7389",
-  "npc:7390"
+  "npc:7390",
+  "npc:7998",
+  "npc:8767",
+  "npc:9523",
+  "npc:9524",
+  "npc:9679"
+ ],
+ "faction": [
+  "npc:10036",
+  "npc:10556",
+  "npc:10578",
+  "npc:10582",
+  "npc:10599",
+  "npc:10600",
+  "npc:10610",
+  "npc:10612",
+  "npc:10636",
+  "npc:1064",
+  "npc:10668",
+  "npc:10676",
+  "npc:10682",
+  "npc:10696",
+  "npc:10721",
+  "npc:10803",
+  "npc:10804",
+  "npc:10817",
+  "npc:10824",
+  "npc:10919",
+  "npc:11181",
+  "npc:11196",
+  "npc:11260",
+  "npc:11276",
+  "npc:11328",
+  "npc:1155",
+  "npc:11656",
+  "npc:11680",
+  "npc:11681",
+  "npc:11682",
+  "npc:11683",
+  "npc:11684",
+  "npc:11885",
+  "npc:11948",
+  "npc:11949",
+  "npc:11994",
+  "npc:11996",
+  "npc:11997",
+  "npc:11998",
+  "npc:12047",
+  "npc:12051",
+  "npc:12053",
+  "npc:12137",
+  "npc:12322",
+  "npc:12338",
+  "npc:12423",
+  "npc:12428",
+  "npc:12430",
+  "npc:1255",
+  "npc:12856",
+  "npc:12859",
+  "npc:12897",
+  "npc:12903",
+  "npc:12996",
+  "npc:12998",
+  "npc:13078",
+  "npc:13086",
+  "npc:13099",
+  "npc:13116",
+  "npc:13117",
+  "npc:13138",
+  "npc:13139",
+  "npc:13277",
+  "npc:13284",
+  "npc:13296",
+  "npc:13297",
+  "npc:13298",
+  "npc:13299",
+  "npc:13300",
+  "npc:13318",
+  "npc:13328",
+  "npc:13331",
+  "npc:13332",
+  "npc:13358",
+  "npc:13359",
+  "npc:13421",
+  "npc:13425",
+  "npc:13443",
+  "npc:1354",
+  "npc:13546",
+  "npc:13551",
+  "npc:13618",
+  "npc:13676",
+  "npc:1421",
+  "npc:1423",
+  "npc:14242",
+  "npc:14275",
+  "npc:14282",
+  "npc:14283",
+  "npc:14284",
+  "npc:14285",
+  "npc:14390",
+  "npc:14393",
+  "npc:1445",
+  "npc:14715",
+  "npc:14718",
+  "npc:14730",
+  "npc:14734",
+  "npc:14762",
+  "npc:14763",
+  "npc:14764",
+  "npc:14765",
+  "npc:14772",
+  "npc:14773",
+  "npc:14777",
+  "npc:14850",
+  "npc:14857",
+  "npc:14859",
+  "npc:14872",
+  "npc:14873",
+  "npc:14874",
+  "npc:14892",
+  "npc:14893",
+  "npc:14894",
+  "npc:14901",
+  "npc:14908",
+  "npc:14909",
+  "npc:15063",
+  "npc:15075",
+  "npc:15128",
+  "npc:15130",
+  "npc:15441",
+  "npc:15442",
+  "npc:15616",
+  "npc:15617",
+  "npc:15903",
+  "npc:16096",
+  "npc:16392",
+  "npc:17070",
+  "npc:1735",
+  "npc:1736",
+  "npc:1737",
+  "npc:1738",
+  "npc:1739",
+  "npc:1741",
+  "npc:1742",
+  "npc:1743",
+  "npc:1744",
+  "npc:1746",
+  "npc:17765",
+  "npc:17766",
+  "npc:17795",
+  "npc:1867",
+  "npc:1888",
+  "npc:1889",
+  "npc:1891",
+  "npc:1894",
+  "npc:1895",
+  "npc:1914",
+  "npc:1920",
+  "npc:2053",
+  "npc:2054",
+  "npc:2209",
+  "npc:2210",
+  "npc:2267",
+  "npc:2272",
+  "npc:2304",
+  "npc:2305",
+  "npc:2307",
+  "npc:2309",
+  "npc:2310",
+  "npc:2311",
+  "npc:2314",
+  "npc:2315",
+  "npc:232",
+  "npc:2335",
+  "npc:2344",
+  "npc:2345",
+  "npc:2346",
+  "npc:2358",
+  "npc:2359",
+  "npc:2386",
+  "npc:2392",
+  "npc:2395",
+  "npc:2396",
+  "npc:2398",
+  "npc:2400",
+  "npc:2402",
+  "npc:2405",
+  "npc:2436",
+  "npc:2449",
+  "npc:2450",
+  "npc:2451",
+  "npc:2470",
+  "npc:2473",
+  "npc:2581",
+  "npc:2583",
+  "npc:2584",
+  "npc:2585",
+  "npc:2618",
+  "npc:2619",
+  "npc:2621",
+  "npc:2657",
+  "npc:2658",
+  "npc:2692",
+  "npc:2714",
+  "npc:2721",
+  "npc:2733",
+  "npc:3149",
+  "npc:3150",
+  "npc:3192",
+  "npc:3210",
+  "npc:3211",
+  "npc:3212",
+  "npc:3213",
+  "npc:3214",
+  "npc:3215",
+  "npc:3217",
+  "npc:3218",
+  "npc:3219",
+  "npc:3220",
+  "npc:3221",
+  "npc:3222",
+  "npc:3223",
+  "npc:3224",
+  "npc:325",
+  "npc:3297",
+  "npc:3374",
+  "npc:3376",
+  "npc:3378",
+  "npc:3392",
+  "npc:3393",
+  "npc:3454",
+  "npc:3501",
+  "npc:3571",
+  "npc:3732",
+  "npc:3733",
+  "npc:3734",
+  "npc:3735",
+  "npc:3736",
+  "npc:3797",
+  "npc:3804",
+  "npc:3806",
+  "npc:3807",
+  "npc:3808",
+  "npc:3833",
+  "npc:3849",
+  "npc:3850",
+  "npc:3915",
+  "npc:395",
+  "npc:3986",
+  "npc:4053",
+  "npc:4066",
+  "npc:4072",
+  "npc:4242",
+  "npc:4480",
+  "npc:4545",
+  "npc:4546",
+  "npc:4547",
+  "npc:468",
+  "npc:487",
+  "npc:490",
+  "npc:4924",
+  "npc:494",
+  "npc:4950",
+  "npc:4979",
+  "npc:5095",
+  "npc:5096",
+  "npc:5199",
+  "npc:5200",
+  "npc:5523",
+  "npc:5546",
+  "npc:5547",
+  "npc:5725",
+  "npc:5806",
+  "npc:5915",
+  "npc:5916",
+  "npc:5952",
+  "npc:5953",
+  "npc:5996",
+  "npc:5998",
+  "npc:6001",
+  "npc:6003",
+  "npc:6391",
+  "npc:6392",
+  "npc:6497",
+  "npc:6547",
+  "npc:6607",
+  "npc:6668",
+  "npc:6732",
+  "npc:6787",
+  "npc:7843",
+  "npc:7851",
+  "npc:7904",
+  "npc:7939",
+  "npc:794",
+  "npc:796",
+  "npc:7975",
+  "npc:7980",
+  "npc:801",
+  "npc:8016",
+  "npc:8023",
+  "npc:806",
+  "npc:810",
+  "npc:811",
+  "npc:8154",
+  "npc:8155",
+  "npc:826",
+  "npc:827",
+  "npc:8310",
+  "npc:8564",
+  "npc:861",
+  "npc:862",
+  "npc:863",
+  "npc:864",
+  "npc:865",
+  "npc:866",
+  "npc:867",
+  "npc:868",
+  "npc:870",
+  "npc:874",
+  "npc:876",
+  "npc:886",
+  "npc:9022",
+  "npc:9083",
+  "npc:9085",
+  "npc:9086",
+  "npc:933",
+  "npc:934",
+  "npc:935",
+  "npc:9525",
+  "npc:9564",
+  "npc:9566",
+  "npc:9990"
  ],
  "pages": {
   "ABX": {
    "title": "Arathi Basin",
    "group": "Battleground",
    "launch": 3,
-   "seasons": 11
+   "seasons": 11,
+   "faction": 2
   },
   "AHX": {
    "title": "Arathi Highlands",
    "group": "Zone",
    "launch": 24,
-   "seasons": 33
+   "seasons": 33,
+   "faction": 14
   },
   "AMX": {
    "title": "Alterac Mountains",
    "group": "Zone",
    "launch": 19,
-   "seasons": 19
+   "seasons": 19,
+   "faction": 2
   },
   "AQT": {
    "title": "Ahn'Qiraj Temple",
    "group": "Raid",
    "launch": 29,
-   "seasons": 4
+   "seasons": 4,
+   "faction": 0
   },
   "AVX": {
    "title": "Alterac Valley",
    "group": "Battleground",
    "launch": 6,
-   "seasons": 15
+   "seasons": 15,
+   "faction": 42
   },
   "AXX": {
    "title": "Ashenvale",
    "group": "Zone",
    "launch": 27,
-   "seasons": 75
+   "seasons": 75,
+   "faction": 24
   },
   "AXX2": {
    "title": "Azshara",
    "group": "Zone",
    "launch": 26,
-   "seasons": 29
+   "seasons": 29,
+   "faction": 1
   },
   "BDX": {
    "title": "Blackfathom Deeps",
    "group": "Dungeon",
    "launch": 27,
-   "seasons": 0
+   "seasons": 0,
+   "faction": 0
   },
   "BDX2": {
    "title": "Blackrock Depths",
    "group": "Dungeon",
-   "launch": 39,
-   "seasons": 11
+   "launch": 50,
+   "seasons": 14,
+   "faction": 1
   },
   "BLX": {
    "title": "Blackwing Lair",
    "group": "Raid",
    "launch": 22,
-   "seasons": 4
+   "seasons": 6,
+   "faction": 0
   },
   "BLX2": {
    "title": "Blasted Lands",
    "group": "Zone",
    "launch": 15,
-   "seasons": 18
+   "seasons": 18,
+   "faction": 5
   },
   "BSX": {
    "title": "Blackrock Spire",
    "group": "Dungeon",
    "launch": 65,
-   "seasons": 5
+   "seasons": 5,
+   "faction": 0
   },
   "BSX2": {
    "title": "Burning Steppes",
    "group": "Zone",
-   "launch": 26,
-   "seasons": 31
+   "launch": 25,
+   "seasons": 32,
+   "faction": 2
   },
   "BXX": {
    "title": "Badlands",
    "group": "Zone",
    "launch": 22,
-   "seasons": 27
+   "seasons": 27,
+   "faction": 0
   },
   "BXX2": {
    "title": "The Barrens",
    "group": "Zone",
-   "launch": 78,
-   "seasons": 119
+   "launch": 76,
+   "seasons": 121,
+   "faction": 34
   },
   "DM": {
    "title": "Deadmines",
    "group": "Dungeon",
-   "launch": 22,
-   "seasons": 1
+   "launch": 21,
+   "seasons": 2,
+   "faction": 0
   },
   "DMX": {
    "title": "Dire Maul",
    "group": "Dungeon",
-   "launch": 52,
-   "seasons": 9
+   "launch": 53,
+   "seasons": 10,
+   "faction": 0
   },
   "DMX2": {
    "title": "Dun Morogh",
    "group": "Zone",
    "launch": 19,
-   "seasons": 37
+   "seasons": 37,
+   "faction": 9
   },
   "DMX3": {
    "title": "Dustwallow Marsh",
    "group": "Zone",
    "launch": 25,
-   "seasons": 38
+   "seasons": 38,
+   "faction": 10
   },
   "DPX": {
    "title": "Deadwind Pass",
    "group": "Zone",
    "launch": 2,
-   "seasons": 7
+   "seasons": 7,
+   "faction": 1
   },
   "DXX": {
    "title": "Duskwood",
    "group": "Zone",
    "launch": 12,
-   "seasons": 36
+   "seasons": 36,
+   "faction": 8
   },
   "DXX2": {
    "title": "Durotar",
    "group": "Zone",
    "launch": 13,
-   "seasons": 34
+   "seasons": 34,
+   "faction": 10
   },
   "DXX3": {
    "title": "Darkshore",
    "group": "Zone",
    "launch": 18,
-   "seasons": 49
+   "seasons": 49,
+   "faction": 1
   },
   "DXX4": {
    "title": "Desolace",
    "group": "Zone",
    "launch": 30,
-   "seasons": 78
+   "seasons": 78,
+   "faction": 2
   },
   "EFX": {
    "title": "Elwynn Forest",
    "group": "Zone",
    "launch": 16,
-   "seasons": 40
+   "seasons": 40,
+   "faction": 13
   },
   "EPX": {
    "title": "Eastern Plaguelands",
    "group": "Zone",
    "launch": 28,
-   "seasons": 51
+   "seasons": 51,
+   "faction": 7
   },
   "FXX": {
    "title": "Feralas",
    "group": "Zone",
    "launch": 29,
-   "seasons": 56
+   "seasons": 56,
+   "faction": 2
   },
   "FXX2": {
    "title": "Felwood",
    "group": "Zone",
    "launch": 20,
-   "seasons": 45
+   "seasons": 45,
+   "faction": 0
   },
   "GA": {
    "title": "Gathering",
    "group": "Profession",
    "launch": 39,
-   "seasons": 0
+   "seasons": 0,
+   "faction": 0
   },
   "GXX": {
    "title": "Gnomeregan",
    "group": "Dungeon",
    "launch": 12,
-   "seasons": 5
+   "seasons": 6,
+   "faction": 2
   },
   "HFX": {
    "title": "Hillsbrad Foothills",
    "group": "Zone",
    "launch": 17,
-   "seasons": 35
+   "seasons": 35,
+   "faction": 24
   },
   "HXX": {
    "title": "The Hinterlands",
    "group": "Zone",
    "launch": 31,
-   "seasons": 23
+   "seasons": 23,
+   "faction": 7
   },
   "LMX": {
    "title": "Loch Modan",
    "group": "Zone",
    "launch": 16,
-   "seasons": 28
+   "seasons": 28,
+   "faction": 1
   },
   "MCX": {
    "title": "Molten Core",
    "group": "Raid",
    "launch": 23,
-   "seasons": 0
+   "seasons": 0,
+   "faction": 0
   },
   "MXX": {
    "title": "Maraudon",
    "group": "Dungeon",
    "launch": 28,
-   "seasons": 5
+   "seasons": 7,
+   "faction": 0
   },
   "MXX2": {
    "title": "Mulgore",
    "group": "Zone",
    "launch": 7,
-   "seasons": 20
+   "seasons": 20,
+   "faction": 13
   },
   "MXX3": {
    "title": "Moonglade",
    "group": "Zone",
    "launch": 4,
-   "seasons": 5
+   "seasons": 5,
+   "faction": 0
   },
   "NXX": {
    "title": "Naxxramas",
    "group": "Raid",
    "launch": 75,
-   "seasons": 4
+   "seasons": 5,
+   "faction": 0
   },
   "OSL": {
    "title": "Onyxia's Lair",
    "group": "Raid",
    "launch": 2,
-   "seasons": 0
+   "seasons": 0,
+   "faction": 0
   },
   "RAQ": {
    "title": "Ruins of Ahn'Qiraj",
    "group": "Raid",
    "launch": 30,
-   "seasons": 2
+   "seasons": 2,
+   "faction": 0
   },
   "RCX": {
    "title": "Ragefire Chasm",
    "group": "Dungeon",
    "launch": 11,
-   "seasons": 0
+   "seasons": 0,
+   "faction": 0
   },
   "RDX": {
    "title": "Razorfen Downs",
    "group": "Dungeon",
-   "launch": 18,
-   "seasons": 4
+   "launch": 19,
+   "seasons": 5,
+   "faction": 0
   },
   "RKX": {
    "title": "Razorfen Kraul",
    "group": "Dungeon",
    "launch": 34,
-   "seasons": 1
+   "seasons": 1,
+   "faction": 0
   },
   "RMX": {
    "title": "Redridge Mountains",
    "group": "Zone",
    "launch": 19,
-   "seasons": 32
+   "seasons": 32,
+   "faction": 3
   },
   "SFX": {
    "title": "Silverpine Forest",
    "group": "Zone",
    "launch": 14,
-   "seasons": 37
+   "seasons": 37,
+   "faction": 11
   },
   "SGX": {
    "title": "Searing Gorge",
    "group": "Zone",
    "launch": 17,
-   "seasons": 24
+   "seasons": 24,
+   "faction": 3
   },
   "SKX": {
    "title": "Shadowfang Keep",
    "group": "Dungeon",
-   "launch": 25,
-   "seasons": 1
+   "launch": 26,
+   "seasons": 1,
+   "faction": 2
   },
   "SMX": {
    "title": "Scarlet Monastery",
    "group": "Dungeon",
    "launch": 31,
-   "seasons": 1
+   "seasons": 1,
+   "faction": 0
   },
   "SMX2": {
    "title": "Stonetalon Mountains",
    "group": "Zone",
    "launch": 14,
-   "seasons": 37
+   "seasons": 37,
+   "faction": 5
   },
   "SSX": {
    "title": "Stormwind Stockade",
    "group": "Dungeon",
    "launch": 7,
-   "seasons": 0
+   "seasons": 0,
+   "faction": 0
   },
   "SSX2": {
    "title": "Swamp of Sorrows",
    "group": "Zone",
    "launch": 19,
-   "seasons": 28
+   "seasons": 28,
+   "faction": 9
   },
   "STX": {
    "title": "Sunken Temple",
    "group": "Dungeon",
    "launch": 13,
-   "seasons": 2
+   "seasons": 2,
+   "faction": 0
   },
   "SVX": {
    "title": "Stranglethorn Vale",
    "group": "Zone",
    "launch": 56,
-   "seasons": 86
+   "seasons": 86,
+   "faction": 4
   },
   "SXX": {
    "title": "Scholomance",
    "group": "Dungeon",
-   "launch": 31,
-   "seasons": 3
+   "launch": 32,
+   "seasons": 3,
+   "faction": 0
   },
   "SXX2": {
    "title": "Stratholme",
    "group": "Dungeon",
-   "launch": 38,
-   "seasons": 4
+   "launch": 39,
+   "seasons": 4,
+   "faction": 0
   },
   "SXX3": {
    "title": "Silithus",
    "group": "Zone",
    "launch": 47,
-   "seasons": 25
+   "seasons": 25,
+   "faction": 8
   },
   "TGX": {
    "title": "Tirisfal Glades",
    "group": "Zone",
    "launch": 16,
-   "seasons": 49
+   "seasons": 49,
+   "faction": 24
   },
   "TNX": {
    "title": "Thousand Needles",
    "group": "Zone",
    "launch": 22,
-   "seasons": 38
+   "seasons": 38,
+   "faction": 7
   },
   "TXX": {
    "title": "Teldrassil",
    "group": "Zone",
    "launch": 14,
-   "seasons": 47
+   "seasons": 47,
+   "faction": 2
   },
   "TXX2": {
    "title": "Tanaris",
    "group": "Zone",
    "launch": 29,
-   "seasons": 47
+   "seasons": 47,
+   "faction": 0
   },
   "UGC": {
    "title": "Un'Goro Crater",
    "group": "Zone",
    "launch": 20,
-   "seasons": 25
+   "seasons": 25,
+   "faction": 0
   },
   "UXX": {
    "title": "Uldaman",
    "group": "Dungeon",
    "launch": 26,
-   "seasons": 8
+   "seasons": 8,
+   "faction": 0
   },
   "WCX": {
    "title": "Wailing Caverns",
    "group": "Dungeon",
    "launch": 17,
-   "seasons": 2
+   "seasons": 5,
+   "faction": 0
   },
   "WF": {
    "title": "Westfall",
    "group": "Zone",
    "launch": 20,
-   "seasons": 46
+   "seasons": 46,
+   "faction": 5
   },
   "WPX": {
    "title": "Western Plaguelands",
    "group": "Zone",
    "launch": 31,
-   "seasons": 39
+   "seasons": 39,
+   "faction": 0
   },
   "WXX": {
    "title": "Wetlands",
    "group": "Zone",
    "launch": 28,
-   "seasons": 49
+   "seasons": 49,
+   "faction": 2
   },
   "WXX2": {
    "title": "Winterspring",
    "group": "Zone",
    "launch": 37,
-   "seasons": 58
+   "seasons": 58,
+   "faction": 2
   },
   "ZFX": {
    "title": "Zul'Farrak",
    "group": "Dungeon",
-   "launch": 14,
-   "seasons": 1
+   "launch": 20,
+   "seasons": 1,
+   "faction": 0
   },
   "ZGX": {
    "title": "Zul'Gurub",
    "group": "Raid",
    "launch": 41,
-   "seasons": 5
+   "seasons": 5,
+   "faction": 0
   },
   "ZIX": {
    "title": "Zephras Isle",
    "group": "Zone",
    "launch": 4,
-   "seasons": 4
+   "seasons": 4,
+   "faction": 0
   }
  },
  "launch": [
@@ -616,6 +1034,7 @@
   "npc:10828",
   "npc:1085",
   "npc:1088",
+  "npc:10896",
   "npc:10899",
   "npc:10901",
   "npc:1094",
@@ -792,7 +1211,6 @@
   "npc:11897",
   "npc:11911",
   "npc:11915",
-  "npc:11917",
   "npc:11918",
   "npc:11921",
   "npc:1193",
@@ -964,6 +1382,11 @@
   "npc:14536",
   "npc:14601",
   "npc:14621",
+  "npc:14682",
+  "npc:14684",
+  "npc:14686",
+  "npc:14690",
+  "npc:14695",
   "npc:14742",
   "npc:14743",
   "npc:14750",
@@ -1235,7 +1658,6 @@
   "npc:1955",
   "npc:1958",
   "npc:1972",
-  "npc:1983",
   "npc:1994",
   "npc:1996",
   "npc:1999",
@@ -1401,7 +1823,6 @@
   "npc:3461",
   "npc:3466",
   "npc:3472",
-  "npc:3475",
   "npc:3535",
   "npc:3586",
   "npc:3630",
@@ -1486,7 +1907,6 @@
   "npc:4067",
   "npc:4075",
   "npc:4076",
-  "npc:4093",
   "npc:4101",
   "npc:4107",
   "npc:4128",
@@ -1779,10 +2199,10 @@
   "npc:5951",
   "npc:596",
   "npc:5974",
-  "npc:598",
   "npc:5981",
   "npc:599",
   "npc:60",
+  "npc:6033",
   "npc:6035",
   "npc:6073",
   "npc:6093",
@@ -1873,7 +2293,6 @@
   "npc:7022",
   "npc:7023",
   "npc:7030",
-  "npc:7031",
   "npc:7039",
   "npc:7040",
   "npc:7041",
@@ -1914,6 +2333,7 @@
   "npc:7246",
   "npc:7267",
   "npc:7268",
+  "npc:7271",
   "npc:7272",
   "npc:7274",
   "npc:728",
@@ -1967,6 +2387,11 @@
   "npc:750",
   "npc:752",
   "npc:7524",
+  "npc:7604",
+  "npc:7605",
+  "npc:7606",
+  "npc:7607",
+  "npc:7608",
   "npc:766",
   "npc:7665",
   "npc:7666",
@@ -2081,6 +2506,13 @@
   "npc:9025",
   "npc:9026",
   "npc:9033",
+  "npc:9034",
+  "npc:9035",
+  "npc:9036",
+  "npc:9037",
+  "npc:9038",
+  "npc:9039",
+  "npc:9040",
   "npc:9041",
   "npc:9042",
   "npc:9043",
@@ -2131,10 +2563,14 @@
   "npc:9451",
   "npc:9452",
   "npc:946",
+  "npc:9502",
   "npc:9554",
   "npc:9568",
   "npc:9583",
   "npc:9596",
+  "npc:9677",
+  "npc:9680",
+  "npc:9681",
   "npc:9692",
   "npc:9693",
   "npc:9695",
@@ -2163,6 +2599,8 @@
   "npc:1009",
   "npc:1010",
   "npc:1011",
+  "npc:10116",
+  "npc:10117",
   "npc:1012",
   "npc:1013",
   "npc:1015",
@@ -2171,6 +2609,7 @@
   "npc:10159",
   "npc:1016",
   "npc:10160",
+  "npc:10162",
   "npc:1017",
   "npc:10177",
   "npc:1018",
@@ -2245,7 +2684,6 @@
   "npc:1083",
   "npc:1084",
   "npc:1087",
-  "npc:10896",
   "npc:10916",
   "npc:1095",
   "npc:10981",
@@ -2288,6 +2726,7 @@
   "npc:1140",
   "npc:11446",
   "npc:11477",
+  "npc:11491",
   "npc:115",
   "npc:1151",
   "npc:11516",
@@ -2356,6 +2795,7 @@
   "npc:11912",
   "npc:11913",
   "npc:11914",
+  "npc:11917",
   "npc:1192",
   "npc:1194",
   "npc:1195",
@@ -2377,6 +2817,8 @@
   "npc:12218",
   "npc:1222",
   "npc:1224",
+  "npc:12242",
+  "npc:12243",
   "npc:12247",
   "npc:12248",
   "npc:12250",
@@ -2466,6 +2908,7 @@
   "npc:14448",
   "npc:14455",
   "npc:14458",
+  "npc:14459",
   "npc:14477",
   "npc:14478",
   "npc:14479",
@@ -2548,6 +2991,7 @@
   "npc:16228",
   "npc:16229",
   "npc:16284",
+  "npc:16381",
   "npc:16400",
   "npc:16423",
   "npc:16437",
@@ -2633,6 +3077,7 @@
   "npc:1971",
   "npc:1973",
   "npc:1974",
+  "npc:1983",
   "npc:1984",
   "npc:1985",
   "npc:1986",
@@ -2992,6 +3437,7 @@
   "npc:3471",
   "npc:3473",
   "npc:3474",
+  "npc:3475",
   "npc:3476",
   "npc:3502",
   "npc:3503",
@@ -3001,6 +3447,8 @@
   "npc:3659",
   "npc:3662",
   "npc:3667",
+  "npc:3678",
+  "npc:3679",
   "npc:3696",
   "npc:3712",
   "npc:3713",
@@ -3109,6 +3557,7 @@
   "npc:4070",
   "npc:4073",
   "npc:4074",
+  "npc:4093",
   "npc:4094",
   "npc:4096",
   "npc:4100",
@@ -3427,11 +3876,13 @@
   "npc:5893",
   "npc:5894",
   "npc:590",
+  "npc:5914",
   "npc:5933",
   "npc:595",
   "npc:597",
   "npc:5975",
   "npc:5976",
+  "npc:598",
   "npc:5985",
   "npc:5991",
   "npc:5993",
@@ -3440,7 +3891,6 @@
   "npc:6011",
   "npc:6020",
   "npc:603",
-  "npc:6033",
   "npc:604",
   "npc:61",
   "npc:6113",
@@ -3557,6 +4007,7 @@
   "npc:7028",
   "npc:7029",
   "npc:703",
+  "npc:7031",
   "npc:7032",
   "npc:7033",
   "npc:7034",
@@ -3692,6 +4143,7 @@
   "npc:7886",
   "npc:7897",
   "npc:79",
+  "npc:7998",
   "npc:80",
   "npc:808",
   "npc:8136",
@@ -3784,6 +4236,7 @@
   "npc:8762",
   "npc:8764",
   "npc:8766",
+  "npc:8767",
   "npc:880",
   "npc:881",
   "npc:889",
@@ -3850,6 +4303,7 @@
   "npc:9602",
   "npc:9604",
   "npc:9622",
+  "npc:9679",
   "npc:9690",
   "npc:9691",
   "npc:9694",

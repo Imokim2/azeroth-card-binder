@@ -80,8 +80,8 @@ async function sendWithRetries(options: PublicClientOptions, path: string, body?
 
 async function uploadBody(options: ClientOptions, binder: Binder, events: BinderEvent[]): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {
-    // Spec 9 adds mode/launch1 (cards held back for seasons), 8 mode/chase2 (the second set of drop rates), 7 seasonal rewards. The server refuses a binder that needs more than it is told.
-    specVersion: 9, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
+    // Spec 10 adds mode/faction1 and mode/side:* (cards only one faction can win), 9 mode/launch1 (cards held back for seasons), 8 mode/chase2 (the second set of drop rates), 7 seasonal rewards. The server refuses a binder that needs more than it is told.
+    specVersion: 10, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
     realm: binder.character?.realm ?? "Unknown", schema: binder.schema, catalogVersion: options.catalogVersion,
     events, snapshot: binder.snapshot, tapeIndex: binder.tapeNext, sentAt: options.now(),
   };

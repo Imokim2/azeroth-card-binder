@@ -11,14 +11,15 @@ const event = (kind, key, count = 0, tape = 0, extra = {}) => ({ seq: 1, t: 1700
 
 const base = Object.entries(catalog.cards).filter(([, card]) => !card.baseKey);
 const seasonal = base.filter(([, card]) => card.seasonal).map(([key]) => key);
-const launch = base.filter(([, card]) => !card.seasonal).map(([key]) => key);
+// Cards only one faction can win (card.faction, spec 10) are always available and never required, so they are neither.
+const launch = base.filter(([, card]) => !card.seasonal && !card.faction).map(([key]) => key);
 const markers = ['chase1', 'chase2', 'launch1'].map(key => event('mode', key, 0, 0, { t: 1000 }));
 const nobody = () => false;
 const everybody = () => true;
 
 test('the catalog holds back exactly half the base cards and never an elite, boss, critter or gathering card', () => {
-    assert.equal(seasonal.length, 1712);
-    assert.equal(launch.length, 1711);
+    assert.equal(seasonal.length, 1730);
+    assert.equal(launch.length, 1729);
     for (const [key, card] of base) {
         if (!card.unobtainable && (card.rank === 'elite' || card.rank === 'rareelite' || card.boss || card.dropProfile.tier === 'critter' || card.rank === 'gathering')) {
             assert.ok(!card.seasonal, key + ' ' + card.name);
@@ -31,7 +32,7 @@ test('a page lists its launch cards as required, only where that differs from al
     for (const set of catalog.sets) {
         const needed = set.required || set.cards;
         assert.ok(needed.length > 0, set.title);
-        assert.deepEqual(needed.slice().sort(), set.cards.filter(key => !catalog.cards[key].seasonal).sort(), set.title);
+        assert.deepEqual(needed.slice().sort(), set.cards.filter(key => !catalog.cards[key].seasonal && !catalog.cards[key].faction).sort(), set.title);
         if (set.required) assert.ok(set.required.length < set.cards.length, set.title);
     }
     assert.equal(catalog.sets.reduce((sum, set) => sum + (set.required || set.cards).length, 0), launch.length);
