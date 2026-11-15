@@ -84,11 +84,12 @@ test("opening a set preloads four portraits together and releases them outside t
         driver.models[slot].fileID = 1000 + slot
     end
     driver:OnUpdate(.25)
+    equal(#driver.models, ACB.portraitLoaderLimit, "preloading reuses a fixed number of engine scenes")
     for slot = 1, 4 do
-        equal(driver.models[slot].fileID, 1000 + slot, "completed models are retained instead of cleared")
-        equal(driver.models[slot]:IsShown(), false)
+        equal(driver.models[slot].creature, cards[slot + 4].id, "the next entries reuse the same workers")
+        equal(driver.models[slot]:IsShown(), true)
     end
-    equal(driver.models[5].creature, cards[5].id)
+    equal(driver.models[5], nil)
     ACB.open("wanted"); driver.parent:OnHide()
     equal(driver:IsShown(), false)
     equal(driver.models[1].fileID, nil, "closing the collection releases loaded resources")

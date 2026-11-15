@@ -42,6 +42,7 @@ local parts = {
     "35-model-lifecycle",
     "36-rarity-motion",
     "37-casual-warning-trading",
+    "38-dungeon-hints-index-filters",
 }
 
 local source, ranges, line = {}, {}, 1

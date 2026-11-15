@@ -17,7 +17,7 @@ local turnButton = ui.turnButton
 -- The Index page of the binder: a searchable, paged list of every set.
 local function createIndex(parent, saved, selectSet, openCard)
     local index = paper(parent, 20)
-    text(index, 23, 17, "FIND A COLLECTION", 10, SEPIA, 403)
+    text(index, 23, 17, "FIND A CARD OR COLLECTION", 10, SEPIA, 403)
     text(index, 22, 33, "Collection Index", 35, INK, 403, "LEFT", true)
     text(index, 24, 73, "Search by set, category or card name", 11, SEPIA, 403)
     local search = panel(index, "EditBox", 23, 90, 402, 27, { 0.91, 0.84, 0.68 }, EDGE)
@@ -30,17 +30,27 @@ local function createIndex(parent, saved, selectSet, openCard)
     search:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
     index:SetScript("OnHide", function() search:ClearFocus() end)
 
-    local resultCount = text(index, 24, 125, "", 10, SEPIA, 401)
+    local ownership = saved.indexOwnership
+    if ownership ~= "owned" and ownership ~= "unowned" then ownership = "all" end
+    local filters = {}
+    for position, choice in ipairs({ { "all", "All" }, { "owned", "Owned" }, { "unowned", "Unowned" } }) do
+        local control = panel(index, "Button", 23 + (position - 1) * 137, 125, 128, 24, POCKET, EDGE)
+        control:SetFontString(text(control, 0, 5, choice[2], 11, INK, 128, "CENTER"))
+        control:SetText(choice[2])
+        control:SetScript("OnClick", function() index:setOwnership(choice[1]) end)
+        filters[choice[1]] = control
+    end
+    local resultCount = text(index, 24, 157, "", 10, SEPIA, 401)
     local rows = {}
     for position = 1, SETS_PER_INDEX_PAGE do
-        local row = panel(index, "Button", 23, 144 + (position - 1) * 36, 402, 33, POCKET, EDGE)
+        local row = panel(index, "Button", 23, 176 + (position - 1) * 33, 402, 32, POCKET, EDGE)
         row:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
         rows[position] = {
             frame = row,
-            title = text(row, 9, 3, "", 15, INK, 278, "LEFT", true),
-            group = text(row, 10, 20, "", 9, SEPIA, 278),
+            title = text(row, 9, 2, "", 14, INK, 278, "LEFT", true),
+            group = text(row, 10, 18, "", 9, SEPIA, 278),
             progress = text(row, 282, 11, "", 11, INK, 109, "RIGHT"),
-            bar = progressBar(row, 9, 26, 380),
+            bar = progressBar(row, 9, 27, 380),
         }
         row:SetScript("OnClick", function(self)
             if self.cardKey then (openCard or ACB.openCard)(self.cardKey) else selectSet(self.setIndex) end
@@ -61,17 +71,25 @@ local function createIndex(parent, saved, selectSet, openCard)
 
     function index:showSets(current)
         activeSet = current
+        for key, control in pairs(filters) do
+            control:SetEnabled(key ~= ownership)
+            control:SetBackdropColor(unpack(key == ownership and SELECTED or POCKET))
+            control:SetBackdropBorderColor(unpack(key == ownership and INK or EDGE))
+        end
         local query = search:GetText():lower():match("^%s*(.-)%s*$")
         local exact, sets, matches = {}, {}, {}
         for _, setIndex in ipairs(ACB.setOrder()) do
             local entry = ACB.pages[setIndex]
             local searchable = (entry.title .. " " .. (entry.group or "")):lower()
-            if #entry.cards > 0 and searchable:find(query, 1, true) then sets[#sets + 1] = setIndex end
-            if query ~= "" then
+            local setMatches = searchable:find(query, 1, true) ~= nil
+            if ownership == "all" and #entry.cards > 0 and setMatches then sets[#sets + 1] = setIndex end
+            if query ~= "" or ownership ~= "all" then
                 for _, base in ipairs(entry.cards) do
                   for _, card in ipairs(ACB.cardEditions(base)) do
                     local name = card.name:lower()
-                    if name:find(query, 1, true) then
+                    local owned = (saved.counts[card.key] or 0) > 0
+                    local allowed = ownership == "all" or (ownership == "owned" and owned) or (ownership == "unowned" and not owned)
+                    if allowed and (name:find(query, 1, true) or (ownership ~= "all" and setMatches)) then
                         local list = name == query and exact or matches
                         list[#list + 1] = card
                     end
@@ -86,8 +104,9 @@ local function createIndex(parent, saved, selectSet, openCard)
         local total = #results
         pageCount = math.max(1, math.ceil(total / SETS_PER_INDEX_PAGE))
         pageNumber = math.min(pageNumber, pageCount)
-        local noun = query == "" and "set" or "result"
-        resultCount:SetText(total == 0 and "No matching sets or cards" or ("%d %s%s"):format(total, noun, total == 1 and "" or "s"))
+        local noun = ownership ~= "all" and "card" or query == "" and "set" or "result"
+        local empty = ownership == "all" and "No matching sets or cards" or ("No %s cards match"):format(ownership)
+        resultCount:SetText(total == 0 and empty or ("%d %s%s"):format(total, noun, total == 1 and "" or "s"))
         pageLabel:SetText(total > 0 and ("Results  /  %d of %d"):format(pageNumber, pageCount) or "")
         back:SetEnabled(pageNumber > 1)
         more:SetEnabled(pageNumber < pageCount)
@@ -113,7 +132,7 @@ local function createIndex(parent, saved, selectSet, openCard)
                 row.progress:SetText(collected >= cards and "Complete" or ("%d / %d"):format(collected, cards))
                 row.bar:set(collected, cards)
             elseif card then
-                local count = card.baseKey and (saved.counts[card.key] or 0) or ACB.familyCount(saved.counts, card)
+                local count = saved.counts[card.key] or 0
                 row.frame:SetBackdropColor(unpack(POCKET))
                 row.frame:SetBackdropBorderColor(unpack(EDGE))
                 row.title:SetText(card.name)
@@ -124,6 +143,13 @@ local function createIndex(parent, saved, selectSet, openCard)
         end
     end
 
+    function index:setOwnership(choice)
+        if choice ~= "all" and choice ~= "owned" and choice ~= "unowned" then return false end
+        ownership, saved.indexOwnership, pageNumber = choice, choice, 1
+        self:showSets(activeSet)
+        return true
+    end
+    index.filters, index.search = filters, search
     search:SetScript("OnTextChanged", function()
         pageNumber = 1
         index:showSets(activeSet)

@@ -26,6 +26,43 @@ test("hidden cards do not request models and release their resources when hidden
     parent:Hide(); card.model:OnHide()
 end)
 
+test("portrait preloading never grows its engine frame pool as larger sets are visited", function()
+    local start = #widgets
+    local warm = ACB.createPortraitLoader(UIParent, UIParent)
+    local driver = widgets[start + 1]
+    local entries, unique = {}, {}
+    for _, page in ipairs(ACB.pages) do for _, card in ipairs(page.cards) do
+        if not card.profession and not unique[card.id] and #entries < 200 then
+            unique[card.id], entries[#entries + 1] = true, card
+        end
+    end end
+    assert(#entries == 200)
+    local seen = {}
+    local function finishQueue()
+        local ticks = 0
+        while driver:IsShown() and ticks < 300 do
+            driver:OnUpdate(.25)
+            assert(#driver.models <= ACB.portraitLoaderLimit)
+            for _, model in ipairs(driver.models) do
+                if model.active then seen[model.entry.id] = true; model.fileID = model.entry.id + 10000 end
+            end
+            ticks = ticks + 1
+        end
+        assert(not driver:IsShown(), "the entire queue must finish within a bounded number of ticks")
+    end
+    warm(entries); finishQueue()
+    equal(ACB.countKeys(seen), 200, "every unique NPC is still requested")
+    equal(#driver.models, 4)
+    local allocated = #widgets
+    warm({ entries[2], entries[3] }); finishQueue()
+    warm(entries); finishQueue()
+    equal(#widgets, allocated, "reopening different sets cannot allocate additional engine frames")
+    warm(nil)
+    for _, model in ipairs(driver.models) do
+        equal(model.creature, nil); equal(model.fileID, nil); equal(model.active, false)
+    end
+end)
+
 test("pickup popups follow the 3D setting and release their model when dismissed", function()
     local toast, oldPopups = ACB.toast, AzerothCardBinderDB.popups
     local saved, oldModels = AzerothCardBinderDB, AzerothCardBinderDB.cardModels

@@ -121,10 +121,11 @@ local function loadModel(model, entry)
     end
 end
 
--- Retain one model per unique creature/node in the selected set. Clearing a
--- single scratch model immediately after loading let the client evict it again.
--- Four requests run together. Resources are retained only while the folio is
--- visible; closing it releases the entire set, including in-flight requests.
+-- Reuse at most four engine model frames per folio, regardless of set size.
+-- ClearModel does not destroy its PlayerModel frame; render-target lifetime is
+-- engine-managed. Creating one frame per NPC made scene allocation grow with
+-- the largest visited set. Keep only the workers' most recent scenes cached.
+ACB.portraitLoaderLimit = 4
 function ACB.createPortraitLoader(parent, paper)
     local driver = CreateFrame("Frame", nil, parent)
     driver.acbPortraitLoader, driver.models = true, {}
@@ -136,7 +137,7 @@ function ACB.createPortraitLoader(parent, paper)
         driver:Hide()
         source, queue, nextSlot, active = nil, {}, 1, 0
         for _, model in ipairs(driver.models) do
-            model.active, model.entry = false, nil
+            model.active, model.entry, model.job = false, nil, nil
             model:Hide()
             safe(model.ClearModel, model)
         end
@@ -146,7 +147,26 @@ function ACB.createPortraitLoader(parent, paper)
         local file = ACB.read(safe(model.GetModelFileID, model), "number")
         return file and file > 0 and (not model.entry.profession or file == model.entry.model)
     end
-    local function request(model)
+    local function idleModel()
+        local spare
+        for _, model in ipairs(driver.models) do
+            if not model.active then
+                if not model.entry then return model end
+                spare = spare or model
+            end
+        end
+        if #driver.models >= ACB.portraitLoaderLimit then return spare end
+        local model = CreateFrame("PlayerModel", nil, driver)
+        model:SetSize(128, 104)
+        model:SetPoint("CENTER", paper)
+        model:SetFrameLevel(parent:GetFrameLevel())
+        safe(model.SetKeepModelOnHide, model, true)
+        driver.models[#driver.models + 1] = model
+        return model
+    end
+    local function request(model, job)
+        safe(model.ClearModel, model)
+        model.entry, model.job, model.retried = job.entry, job, job.retried
         model.age, model.active = 0, true
         active = active + 1
         model:Show()
@@ -157,21 +177,28 @@ function ACB.createPortraitLoader(parent, paper)
         for _, model in ipairs(driver.models) do
             if model.active then
                 model.age = model.age + elapsed
-                if (ready(model) and model.age >= .2) or model.age >= 3 then
+                local loaded = ready(model)
+                if (loaded and model.age >= .2) or model.age >= 3 then
                     model.active = false
                     active = active - 1
                     model:Hide()
-                    if not ready(model) and not model.retried then
-                        model.retried = true
-                        queue[#queue + 1] = model
+                    if not loaded then
+                        if not model.job.retried then
+                            model.job.retried = true
+                            queue[#queue + 1] = model.job
+                        end
+                        model.entry = nil
+                        safe(model.ClearModel, model)
                     end
                 end
             end
         end
-        while active < 4 and nextSlot <= #queue do
-            local model = queue[nextSlot]
+        while active < ACB.portraitLoaderLimit and nextSlot <= #queue do
+            local model = idleModel()
+            if not model then break end
+            local job = queue[nextSlot]
             nextSlot = nextSlot + 1
-            request(model)
+            request(model, job)
         end
         if active == 0 and nextSlot > #queue then driver:Hide() end
     end)
@@ -186,24 +213,12 @@ function ACB.createPortraitLoader(parent, paper)
         end
         release()
         source, queue, nextSlot, active = entries, {}, 1, 0
-        local seen, count = {}, 0
+        local seen = {}
         for _, entry in ipairs(entries) do
             local key = entry.profession and entry.model or ("npc:" .. entry.id)
             if key and not seen[key] then
-                seen[key], count = true, count + 1
-                local model = driver.models[count]
-                if not model then
-                    model = CreateFrame("PlayerModel", nil, driver)
-                    model:SetSize(128, 104)
-                    model:SetPoint("CENTER", paper)
-                    -- Opaque parchment covers this normally rendered loader.
-                    -- Near-zero alpha can prevent the engine from rendering/loading it.
-                    model:SetFrameLevel(parent:GetFrameLevel())
-                    safe(model.SetKeepModelOnHide, model, true)
-                    driver.models[count] = model
-                end
-                model.entry, model.retried, model.active = entry, false, false
-                queue[#queue + 1] = model
+                seen[key] = true
+                queue[#queue + 1] = { entry = entry, retried = false }
             end
         end
         if #queue > 0 then driver:Show() end

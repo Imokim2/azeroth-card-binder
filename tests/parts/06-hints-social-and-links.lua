@@ -18,9 +18,11 @@ test("tooltip hints say whether a card is owned and where to find it", function(
     equal(added[1], "Card: not in your binder yet")
     added = {}
     hintCallbacks[1](tip, { guid = guid(99999, "unknown") })
+    equal(#added, 0) -- unknown sources do not get an invented card status
     hintCallbacks[1](tip, { guid = secret })
-    equal(#added, 0) -- unknown and unreadable sources add nothing
+    equal(added[1], "Card status: hidden by the game here. Check the binder index.")
     saved.hints = false
+    added = {}
     hintCallbacks[1](tip, { guid = guid(589, "tip") })
     equal(#added, 0)
     saved.hints = nil
