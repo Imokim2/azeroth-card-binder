@@ -105,6 +105,18 @@ function build() {
         throw new Error(`LuaJIT failed (${luajit}): ${result.error ? result.error.message : result.stderr}`);
     }
     const catalog = JSON.parse(result.stdout);
+    // Freeze the published spec-9 launch rules for events before mode/faction1.
+    // New active lists must not reinterpret a saved drop, pack or completed page.
+    const previous = JSON.parse(fs.readFileSync(path.join(root, "packages", "shared", "spec9-collection.json"), "utf8"));
+    for (const [key, seasonal] of Object.entries(previous.seasonal)) {
+        if (!catalog.cards[key]) throw new Error(`missing historical card ${key}`);
+        catalog.cards[key].seasonalBeforeFaction = seasonal;
+    }
+    for (const [code, required] of Object.entries(previous.required)) {
+        const set = catalog.sets.find(entry => entry.code === code);
+        if (!set || required.some(key => !catalog.cards[key])) throw new Error(`missing historical set ${code}`);
+        set.requiredBeforeFaction = required;
+    }
     for (const set of catalog.sets) {
         if (!set.code) throw new Error(`a set has no code: ${set.title}`);
     }

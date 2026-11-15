@@ -1,7 +1,7 @@
 {
  "format": 1,
  "status": "DRAFT: a proposal for review. Nothing in the catalog, add-on or server uses this file.",
- "catalogVersion": "9fe9fd264ff3",
+ "catalogVersion": "4301ff859016",
  "rule": "tools/launch-collection.js (chase cards on ordinary creatures: season)",
  "counts": {
   "launch": 1729,

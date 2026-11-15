@@ -66,7 +66,9 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
     if (card && card.baseKey && !state.editions && (event.kind === "drop" || event.kind === "packCard")) return "edition";
     if (state.launch === 1 && available && card && (event.kind === "drop" || event.kind === "miss" || event.kind === "packCard" || event.kind === "craft")) {
         const baseKey = card.baseKey || event.key;
-        if (catalog.cards[baseKey]?.seasonal && !available(baseKey, event.t)) return "retired";
+        const base = catalog.cards[baseKey];
+        const seasonal = state.faction === 1 ? base?.seasonal : (base?.seasonalBeforeFaction ?? base?.seasonal);
+        if (seasonal && !available(baseKey, event.t)) return "retired";
     }
     // Cards added in spec 10 (catalog card.since) are not acquired before mode/faction1, and a card only one faction can win (card.faction) is
     // acquired only by a character that has declared that faction (mode/side:alliance or mode/side:horde, once per character).
@@ -201,7 +203,8 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
             const set = catalog.sets.find((entry) => entry.code === event.key);
             if (!set) return "unknown-set";
             if (event.count !== 0 || state.sets[set.code]) return "set";
-            if (!(set.required || set.cards).every((key) => familyCount(catalog, counts, key) > 0)) return "set"; // a page is finished by its launch cards (set.required, when the catalog names them)
+            const required = state.faction === 1 ? set.required : (set.requiredBeforeFaction || set.required);
+            if (!(required || set.cards).every((key) => familyCount(catalog, counts, key) > 0)) return "set";
             state.sets[set.code] = true;
             break;
         }
