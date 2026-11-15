@@ -4,6 +4,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+## 1.0.12 - 2026-11-15
+
+- Explain that existing Casual finds prevent a binder from joining Ranked before checking companion setup. A synced Casual player is no longer told to download the companion again when trying to change modes. Rejected changes keep their collection and ledger intact.
+- Recognise the exact synced binder nonce already supplied by companion 1.0.1 for established collections, as well as its fresh-binder setup list. Pairing no longer disappears merely because a binder has cards. Another binder's nonce or the presence of a tape alone is insufficient; Casual eligibility checks remain in place.
+- Companion 1.0.1 remains current. No saved cards, packs, drop rules or collection history are reset by this update.
+
 ## 1.0.11 - 2026-11-15
 
 - Add Settings > Help, with links to bug reports, known issues and the community Discord. The General page also has a Report a bug button. Copying the report link fills in only the addon version, game build, mode, location and 3D-model setting; account files, player names and collection records are not included.

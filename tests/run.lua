@@ -44,6 +44,7 @@ local parts = {
     "37-casual-warning-trading",
     "38-dungeon-hints-index-filters",
     "39-support-community",
+    "40-ranked-setup-recovery",
 }
 
 local source, ranges, line = {}, {}, 1
