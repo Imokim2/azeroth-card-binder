@@ -65,6 +65,7 @@ GGET UnitIsDeadOrGhost
 GGET UnitIsPlayer
 GGET UnitIsTapDenied
 GGET UnitIsUnit
+GGET UnitName
 GGET UnitOnTaxi
 GGET UnitPosition
 GGET UnitTokenFromGUID

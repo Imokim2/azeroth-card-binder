@@ -6,6 +6,16 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.0.10 - 2026-11-15
+
+- Bound portrait preloading to four reusable model scenes per folio instead of creating one frame per NPC. Large categories and repeatedly visited sets no longer increase that pool. Preloading still requests every unique model and retries failed requests once; only the workers' most recent scenes remain cached. Visible cards keep their 3D models, motion and manual rotation.
+- Preserve a real fullscreen-loop incident showing DX12 descriptor/render-target allocation failures and repeated device recovery, with companion 1.0.1 installed. The bounded pool removes an identified source of scene growth; whether it prevents the client's recovery loop still needs in-game confirmation. No graphics settings are changed.
+- Add All, Owned and Unowned buttons to the collection index. Ownership filters list cards and collectible editions individually, combine with mob/set/category searches, reset pagination and retain the chosen filter. Normal set progress still counts card families.
+- Extend unit tooltip lookup beyond the tooltip's GUID: try the actual displayed unit's readable identifier, then an unambiguous readable NPC name in the current zone or dungeon. Unknown identifiers and ambiguous names are never treated as a known card. Owned seasonal cards retain their tooltip status without becoming eligible drops.
+- When the client protects the identity needed for a card lookup, show an explanation and direct players to the index. Protected values are never decoded or compared, and name matching is never used to award cards or change Ranked records. Per-mob status cannot be promised while all identifying data is protected; verify in Forever.
+- Make the optional display recorder run for an hour when double-clicked and document the dungeon-loading recurrence reported on 1.0.7. The recorder is a separate manual tool and is not included in the addon. The fullscreen display issue remains unresolved; CurseForge stays on hold.
+- Existing cards, packs, progress, drop rules and companion 1.0.1 are unchanged. Fully exit WoW after updating, then relaunch, so the old session's model frames cannot remain allocated.
+
 ## 1.0.9 - 2026-11-14
 
 - Add a Chat page under Settings, with separate opt-in guild announcements for cards and pack finds. Guild cards default to Epic and Legendary when enabled; choose All, Rare and above, Epic and Legendary, or Legendary only. Existing group and solo announcements keep their own switch.

@@ -1,12 +1,30 @@
 # Fullscreen minimise/restore investigation
 
-Status: unresolved; do not describe 1.0.5/companion 1.0.1 as a confirmed fix or clear the public-release gate on automated checks alone.
+Status: actual DX12 allocation/recovery failure captured; the trigger is not established. Addon 1.0.10 bounds the preloader's scene allocation. Do not describe it as a confirmed resolution or clear the public-release gate on automated checks alone.
 
-Players reported the whole client repeatedly minimising and restoring roughly twice a second, during loading and a flight path, with the binder closed. It needed a forced exit. A sync-warning focus path in companion 1.0.0 was real and was removed in 1.0.1, but the affected player did not see the companion appear or a sync error. That path has not been established as the cause. The updated pair has not yet been tested together by that player.
+Players reported the whole client repeatedly minimising and restoring roughly twice a second, during loading and a flight path, with the binder closed. It needed a forced exit. A sync-warning focus path in companion 1.0.0 was real and was removed in 1.0.1, but the affected player did not see the companion appear or a sync error. That path has not been established as the cause. A later recurrence was captured with companion 1.0.1 running.
 
 Addon 1.0.5 removes 3D pickup models, releases hidden/transition models and suspends them on taxis. These are mitigations. Card motion changes in 1.0.6 are artwork changes, not another claimed display-loop fix.
 
 Addon 1.0.7 restores pickup models when the player's 3D setting is enabled, correcting the unconditional icon-only popups introduced in 1.0.5. Notifications wait through loading/world transitions and taxi travel, preserve their queue and visible lifetime, and use the existing model-release-on-hide lifecycle. Disabling 3D still gives 2D notifications. This removes the blanket pickup-model suppression, so include normal card finds in further stability testing; the original loop is still unresolved.
+
+## Captured failure on 15 November 2026
+
+At 00:06:48 UTC, while entering Razorfen Kraul, the client's graphics log first recorded `OutOfMemory: AllocDescriptors Failed` and `OutOfMemory: RTV view create failed`, followed by a lost device on the loading screen. The first device-recovery restart followed at 00:06:48.897; the preserved live copy reached recovery occurrence 138 at 00:09:09.420. The player confirmed using a binder earlier in that game session. The game did not recover and the player forced it closed. They have also experienced it at the Deeprun Tram and Blackfathom Deeps. Evidence copies are local and ignored under `.local-tools/display-incident-20261115-000731/`; never commit or upload the raw files automatically.
+
+At the first failure, reported GPU memory use was about 4.4 GB against a 9.3 GB budget. This establishes allocation failure and repeated renderer recovery; it does not by itself establish ordinary VRAM exhaustion or which component caused it. The active companion executable was verified as 1.0.1. Installed addon files were 1.0.9; the exact Lua version loaded at that moment was not independently confirmed. Versions 1.0.7 through 1.0.9 share the relevant model-loading code.
+
+The recorder started after the loop was already underway and its output was preserved too. It includes normal user interaction with other applications, so foreground changes alone cannot identify a cause at onset. The graphics log establishes the recurring renderer failure rather than merely an inferred focus issue.
+
+A [7 November Forever bug report](https://us.forums.blizzard.com/en/wow/t/wow-forever-deeprun-tram-loading-screen-hang-infinite-dx12-device-recovery-loop-rx-9070-xt/2404609) describes the same allocation/recovery sequence on a Radeon RX 9070 XT; this captured PC uses an RTX 3080. Replies also mention Blackfathom Deeps. That supports a client DX12 failure affecting more than one setup. The report does not establish which addons were installed, so it does not exonerate or implicate Warcards.
+
+### Model-pool correction in 1.0.10
+
+Source review found that portrait warming created a separate `PlayerModel` frame for every unique NPC in the largest visited set, per folio. Clearing model content did not destroy those frame objects. The frame pool was unbounded by a fixed scene budget. This is an identified resource-growth problem and a plausible contributor, not a proven native descriptor leak.
+
+The preloader now reuses at most four scene frames per folio, regardless of category size or how often sets change. It still visits every unique model, deduplicates editions, retries failed requests once, and clears scenes during transitions or closure. Only the workers' most recent loaded scenes are retained, so a previously warmed model may need loading again when shown. Visible card widgets keep their existing 3D artwork and controls. Tests exercise 200 NPCs across repeated category changes and assert that the frame pool never grows beyond four.
+
+Fully exit and relaunch WoW after installing 1.0.10 so the old UI session's frame objects are gone. Keep the recorder running during normal group testing. A short successful run does not establish a fix. If recurrence persists, preserve `gx.log` before restarting and compare with the companion fully quit, then with 3D models disabled, changing one variable at a time. No renderer settings, drivers or saved progress are modified by this correction.
 
 ## Recurrence reported on 14 November 2026
 
