@@ -7,9 +7,9 @@ import * as editions from "../../packages/shared/src/editions.js";
 export type Catalog = {
   catalogVersion: string;
   cards: Record<string, { name: string; rarity: string; rank: string; set: string; boss?: boolean; profession?: string; baseKey?: string; editionTitle?: string;
-    critter?: boolean; balanceOnly?: boolean; seasonal?: boolean; unobtainable?: boolean; faction?: "alliance" | "horde"; since?: number; dropProfile?: { rate: number; rate2?: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
+    critter?: boolean; balanceOnly?: boolean; seasonal?: boolean; seasonalBeforeFaction?: boolean; unobtainable?: boolean; faction?: "alliance" | "horde"; since?: number; dropProfile?: { rate: number; rate2?: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
   editions?: Record<string, { key: string; weight: number }[]>;
-  sets: { code: string; title: string; group: string; reward: string; cards: string[] }[];
+  sets: { code: string; title: string; group: string; reward: string; cards: string[]; required?: string[]; requiredBeforeFaction?: string[] }[];
   dust: { recycle: Record<string, number>; craft: Record<string, number> };
   rates: Record<string, number>;
   stackFactor: number;

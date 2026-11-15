@@ -1,0 +1,2699 @@
+{
+  "sourceCatalogVersion": "3d0b62359bee",
+  "cases": [
+    {
+      "zone": "AXX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10640"
+    },
+    {
+      "zone": "AXX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:3823"
+    },
+    {
+      "zone": "AXX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:3748"
+    },
+    {
+      "zone": "AXX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:3923"
+    },
+    {
+      "zone": "AXX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10641"
+    },
+    {
+      "zone": "AXX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:3763"
+    },
+    {
+      "zone": "AXX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:3812"
+    },
+    {
+      "zone": "AXX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:3926"
+    },
+    {
+      "zone": "AXX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10641"
+    },
+    {
+      "zone": "AXX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:3763"
+    },
+    {
+      "zone": "AXX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:3812"
+    },
+    {
+      "zone": "AXX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:3926"
+    },
+    {
+      "zone": "AXX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:4015"
+    },
+    {
+      "zone": "AXX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3821"
+    },
+    {
+      "zone": "AXX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3926"
+    },
+    {
+      "zone": "AXX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3711"
+    },
+    {
+      "zone": "AXX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:5928"
+    },
+    {
+      "zone": "AXX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:3755"
+    },
+    {
+      "zone": "AXX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:3810"
+    },
+    {
+      "zone": "AXX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:3821"
+    },
+    {
+      "zone": "AXX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:5928"
+    },
+    {
+      "zone": "AXX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:3755"
+    },
+    {
+      "zone": "AXX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:3810"
+    },
+    {
+      "zone": "AXX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:3821"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:6109"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:6371"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:8760"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:6194"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:6109"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7864"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:6350"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:6127"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:6109"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7864"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:6350"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:6127"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:6109"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:6117"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:6190"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:6193"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:6109"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:6369"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:6193"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:6117"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:6109"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:6369"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:6193"
+    },
+    {
+      "zone": "AXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:6117"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:8905"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:8900"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:9545"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:8915"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:8906"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:8904"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:8897"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:8921"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:8906"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:8904"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:8897"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:8921"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:8905"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:8921"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:8921"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:8921"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:8906"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:8915"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:8897"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:8897"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:8906"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:8915"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:8897"
+    },
+    {
+      "zone": "BDX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:8897"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:5834"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:3250"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:3279"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:3434"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:5827"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:3283"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:3472"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:6494"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:5827"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:3283"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:3472"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:6494"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3398"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:2977"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3261"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3475"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:12497"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:11915"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:4128"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:3276"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:12497"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:11915"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:4128"
+    },
+    {
+      "zone": "BXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:3276"
+    },
+    {
+      "zone": "DM",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:1763"
+    },
+    {
+      "zone": "DM",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:4416"
+    },
+    {
+      "zone": "DM",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:3586"
+    },
+    {
+      "zone": "DM",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:4416"
+    },
+    {
+      "zone": "DM",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:4416"
+    },
+    {
+      "zone": "DM",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:3586"
+    },
+    {
+      "zone": "DM",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:4416"
+    },
+    {
+      "zone": "DM",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:4416"
+    },
+    {
+      "zone": "DM",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:1763"
+    },
+    {
+      "zone": "DM",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:3586"
+    },
+    {
+      "zone": "DM",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:3586"
+    },
+    {
+      "zone": "DM",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DMX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:11480"
+    },
+    {
+      "zone": "DMX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:13160"
+    },
+    {
+      "zone": "DMX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:13276"
+    },
+    {
+      "zone": "DMX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:13916"
+    },
+    {
+      "zone": "DMX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:11473"
+    },
+    {
+      "zone": "DMX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:14361"
+    },
+    {
+      "zone": "DMX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:11477"
+    },
+    {
+      "zone": "DMX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:13276"
+    },
+    {
+      "zone": "DMX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:11473"
+    },
+    {
+      "zone": "DMX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:14361"
+    },
+    {
+      "zone": "DMX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:11477"
+    },
+    {
+      "zone": "DMX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:13276"
+    },
+    {
+      "zone": "DMX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:11480"
+    },
+    {
+      "zone": "DMX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:14400"
+    },
+    {
+      "zone": "DMX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:14400"
+    },
+    {
+      "zone": "DMX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:14400"
+    },
+    {
+      "zone": "DMX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:11473"
+    },
+    {
+      "zone": "DMX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "DMX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "DMX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "DMX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:11473"
+    },
+    {
+      "zone": "DMX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "DMX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "DMX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "EFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:472"
+    },
+    {
+      "zone": "EFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:1922"
+    },
+    {
+      "zone": "EFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7384"
+    },
+    {
+      "zone": "EFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:38"
+    },
+    {
+      "zone": "EFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:472"
+    },
+    {
+      "zone": "EFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7384"
+    },
+    {
+      "zone": "EFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:119"
+    },
+    {
+      "zone": "EFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7382"
+    },
+    {
+      "zone": "EFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:472"
+    },
+    {
+      "zone": "EFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7384"
+    },
+    {
+      "zone": "EFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:119"
+    },
+    {
+      "zone": "EFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7382"
+    },
+    {
+      "zone": "EFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:471"
+    },
+    {
+      "zone": "EFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:113"
+    },
+    {
+      "zone": "EFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:6093"
+    },
+    {
+      "zone": "EFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:822"
+    },
+    {
+      "zone": "EFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:448"
+    },
+    {
+      "zone": "EFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:60"
+    },
+    {
+      "zone": "EFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:113"
+    },
+    {
+      "zone": "EFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:113"
+    },
+    {
+      "zone": "EFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:448"
+    },
+    {
+      "zone": "EFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:60"
+    },
+    {
+      "zone": "EFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:113"
+    },
+    {
+      "zone": "EFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:113"
+    },
+    {
+      "zone": "RDX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7342"
+    },
+    {
+      "zone": "RDX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7334"
+    },
+    {
+      "zone": "RDX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7346"
+    },
+    {
+      "zone": "RDX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7334"
+    },
+    {
+      "zone": "RDX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7345"
+    },
+    {
+      "zone": "RDX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7343"
+    },
+    {
+      "zone": "RDX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7344"
+    },
+    {
+      "zone": "RDX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7344"
+    },
+    {
+      "zone": "RDX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7345"
+    },
+    {
+      "zone": "RDX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7343"
+    },
+    {
+      "zone": "RDX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7344"
+    },
+    {
+      "zone": "RDX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7344"
+    },
+    {
+      "zone": "RDX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:7342"
+    },
+    {
+      "zone": "RDX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:2110"
+    },
+    {
+      "zone": "RDX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:2110"
+    },
+    {
+      "zone": "RDX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:7345"
+    },
+    {
+      "zone": "RDX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:7345"
+    },
+    {
+      "zone": "RDX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "SFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:1947"
+    },
+    {
+      "zone": "SFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:1768"
+    },
+    {
+      "zone": "SFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:1782"
+    },
+    {
+      "zone": "SFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:1923"
+    },
+    {
+      "zone": "SFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:2283"
+    },
+    {
+      "zone": "SFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:1971"
+    },
+    {
+      "zone": "SFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:1923"
+    },
+    {
+      "zone": "SFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:1797"
+    },
+    {
+      "zone": "SFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:2283"
+    },
+    {
+      "zone": "SFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:1971"
+    },
+    {
+      "zone": "SFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:1923"
+    },
+    {
+      "zone": "SFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:1797"
+    },
+    {
+      "zone": "SFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:12123"
+    },
+    {
+      "zone": "SFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:1869"
+    },
+    {
+      "zone": "SFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:1983"
+    },
+    {
+      "zone": "SFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:1869"
+    },
+    {
+      "zone": "SFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:12123"
+    },
+    {
+      "zone": "SFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:1767"
+    },
+    {
+      "zone": "SFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:1767"
+    },
+    {
+      "zone": "SFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:1767"
+    },
+    {
+      "zone": "SFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:12123"
+    },
+    {
+      "zone": "SFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:1767"
+    },
+    {
+      "zone": "SFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:1767"
+    },
+    {
+      "zone": "SFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:1767"
+    },
+    {
+      "zone": "SKX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:3851"
+    },
+    {
+      "zone": "SKX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:3873"
+    },
+    {
+      "zone": "SKX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:3873"
+    },
+    {
+      "zone": "SKX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:5058"
+    },
+    {
+      "zone": "SKX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3851"
+    },
+    {
+      "zone": "SKX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3853"
+    },
+    {
+      "zone": "SKX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3853"
+    },
+    {
+      "zone": "SKX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:3853"
+    },
+    {
+      "zone": "SKX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:3873"
+    },
+    {
+      "zone": "SKX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:3862"
+    },
+    {
+      "zone": "SKX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:3854"
+    },
+    {
+      "zone": "SKX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10000"
+    },
+    {
+      "zone": "SKX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:3873"
+    },
+    {
+      "zone": "SKX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:3862"
+    },
+    {
+      "zone": "SKX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:3854"
+    },
+    {
+      "zone": "SKX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10000"
+    },
+    {
+      "zone": "SXX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10498"
+    },
+    {
+      "zone": "SXX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10481"
+    },
+    {
+      "zone": "SXX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10485"
+    },
+    {
+      "zone": "SXX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:14861"
+    },
+    {
+      "zone": "SXX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10678"
+    },
+    {
+      "zone": "SXX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10678"
+    },
+    {
+      "zone": "SXX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:14861"
+    },
+    {
+      "zone": "SXX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10678"
+    },
+    {
+      "zone": "SXX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10678"
+    },
+    {
+      "zone": "SXX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10498"
+    },
+    {
+      "zone": "SXX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:14861"
+    },
+    {
+      "zone": "SXX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:14861"
+    },
+    {
+      "zone": "SXX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10422"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10391"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10391"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:10391"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10385"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10399"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10399"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10411"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10385"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10399"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10399"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10411"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10422"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10385"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10385"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "TNX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:4339"
+    },
+    {
+      "zone": "TNX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:4096"
+    },
+    {
+      "zone": "TNX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:4096"
+    },
+    {
+      "zone": "TNX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:4096"
+    },
+    {
+      "zone": "TNX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:5937"
+    },
+    {
+      "zone": "TNX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:4140"
+    },
+    {
+      "zone": "TNX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10760"
+    },
+    {
+      "zone": "TNX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:4130"
+    },
+    {
+      "zone": "TNX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:5937"
+    },
+    {
+      "zone": "TNX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:4140"
+    },
+    {
+      "zone": "TNX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10760"
+    },
+    {
+      "zone": "TNX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:4130"
+    },
+    {
+      "zone": "TNX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:5937"
+    },
+    {
+      "zone": "TNX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:4154"
+    },
+    {
+      "zone": "TNX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:4158"
+    },
+    {
+      "zone": "TNX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:4249"
+    },
+    {
+      "zone": "TNX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:15748"
+    },
+    {
+      "zone": "TNX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:4250"
+    },
+    {
+      "zone": "TNX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:4158"
+    },
+    {
+      "zone": "TNX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:4154"
+    },
+    {
+      "zone": "TNX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:15748"
+    },
+    {
+      "zone": "TNX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:4250"
+    },
+    {
+      "zone": "TNX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:4158"
+    },
+    {
+      "zone": "TNX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:4154"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7797"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": false,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 1,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "daa66d13000808cb",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "78dde6c40008a702",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "1715607500094539",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "b54cda260009e370",
+      "launched": false,
+      "balanced": 2,
+      "expected": "npc:7269"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:7797"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:7268"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:10080"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": false,
+      "expected": "npc:7797"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 1,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "daa66d13000808cb",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "78dde6c40008a702",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "1715607500094539",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10082"
+    },
+    {
+      "zone": "ZFX",
+      "entry": "b54cda260009e370",
+      "launched": true,
+      "balanced": 2,
+      "expected": "npc:10082"
+    }
+  ],
+  "testTape": {
+    "secret": "public-spec9-upgrade-test-fixture",
+    "playerId": "spec9-upgrade"
+  },
+  "serverCases": [
+    {
+      "zone": "AXX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:3820"
+    },
+    {
+      "zone": "AXX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:3783"
+    },
+    {
+      "zone": "AXX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:3925"
+    },
+    {
+      "zone": "AXX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:3755"
+    },
+    {
+      "zone": "AXX2",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:8409"
+    },
+    {
+      "zone": "AXX2",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:8763"
+    },
+    {
+      "zone": "AXX2",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:6193"
+    },
+    {
+      "zone": "AXX2",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:8763"
+    },
+    {
+      "zone": "BDX2",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:8921"
+    },
+    {
+      "zone": "BDX2",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:8915"
+    },
+    {
+      "zone": "BDX2",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:8921"
+    },
+    {
+      "zone": "BDX2",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:8921"
+    },
+    {
+      "zone": "BXX2",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:4351"
+    },
+    {
+      "zone": "BXX2",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:3300"
+    },
+    {
+      "zone": "BXX2",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:3229"
+    },
+    {
+      "zone": "BXX2",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:11915"
+    },
+    {
+      "zone": "DM",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DM",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:598"
+    },
+    {
+      "zone": "DMX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:14400"
+    },
+    {
+      "zone": "DMX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "DMX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "DMX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:11476"
+    },
+    {
+      "zone": "EFX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:14868"
+    },
+    {
+      "zone": "EFX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:7385"
+    },
+    {
+      "zone": "EFX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:515"
+    },
+    {
+      "zone": "EFX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:7385"
+    },
+    {
+      "zone": "RDX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "RDX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:7333"
+    },
+    {
+      "zone": "SFX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:1958"
+    },
+    {
+      "zone": "SFX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:2173"
+    },
+    {
+      "zone": "SFX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:1870"
+    },
+    {
+      "zone": "SFX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:1972"
+    },
+    {
+      "zone": "SKX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:3868"
+    },
+    {
+      "zone": "SKX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:4278"
+    },
+    {
+      "zone": "SKX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:3863"
+    },
+    {
+      "zone": "SKX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:3873"
+    },
+    {
+      "zone": "SXX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:10480"
+    },
+    {
+      "zone": "SXX2",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "SXX2",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:10390"
+    },
+    {
+      "zone": "TNX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:4093"
+    },
+    {
+      "zone": "TNX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:4093"
+    },
+    {
+      "zone": "TNX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:10761"
+    },
+    {
+      "zone": "TNX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:4151"
+    },
+    {
+      "zone": "ZFX",
+      "position": 1,
+      "entry": "4e602b3350d7d807",
+      "expected": "npc:8130"
+    },
+    {
+      "zone": "ZFX",
+      "position": 2,
+      "entry": "4b633810d601d4cf",
+      "expected": "npc:7272"
+    },
+    {
+      "zone": "ZFX",
+      "position": 3,
+      "entry": "cbf3aefb93b2cf6e",
+      "expected": "npc:7274"
+    },
+    {
+      "zone": "ZFX",
+      "position": 4,
+      "entry": "773db772d1d57649",
+      "expected": "npc:7274"
+    }
+  ]
+}

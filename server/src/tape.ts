@@ -93,7 +93,8 @@ export async function checkTape(args: {
         const card = args.catalog.cards[key];
         if (card?.since && !factioned) return false;
         if (card?.faction && sides[event.char] !== card.faction) return false;
-        return !(launched && args.available && card?.seasonal && !args.available(key, event.t));
+        const seasonal = factioned ? card?.seasonal : (card?.seasonalBeforeFaction ?? card?.seasonal);
+        return !(launched && args.available && seasonal && !args.available(key, event.t));
       };
       const base = packPick(args.catalog, zone, entry, args.catalog.shinyOdds, balanced, winnable);
       const expected = editions && base ? pickEdition(args.catalog, base, await editionValue(entry), balanced) : base;

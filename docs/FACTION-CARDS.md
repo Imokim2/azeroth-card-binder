@@ -19,6 +19,8 @@ How it plays:
 - **The ledger knows each character's faction.** The add-on writes `mode/faction1` once, and `mode/side:alliance` or `mode/side:horde` for each character before its first roll, pack or craft of a card added in spec 10. The server refuses a faction card from a character that has not declared that faction, and checks a pack's cards against the opener's pool. The declaration is the player's own word, like every event (spec section 1).
 - **Nothing before the markers changes.** The new cards (`since: 10`) do not exist for a binder until it records `faction1`, so every earlier history and pack replays exactly as it did.
 
+The published spec-9 launch list is also preserved. `packages/shared/spec9-collection.json` is a frozen checkpoint from catalog `3d0b62359bee`, with the earlier seasonal flags and page requirements that changed. The catalog generator embeds these as `seasonalBeforeFaction` and `requiredBeforeFaction`; replay and server pack checks use them until `faction1`. After that marker, new finds use the current list. Do not rebuild this checkpoint from the new catalog: that would reinterpret existing drops, packs and completed pages. Regression fixtures contain actual outcomes from the published catalog, including Defias Miner changing from a launch card to a held-back card.
+
 ## 2. Every dungeon and raid creature has a card
 
 41 creatures in dungeons and raids were missing because the data lists them as friendly:
