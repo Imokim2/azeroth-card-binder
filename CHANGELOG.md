@@ -4,7 +4,7 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
-Nothing yet.
+- Add a prominent GitHub warning and a shared known-issues page for the DX12 loading-screen problem, with the same disclosure in the unsubmitted CurseForge page. Explain that Warcards may aggravate the issue and 1.0.10 is a mitigation rather than a confirmed fix.
 
 ## 1.0.10 - 2026-11-15
 

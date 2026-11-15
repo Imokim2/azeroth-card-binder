@@ -8,6 +8,9 @@ Find cards from mobs, dungeon bosses and gathering nodes while you play **World 
 
 Free and open source. Built for **Forever**; Retail and other Classic clients are not currently supported.
 
+> [!WARNING]
+> **Known issue: DX12 loading screens.** Some Forever players experience a loading-screen hang with repeated desktop flickering. Warcards' 3D models may make this issue more likely or worse. Version 1.0.10 reduces preload-scene allocation, but is **not a confirmed fix**. Read the [known issues and troubleshooting steps](KNOWN-ISSUES.md) before installing.
+
 ## Your collection, in game
 
 Browse cards by zone or dungeon, see what you’re missing and take a closer look at your favourites. Some cards have separate collectible editions with different poses or animations.
@@ -68,6 +71,7 @@ Read the [Ranked rules](https://worldofwarcards.co.uk/fair-play) **before starti
 
 - [Setup and troubleshooting](https://worldofwarcards.co.uk/help)
 - [Frequently asked questions](https://worldofwarcards.co.uk/faq)
+- [Known issues](KNOWN-ISSUES.md)
 - [Server status](https://worldofwarcards.co.uk/status)
 - [Bug reports and feature requests](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose)
 - [Privacy and deleting your data](https://worldofwarcards.co.uk/privacy)

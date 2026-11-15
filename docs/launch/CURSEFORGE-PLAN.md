@@ -2,6 +2,8 @@
 
 **Prepared for 1.0.0; not submitted.** Website and GitHub publication are separate from CurseForge acceptance. Forever client tagging and optional-companion wording remain outstanding. Five real screenshots are prepared; pack-opening, edition and seasonal captures are still needed. [Support enquiry draft](CURSEFORGE-SUPPORT-DRAFT.md) is ready to send manually; no ticket has been sent.
 
+**Known-issue disclosure, 15 November 2026:** the requested public notice is included near the top of [the page draft](CURSEFORGE-PAGE.md) and in [KNOWN-ISSUES.md](../../KNOWN-ISSUES.md). The DX12 loading-screen issue is carried as a disclosed known issue, not described as resolved by 1.0.10 or as an officially confirmed Blizzard defect. This replaces treating that issue alone as an automatic publication hold. Submission still requires the user's instruction and the compatibility/page checks below.
+
 | Field | Proposed value |
 |---|---|
 | Name | World of Warcards |
@@ -32,6 +34,7 @@
 - Check the ZIP has `AzerothCardBinder/AzerothCardBinder.toc` at the expected depth and contains no installer, account files or credentials.
 - Confirm the addon, companion and server versions agree where Ranked play requires it.
 - Review compatibility tags, licence, avatar, summary, description, gallery and support links.
+- Keep the DX12 known-issue notice visible and match its wording to the latest evidence; do not claim the mitigation is a confirmed fix.
 - Wait for the user’s instruction to publish before creating/submitting the project or uploading a CurseForge file.
 
 References rechecked 13 November 2026: [creating a project](https://support.curseforge.com/support/solutions/articles/9000197241-creating-and-submitting-a-project), [submission guide](https://support.curseforge.com/support/solutions/articles/9000199552-project-submission-guide-and-tips), [moderation policies](https://support.curseforge.com/support/solutions/articles/9000197279-moderation-policies). These establish page requirements; acceptance of this specific client and companion remains unconfirmed.
