@@ -142,6 +142,11 @@ function ACB.initUI(saved, trade)
     end
 
     function ACB.open(destination)
+        -- Ordinary reopening can follow the zone bar's location lookup. Named
+        -- tabs, linked cards and the trade picker always keep their destination.
+        if destination == nil and not frame:IsShown() and not tradeSelection and ACB.settingOn(saved, "openCurrentZone") then
+            destination = ACB.zoneProgress(saved)
+        end
         if destination == "trade" then
             local s = trade:active()
             if s and s.invited then inviteTime = 0 invite:Show() return end
