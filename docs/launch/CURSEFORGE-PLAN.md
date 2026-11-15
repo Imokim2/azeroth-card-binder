@@ -24,7 +24,7 @@ The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGE
 | Comments | Enable; also provide the issue tracker and Discord help channels |
 | Supported client | World of Warcraft → Forever, version 1.60.1 for the current build; interface `16001`, `AllowLoadGameType: camelot` |
 
-The description puts the loading-screen notice near the top and community/homepage links at the bottom. It includes no direct external installer link, fixed catalog count, active-season claim or planned guild-binder feature.
+The description puts the loading-screen notice near the bottom, just before Help and feedback, with community/homepage links in the footer. It includes no direct external installer link, fixed catalog count, active-season claim or planned guild-binder feature.
 
 ## Harry's incoming card changes
 
@@ -50,7 +50,7 @@ The collection includes expanded dungeon and raid card lists. Cards tied to know
 
 ## Known issue to retain
 
-The DX12 loading-screen/minimise loop is disclosed near the top of the description and in [KNOWN-ISSUES.md](../../KNOWN-ISSUES.md). Warcards' 3D models may exacerbate it. The bounded preloader in 1.0.10 is a mitigation, not a confirmed fix or an official Blizzard diagnosis. Include the `/reload` workaround when chat responds and Alt+F4/relaunch fallback, including the possibility of losing unsaved finds.
+The DX12 loading-screen/minimise loop is disclosed near the bottom of the description, just before Help and feedback, and in [KNOWN-ISSUES.md](../../KNOWN-ISSUES.md). Warcards' 3D models may exacerbate it. The bounded preloader in 1.0.10 is a mitigation, not a confirmed fix or an official Blizzard diagnosis. Include the `/reload` workaround when chat responds and Alt+F4/relaunch fallback, including the possibility of losing unsaved finds.
 
 This is a disclosed known issue, not an automatic publication hold awaiting a graphics fix. It does not remove the release and page checks above.
 

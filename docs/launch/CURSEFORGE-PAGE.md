@@ -13,14 +13,6 @@ Collect cards from creatures, dungeon bosses and gathering nodes as you play. Fi
 
 **Built for World of Warcraft: Forever.** Retail and other Classic clients are not currently supported.
 
-## Known issue: loading screens
-
-Some Forever players using DirectX 12 have reported stuck loading screens with repeated desktop flickering. **Warcards' 3D models may make this issue more likely or worse.** The bounded model preloader added in 1.0.10 reduces graphics-resource use, but is **not a confirmed fix**.
-
-**If it happens:** press Enter, type `/reload` and press Enter again if chat still responds. This has recovered an affected session, but is not guaranteed. If it fails, close the game with Alt+F4 and relaunch it. Forced closure can lose finds since the last normal save. You can also turn off **3D card models** in Settings to reduce model work.
-
-See the [known issues and troubleshooting steps](https://github.com/Imokim2/azeroth-card-binder/blob/main/KNOWN-ISSUES.md) before installing. We are still investigating; the matching client reports do not establish an official diagnosis or a confirmed Blizzard fix.
-
 ## Your binder
 
 Browse collections by zone or dungeon, see the gaps you still need to fill and take a closer look at your favourite cards. Search for a creature, set or category, then filter the index by **All**, **Owned** or **Unowned**.
@@ -95,6 +87,14 @@ Install matching addon and companion updates, updating the companion first when 
 In **Settings**, choose whether to show card pop-ups, tooltip hints, the zone bar and 3D portraits. Switch pickup, pack, trade and window sounds on or off separately. Shift-drag the satchel button to move it.
 
 The **Chat** page has optional guild announcements for card and pack finds. Choose a minimum rarity for guild card messages so every common find does not fill guild chat.
+
+## Known issue: loading screens
+
+Some Forever players using DirectX 12 have reported stuck loading screens with repeated desktop flickering. **Warcards' 3D models may make this issue more likely or worse.** The bounded model preloader added in 1.0.10 reduces graphics-resource use, but is **not a confirmed fix**.
+
+**If it happens:** press Enter, type `/reload` and press Enter again if chat still responds. This has recovered an affected session, but is not guaranteed. If it fails, close the game with Alt+F4 and relaunch it. Forced closure can lose finds since the last normal save. You can also turn off **3D card models** in Settings to reduce model work.
+
+See the [known issues and troubleshooting steps](https://github.com/Imokim2/azeroth-card-binder/blob/main/KNOWN-ISSUES.md) before installing. We are still investigating; the matching client reports do not establish an official diagnosis or a confirmed Blizzard fix.
 
 ## Help and feedback
 
