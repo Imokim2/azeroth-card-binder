@@ -37,7 +37,7 @@ The DX12 loading-screen issue remains disclosed in [KNOWN-ISSUES.md](../../KNOWN
 - The exact published files were downloaded and checked against the published hashes. The addon has 103 entries, all TOC modules, the expected assets and the empty factory sync file, with no developer studio, installer or credentials.
 - The companion extracted from the downloaded installer passed real ASAR imports and actual main/preload/renderer startup in isolated fresh data as version 1.0.2 with catalog `4301ff859016`.
 - The trusted signed manifest and real addon updater passed an isolated installation over two accounts. Both save files, both backup saves and existing Ranked sync data remained byte-for-byte unchanged; the old addon was backed up.
-- Staging passed all 18 deep checks. The same verified signed feed was deployed to production, where fresh requests showed the new versions and matching download links/checksums. Normal cached responses are checked separately before handoff.
+- Staging passed all 18 deep checks. The same verified signed feed was deployed to production, where fresh requests showed the new versions and matching download links/checksums. Normal public URLs then passed the exact-version/signature/link checks after cache expiry; production passed all 18 deep checks, including actual download hashes. Final release-feed CI `43752615393` also passed.
 
 Published addon SHA-256: `e7c119467f45e9de15001d6762f0e64f2250badaf6a7df7646a49c6b5a938e60`.
 
