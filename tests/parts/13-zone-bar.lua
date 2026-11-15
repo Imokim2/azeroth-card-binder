@@ -1,5 +1,42 @@
 -- The zone card bar: it finds the set for the place you are in and follows you between zones and dungeons.
 
+test("optional zone opening follows the current place without redirecting links or active browsing", function()
+    local saved, frame = AzerothCardBinderDB, AzerothCardBinderWindow
+    local oldSetting, oldBar, oldPlace = saved.openCurrentZone, saved.zoneBar, ACB.currentPlaceName
+    local current = "Westfall"
+    ACB.currentPlaceName = function() return current end
+    saved.openCurrentZone, saved.zoneBar = nil, false
+    local westfall, dungeon = ACB.pageForName("Westfall"), ACB.pageForName("The Deadmines")
+    local function heading()
+        for _, widget in ipairs(widgets) do
+            if widget.parent == frame and widget.text and widget.text:match("^BINDER  /  ") then return widget.text end
+        end
+    end
+    local function region(index) equal(heading(), ("BINDER  /  %02d"):format(index)) end
+    ACB.open(dungeon); frame:Hide(); ACB.toggle()
+    region(dungeon) -- the existing default remembers its page
+    ACB.open("settings")
+    for _, widget in ipairs(widgets) do
+        if widget.settingKey == "openCurrentZone" then widget:SetChecked(true); widget:OnClick(); break end
+    end
+    equal(saved.openCurrentZone, true)
+    frame:Hide(); AzerothCardBinderMinimapButton:OnClick()
+    region(westfall) -- works even with the collection bar hidden
+    current = "The Deadmines"
+    frame:Hide(); SlashCmdList.AZEROTHCARDBINDER("")
+    region(dungeon)
+    current = "Westfall"
+    frame:Hide(); assert(ACB.openCard("edition:6391"))
+    region(dungeon) -- a linked card keeps its own set
+    ACB.open("index"); ACB.open()
+    equal(heading(), "BINDER  /  INDEX") -- no redirection while browsing
+    ACB.open(dungeon); frame:Hide()
+    current = "Stormwind City"
+    ACB.toggle(); region(dungeon) -- a place with no set keeps the last page
+    saved.openCurrentZone, saved.zoneBar, ACB.currentPlaceName = oldSetting, oldBar, oldPlace
+    frame:Hide()
+end)
+
 test("place names from the game find their set, with or without 'The', punctuation or a wing name", function()
     local function title(name)
         local index = ACB.pageForName(name)

@@ -19,6 +19,8 @@ Rarity icons have moved from the nameplate onto the divider at y=140, between th
 
 Boss details have three edition buttons below the large card. Each shows its own count or Locked. A locked edition may be previewed in grey without granting it. Clicking a chat link selects that exact edition. Shift-click, trade selection, wanted lists and binder inspection carry its exact inventory key. Thumbnail models remain still; owned animated details can play, pause and rotate with the existing controls. Unsupported animations fall back to a still frame. Camera framing and timings still require a Forever playtest.
 
+From 1.0.6, most cards have a still viewing angle: common creatures, gathering cards and critter portraits do not sway. Owned epic and legendary still portraits sway on the large detail card. Authored animated editions loop their actions without camera sway. VanCleef's legendary Signature has a curated flex loop (AnimationData 82), with a still combat fallback if unsupported; Blades Drawn keeps its separate spinning attack. Drag any loaded 3D model to rotate it, including gathering models. Right-click a moving detail to pause/resume. Missing cards and left-page previews never autoplay. This is shared artwork, not a reroll or an inventory change.
+
 ### Revised compositions in 0.4.0
 
 Every still and animated edition now has an authored action, a substantially different facing and crop from Signature, its own frozen point, and a small camera offset. The original Signature assignments remain unchanged. The composition notes are shown in `/acb studio`.

@@ -1,5 +1,7 @@
 # Screenshot list
 
+Received 13 November 2026: actual binder index, achievements, empty satchel, synced companion and trade-offer screenshots. These are published on GitHub and the website and prepared for the unsubmitted CurseForge page. Pack-opening, alternate editions and a running season still need captures. The supplied satchel is empty; the trade screenshot shows an offer before acceptance.
+
 Capture the build intended for release. Keep full-size PNG originals, preferably 1920 × 1080 or higher, with the UI visible. Don’t use Alt+Z for addon shots: it hides the window we need to show. Move the cursor away unless you want a tooltip in the image. A quiet location, readable UI scale and consistent resolution will help the gallery look like one set.
 
 | Priority | Filename | What to capture | Suggested caption |

@@ -120,6 +120,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     -- Only called for a committed acquisition, never while restoring or displaying a binder.
     function collection:cardAdded(card, info, message)
         report(message or ("Added %s to your binder (x%d)."):format(cardLink(card, info.shiny), info.count))
+        if not info.trade and not info.crafted and ACB.warnCasualFind then ACB.warnCasualFind(saved) end
         if self.announcements then self.announcements:add(card, info) end
     end
     local function record(...)

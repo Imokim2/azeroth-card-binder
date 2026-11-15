@@ -51,10 +51,23 @@ test("opening a pack shakes it, bursts it, deals five cards face down, and each 
     equal(view.phase, "shake")
     equal(saved.packs[ZONE_CODE], 1, "one pack is used up as soon as it is opened")
     equal(#view.results, 5)
+    ACB.loadingScreen = true
+    run(view, 2)
+    equal(view.phase, "shake", "loading cannot advance a pack reveal in the background")
+    equal(view.t, 0)
+    ACB.loadingScreen = false
     for index, slot in ipairs(view.slots) do
         equal(slot.card.entry, view.results[index].card, "the face is prepared before the shake")
         equal(slot.holder:IsShown(), true, "shown frames can load before a flip")
-        assert(slot.holder.alpha <= 0.001, "prepared faces do not reveal the results early")
+        equal(slot.holder.alpha, 1, "faces can load normally behind an opaque cover")
+        equal(slot.cover:IsShown(), true)
+        equal(slot.card.concealed, true)
+        assert(slot.cover:GetFrameLevel() > slot.card.studFrame:GetFrameLevel())
+        local opaque = false
+        for _, widget in ipairs(widgets) do
+            if widget.parent == slot.cover and widget.fillColor and widget.fillColor[4] == 1 then opaque = true end
+        end
+        assert(opaque, "every face is positively covered instead of relying on parent alpha")
         assert(slot.card.art.base.texture or slot.card.art.base.colorTexture, "background requested before reveal")
         if not slot.card.entry.profession then equal(slot.card.model.creature, slot.card.entry.id) end
     end
@@ -75,10 +88,14 @@ test("opening a pack shakes it, bursts it, deals five cards face down, and each 
     equal(view.slots[2].state, "flipping")
     run(view, 0.2)
     equal(view.slots[2].back:IsShown(), true, "the back is still turning")
+    equal(view.slots[2].cover:IsShown(), true)
     run(view, 0.2)
     equal(view.slots[2].back:IsShown(), false, "past halfway the face takes over")
     equal(view.slots[2].holder:IsShown(), true)
     equal(view.slots[2].holder.alpha, 1)
+    equal(view.slots[2].cover:IsShown(), false)
+    equal(view.slots[2].card.concealed, false)
+    equal(view.slots[1].cover:IsShown(), true, "another card remains concealed until its own flip")
     run(view, 0.3)
     equal(view.slots[2].state, "up")
     local result = view.results[2]
@@ -150,4 +167,30 @@ test("a pack found in the game raises the button's count and tells chat", functi
     assert(table.concat(lines, "\n"):find("Card pack found"), table.concat(lines, "\n"))
     saved.packs, saved.mode = keep[1], keep[2]
     ACB.refreshSatchel()
+end)
+
+test("face-down pack cards cannot expose tooltip names, including on a reused opening", function()
+    local oldTooltip = GameTooltip
+    local lines = {}
+    GameTooltip = { SetOwner = ignore, AddLine = function(_, text) lines[#lines + 1] = text end, Show = ignore, Hide = ignore }
+    local saved = ACB.cleanSavedData({})
+    local view = ACB.createPackView(saved)
+    local entry = ACB.cards['npc:589']
+    local results = { { card = entry, count = 1, first = true } }
+    view:start(results, ACB.pages[entry.page])
+    view.slots[1].card.frame:OnEnter()
+    equal(#lines, 0)
+    run(view, 3)
+    equal(view.slots[1].cover:IsShown(), true)
+    view:flip(1); run(view, .4)
+    view.slots[1].card.frame:OnEnter()
+    equal(lines[1], entry.name)
+    view:finish()
+    lines = {}
+    view:start({ { card = ACB.cards['npc:639'], count = 1, first = true } }, ACB.pages[entry.page])
+    equal(view.slots[1].cover:IsShown(), true)
+    view.slots[1].card.frame:OnEnter()
+    equal(#lines, 0, 'previous reveal state cannot leak the next card')
+    view:finish(); view.frame:Hide()
+    GameTooltip = oldTooltip
 end)

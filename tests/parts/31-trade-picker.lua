@@ -42,6 +42,9 @@ end)
 
 test("the offer slot raises the binder, adds the selected exact edition, then closes only the binder", function()
     local saved, view = AzerothCardBinderDB, ACB.tradeView
+    local oldZoneSetting, oldPlace = saved.openCurrentZone, ACB.currentPlaceName
+    saved.openCurrentZone = true
+    ACB.currentPlaceName = function() return "Westfall" end
     local key = "edition:6391"
     local previous = saved.counts[key]
     saved.counts[key] = 2
@@ -68,6 +71,7 @@ test("the offer slot raises the binder, adds the selected exact edition, then cl
     equal(saved.counts[key], 2, "adding an offer does not transfer or reserve every copy")
     equal(view.controls.accept.enabled, false, "choosing a card does not accept a trade")
     saved.counts[key] = previous
+    saved.openCurrentZone, ACB.currentPlaceName = oldZoneSetting, oldPlace
 end)
 
 test("missing cards cannot be added and closing the picker returns to the trade unchanged", function()

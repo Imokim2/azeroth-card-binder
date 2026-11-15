@@ -7,13 +7,12 @@ local diagnostics = {}
 local units = { "target", "mouseover", "focus", "boss1", "boss2", "boss3", "boss4", "boss5" }
 local gatherSpells = { [2575] = "mining", [2366] = "herbalism" }
 local gatherNames = {}
-
 local function log(message)
     if not saved.diagnostics then return end
     if #diagnostics == 80 then table.remove(diagnostics, 1) end
     diagnostics[#diagnostics + 1] = ("%7.1f  %s"):format(GetTime(), message)
 end
-
+ACB.tradeDiagnostic = function(message) log("Trade: " .. message) end
 local function report(message)
     print("|cffe8bc6bWorld of Warcards|r  " .. message)
 end
@@ -290,13 +289,14 @@ function ACB.tradePeer(text)
     local peer = normalizePeer(text)
     local name, realm = UnitFullName("player")
     name, realm = read(name, "string"), read(realm, "string")
-    local own = name and normalizePeer(realm and realm ~= "" and (name .. "-" .. realm) or name)
+    local own = name and normalizePeer(name:find("%s") and name or realm and realm ~= "" and (name .. "-" .. realm) or name)
     if own and peer and peer ~= own then return peer end
 end
 
 local function initialize()
     saved = ACB.tableOrEmpty(AzerothCardBinderDB)
     AzerothCardBinderDB = saved
+    ACB.modelSettings = saved
     saved.addonVersion = ACB.addonVersion() -- the companion app reads it, to tell when a newer one is installed but not loaded
     local _, upgraded = ACB.cleanSavedData(saved)
     local ledger = ACB.newLedger(saved, time, ACB.characterName)
@@ -343,7 +343,7 @@ local function initialize()
         if done then ACB.logTrade(saved, give, take, peer, time(), report) end
         ACB.refresh()
         return done
-    end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.tradeDistanceOk(saved, peer) end, saved)
+    end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.rankedTradeAllowed(saved, peer) end, saved)
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.tradePrefix)
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.viewPrefix)
@@ -386,7 +386,11 @@ local handlers = {
     PLAYER_REGEN_ENABLED = function() if kills then kills:combatChanged() end end,
     UPDATE_MOUSEOVER_UNIT = watchBoss,
     PLAYER_FOCUS_CHANGED = watchBoss,
+    PLAYER_LEAVING_WORLD = function() ACB.setModelWorldState("worldChanging", true) end,
+    LOADING_SCREEN_ENABLED = function() ACB.setModelWorldState("loadingScreen", true) end,
+    LOADING_SCREEN_DISABLED = function() ACB.setModelWorldState("loadingScreen", false) end,
     PLAYER_ENTERING_WORLD = function()
+        ACB.setModelWorldState("worldChanging", false)
         ACB.announceUpdates(report)
         readyLoot, gather, pickpocketAt, encounter = nil, nil, nil, nil
         if kills then kills:reset() end
@@ -439,6 +443,7 @@ events:SetScript("OnEvent", function(self, event, ...)
 end)
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnUpdate", function(_, elapsed)
+    ACB.updateModelTravel(elapsed)
     if trade and trade.step then
         if trade:step(elapsed) and ACB.refresh then ACB.refresh() end
     end

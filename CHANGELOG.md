@@ -4,7 +4,109 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
-Nothing yet.
+## 1.0.13 - 2026-11-15
+
+- Add Settings > General > Open binder at current zone. This optional setting starts off disabled. Normal opening uses the same zone/dungeon collection lookup as the zone bar, even when the bar is hidden. Locations with no matching collection keep the normal remembered page.
+- Card links, selected tabs, explicit card pages and trade selection keep their requested destination. Moving between zones while browsing does not turn the page automatically.
+- Companion 1.0.1 remains current. Existing collection progress and drop rules are unchanged.
+
+## 1.0.12 - 2026-11-15
+
+- Explain that existing Casual finds prevent a binder from joining Ranked before checking companion setup. A synced Casual player is no longer told to download the companion again when trying to change modes. Rejected changes keep their collection and ledger intact.
+- Recognise the exact synced binder nonce already supplied by companion 1.0.1 for established collections, as well as its fresh-binder setup list. Pairing no longer disappears merely because a binder has cards. Another binder's nonce or the presence of a tape alone is insufficient; Casual eligibility checks remain in place.
+- Companion 1.0.1 remains current. No saved cards, packs, drop rules or collection history are reset by this update.
+
+## 1.0.11 - 2026-11-15
+
+- Add Settings > Help, with links to bug reports, known issues and the community Discord. The General page also has a Report a bug button. Copying the report link fills in only the addon version, game build, mode, location and 3D-model setting; account files, player names and collection records are not included.
+- Add a stable website community address so an invite can change without another addon update. Keep community access separate from the companion's Discord sign-in. No new account, collection, drop or companion behaviour is introduced.
+- Document `/reload` as a player-reported temporary recovery when the loading-screen loop still accepts chat input, with Alt+F4 and relaunch as the fallback. Keep the uncertainty and unsaved-progress warning explicit.
+- Make loading-loop reports easier: add optional location and recovery fields to the GitHub issue form, with no requirement to diagnose the graphics log.
+- Add a prominent GitHub warning and a shared known-issues page for the DX12 loading-screen problem, with the same disclosure in the unsubmitted CurseForge page. Explain that Warcards may aggravate the issue and 1.0.10 is a mitigation rather than a confirmed fix.
+
+## 1.0.10 - 2026-11-15
+
+- Bound portrait preloading to four reusable model scenes per folio instead of creating one frame per NPC. Large categories and repeatedly visited sets no longer increase that pool. Preloading still requests every unique model and retries failed requests once; only the workers' most recent scenes remain cached. Visible cards keep their 3D models, motion and manual rotation.
+- Preserve a real fullscreen-loop incident showing DX12 descriptor/render-target allocation failures and repeated device recovery, with companion 1.0.1 installed. The bounded pool removes an identified source of scene growth; whether it prevents the client's recovery loop still needs in-game confirmation. No graphics settings are changed.
+- Add All, Owned and Unowned buttons to the collection index. Ownership filters list cards and collectible editions individually, combine with mob/set/category searches, reset pagination and retain the chosen filter. Normal set progress still counts card families.
+- Extend unit tooltip lookup beyond the tooltip's GUID: try the actual displayed unit's readable identifier, then an unambiguous readable NPC name in the current zone or dungeon. Unknown identifiers and ambiguous names are never treated as a known card. Owned seasonal cards retain their tooltip status without becoming eligible drops.
+- When the client protects the identity needed for a card lookup, show an explanation and direct players to the index. Protected values are never decoded or compared, and name matching is never used to award cards or change Ranked records. Per-mob status cannot be promised while all identifying data is protected; verify in Forever.
+- Make the optional display recorder run for an hour when double-clicked and document the dungeon-loading recurrence reported on 1.0.7. The recorder is a separate manual tool and is not included in the addon. The fullscreen display issue remains unresolved; CurseForge stays on hold.
+- Existing cards, packs, progress, drop rules and companion 1.0.1 are unchanged. Fully exit WoW after updating, then relaunch, so the old session's model frames cannot remain allocated.
+
+## 1.0.9 - 2026-11-14
+
+- Add a Chat page under Settings, with separate opt-in guild announcements for cards and pack finds. Guild cards default to Epic and Legendary when enabled; choose All, Rare and above, Epic and Legendary, or Legendary only. Existing group and solo announcements keep their own switch.
+- Pack finds announce only their zone and pack rarity. Cards inside a pack are shared only after revealing them. Private clickable card messages remain available with all public announcements disabled.
+- Rate-limit chat messages and discard queued guild messages when their setting is disabled, their rarity no longer qualifies, or the player leaves or changes guilds. Client-refused messages are not retried or redirected.
+- Verify that explicit binder requests and nearby Ranked trade invitations still have no faction restriction in the addon. Only passive title queries are filtered; actual cross-faction delivery remains subject to Forever's addon whisper support.
+- No collection, drop-rate, companion or server changes. Companion 1.0.1 remains current; the fullscreen display issue still needs in-game confirmation.
+
+## 1.0.8 - 2026-11-14
+
+- Show a one-time warning on the first Casual card find, including a pack reveal. Explain that trading, gifting, Ranked scores and seasonal collection progress are unavailable for this binder. The warning works with card popups disabled, persists across reloads and never resets progress.
+- Require Ranked collections for card/pack trades and gifts, including incoming invitations and legacy offers. Casual attempts explain how to get the companion and enable Ranked; updated senders get an explicit refusal from Casual recipients. Prevent collection-mode changes during an unfinished transfer.
+- New players cannot enable Ranked before matching companion setup has been loaded. Existing Ranked binders are never silently downgraded when setup or roll supply is unavailable; they retain their collection and pause the affected features.
+- Stop passive tooltip title whispers to opposite-faction, disconnected or unknown-faction players, avoiding unsolicited “No player named … is currently playing” errors. Explicit binder requests and trade errors remain visible.
+- Update the website's mode/trading guidance. Historical saved collections and server trade provenance remain valid. Companion 1.0.1 remains current; the fullscreen display issue is still under investigation.
+
+## 1.0.7 - 2026-11-14
+
+- Restore 3D models in card-unlock popups when 3D card models is enabled. The icon-only popup introduced as a precaution in 1.0.5 no longer overrides the player's setting. Turning 3D off still uses the 2D artwork/icon presentation.
+- Defer notifications during loading screens, world transitions and taxi travel, then resume them in order without consuming their visible lifetime. Popup models use the existing visibility guards and release their resources when hidden or dismissed.
+- No inventory, drop, trade, save-format or companion changes. Companion 1.0.1 remains current. The intermittent fullscreen minimise/restore issue remains under investigation; this is a popup correction, not a confirmed resolution.
+
+## 1.0.6 - 2026-11-14
+
+- Most cards now keep their authored pose and viewing angle. Common creatures, gathering cards and critter portraits do not rock automatically, while loaded 3D models can still be rotated by dragging.
+- Owned epic and legendary still portraits sway gently on the large detail card. Authored animated editions play their action loops without also rocking the camera. Missing cards and left-page previews stay still; right-click pauses or resumes motion on moving cards.
+- Edwin VanCleef's legendary Signature card loops the flex emote when supported. Unsupported flex playback falls back to a still combat pose. The separate Blades Drawn edition retains its spinning attack.
+- Add an optional, manually started maintainer tool to record foreground-process and WoW window-state changes during the unresolved fullscreen loop. It is excluded from game/companion downloads. Document the Kobold source review and controlled testing needed before declaring the issue fixed.
+- No changes to inventory keys, ownership, edition odds, drop rules or saved progress. Companion 1.0.1 remains current. This card-motion update is not a confirmed fix for the intermittent fullscreen minimise/restore loop.
+
+## 1.0.5 - 2026-11-14
+
+- Companion 1.0.1: background sync conflicts now set a passive tray hint instead of showing, restoring and focusing the app window. This removes a confirmed focus-stealing path that could interrupt fullscreen play; it is not yet confirmed as the cause of the reported loop.
+- Pickup pop-ups now use zone artwork and a binder seal instead of a 3D model. Finding a card with the binder closed no longer starts a model request.
+- Release card models and retained portrait-preload resources when their windows close or a loading/world transition begins. Hidden cards cannot load or retry models. Suspend 3D cards during flight paths, then restore visible portraits after landing.
+- Apply camera and animation changes outside model-loaded callbacks. Pack faces still preload behind their opaque covers when the pack window is visible.
+- Add a 3D card models switch in Settings for players experiencing display problems. Turning it off uses zone artwork and a seal without changing collection progress.
+- These changes address suspect model-rendering paths identified during investigation of an intermittent fullscreen minimise/restore loop. The whole-client failure still needs verification in the actual game; automated tests cannot confirm that it is resolved. Existing saves, drops and trading rules are unchanged.
+
+## 1.0.4 - 2026-11-14
+
+- Keep prepared pack faces behind opaque covers until each card crosses its flip midpoint, instead of relying on near-transparent parent frames. Suppress concealed-card tooltips and reset covers for every new pack; models and backgrounds still preload normally.
+- Pause addon model requests, camera/pose updates, portrait warming and pack animation while changing worlds or showing a loading screen. This is a precaution; the reported intermittent whole-client minimise/restore loop has not been reproduced or confirmed as an addon problem.
+- Existing binder data, pack draws and collection rules are unchanged.
+
+## 1.0.3 - 2026-11-13
+
+- Close the trade window and clear its displayed offers after a completed trade or gift. Keep the completed protocol session available for final-message retries so transfers cannot be duplicated.
+- Hide the trade window while viewing ordinary binder pages or picking a card, preventing accepted borders, controls and models from showing through the binder. Returning from card selection restores the trade.
+- Rename the binder index navigation to Previous and Next.
+
+## 1.0.2 - 2026-11-13
+
+- Fix nearby gifts/trades being refused when Forever's interaction-distance check reports false despite a valid nearby distance. Prefer a checked distance reading or same-instance world positions in that case; actual out-of-range players are still refused.
+- Show blocked invitation reasons inside the invitation popup and in chat, with time to retry. Diagnostics now record invitation/acceptance blockers.
+- Resolve nearby party/raid partners after changing targets, and handle clients that return a complete two-part character name alongside a realm.
+- Existing collections, trades and the companion app remain compatible.
+
+## 1.0.1 - 2026-11-13
+
+- Wider action framing for base cards, including rare/epic/legendary signatures; deliberately tight critter editions and selected boss variants keep their close-ups.
+- Lift the reported hunched troll and orc models inside the portrait, including Bloodlord Mandokir, High Priest Venoxis, Gurubashi Champion, Sacrificed Troll, the Skullsplitter tribe and Dragonmaw Bonewarder.
+- Stop forcing the fixed face camera and let clicks reach the card for drag rotation. Loaded-model events now enable movement even if the client does not expose a model file ID; the load watcher no longer reloads those ready models. Left-page thumbnails remain stationary.
+- Artwork only: existing collections, drop rules and the companion app are unchanged.
+
+## 1.0.0 — 2026-11-13 (addon, companion and server)
+
+- First coordinated 1.0 release, including the previously unpublished 0.7.0 candidate below. The addon, Windows companion and server now share the same version.
+- Removed the companion's preview-build badge. Player downloads omit the developer card studio and playtest instructions, and sound sample controls use ordinary player-facing labels. Development screenshot mode cannot replace live status in the packaged companion.
+- Collect cards, alternate editions and shiny cards; open zone packs from the satchel; trade cards and packs or send gifts through a player's right-click menu. Both players accept the final offer.
+- Seasonal collections run alongside Ranked, with rewards for completing a shared card list and bonuses for early finishers. Half the base catalog is held for seasonal returns; owned copies remain available, and cards released by a season stay available afterwards. No live season is created by installing this release.
+- Critters and ordinary cards use the new drop balance. Existing Ranked histories retain their original rules; upgrades preserve cards, variants, packs, dust, titles and history.
+- For Ranked upgrades, install companion 1.0.0 before updating the addon. Existing minimum versions remain unchanged during rollout. The signed update feed, download checksums and packaged Windows startup checks are retained. Windows publisher code signing is still pending.
 
 ## 0.7.0 — 2026-11-13 (companion 0.5.0, server 0.5.0)
 

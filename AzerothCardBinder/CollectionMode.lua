@@ -8,12 +8,7 @@ end
 -- A companion file is evidence of setup, not a live process signal. A usable supply is required too.
 function ACB.defaultCollectionMode(saved, ledger)
     if saved.mode == "ranked" or not ACB.canDefaultRanked(saved) then return false end
-    local sync = type(ACB.sync) == "table" and ACB.sync or {}
-    local setups = type(sync.rankedSetups) == "table" and sync.rankedSetups or {}
-    if type(saved.modeSetupID) ~= "string" or #saved.modeSetupID ~= 32 then return false end
-    local paired = false
-    for _, id in ipairs(setups) do if id == saved.modeSetupID then paired = true end end
-    if not (paired and sync.companionReady == true and ACB.tapeHolds(saved, 1)) then return false end
+    if not (ACB.companionPaired(saved) and ACB.tapeHolds(saved, 1)) then return false end
     return ACB.setMode(saved, ledger, "ranked")
 end
 
@@ -37,6 +32,32 @@ function ACB.initCollectionMode(saved, ledger, report)
     local kit = ACB.uiKit
     local prompt = kit.window("AzerothCardBinderModeChoice", 480, 252, "How would you like to collect?")
     prompt:SetFrameStrata("FULLSCREEN_DIALOG")
+    local warning = kit.window("AzerothCardBinderCasualWarning", 520, 300, "Ranked collection")
+    warning:SetFrameStrata("FULLSCREEN_DIALOG")
+    warning:SetFrameLevel(80)
+    local warningText = kit.label(warning, "GameFontHighlight", 28, 55, kit.parchment, "")
+    warningText:SetWidth(464); warningText:SetHeight(98); warningText:SetWordWrap(true)
+    local warningNote = kit.label(warning, "GameFontHighlightSmall", 28, 164, kit.brass, "")
+    warningNote:SetWidth(464); warningNote:SetHeight(62); warningNote:SetWordWrap(true)
+    kit.button(warning, "Got it", 28, 250, 204, function() warning:Hide() end)
+    kit.button(warning, "Ranked setup", 244, 250, 248, function()
+        warning:Hide(); ACB.open("settings")
+        report("Download the companion from worldofwarcards.co.uk/download. Connect it to your game folder, then reload to finish setup.")
+    end)
+    function ACB.explainRankedTrading(why)
+        warningText:SetText(why or ACB.rankedTradeNotice)
+        warningNote:SetText((saved.casualDrops or 0) > 0 and
+            "This binder already has Casual finds and cannot become Ranked. A new Ranked binder is required. Nothing will be reset by this warning."
+            or "Both players need Ranked to trade cards, packs or gifts. Your existing cards are unchanged.")
+        warning:Show()
+        report(why or ACB.rankedTradeNotice)
+    end
+    function ACB.warnCasualFind(binder)
+        if binder ~= saved or saved.mode == "ranked" or saved.casualWarningSeen == true or (saved.casualDrops or 0) == 0 then return end
+        saved.casualWarningSeen = true
+        ACB.explainRankedTrading("You are collecting in CASUAL mode. Trading and gifting are disabled. This binder cannot join the Ranked ladder or seasonal collections.")
+    end
+    ACB.casualWarningPrompt = warning
     local info = kit.label(prompt, "GameFontHighlight", 28, 52, kit.parchment, "")
     info:SetWidth(424); info:SetHeight(92); info:SetWordWrap(true)
     local notice = kit.label(prompt, "GameFontHighlightSmall", 28, 151, kit.brass, "")
@@ -58,7 +79,8 @@ function ACB.initCollectionMode(saved, ledger, report)
         ACB.refresh()
     end)
     prompt.casual = kit.button(prompt, "Play Casual", 244, 202, 208, function()
-        ACB.setMode(saved, ledger, "casual") -- an explicit choice, even when already Casual
+        local ok, why = ACB.setMode(saved, ledger, "casual") -- explicit, even when already Casual
+        if not ok then report(why) return end
         prompt:Hide()
         report("Casual selected. Cards collected here will not count towards Ranked.")
         ACB.refresh()

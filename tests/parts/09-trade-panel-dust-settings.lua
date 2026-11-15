@@ -1,4 +1,5 @@
 test("the simple Trade panel filters whispers and moves cards only after both accept and finish", function()
+    local restoreTrading = rankedTradeFixture(AzerothCardBinderDB)
     local saved, sent = AzerothCardBinderDB, {}
     local oldDistance = ACB.tradeDistanceOk
     ACB.tradeDistanceOk = function() return true end -- this test isolates the whisper protocol
@@ -51,8 +52,11 @@ test("the simple Trade panel filters whispers and moves cards only after both ac
     equal(saved.tradeCount, tradesBefore + 1)
     equal(saved.counts[give] or 0, before - 1)
     equal(saved.counts["npc:573"], takeBefore + 1)
+    equal(ACB.tradeView:IsShown(), false, "a completed trade closes its window")
+    equal(c.mine.frame:IsShown(), false, "the offered card is cleared from view")
     saved.tradeRange = range
     ACB.tradeDistanceOk = oldDistance
+    restoreTrading()
 end)
 
 test("binder dust recycles spares, keeps the last copy, and crafts a missing card once", function()
@@ -169,8 +173,12 @@ test("the settings tab lists every switch, with defaults, and keeps slash comman
     checks[1].checked = false
     checks[1]:OnClick()
     equal(saved.popups, false)
-    checks[5].checked = true
-    checks[5]:OnClick()
+    local publicChat
+    for _, widget in ipairs(widgets) do
+        if widget.settingKey == "announceCards" then publicChat = widget break end
+    end
+    publicChat.checked = true
+    publicChat:OnClick()
     equal(saved.announceCards, true)
     -- The slash command flips the same switch and the open tab follows.
     SlashCmdList.AZEROTHCARDBINDER("hints")

@@ -1,6 +1,6 @@
 // The public website (roadmap B8): the ladder, a player's page with a read-only view of their binder, the fair-play rules and
 // the privacy page. Plain HTML made on the server from the same data as the API, with no scripts, no outside resources and
-// no game art (card names and numbers only, as the policy notes require). Every piece of text that came from a player or the
+// supplied screenshots on the homepage. Every piece of text that came from a player or the
 // data is escaped before it goes into a page.
 import type { Catalog } from "./shared.ts";
 import { editionKeys, familyCount } from "./shared.ts";
@@ -84,7 +84,7 @@ export function fairPlayPage(): string {
 </ul>
 
 <h2>Trading and gifts</h2>
-<p>Use the addon’s trade window for exchanges and gifts. Both players must agree to what is offered and complete the trade normally. Both players should sync afterwards.</p>
+<p>Trading and gifting require Ranked mode and companion setup for both players. Casual collections cannot send or receive cards or packs. Use the addon’s trade window, agree to what is offered and complete the trade normally. Both players should sync afterwards.</p>
 <p>Cards received through a trade must also be eligible for Ranked play. A trade that is incomplete or under review may not count towards your score. Do not use other accounts or arranged trades to get around these rules.</p>
 
 <h2>Reviews and restrictions</h2>

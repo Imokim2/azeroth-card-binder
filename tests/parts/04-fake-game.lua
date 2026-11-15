@@ -5,7 +5,7 @@ local methods = {
     GetHeight = function(self) return self.height end,
     SetPoint = function(self, ...) self.point = { ... } end,
     SetFrameStrata = function(self, strata) self.strata = strata end, SetClampedToScreen = ignore,
-    SetMovable = ignore, EnableMouse = ignore,
+    SetMovable = ignore, EnableMouse = function(self, enabled) self.mouseEnabled = enabled end,
     SetBackdrop = function(self) equal(self.template, "BackdropTemplate") end,
     SetBackdropColor = ignore,
     SetBackdropBorderColor = ignore, SetHeight = ignore, RegisterForDrag = ignore,
@@ -23,7 +23,7 @@ local methods = {
     SetAlpha = function(self, alpha) self.alpha = alpha end, SetMultiLine = ignore,
     SetFontObject = ignore, SetScrollChild = ignore, SetVerticalScroll = ignore, HighlightText = ignore,
     ClearFocus = ignore, SetClipsChildren = ignore,
-    SetColorTexture = function(self) self.colorTexture = true end, SetFont = ignore, SetBlendMode = ignore,
+    SetColorTexture = function(self, ...) self.colorTexture, self.fillColor = true, { ... } end, SetFont = ignore, SetBlendMode = ignore,
     SetVertexColor = function(self, r, g, b) self.vertex = { r, g, b } end,
     SetFrameLevel = function(self, level) self.level = level end,
     GetFrameLevel = function(self) return self.level or 1 end, SetMaxLines = ignore,
@@ -47,6 +47,10 @@ local methods = {
     Hide = function(self) self.shown = false end,
     SetShown = function(self, shown) self.shown = shown end,
     IsShown = function(self) return self.shown end,
+    IsVisible = function(self)
+        if self.shown == false then return false end
+        return not self.parent or self.parent:IsVisible()
+    end,
     IsMouseOver = function(self) return self.mouseOver ~= false end,
     GetEffectiveScale = function(self) return self.scale or 1 end,
     SetText = function(self, text) self.text = text end,
@@ -61,7 +65,7 @@ local methods = {
 }
 local eventFrame, widgets = nil, {}
 function CreateFrame(kind, name, parent, template)
-    local frame = setmetatable({ parent = parent, template = template }, { __index = methods })
+    local frame = setmetatable({ kind = kind, parent = parent, template = template }, { __index = methods })
     if not eventFrame then eventFrame = frame end
     if name then _G[name] = frame end
     widgets[#widgets + 1] = frame
@@ -109,6 +113,7 @@ C_ChatInfo = {
     InChatMessagingLockdown = function() return locked or false end,
 }
 function GetBuildInfo() return "1.60.1", "70862", "Nov 4 2026", 16001 end
+function UnitFactionGroup() return "Alliance" end
 function GetTime() return clock end
 function GetNumLootItems() return #slots end
 function GetLootSourceInfo(index)
@@ -172,6 +177,7 @@ loadAddon("UiKit.lua")
 loadAddon("CollectionMode.lua")
 loadAddon("CardStudio.lua")
 loadAddon("SoundSettingsView.lua")
+loadAddon("SupportView.lua")
 loadAddon("SettingsView.lua")
 loadAddon("LeaderboardView.lua")
 loadAddon("WantedView.lua")
@@ -199,4 +205,18 @@ end
 
 local function cast(event, token, spell, unit)
     emit("UNIT_SPELLCAST_" .. event, unit or "player", token, spell)
+end
+
+-- UI/protocol fixtures that test trading arrange an eligible, paired Ranked
+-- binder explicitly; general acquisition fixtures continue collecting Casual.
+local function rankedTradeFixture(saved)
+    local mode, casual, legacy, setupID, sync = saved.mode, saved.casualDrops, saved.legacy, saved.modeSetupID, ACB.sync
+    saved.mode, saved.casualDrops, saved.legacy = "ranked", 0, nil
+    saved.modeSetupID = saved.modeSetupID or string.rep("f", 32)
+    local paired = {}; for key, value in pairs(sync or {}) do paired[key] = value end
+    paired.companionReady, paired.rankedSetups = true, { saved.modeSetupID }
+    ACB.sync = paired
+    return function()
+        saved.mode, saved.casualDrops, saved.legacy, saved.modeSetupID, ACB.sync = mode, casual, legacy, setupID, sync
+    end
 end

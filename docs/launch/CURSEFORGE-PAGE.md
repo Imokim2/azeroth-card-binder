@@ -11,49 +11,71 @@ Collect cards from mobs, dungeon bosses and gathering nodes as you play. Browse 
 
 **Built for World of Warcraft: Forever.** Retail and other Classic clients are not currently supported.
 
+## Known issue: loading screens
+
+Some Forever players using DirectX 12 have reported loading screens that get stuck while the game repeatedly flickers to the desktop. **Warcards' 3D models may make this issue more likely or worse.** Addon 1.0.10 reduces the number of preload scenes, but it is **not a confirmed fix**. A stuck client may need a full restart, and a forced exit can lose finds since the last normal save.
+
+**Temporary workaround:** if chat still accepts typing during the loop, press Enter, type `/reload` and press Enter again. This has recovered an affected session, but is not guaranteed to work. If it fails, close the game with Alt+F4 and relaunch it. A forced exit can lose unsaved finds.
+
+See the [known issues and troubleshooting steps](https://github.com/Imokim2/azeroth-card-binder/blob/main/KNOWN-ISSUES.md) before installing. We are still investigating; the matching client reports do not establish an official diagnosis or a confirmed Blizzard fix.
+
 ## Your binder
 
 Find cards across different zones and dungeons. Your binder shows the cards you own, the cards you’re missing and the spare copies you can trade.
 
-![Binder screenshot placeholder — replace before submission](../media/gallery/binder.png)
+![The collection index with an undiscovered Wiry Swoop card selected](../media/gallery/binder.png)
 
 ## Open packs
 
-Find a pack, open it and turn the cards over to see what’s inside.
+Keep sealed zone packs in the Warcards Satchel. Common packs hold one card, Rare packs three and Epic packs five. Right-click a pack to open it and turn the cards over to see what’s inside.
 
-![Pack screenshot placeholder — replace before submission](../media/gallery/packs.png)
+![The Warcards Satchel, shown empty before any packs have been found](../media/gallery/satchel.png)
+
+<!-- Still needed: a real pack-opening capture with cards being revealed. -->
 
 ## Trade with friends
 
-Swap a spare for something you’re missing, or send a card as a gift. Both players need the addon and must accept before the exchange completes.
+Right-click another player and choose **Trade cards or packs**. Swap a card or sealed pack for something you’re missing, or send a gift. The other player accepts the invitation, then both players review and accept the final offer.
 
-![Trade screenshot placeholder — replace before submission](../media/gallery/trading.png)
+![The card trade window with a Dragonmaw Bonewarder offered](../media/gallery/trading.png)
 
 ## Collect alternate editions
 
 Some cards have different poses and animations to collect alongside their original edition.
 
-![Variants screenshot placeholder — replace before submission](../media/gallery/variants.png)
+<!-- Still needed: an actual alternate-edition comparison screenshot. -->
 
 ## Achievements and titles
 
 Complete sets and earn titles that other players using the addon can see.
 
-![Achievements screenshot placeholder — replace before submission](../media/gallery/achievements.png)
+![Collection achievements showing card and set progress](../media/gallery/achievements.png)
 
-## Getting started
+## Seasonal collections
+
+When a season is running, everyone gets the same list of cards to collect before the deadline. Find or trade for fresh copies alongside your normal Ranked binder. Complete the list for titles and packs, with extra rewards for the first finishers.
+
+Some cards are held back from the launch collection and return through seasons. Once a season releases them, they stay available. Cards you already own are kept when the catalog changes.
+
+<!-- Add an actual Seasons screenshot from the uploaded build before submission. -->
+
+## Installation
 
 Enable **World of Warcards** in the character screen’s AddOns list, then click the minimap button or type `/acb` to open your binder.
 
 You can collect in **Casual** mode with the addon alone. **Ranked** play and online syncing use the separate Windows companion app. The companion syncs saved files after a reload or logout; it does not automate play.
+
+![The Windows companion app with a synced Ranked binder](../media/gallery/companion.png)
+
+When upgrading for Ranked play, update the companion before the addon. Keep your saved data: installing an update does not mean starting a new binder.
 
 <!-- Obtain CurseForge guidance on describing the optional external companion and
      Forever compatibility before submission. Do not add direct external EXE links. -->
 
 ## Help and feedback
 
-Please include your addon version, any error message and what you were doing when reporting a problem.
+Open **Settings → Help → Report a bug** in the binder and copy the link into your browser. It includes basic game details; add what happened and what you were doing. You do not need to diagnose the cause first. Please include your companion version if you know it.
 
-[Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose) · [Source code](https://github.com/Imokim2/azeroth-card-binder) · [Website and help](https://worldofwarcards.co.uk/help)
+[Community Discord](https://worldofwarcards.co.uk/discord) · [Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose) · [Source code](https://github.com/Imokim2/azeroth-card-binder) · [Website and help](https://worldofwarcards.co.uk/help)
 
 World of Warcards is free and open source under GPL-3.0-or-later. It is a fan project, not affiliated with or endorsed by Blizzard Entertainment.

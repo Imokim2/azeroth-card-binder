@@ -18,9 +18,11 @@ test("tooltip hints say whether a card is owned and where to find it", function(
     equal(added[1], "Card: not in your binder yet")
     added = {}
     hintCallbacks[1](tip, { guid = guid(99999, "unknown") })
+    equal(#added, 0) -- unknown sources do not get an invented card status
     hintCallbacks[1](tip, { guid = secret })
-    equal(#added, 0) -- unknown and unreadable sources add nothing
+    equal(added[1], "Card status: hidden by the game here. Check the binder index.")
     saved.hints = false
+    added = {}
     hintCallbacks[1](tip, { guid = guid(589, "tip") })
     equal(#added, 0)
     saved.hints = nil
@@ -61,6 +63,15 @@ test("player tooltip titles come from solicited replies and an equipped title ca
     local function hover()
         hintCallbacks[1](GameTooltip, { guid = peerGUID })
     end
+    local faction, connected = UnitFactionGroup, UnitIsConnected
+    UnitFactionGroup = function(unit) return unit == "player" and "Alliance" or "Horde" end
+    hover(); equal(#messages, 0, "opposite-faction tooltips never send addon whispers")
+    UnitFactionGroup = function() return nil end
+    hover(); equal(#messages, 0, "unknown factions are not queried speculatively")
+    UnitFactionGroup = faction
+    UnitIsConnected = function() return false end
+    hover(); equal(#messages, 0, "offline units are not queried")
+    UnitIsConnected = connected
     receive("T|Card Trader")
     hintCallbacks[1](GameTooltip, { guid = secret })
     hover()
@@ -101,6 +112,8 @@ test("player tooltip titles come from solicited replies and an equipped title ca
 end)
 
 test("binder requests use the addon whisper result when the general chat flags are unavailable", function()
+    local originalFaction = UnitFactionGroup
+    UnitFactionGroup = function(unit) return unit == "player" and "Alliance" or "Horde" end
     local originalSend, originalFlag = C_ChatInfo.SendAddonMessage, C_ChatInfo.AreOutgoingAddonChatMessagesRestricted
     local originalCodes = Enum.SendAddonMessageResult
     local result, sends = 0, 0
@@ -122,6 +135,7 @@ test("binder requests use the addon whisper result when the general chat flags a
     equal(sends, 2)
     C_ChatInfo.SendAddonMessage, C_ChatInfo.AreOutgoingAddonChatMessagesRestricted = originalSend, originalFlag
     Enum.SendAddonMessageResult = originalCodes
+    UnitFactionGroup = originalFaction
 end)
 
 test("card links round-trip and unknown links are ignored", function()
@@ -334,6 +348,7 @@ test("a fully collected binder fits the message limit and arrives within the req
 end)
 
 test("player and enemy portrait menus offer the relevant binder actions", function()
+    local restoreTrading = rankedTradeFixture(AzerothCardBinderDB)
     local callbacks = {}
     Menu = { ModifyMenu = function(tag, callback) callbacks[tag] = callback end }
     ACB.initSocial({ counts = {} }, function() return true end, function() return 1 end, function(_, action) action() end)
@@ -364,4 +379,5 @@ test("player and enemy portrait menus offer the relevant binder actions", functi
     equal(AzerothCardBinderWindow:IsShown(), true)
     target = nil
     ACB.openCard(ACB.pages[1].cards[1].key)
+    restoreTrading()
 end)

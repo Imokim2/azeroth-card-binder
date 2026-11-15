@@ -35,19 +35,25 @@ function ACB.initUI(saved, trade)
     local wantedView = ACB.createWantedView(frame, saved)
     local seasonsView = ACB.createSeasonsView(frame, saved)
 
-    local invite = window("AzerothCardBinderTradeNotice", 360, 142, "Incoming trade")
+    local invite = window("AzerothCardBinderTradeNotice", 360, 198, "Incoming trade")
     invite:ClearAllPoints()
     invite:SetPoint("TOP", UIParent, "TOP", 0, -95)
     invite:SetFrameStrata("FULLSCREEN_DIALOG")
     local inviteText = label(invite, "GameFontHighlight", 24, 49, parchment, "")
     inviteText:SetWidth(312)
-    inviteText:SetHeight(36)
+    inviteText:SetHeight(100)
     inviteText:SetWordWrap(true)
     local invitePeer, inviteTime
-    invite.accept = button(invite, "Accept invitation", 24, 100, 145, function()
-        if ACB.prepareTrade(invitePeer, nil, true) ~= false then invite:Hide() end
+    invite.accept = button(invite, "Accept invitation", 24, 162, 145, function()
+        if ACB.prepareTrade(invitePeer, nil, true) ~= false then invite:Hide()
+        else
+            inviteTime = 0
+            inviteText:SetText(trade.status)
+            ACB.say(trade.status)
+            ACB.refresh()
+        end
     end)
-    invite.decline = button(invite, "Decline", 183, 100, 145, function() trade:cancel(); invite:Hide(); ACB.refresh() end)
+    invite.decline = button(invite, "Decline", 183, 162, 145, function() trade:cancel(); invite:Hide(); ACB.refresh() end)
     function ACB.notifyTrade(peer, gift)
         invitePeer, inviteTime = peer, 0
         inviteText:SetText(peer .. (gift and " sent you a gift." or " wants to trade cards or packs."))
@@ -136,6 +142,11 @@ function ACB.initUI(saved, trade)
     end
 
     function ACB.open(destination)
+        -- Ordinary reopening can follow the zone bar's location lookup. Named
+        -- tabs, linked cards and the trade picker always keep their destination.
+        if destination == nil and not frame:IsShown() and not tradeSelection and ACB.settingOn(saved, "openCurrentZone") then
+            destination = ACB.zoneProgress(saved)
+        end
         if destination == "trade" then
             local s = trade:active()
             if s and s.invited then inviteTime = 0 invite:Show() return end
@@ -146,6 +157,9 @@ function ACB.initUI(saved, trade)
             tradeView:refresh()
             return
         end
+        -- The two windows have raised card/model children; do not leave the
+        -- trade underneath ordinary binder pages where those layers can show through.
+        tradeView:Hide()
         if not frame:IsShown() and ACB.playSound then ACB.playSound("binder") end
         if tabs[destination] then
             mode = destination
@@ -174,6 +188,7 @@ function ACB.initUI(saved, trade)
     function ACB.selectTradeCard(choose, allowed, key)
         if not allowed() then return false end
         if tradeSelection then endTradeSelection() end
+        tradeView:Hide()
         tradeSelection = { allowed = allowed, level = frame:GetFrameLevel() }
         collectionView:setTradePicker(function(cardKey)
             if not tradeSelection or not allowed() or (saved.counts[cardKey] or 0) == 0 then return false end

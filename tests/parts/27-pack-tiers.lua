@@ -30,7 +30,11 @@ test("one and three card packs centre their real faces, preload them and leave u
         equal(saved.packs[id], nil)
         for index, slot in ipairs(view.slots) do
             equal(slot.holder:IsShown(), index <= size)
-            if index <= size then assert(slot.holder.alpha < .01) end
+            if index <= size then
+                equal(slot.holder.alpha, 1)
+                equal(slot.cover:IsShown(), true)
+                equal(slot.card.concealed, true)
+            end
         end
         run(view, 3)
         equal(view.phase, "reveal")

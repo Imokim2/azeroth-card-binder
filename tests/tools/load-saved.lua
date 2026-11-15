@@ -6,7 +6,7 @@
 local addon = "AzerothCardBinder"
 local ACB = {}
 for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "Lore.lua", "DropRates.lua", "Editions.lua", "Availability.lua", "Achievements.lua",
-    "Hash.lua", "Ledger.lua", "Updates.lua", "Tape.lua", "Collection.lua", "Seasons.lua", "SavedData.lua" }) do
+    "Hash.lua", "Ledger.lua", "Updates.lua", "RankedAccess.lua", "Tape.lua", "Collection.lua", "Seasons.lua", "SavedData.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 -- The app's file replaces the add-on's stub, exactly as it does in the game folder.
@@ -25,6 +25,6 @@ local before = #saved.ledger
 local removed = verified and ledger:prune(ACB.sync.acks) or 0
 local afterCheck = ledger:verify()
 io.write(string.format(
-    '{"verified":%s,"detail":"%s","eventsBefore":%d,"removed":%d,"eventsAfter":%d,"verifiedAfter":%s,"headSeq":%d,"syncedAt":%d,"mode":"%s"}',
+    '{"verified":%s,"detail":"%s","eventsBefore":%d,"removed":%d,"eventsAfter":%d,"verifiedAfter":%s,"headSeq":%d,"syncedAt":%d,"mode":"%s","paired":%s}',
     tostring(verified), tostring(detail), before, removed, #saved.ledger, tostring(afterCheck), saved.head.seq,
-    ACB.sync.syncedAt or 0, saved.mode))
+    ACB.sync.syncedAt or 0, saved.mode, tostring(ACB.companionPaired(saved))))

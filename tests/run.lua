@@ -39,7 +39,13 @@ local parts = {
     "32-collection-mode",
     "33-seasons",
     "34-launch-collection",
-    "35-faction-cards",
+    "35-model-lifecycle",
+    "36-rarity-motion",
+    "37-casual-warning-trading",
+    "38-dungeon-hints-index-filters",
+    "39-support-community",
+    "40-ranked-setup-recovery",
+    "41-faction-cards",
 }
 
 local source, ranges, line = {}, {}, 1

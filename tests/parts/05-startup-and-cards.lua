@@ -70,7 +70,7 @@ test("cards draw for missing, owned and gathering entries", function()
     AzerothCardBinderDB.counts["npc:639"], AzerothCardBinderDB.counts["node:1731"] = nil, nil
 end)
 
-test("opening a set preloads four portraits together, retains loaded models and stops outside the collection", function()
+test("opening a set preloads four portraits together and releases them outside the collection", function()
     local cards = ACB.pages[2].cards
     local driver
     for _, widget in ipairs(widgets) do if widget.acbPortraitLoader then driver = widget break end end
@@ -84,14 +84,16 @@ test("opening a set preloads four portraits together, retains loaded models and 
         driver.models[slot].fileID = 1000 + slot
     end
     driver:OnUpdate(.25)
+    equal(#driver.models, ACB.portraitLoaderLimit, "preloading reuses a fixed number of engine scenes")
     for slot = 1, 4 do
-        equal(driver.models[slot].fileID, 1000 + slot, "completed models are retained instead of cleared")
-        equal(driver.models[slot]:IsShown(), false)
+        equal(driver.models[slot].creature, cards[slot + 4].id, "the next entries reuse the same workers")
+        equal(driver.models[slot]:IsShown(), true)
     end
-    equal(driver.models[5].creature, cards[5].id)
+    equal(driver.models[5], nil)
     ACB.open("wanted"); driver.parent:OnHide()
     equal(driver:IsShown(), false)
-    equal(driver.models[1].fileID, 1001, "closing the collection keeps loaded resources")
+    equal(driver.models[1].fileID, nil, "closing the collection releases loaded resources")
+    for _, model in ipairs(driver.models) do equal(model.creature, nil) end
     ACB.openCard(cards[1].key)
     equal(driver:IsShown(), true)
     driver.parent:OnHide()

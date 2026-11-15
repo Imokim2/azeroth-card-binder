@@ -1,13 +1,13 @@
 local _, ACB = ...
 
 -- Artwork is shared content, not a roll made when a player opens the binder.
--- Keep this v1 pool and its order fixed. Add a card override to refine an existing
--- card, or a new versioned pool for future cards, rather than reshuffling v1.
+-- Keep the v1 IDs and order fixed: framing can be refined without reshuffling
+-- which shared action each card receives. Use a new pool for future choices.
 local signatureV1 = {
-    { id = "v1-guard", name = "The Sentinel", zoom = 0.56, facing = -0.48, animation = 25, frame = 12 },
-    { id = "v1-strike", name = "The Challenge", zoom = 0.53, facing = 0.32, animation = 17, frame = 22 },
-    { id = "v1-cast", name = "Arcane Moment", zoom = 0.57, facing = -0.28, animation = 32, frame = 20 },
-    { id = "v1-living", name = "Living Portrait", zoom = 0.54, facing = 0.46, animation = 0, frame = 0, animated = true, duration = 4 },
+    { id = "v1-guard", name = "The Sentinel", zoom = 0.08, facing = -0.48, animation = 25, frame = 12 },
+    { id = "v1-strike", name = "The Challenge", zoom = 0.12, facing = 0.32, animation = 17, frame = 22 },
+    { id = "v1-cast", name = "Arcane Moment", zoom = 0.10, facing = -0.28, animation = 32, frame = 20 },
+    { id = "v1-living", name = "Living Portrait", zoom = 0.06, facing = 0.46, animation = 0, frame = 0, animated = true, duration = 4 },
 }
 
 local function seed(key)
@@ -19,6 +19,14 @@ end
 local function special(entry)
     return not entry.profession and (entry.rarity == "epic" or entry.rarity == "legendary")
 end
+
+-- Full action loops are authored rewards, not a random idle animation on an
+-- ordinary card. AnimationData 82 is EmoteFlex; use a still combat pose when
+-- the creature does not support it on this client.
+local legendaryLoops = {
+    [639] = { zoom = .12, facing = -.47, animation = 82, frame = 850, duration = 3.6,
+        fallbacks = { 17, 25 }, fallbackFrame = 24, loopPrimaryOnly = true },
+}
 
 -- Foe Reaper's alternates are studio previews. The sixteen dungeon editions
 -- below come from Editions.lua, which also supplies the live binder poses.
@@ -42,7 +50,9 @@ function ACB.cardPresentations(entry, base)
         return { { id = entry.presentationId, name = entry.editionTitle, pose = entry.presentation,
             animated = entry.presentation.animated == true, duration = entry.presentation.duration } }
     end
-    local result = { { id = "signature", name = "Signature", pose = base, animated = base.animated == true, duration = base.duration } }
+    local loop = entry.rarity == "legendary" and legendaryLoops[entry.id] or nil
+    local result = { { id = "signature", name = "Signature", pose = loop or base,
+        animated = loop ~= nil, duration = loop and loop.duration } }
     if ACB.editions[entry.key] then
         for index = 2, #ACB.editions[entry.key] do
             local edition = ACB.editions[entry.key][index]
@@ -60,8 +70,14 @@ end
 
 function ACB.cardPresentation(entry, id)
     local choices = ACB.cardPresentations(entry, ACB.portraitPreset(entry))
-    for _, choice in ipairs(choices) do if choice.id == id then return choice end end
-    return choices[1]
+    local selected = choices[1]
+    for _, choice in ipairs(choices) do if choice.id == id then selected = choice break end end
+    selected.motion = selected.animated and "animated" or (special(entry) and not entry.critter and "sway" or "still")
+    return selected
+end
+
+function ACB.cardSways(card)
+    return card.owned > 0 and card.presentation.motion == "sway" and not card.motionPaused
 end
 
 ACB.presentationSeed = seed

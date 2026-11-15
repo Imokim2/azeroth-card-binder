@@ -16,6 +16,7 @@ import { describeInstall, writeFileAtomic } from "../src/files.ts";
 import { loadOrCreateIdentity } from "../src/identity.ts";
 import type { SecretStore } from "../src/identity.ts";
 import { syncFileText } from "../src/syncFile.ts";
+import { SqlSeasons } from "../../server/src/seasons.ts";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const luajit = process.env["LUAJIT"] || "luajit";
@@ -105,6 +106,32 @@ test("a paired fresh binder receives Ranked setup while an explicit Casual choic
     assert.match(sync, /companionReady = true/);
     assert.ok(sync.includes(`rankedSetups = { "${id}" }`));
     assert.equal(await readFile(game.saved, "utf8"), fresh(""), "the companion does not change the player's chosen mode itself");
+  } finally { await game.cleanup(); }
+});
+
+test("companion 1.0.1 supplies a matching synced nonce after a binder stops being a Ranked starter", async () => {
+  const game = await gameFolder();
+  try {
+    const w = await world(), install = await describeInstall(game.folder), nonce = "b".repeat(32);
+    w.env.deps.seasons = new SqlSeasons(w.env.db, catalog);
+    const original = await readFile(game.saved, "utf8");
+    const source = original.replace("AzerothCardBinderDB = {", `AzerothCardBinderDB = { modeSetupID = "${nonce}", modeChoice = "casual",`);
+    assert.notEqual(source, original);
+    await writeFile(game.saved, source);
+    const engine = new Engine({ install, client: w.client, playerId: w.playerId });
+    const report = await engine.syncOnce();
+    assert.equal(report.accounts[0]?.result.status, "synced");
+    assert.equal(report.accounts[0]?.mode, "casual");
+    assert.equal(report.tape, null);
+    const sync = await readFile(install.syncPath, "utf8");
+    assert.match(sync, /rankedSetups = \{  \}/);
+    assert.ok(sync.includes(nonce), "the successful seasonal sync carries the same local binder nonce");
+    const loaded = JSON.parse(lua("tests/tools/load-saved.lua", game.saved, install.syncPath));
+    assert.equal(loaded.paired, true, "the actual addon recognises the companion's generated file");
+    assert.equal(loaded.mode, "casual", "recognising setup does not promote Casual finds");
+    assert.equal(await readFile(game.saved, "utf8"), source);
+    await writeFile(install.syncPath, sync.replaceAll(nonce, "c".repeat(32)));
+    assert.equal(JSON.parse(lua("tests/tools/load-saved.lua", game.saved, install.syncPath)).paired, false);
   } finally { await game.cleanup(); }
 });
 

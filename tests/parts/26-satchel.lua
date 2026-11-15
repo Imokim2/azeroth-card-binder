@@ -1,5 +1,6 @@
 test("pack gifts use both accepts, move one sealed pack once, and cannot spend an absent pack", function()
     local aSaved, bSaved = ACB.cleanSavedData({}), ACB.cleanSavedData({})
+    aSaved.mode, bSaved.mode = "ranked", "ranked"
     aSaved.packs.DM = 2
     local aLedger, bLedger = newLedger(aSaved), newLedger(bSaved)
     aLedger:begin(true); bLedger:begin(true)
@@ -115,6 +116,7 @@ end)
 
 test("the trade picker finds packs and uses a sealed pack face instead of a creature card", function()
     local saved = ACB.cleanSavedData({})
+    saved.mode = "ranked"
     saved.packs.DM = 2
     local trade = ACB.newTrade(saved.counts, function() return 10 end, function() return "pack-ui" end,
         function() return true end, function() return true end, nil, nil, saved)

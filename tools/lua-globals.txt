@@ -25,6 +25,7 @@ GGET GetAddOnMetadata
 GGET GetBuildInfo
 GGET GetCursorPosition
 GGET GetFileIDFromPath
+GGET GetGuildInfo
 GGET GetInstanceInfo
 GGET GetLootSourceInfo
 GGET GetNormalizedRealmName
@@ -34,6 +35,7 @@ GGET GetTime
 GGET GetZoneText
 GGET InCombatLockdown
 GGET IsInGroup
+GGET IsInGuild
 GGET IsInInstance
 GGET IsInRaid
 GGET IsMouseButtonDown
@@ -54,13 +56,18 @@ GGET UIParent
 GGET UISpecialFrames
 GGET UnitAffectingCombat
 GGET UnitClassification
+GGET UnitDistanceSquared
 GGET UnitFactionGroup
 GGET UnitFullName
 GGET UnitGUID
+GGET UnitIsConnected
 GGET UnitIsDeadOrGhost
 GGET UnitIsPlayer
 GGET UnitIsTapDenied
 GGET UnitIsUnit
+GGET UnitName
+GGET UnitOnTaxi
+GGET UnitPosition
 GGET UnitTokenFromGUID
 GGET _G
 GGET bit
@@ -74,6 +81,7 @@ GGET pairs
 GGET pcall
 GGET print
 GGET select
+GGET setmetatable
 GGET string
 GGET table
 GGET time

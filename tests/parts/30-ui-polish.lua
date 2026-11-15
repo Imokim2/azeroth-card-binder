@@ -38,6 +38,7 @@ test("thumbnail and detail restore the same authored still composition after loa
         card:set(entry, 1)
         card.model.fileID, card.model.supportedAnimation = 12345, entry.presentation.animation
         card.model:OnModelLoaded()
+        card.model:OnUpdate(.21)
         card.model:OnUpdate(.25); card.model:OnUpdate(.25)
     end
     equal(thumbnail.model.portraitZoom, detail.model.portraitZoom)

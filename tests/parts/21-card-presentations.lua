@@ -32,6 +32,7 @@ test("authored animated editions play only on an owned detail, and pause or fall
     card:set(entry, 1)
     card.model.fileID, card.model.supportedAnimation = 1000, 17
     card.model:OnModelLoaded()
+    card.model:OnUpdate(.21)
     equal(card.playing, false)
     card.model.supportedAnimation = 126
     card:setPresentation("vancleef-blades")
@@ -119,7 +120,8 @@ test("every collectible edition has a substantially different camera and action 
             local entry, pose = family[slot], family[slot].presentation
             assert(math.abs(pose.facing) <= .85, entry.name .. " must keep the face visible")
             equal(pose.y, 0, "editions stay centred")
-            assert(math.abs(pose.zoom - base.zoom) >= .08, entry.name .. " needs a different crop")
+            assert(math.abs(pose.zoom - base.zoom) >= .08 or math.abs(pose.facing - base.facing) >= .3,
+                entry.name .. " needs a different crop or viewing angle")
             assert(pose.animation ~= base.animation, entry.name .. " must use a different action")
             assert(pose.composition and pose.frame >= 400)
             for _, fallback in ipairs(pose.fallbacks) do assert(fallback ~= base.animation) end
@@ -139,6 +141,7 @@ test("animated editions keep their supported fallback action when looping and re
         card:set(entry, 1)
         card.model.fileID, card.model.supportedAnimation = 7000, fallback
         card.model:OnModelLoaded()
+        card.model:OnUpdate(.21)
         equal(card.playing, true)
         equal(card.model.animation, fallback)
         equal(card.model.position[2], entry.presentation.y)
@@ -152,7 +155,98 @@ test("animated editions keep their supported fallback action when looping and re
         card:set(family[1], 1)
         card.model.fileID = 7000
         card.model:OnModelLoaded()
+        card.model:OnUpdate(.21)
         equal(card.model.position[2], 0)
         equal(card.model.position[3], -.05)
     end end
+end)
+
+test("loaded creature portraits rotate without a readable file ID and never pin the face camera", function()
+    local card = ACB.createCard(UIParent, true, ignore)
+    local entry = ACB.cards["npc:1057"]
+    card.model.GetModelFileID = function() return 0 end
+    card.model.SetCamera = function(self, camera) self.fixedCamera = camera end
+    card:set(entry, 1)
+    card.model.supportedAnimation = 25
+    card.model:OnModelLoaded()
+    card.model:OnUpdate(.21)
+    equal(card.model.fixedCamera, nil)
+    equal(card.model.mouseEnabled, false)
+    equal(card.model.frozen[1], 25)
+    local facing = card.model.facing
+    card.frame:OnUpdate(2)
+    equal(card.model.facing, facing, "ordinary cards stay still even after a load callback")
+    card.model.creature = nil
+    card.model:OnUpdate(.3)
+    card.model:OnUpdate(.3)
+    card.model:OnUpdate(2)
+    equal(card.model.creature, nil, "the watcher must not reload a model confirmed by its load event")
+    card.model.mouseOver, leftDown = true, true
+    card.frame:OnMouseDown("LeftButton")
+    local before = card.model.facing
+    cursorX = cursorX + 30
+    card.frame:OnUpdate(0)
+    assert(math.abs(card.model.facing - before) > .5, "dragging rotates the portrait")
+    leftDown = false
+    cursorX = cursorX - 30
+    card.frame:OnMouseUp("LeftButton")
+    card:set(ACB.cards["npc:639"], 1)
+    local pending = card.model.facing
+    card.frame:OnUpdate(2)
+    equal(card.model.facing, pending, "the previous card's ready flag cannot start a pending model")
+end)
+
+test("normal cards use wide action framing and hunched creatures have an upward correction", function()
+    for _, id in ipairs({ 1057, 11382, 14507, 11356, 14826, 11390, 782 }) do
+        local entry = ACB.cards["npc:" .. id]
+        local card = ACB.createCard(UIParent, true)
+        card:set(entry, 1)
+        card.model.fileID = 8100
+        card.model:OnModelLoaded()
+        card.model:OnUpdate(.21)
+        assert(card.model.portraitZoom <= .12, entry.name .. " should show more than a face")
+        assert(card.model.position[3] > 0, entry.name .. " needs lifting inside the portrait")
+        equal(card.model.position[2], 0)
+    end
+    for _, entry in pairs(ACB.cards) do
+        if not entry.baseKey and not entry.profession then
+            assert(ACB.cardPresentation(entry).pose.zoom <= .12, entry.name .. " needs wider base framing")
+        elseif entry.presentationId and entry.presentationId:find("critter-face-", 1, true) then
+            assert(entry.presentation.zoom >= .9, "the deliberate critter close-ups stay collectible")
+        end
+    end
+    local thumbnail = ACB.createCard(UIParent, true)
+    thumbnail:set(ACB.cards["npc:11382"], 1)
+    equal(thumbnail.frame.OnUpdate, nil, "left-page previews stay still")
+end)
+
+test("loading-screen events pause model requests and resume only after the transition", function()
+    local card = ACB.createCard(UIParent, true, ignore)
+    emit('PLAYER_LEAVING_WORLD')
+    emit('LOADING_SCREEN_ENABLED')
+    card:set(ACB.cards['npc:639'], 1)
+    card.model:OnUpdate(10)
+    equal(card.model.creature, nil, 'no new creature request while leaving/loading')
+    local start = #widgets
+    local warm = ACB.createPortraitLoader(UIParent, UIParent)
+    local driver = widgets[start + 1]
+    warm({ ACB.cards['npc:589'] })
+    driver:OnUpdate(10)
+    equal(#driver.models, 0, 'loading cannot even allocate a warming model')
+    emit('PLAYER_ENTERING_WORLD')
+    card.model:OnUpdate(1)
+    equal(card.model.creature, nil, 'an active loading screen still blocks model work')
+    emit('LOADING_SCREEN_DISABLED')
+    card.model:OnUpdate(.3)
+    equal(card.model.creature, 639, 'the deferred portrait is requested after loading')
+    warm({ ACB.cards['npc:589'] })
+    driver:OnUpdate(.1)
+    equal(driver.models[1].creature, 589)
+    card.model.fileID, card.model.supportedAnimation = 9000, 17
+    card.model:OnModelLoaded()
+    card.model:OnUpdate(.21)
+    equal(card.model.frozen[1], 17)
+    card.frame:OnUpdate(2)
+    equal(card.model.facing, card.facing, 'the authored angle resumes without an extra camera sway')
+    warm(nil)
 end)
