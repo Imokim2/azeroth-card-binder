@@ -7,7 +7,7 @@ Status: implemented for addon 1.0.15, companion 1.0.3 and server 1.0.2. Harry's 
 | Question | Decision |
 |---|---|
 | Who counts as a member | One enrolled guild per Ranked account, approved by that guild's owner (the proposal's suggestion, chosen 15 November 2026). |
-| Who creates a guild | An admin approves a guild's creation and names its owner. Nobody can vouch for the first person, so the first approval is human. |
+| Who creates a guild | A Ranked player creates the guild binder immediately and becomes its owner. The owner approves member applications; website approval is not required. |
 | Donations | Permanent, as in the proposal. Nobody withdraws, including the owner. |
 
 ## Membership

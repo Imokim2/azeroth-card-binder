@@ -147,11 +147,30 @@ function render(status) {
   $("update-check-message").hidden = !status.updateCheckMessage;
   $("update-check-message").textContent = status.updateCheckMessage || "";
   $("version").textContent = "Version " + status.version;
+  if (status.guildCharacters) renderGuildCharacters(status.guildCharacters);
 }
 
 // ---- The guild screen ----
 // It asks the server only when it is opened, after the player acts, and when they press Refresh: never on a timer.
 let guildPanelKey = "";
+let guildBusy = false;
+function renderGuildCharacters(characters) {
+  const select = $("guild-character");
+  const chosen = select.value;
+  const current = Array.from(select.options, (option) => option.value).filter(Boolean);
+  if (JSON.stringify(current) !== JSON.stringify(characters) || select.options.length === 0) {
+    select.replaceChildren();
+    for (const name of characters.length ? characters : [""]) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name || "No Ranked characters synced yet";
+      select.append(option);
+    }
+    if (characters.includes(chosen)) select.value = chosen;
+  }
+  $("guild-character-hint").hidden = characters.length > 0;
+  $("guild-join").disabled = $("guild-request").disabled = guildBusy || characters.length === 0;
+}
 function renderGuild(panel) {
   const section = $("guild");
   section.hidden = !panel.signedIn || !panel.available;
@@ -163,26 +182,16 @@ function renderGuild(panel) {
   const owns = member && member.role === "owner" && member.state === "active";
   $("guild-state").textContent = member && member.state === "active" ? member.guild.name : member && member.state === "pending" ? "Application waiting" : open ? "Waiting for approval" : "Not in a guild";
   $("guild-state").classList.toggle("complete", !!(member && member.state === "active"));
-  let text = "Join a guild binder, or ask for a new one. Cards given to it stay with it for good.";
-  if (member && member.state === "active") text = member.guild.name + " on " + member.guild.realm + " (" + member.guild.side + "), " + member.guild.members + (member.guild.members === 1 ? " member. " : " members. ") + (owns ? "You are its owner. " : "") + "Give cards in the game with /acb guild donate.";
+  let text = "Join your guild's binder, or create one to get started. Cards given to it stay with it for good.";
+  if (member && member.state === "active") text = member.guild.name + " on " + member.guild.realm + " (" + member.guild.side + "), " + member.guild.members + (member.guild.members === 1 ? " member. " : " members. ") + (owns ? "You are its owner. " : "") + "Open Guild in your in-game binder to donate cards.";
   else if (member && member.state === "pending") text = "Your application to " + member.guild.name + " is waiting for its owner to decide.";
   else if (open) text = "Your guild, " + open.name + " on " + open.realm + ", is waiting for a person to approve it.";
   else if (refused) text = "Your request for " + refused.name + " was not approved" + (refused.note ? ": " + refused.note : ".");
   else if (member && (member.state === "removed" || member.state === "left")) text = (member.state === "removed" ? "You were removed from " : "You left ") + member.guild.name + ". Cards you gave it stay with it.";
   $("guild-text").textContent = text;
-  const select = $("guild-character");
-  const chosen = select.value;
-  select.replaceChildren();
-  for (const name of panel.characters) {
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = name;
-    select.append(option);
-  }
-  if (panel.characters.includes(chosen)) select.value = chosen;
+  renderGuildCharacters(panel.characters);
   const canAsk = !inGuild && !open;
   $("guild-form").hidden = !canAsk;
-  $("guild-join").disabled = $("guild-request").disabled = panel.characters.length === 0;
   const roster = $("guild-roster");
   roster.replaceChildren();
   roster.hidden = !(owns && panel.roster && panel.roster.length > 0);
@@ -215,8 +224,9 @@ function renderGuild(panel) {
   message.textContent = panel.message || "";
 }
 function guildDo(promise) {
+  guildBusy = true;
   for (const id of ["guild-join", "guild-request", "guild-leave", "guild-refresh"]) $(id).disabled = true;
-  return promise.then((panel) => { $("guild-refresh").disabled = false; renderGuild(panel); }, () => { $("guild-refresh").disabled = false; });
+  return promise.then((panel) => { guildBusy = false; $("guild-refresh").disabled = false; renderGuild(panel); }, () => { guildBusy = false; $("guild-refresh").disabled = false; renderGuildCharacters(Array.from($("guild-character").options, (option) => option.value).filter(Boolean)); });
 }
 
 const demo = /^#demo-(\w+)$/.exec(location.hash);

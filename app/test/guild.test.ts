@@ -80,6 +80,26 @@ test("the donations the add-on is waiting to hear about are read from the saved 
   assert.deepEqual(readBinder(file('"junk"')).guildOps, []);
 });
 
+test("character discovery survives a pruned ledger and a companion restart", async () => {
+  const f = await fixture(true);
+  try {
+    const saved = f.install.savedFiles[0]!.path;
+    const source = `AzerothCardBinderDB = { schema = 2, mode = "ranked", ledger = {}, head = { seq = 0, hash = "${"0".repeat(32)}" }, sides = { ["Alice-RealmName"] = "alliance", ["Bob-Other Realm"] = "horde", ["Bad-Realm"] = "neutral" } }`;
+    await writeFile(saved, source);
+    assert.equal(readBinder(source).character, null, "no recent event is required");
+    assert.deepEqual(readBinder(source).characters, ["Alice-RealmName", "Bob-Other Realm"]);
+    const engine = new Engine({ install: f.install, client: f.client, playerId: () => f.playerId });
+    await engine.syncOnce();
+    assert.deepEqual(engine.guildState().characters, ["alice-realmname", "bob-otherrealm"]);
+    const restarted = new Engine({ install: f.install, client: f.client, playerId: () => f.playerId });
+    await restarted.syncOnce();
+    assert.deepEqual(restarted.guildState().characters, engine.guildState().characters);
+    await writeFile(saved, source.replace('mode = "ranked"', 'mode = "casual"'));
+    await restarted.syncOnce();
+    assert.deepEqual(restarted.guildState().characters, [], "old choices are cleared after changing binder mode");
+  } finally { await f.cleanup(); }
+});
+
 async function fixture(guilds: boolean) {
   const folder = await mkdtemp(join(tmpdir(), "warcards-guild-"));
   const saved = join(folder, "WTF", "Account", "ACCOUNT1", "SavedVariables", "AzerothCardBinder.lua");
@@ -119,7 +139,7 @@ test("the engine asks about the guild with the donations it is waiting on, and w
     assert.ok(sync.includes("guild = "), "the answer is written for the add-on");
     assert.ok(sync.includes(f.nonce));
     assert.equal(engine.guildState().available, true);
-    assert.deepEqual(engine.guildState().characters.length > 0, true, "the screens know the characters in the saved files");
+    assert.deepEqual(engine.guildState().characters, [], "Casual characters cannot start or join a Ranked guild binder");
     // A donation waits on the server, so every pass asks again until it is settled.
     const before = f.calls.filter((call) => call === "POST /v1/guilds/mine").length;
     await engine.syncOnce();

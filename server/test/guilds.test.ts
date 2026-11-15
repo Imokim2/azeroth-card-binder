@@ -2,12 +2,13 @@
 // what the asking character's Ranked binder declared, holds its name on its realm while it is pending or active, and is off unless switched on.
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { ApiError } from "../src/errors.ts";
 import { guildSideOf, parseCharacter, parseGuildName } from "../src/guilds.ts";
 import { NOW, newPlayer, registration, setup, signedUpload } from "./harness.ts";
 import type { Player } from "./harness.ts";
-import { WEEK, admin, ask, code, decide, founder, mine, read, signed } from "./guildKit.ts";
+import { WEEK, admin, askPending as ask, ask as createGuild, code, decide, founder, mine, post, read, signed } from "./guildKit.ts";
 import type { Env } from "./guildKit.ts";
 
 test("guild routes do not exist until they are switched on", async () => {
@@ -17,6 +18,52 @@ test("guild routes do not exist until they are switched on", async () => {
   assert.equal(await code(await env.call("/v1/guilds/mine", { body: signed(ann, "guild-mine") })), "not_found");
   assert.equal(await code(await env.call("/v1/admin/guilds", { headers: admin })), "not_found");
   assert.equal(await code(await decide(env, "0".repeat(26), "approve")), "not_found");
+});
+
+test("creating a guild immediately makes the founder its active owner, without an admin decision", async () => {
+  const env = setup({ guilds: true });
+  const ann = await founder(env, "Ann");
+  const response = await createGuild(env, ann.player, ann.peer, "Instant Guild");
+  assert.equal(response.status, 201);
+  const guild = (await read(response)).guild!;
+  assert.deepEqual([guild["status"], guild["decidedAt"]], ["active", NOW]);
+  const mine = await read(await post(env, ann.player, "mine", "guild-mine"));
+  const member = mine["membership"] as { role: string; state: string; guild: { id: string; members: number } };
+  assert.deepEqual([member.role, member.state, member.guild.id, member.guild.members], ["owner", "active", guild["id"], 1]);
+  const bob = await founder(env, "Bob");
+  const joined = await read(await post(env, bob.player, "join", "guild-join", { character: bob.peer, name: "Instant Guild" }));
+  assert.equal((joined["membership"] as { state: string }).state, "pending", "members still need their binder owner's approval");
+  assert.equal(await code(await createGuild(env, ann.player, ann.peer, "Another Guild")), "guild_taken");
+  assert.equal(await code(await createGuild(env, bob.player, bob.peer, "Instant Guild")), "guild_taken");
+});
+
+test("a failed owner insert rolls back creation of the guild", async () => {
+  const env = setup({ guilds: true });
+  const ann = await founder(env, "Ann");
+  env.raw.exec("CREATE TRIGGER fail_owner BEFORE INSERT ON guild_members BEGIN SELECT RAISE(ABORT, 'test failure'); END");
+  assert.equal(await code(await createGuild(env, ann.player, ann.peer, "Atomic Guild")), "guild_taken");
+  assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM guilds").get()!["n"], 0);
+});
+
+test("the migration activates existing pending requests without replacing memberships or collection data", async () => {
+  const env = setup({ guilds: true });
+  const ann = await founder(env, "Ann");
+  const guild = (await read(await ask(env, ann.player, ann.peer, "Older Request"))).guild!;
+  const bob = await founder(env, "Bob");
+  const other = (await read(await ask(env, bob.player, bob.peer, "Already Joined"))).guild!;
+  // A historical request whose owner joined another guild must not grant them two memberships.
+  env.raw.prepare("INSERT INTO guild_members (id, guild_id, player_id, character, role, state, requested_at) VALUES (?, ?, ?, ?, 'member', 'active', ?)")
+    .run("test-member", guild["id"] as string, bob.id, bob.peer, NOW);
+  const before = env.raw.prepare("SELECT * FROM ledger_state ORDER BY player_id").all();
+  const migration = readFileSync(new URL("../migrations/0018_automatic_guilds.sql", import.meta.url), "utf8");
+  env.raw.exec(migration);
+  assert.equal((await mine(env, ann.player))[0]!["status"], "active");
+  assert.equal((await mine(env, bob.player))[0]!["status"], "pending");
+  assert.equal(env.raw.prepare("SELECT guild_id FROM guild_members WHERE player_id = ?").get(bob.id)!["guild_id"], guild["id"]);
+  assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM guild_members WHERE guild_id = ? AND role = 'owner'").get(other["id"] as string)!["n"], 0);
+  assert.deepEqual(env.raw.prepare("SELECT * FROM ledger_state ORDER BY player_id").all(), before);
+  env.raw.exec(migration);
+  assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM guild_members WHERE player_id = ?").get(ann.id)!["n"], 1, "safe to reapply");
 });
 
 test("a Ranked character with a declared side asks for a guild, and a reviewer approves it", async () => {

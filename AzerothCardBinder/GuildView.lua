@@ -141,7 +141,7 @@ function ACB.createGuildView(parent, saved)
         empty:SetShown(#rows == 0)
         local member = data and data.membership
         empty:SetText(not guild and (member and member.state == "pending" and "Your guild application is waiting for its owner.\n\nThe companion app will show the decision." or
-            "Start or join a guild binder in the companion app.\n\nNew guilds need team approval. Members are approved by their guild owner.") or not summary and
+            "Create or join a guild binder in the companion app.\n\nNew binders are ready straight away. Members are approved by their guild binder's owner.") or not summary and
             "Update and sync the companion, then /reload to load your guild's collection." or giving and
             "No cards match this list.\n\nChoose All owned to include your last copies, or change your search." or
             (query ~= "" and "No cards match this search.\n\nTry another card name." or "Your guild binder is waiting for its first card.\n\nChoose Donate cards to get it started."))

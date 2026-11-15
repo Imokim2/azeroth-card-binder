@@ -18,6 +18,16 @@ export const signed = (player: Player, purpose: string, fields: Record<string, u
 export const post = (env: Env, player: Player, path: string, purpose: string, fields: Record<string, unknown> = {}) =>
   env.call("/v1/guilds/" + path, { body: signed(player, purpose, fields, { sentAt: env.clock.now }) });
 export const ask = (env: Env, player: Player, character: string, name: string) => post(env, player, "request", "guild-request", { character, name });
+// Recreate an old pre-automatic request for compatibility tests of moderation and pending-name protection.
+export const askPending = async (env: Env, player: Player, character: string, name: string) => {
+  const response = await ask(env, player, character, name);
+  if (response.status !== 201) return response;
+  const body = await read(response);
+  const guild = body.guild!;
+  env.raw.prepare("DELETE FROM guild_members WHERE guild_id = ?").run(guild["id"] as string);
+  env.raw.prepare("UPDATE guilds SET status = 'pending', decided_at = NULL, decided_by = '' WHERE id = ?").run(guild["id"] as string);
+  return Response.json({ ...body, guild: { ...guild, status: "pending", decidedAt: null } }, { status: 201 });
+};
 export const mine = async (env: Env, player: Player) => (await read(await post(env, player, "mine", "guild-mine"))).guilds!;
 export const decide = (env: Env, id: string, decision: string, note?: string) => env.call(`/v1/admin/guilds/${id}`, { body: { decision, ...(note === undefined ? {} : { note }) }, headers: admin });
 export const code = async (response: Response) => (await read(response)).error?.code;
