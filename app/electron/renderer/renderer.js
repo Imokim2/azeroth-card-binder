@@ -147,7 +147,7 @@ function render(status) {
   $("update-check-message").hidden = !status.updateCheckMessage;
   $("update-check-message").textContent = status.updateCheckMessage || "";
   $("version").textContent = "Version " + status.version;
-  renderGuildCharacters(status.guildCharacters || []);
+  if (status.guildCharacters) renderGuildCharacters(status.guildCharacters);
 }
 
 // ---- The guild screen ----
