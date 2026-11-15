@@ -10,6 +10,14 @@ Addon 1.0.7 restores pickup models when the player's 3D setting is enabled, corr
 
 ## Captured failure on 15 November 2026
 
+### Reported temporary recovery
+
+The user later reported that the client still accepted chat input during the fail loop. Typing `/reload` allowed it to finish loading normally. Add this as the first recovery attempt when input remains responsive; it is a player-observed workaround, not a guaranteed fix. A successfully completed reload normally writes SavedVariables, but do not promise that graphics-failure recovery always preserves progress. If typing or reloading fails, Alt+F4 followed by relaunch has also allowed affected players to enter normally, with the usual risk to unsaved finds. Preserve `Logs/gx.log` before a full relaunch where possible.
+
+The recurring locations overlap with other player reports, which supports investigating the client transitions as a common trigger. That overlap does not establish independence from Warcards: the other players' addon lists and reproduction conditions are unknown. Likewise, recovery through `/reload` resets addon UI and Lua state as well as UI-related client resources, so it does not by itself isolate the addon or the native renderer as the cause. Ask for the versions, location and what recovered the session; players need not diagnose the graphics log themselves.
+
+### Captured graphics failure
+
 At 00:06:48 UTC, while entering Razorfen Kraul, the client's graphics log first recorded `OutOfMemory: AllocDescriptors Failed` and `OutOfMemory: RTV view create failed`, followed by a lost device on the loading screen. The first device-recovery restart followed at 00:06:48.897; the preserved live copy reached recovery occurrence 138 at 00:09:09.420. The player confirmed using a binder earlier in that game session. The game did not recover and the player forced it closed. They have also experienced it at the Deeprun Tram and Blackfathom Deeps. Evidence copies are local and ignored under `.local-tools/display-incident-20261115-000731/`; never commit or upload the raw files automatically.
 
 At the first failure, reported GPU memory use was about 4.4 GB against a 9.3 GB budget. This establishes allocation failure and repeated renderer recovery; it does not by itself establish ordinary VRAM exhaustion or which component caused it. The active companion executable was verified as 1.0.1. Installed addon files were 1.0.9; the exact Lua version loaded at that moment was not independently confirmed. Versions 1.0.7 through 1.0.9 share the relevant model-loading code.
