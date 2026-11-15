@@ -123,14 +123,14 @@ test("the launch collection is written to the ledger once, after the two drop ge
     local ledger = { flushRun = function() records[#records + 1] = "flush" end, record = function(_, kind, key) records[#records + 1] = kind .. ":" .. key end }
     local saved = ACB.cleanSavedData({})
     ACB.activateDropBalance(saved, ledger)
-    equal(table.concat(records, " "), "flush mode:chase1 flush mode:chase2 flush mode:launch1 flush mode:faction1")
+    equal(table.concat(records, " "), "flush mode:chase1 flush mode:chase2 flush mode:launch1 flush mode:faction1 flush mode:side:alliance")
     ACB.activateDropBalance(saved, ledger)
-    equal(#records, 8, "and never again")
+    equal(#records, 10, "and never again")
     equal(saved.launchLedger, true)
     equal(saved.factionLedger, true)
     -- A binder that already wrote the earlier markers writes only the new one.
     records = {}
     local older = ACB.cleanSavedData({ balanceLedger = true, balanceLedger2 = true })
     ACB.activateDropBalance(older, ledger)
-    equal(table.concat(records, " "), "flush mode:launch1 flush mode:faction1")
+    equal(table.concat(records, " "), "flush mode:launch1 flush mode:faction1 flush mode:side:alliance")
 end)

@@ -33,8 +33,10 @@ test("a card only one faction can win is a source and available only to that fac
         equal(ACB.cardAvailable(horde), true)
         equal(ACB.cardAvailable(alliance), false)
     end)
-    equal(ACB.playerSide(), nil, "no faction from the game, no faction cards")
-    equal(ACB.cardAvailable(alliance), false)
+    asFaction(nil, function()
+        equal(ACB.playerSide(), nil, "no faction from the game, no faction cards")
+        equal(ACB.cardAvailable(alliance), false)
+    end)
     equal(ACB.cardAvailable(ACB.cards["npc:639"]), true, "a card both factions can win is always available")
 end)
 
