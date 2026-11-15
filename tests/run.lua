@@ -45,6 +45,7 @@ local parts = {
     "38-dungeon-hints-index-filters",
     "39-support-community",
     "40-ranked-setup-recovery",
+    "41-faction-cards",
 }
 
 local source, ranges, line = {}, {}, 1

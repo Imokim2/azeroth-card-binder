@@ -8,7 +8,8 @@ const path = require("node:path");
 const catalog = require("../packages/shared/catalog.json");
 const { draft, files } = require("../tools/launch-collection.js");
 
-const base = Object.keys(catalog.cards).filter((key) => !catalog.cards[key].baseKey);
+// The cards both factions can win. Cards only one faction can win (card.faction) are outside the split: always available, never required.
+const base = Object.keys(catalog.cards).filter((key) => !catalog.cards[key].baseKey && !catalog.cards[key].faction);
 
 test("the launch collection is exactly half of the base cards, and every held-back card is a real base card", () => {
     const result = draft(catalog);
@@ -23,7 +24,9 @@ test("every elite, rare-elite, boss, critter and gathering card stays; chase car
     const launch = new Set(result.launch);
     for (const key of base) {
         const card = catalog.cards[key];
-        if (card.rank === "elite" || card.rank === "rareelite" || card.boss || card.dropProfile.tier === "critter" || card.rank === "gathering") {
+        if (card.unobtainable) {
+            assert.ok(!launch.has(key), key + " " + card.name + " cannot be won, so it is never at launch");
+        } else if (card.rank === "elite" || card.rank === "rareelite" || card.boss || card.dropProfile.tier === "critter" || card.rank === "gathering") {
             assert.ok(launch.has(key), key + " " + card.name + " must stay at launch");
         }
         if (card.dropProfile.tier === "chase" && card.rank === "normal") assert.ok(!launch.has(key), key + " is held back by default");

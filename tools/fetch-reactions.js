@@ -19,9 +19,22 @@ for (const file of fs.readdirSync(pagesDir)) {
     for (const match of html.matchAll(/\/npcs\/(\d+)-([a-z0-9-]+)\//g)) slugs[match[1]] = match[2];
 }
 
-// The ids to look up: every creature in the generated catalog and the hand-made cards.
+// The ids to look up: every creature the zone pages list among those a player fights ("Rares, elites and bosses" and "Everything else, by
+// level", the groups tools/build-catalog.js reads), whether or not it is a card yet, and the hand-made cards. A creature friendly to one
+// faction is a card only the other faction can win (docs/FACTION-CARDS.md), so the creatures that are not cards yet matter too.
 const ids = new Set();
 const catalog = path.join(__dirname, "..", "AzerothCardBinder");
+for (const file of fs.readdirSync(pagesDir)) {
+    const html = fs.readFileSync(path.join(pagesDir, file), "utf8");
+    const start = html.indexOf('id="npcs"');
+    if (start < 0) continue;
+    const next = html.indexOf('id="', start + 10);
+    for (const group of html.slice(start, next < 0 ? undefined : next).split(/<details/).slice(1)) {
+        const title = ((group.match(/<summary[^>]*>([\s\S]*?)<\/summary>/) || [])[1] || "").replace(/<[^>]+>/g, " ").replace(/\(\d+\)/, "").replace(/\s+/g, " ").trim();
+        if (title !== "Rares, elites and bosses" && title !== "Everything else, by level") continue;
+        for (const match of group.matchAll(/<a href="\/npcs\/(\d+)-/g)) ids.add(match[1]);
+    }
+}
 for (const match of fs.readFileSync(path.join(catalog, "CatalogForever.lua"), "utf8").matchAll(/^\s+\{ (\d+), "/gm)) ids.add(match[1]);
 for (const match of fs.readFileSync(path.join(catalog, "Catalog.lua"), "utf8").matchAll(/^card\(\d+, "[^"]+", (\d+), /gm)) ids.add(match[1]);
 

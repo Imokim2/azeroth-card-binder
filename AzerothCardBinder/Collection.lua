@@ -321,7 +321,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             return false
         end
         if not card or card.baseKey or (saved.counts[key] or 0) > 0 then return false end
-        if ACB.cardAvailable and not ACB.cardAvailable(card) then return false end -- still held back for a season
+        if ACB.cardAvailable and not ACB.cardAvailable(card) then return false end -- still held back for a season, or the other faction's
+        if card.since then ACB.activateDropBalance(saved, ledger) end -- the faction markers come before a card added in spec 10
         local _, cost = ACB.dustFor(card)
         if (saved.dust or 0) < cost then return false end
         saved.dust = saved.dust - cost

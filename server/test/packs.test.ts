@@ -72,7 +72,8 @@ async function packPlay(id: string, packAt: number, open = true) {
     push({ kind: "packOpen", key: ZONE, count: 0, tape: packAt });
     for (let step = 1; step <= PACK_SIZE; step++) {
       const entry = await tapeEntry(key, id, packAt + step);
-      const card = packPick(catalog, ZONE, entry, catalog.shinyOdds)!;
+      // The pool of a binder that has not recorded mode/faction1: the cards added in spec 10 are not in it.
+      const card = packPick(catalog, ZONE, entry, catalog.shinyOdds, false, (key) => !catalog.cards[key]?.since)!;
       counts[card] = (counts[card] ?? 0) + 1;
       const shiny = !shinyHad.has(card) && shinyValue(entry, catalog.shinyOdds) === 1;
       if (shiny) shinyHad.add(card);

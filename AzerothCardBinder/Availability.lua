@@ -26,10 +26,23 @@ local function released()
     return index
 end
 
--- May this card be found, rolled for or crafted now? (Cards that are not held back always may.)
+-- This character's faction as the catalog names it ("alliance" or "horde"), or nil when the game does not say.
+function ACB.playerSide()
+    if type(UnitFactionGroup) ~= "function" then return nil end
+    local ok, group = pcall(UnitFactionGroup, "player")
+    if not ok then return nil end
+    if group == "Alliance" then return "alliance" end
+    if group == "Horde" then return "horde" end
+end
+
+-- May this card be found, rolled for or crafted now? A card only one faction can win (card.faction, ledger spec 10: the creature is friendly to
+-- the other faction, which cannot kill it) is available only to that faction's characters. A card held back for seasons is available once
+-- a season has released it. Every other card always is.
 function ACB.cardAvailable(card)
     local base = card and ACB.baseCard(card)
-    if not base or not base.seasonal then return true end
+    if not base then return true end
+    if base.faction and base.faction ~= ACB.playerSide() then return false end
+    if not base.seasonal then return true end
     return released()[base.key] == true
 end
 
@@ -50,7 +63,7 @@ function ACB.refreshVisibleCards(saved)
         if page.all then
             local visible = {}
             for _, card in ipairs(page.all) do
-                if not card.seasonal or ACB.cardAvailable(card) or ACB.familyCount(counts, card) > 0 then visible[#visible + 1] = card end
+                if not (card.seasonal or card.faction) or ACB.cardAvailable(card) or ACB.familyCount(counts, card) > 0 then visible[#visible + 1] = card end
             end
             if not same(page.cards, visible) then
                 for position = #page.cards, 1, -1 do page.cards[position] = nil end

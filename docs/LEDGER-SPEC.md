@@ -1,6 +1,6 @@
 # Ledger specification
 
-Version 9. Version 9 adds `mode/launch1` (cards held back for seasons, below). Version 8 adds `mode/chase2` (the second set of drop rates, below). Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 10. Version 10 adds `mode/faction1` and `mode/side:*` (cards only one faction can win, below). Version 9 adds `mode/launch1` (cards held back for seasons, below). Version 8 adds `mode/chase2` (the second set of drop rates, below). Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
 
 ## Seasonal rewards (version 7)
 
@@ -17,6 +17,16 @@ Trade-only keys `pack:<pack-ID>` are allowed in `tradeIn` and `tradeOut`. Their 
 Replay uses `packType` to remember the full ID of an opened pack, and `packLeft` is 1, 3 or 5. When a pack is received, it initializes `packOutputs[pack-ID]`, then records subsequent packCard counts of that type. Pending, unmatched, Casual-origin or otherwise tainted pack trades exclude those outputs for Ranked scoring. Maintenance traces taint from packs to their opened cards and subsequent trades; when an honest pending pair matches, its outputs count again. This deliberately over-excludes when found and traded packs of the same type are mixed. Casual packFind events also constitute unverified provenance, even if they never drop a card or are traded before opening. Local integrity checks still cover card counts and dust; server replay is authoritative for pack counts.
 
 Specification 6 is required for `packs2`, tiered pack find/open IDs and pack trade keys; a collection that has used these cannot sync with an older companion. Legacy versions 2–5 remain replayable. See `satchel.json` and the Lua vectors for pack boundary/gift examples.
+
+## Faction cards (version 10)
+
+A creature that is friendly to one faction cannot be killed by it, so its card can be won only by the other faction. The catalog marks such a card `faction: "alliance"` (the Alliance can kill the creature, which is a Horde one) or `faction: "horde"`, and every card added with spec 10 (these, and the dungeon and raid creatures that were missing) carries `since: 10`. There are 162 cards for each side; they are never held back, never in a page's `required` list, and a season cannot name one (docs/FACTION-CARDS.md).
+
+`mode/faction1` has count, dust, shiny and tape zero. It is valid only after `mode/launch1` (`launch=1`) and only once; it sets `faction=1` and an empty `sides` map. Until a binder has it, replay refuses a `drop`, `miss`, `packCard` or `craft` of a card with `since` (rule `retired`), and the pools of its packs leave those cards out, so every earlier history replays exactly as it did.
+
+`mode/side:alliance` and `mode/side:horde` (count, dust, shiny and tape zero) declare the faction of the character in the event's `char` field. They are valid only after `faction1`, once per character: a character's faction cannot change. From then on replay refuses a `drop`, `miss`, `packCard` or `craft` of a card with `faction` unless the event's character declared that faction (rule `faction`; a character that has declared nothing wins none). Trading, gifting and recycling a card never look at factions. The server checks the five cards of a pack against the pool of the opening character: the cards of its own faction and the cards both can win, with the other faction's left out, in the usual order.
+
+The declaration is the player's own word, like every event: the ledger shows that a binder is consistent, not that a character really is an Alliance one. The add-on writes `faction1` after `launch1` and a character's `side:*` before its first roll, pack opening or craft of a card added in spec 10, and a server must refuse an upload that contains `faction1` or a `side:*`, or a binder already on it, unless the upload's `specVersion` is at least 10 (`client_too_old`), including empty ones.
 
 ## Launch collection (version 9)
 

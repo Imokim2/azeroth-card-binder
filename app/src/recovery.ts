@@ -12,7 +12,7 @@ type RecordValue = Record<string, unknown>;
 const record = (value: unknown): RecordValue => value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 const mapText = (value: unknown) => JSON.stringify(Object.entries(record(value)).sort(([a], [b]) => a.localeCompare(b)));
-const progressKeys = new Set(("schema counts shiny dust sets titles achievements tradeCount history ledger head stateSum tape run mode modeChoice casualDrops attempts misses rolledGuids rolledNext legacy exactMode balancedDrops balanceLedger editionDrops editionLedger tieredPacks packTiersLedger packs levels seasonClaims seasonTitles").split(" "));
+const progressKeys = new Set(("schema counts shiny dust sets titles achievements tradeCount history ledger head stateSum tape run mode modeChoice casualDrops attempts misses rolledGuids rolledNext legacy exactMode balancedDrops balanceLedger balanceLedger2 launchLedger factionLedger sides editionDrops editionLedger tieredPacks packTiersLedger packs levels seasonClaims seasonTitles").split(" "));
 
 export type RecoveryServer = {
   head: { seq: number; hash: string }; tapeNext: number; casualDrops: number; state: RecordValue; events: RecordValue[];

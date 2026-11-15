@@ -91,6 +91,21 @@ function ACB.activateDropBalance(saved, ledger)
         if ledger then ledger:flushRun(); ledger:record("mode", "launch1") end
         saved.launchLedger = true
     end
+    -- Ledger spec 10: the cards added with factions exist from here on (faction1), and each character says which faction it is (side:*) before it
+    -- acquires anything, so the server can tell which cards only one faction can win it may have. Written once each, after launch1.
+    if saved.launchLedger and not saved.factionLedger then
+        if ledger then ledger:flushRun(); ledger:record("mode", "faction1") end
+        saved.factionLedger = true
+    end
+    local side = saved.factionLedger and ACB.playerSide()
+    if side then
+        saved.sides = saved.sides or {}
+        local who = ACB.characterName()
+        if not saved.sides[who] then
+            if ledger then ledger:flushRun(); ledger:record("mode", "side:" .. side) end
+            saved.sides[who] = side
+        end
+    end
 end
 
 function ACB.discoveryText(card)

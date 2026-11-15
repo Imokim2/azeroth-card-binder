@@ -7,7 +7,7 @@ import * as editions from "../../packages/shared/src/editions.js";
 export type Catalog = {
   catalogVersion: string;
   cards: Record<string, { name: string; rarity: string; rank: string; set: string; boss?: boolean; profession?: string; baseKey?: string; editionTitle?: string;
-    critter?: boolean; balanceOnly?: boolean; seasonal?: boolean; dropProfile?: { rate: number; rate2?: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
+    critter?: boolean; balanceOnly?: boolean; seasonal?: boolean; unobtainable?: boolean; faction?: "alliance" | "horde"; since?: number; dropProfile?: { rate: number; rate2?: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
   editions?: Record<string, { key: string; weight: number }[]>;
   sets: { code: string; title: string; group: string; reward: string; cards: string[] }[];
   dust: { recycle: Record<string, number>; craft: Record<string, number> };
@@ -29,6 +29,8 @@ export type LedgerState = {
   editions?: boolean;
   balance?: number;
   launch?: number; // 1 after mode/launch1: cards held back for seasons are not acquired before a season releases them
+  faction?: number; // 1 after mode/faction1: cards added in spec 10 exist, and a character's faction (mode/side:*) gates the cards only one faction can win
+  sides?: Record<string, string>; // each character's declared faction ("alliance" or "horde"), by the name written in its events
   balanceAttempts?: Record<string, number>;
   balanceDrops?: Record<string, number>;
   balanceReady?: Record<string, boolean>;
