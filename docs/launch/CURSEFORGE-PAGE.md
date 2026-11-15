@@ -45,7 +45,7 @@ Both players need the companion set up and a **Ranked** binder. Trading and gift
 
 Open **Guild** in your binder to browse the collection you build together. Donate a card from your Ranked binder, starting with your spare copies. Each donation is permanent: the copy leaves your collection and stays with the guild, even if you leave. Nobody can withdraw it, including officers.
 
-Start or join through the companion app. The team approves new guilds, and the guild owner approves members. Save and sync, then reload to see new donations and the shared collection. If the server cannot accept a donation, the copy comes back when the addon loads the reply.
+Start or join through the companion app. New guild binders are ready immediately. The person who creates one becomes its owner and approves members. Save and sync, then reload to see new donations and the shared collection. If the server cannot accept a donation, the copy comes back when the addon loads the reply.
 
 Wanted lists are still available from the Guild page or with `/acb wanted`.
 

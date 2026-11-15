@@ -133,6 +133,7 @@ export class Engine {
     const reports = new Map<string, PendingReport>();
     const seasonBinders: string[] = [];
     const guildOps = new Set<string>();
+    const characters = new Set<string>();
     let running: string | null = null; // the oldest add-on version that last wrote an account's file
     for (const file of install.savedFiles) {
       let binder: Binder;
@@ -153,7 +154,13 @@ export class Engine {
       if (binder.addonVersion && (running === null || compareVersions(binder.addonVersion, running) < 0)) running = binder.addonVersion;
       for (const report of binder.reports) reports.set(report.token, report);
       for (const id of binder.guildOps ?? []) guildOps.add(id);
-      if (binder.character) this.#characters.add(`${binder.character.name.toLowerCase()}-${binder.character.realm.replace(/[\s'-]/g, "").toLowerCase()}`);
+      if (binder.mode === "ranked") {
+        for (const peer of binder.characters ?? []) {
+          const at = peer.indexOf("-");
+          characters.add(`${peer.slice(0, at).toLowerCase()}-${peer.slice(at + 1).replace(/[\s'-]/g, "").toLowerCase()}`);
+        }
+        if (binder.character) characters.add(`${binder.character.name.toLowerCase()}-${binder.character.realm.replace(/[\s'-]/g, "").toLowerCase()}`);
+      }
       const result = await syncBinder(client, binder, this.#acks.get(file.account) ?? null);
       if (result.status === "diverged" || result.status === "history-missing") {
         this.#acks.delete(file.account);
@@ -175,6 +182,7 @@ export class Engine {
       });
     }
 
+    this.#characters = characters;
     this.#seasonBinders = seasonBinders;
     // Reports the player made in the game go up once; the ones the server has settled are written for the add-on to forget.
     const pending = [...reports.values()].filter((report) => !this.#reportsDone.includes(report.token));

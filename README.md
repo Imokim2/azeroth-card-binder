@@ -31,7 +31,7 @@ Seasonal collections give everyone a shared list to hunt for alongside their nor
 
 Open **Guild** in the binder to browse your shared collection or donate cards from your Ranked binder. Donations are permanent: the copy leaves your own collection and stays with the guild, even if you leave. Nobody can withdraw cards.
 
-Start or join through the companion app. The team reviews new guilds, and the guild owner approves members. Save, sync and reload to see new donations. [Guild standings](https://worldofwarcards.co.uk/guilds) show the collections as they grow.
+Start or join through the companion app. New guild binders are ready immediately; the person who creates one becomes its owner and approves members. Save, sync and reload to see new donations. [Guild standings](https://worldofwarcards.co.uk/guilds) show the collections as they grow.
 
 ### Keep packs in your satchel
 

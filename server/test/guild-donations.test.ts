@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import { catalog, newPlayer, registration, setup, signedUpload } from "./harness.ts";
 import type { Player } from "./harness.ts";
-import { ask, code, decide, founder, post, read } from "./guildKit.ts";
+import { ask, code, founder, post, read } from "./guildKit.ts";
 import type { Env } from "./guildKit.ts";
 
 const require = createRequire(import.meta.url);
@@ -77,7 +77,6 @@ async function binder(env: Env, name: string, options: { guild?: boolean; side?:
 async function guildOf(env: Env, name = "Knights of Light", owner = "Ann") {
   const ann = await founder(env, owner);
   const id = (await read(await ask(env, ann.player, ann.peer, name))).guild!["id"] as string;
-  await decide(env, id, "approve");
   return { ann, id };
 }
 async function enrol(env: Env, guildName: string, member: { player: Player; peer: string }, owner: { player: Player }) {

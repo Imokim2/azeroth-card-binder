@@ -119,9 +119,10 @@
           <label>Guild name<input id="guild-name" type="text" maxlength="24" autocomplete="off" spellcheck="false"></label>
           <div class="buttons">
             <button id="guild-join" class="primary">Join this guild</button>
-            <button id="guild-request">Ask for a new guild</button>
+            <button id="guild-request">Create guild binder</button>
           </div>
-          <p class="note">A new guild is checked by a person before it exists. Joining needs the guild owner to approve you. You can be in one guild at a time, and only a Ranked character that has picked its faction can use guilds.</p>
+          <p id="guild-character-hint" class="note" hidden>Log in with your Ranked character, type /reload, then click Sync collection to load your characters.</p>
+          <p class="note">Creating a binder is instant. The person who creates it becomes its owner and approves other members. You can be in one guild binder at a time, using a Ranked character that has picked its faction.</p>
         </div>
         <ul id="guild-roster" class="accounts" aria-label="Members and applications" hidden></ul>
         <div class="buttons">

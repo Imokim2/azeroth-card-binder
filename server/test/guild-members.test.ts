@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { NOW, newPlayer, setup } from "./harness.ts";
 import type { Player } from "./harness.ts";
-import { WEEK, ask, code, decide, founder, post, read } from "./guildKit.ts";
+import { WEEK, askPending as ask, code, decide, founder, post, read } from "./guildKit.ts";
 import type { Env } from "./guildKit.ts";
 
 type Member = { id: string; character: string; role: string; state: string };

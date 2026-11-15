@@ -1,8 +1,6 @@
-// Guild binders, step one: asking for a guild and a person who runs the service approving it (docs/proposals/GUILD-BINDERS-DESIGN.md).
-// A guild is a name on a realm for one side, owned by the player who asked. Nobody can prove they lead a guild in the game, so the first
-// approval is a human one; once a guild exists its id never changes, whoever owns it and whatever it is called.
-// This step has no members and no donations, and it never reads or writes a ledger: the only thing it learns from a binder is whether the
-// character asking is Ranked and which side it declared (mode/side), which becomes the guild's side.
+// Guilds are created immediately by a signed-in Ranked player and get an owner in the same transaction.
+// The owner approves member applications. Legacy pending requests can still be reviewed through the admin routes.
+// Realm, character ownership and faction come from the verified binder; its cards are never changed by guild creation.
 import type { Db } from "./db.ts";
 import { ApiError } from "./errors.ts";
 import { newId } from "../../packages/shared/src/crypto.ts";
@@ -185,7 +183,7 @@ export class SqlGuilds {
     }).sort((a, b) => b.tenths - a.tenths || b.cards - a.cards || a.name.localeCompare(b.name) || a.guildId.localeCompare(b.guildId)).slice(0, limit);
   }
 
-  // Ask for a guild from one of the player's own characters. The guild is pending until someone approves it.
+  // Create the guild and its first member atomically, from one of the player's own Ranked characters.
   async request(playerId: string, input: { character: string; name: string }, now: number): Promise<GuildView> {
     const { own, side } = await this.#eligible(playerId, input.character);
     const refused = (await this.#db.all<{ n: number }>("SELECT COUNT(*) AS n FROM guilds WHERE owner_player_id = ? AND status = 'refused' AND requested_at > ?", [playerId, now - WEEK]))[0]?.n ?? 0;
@@ -196,10 +194,12 @@ export class SqlGuilds {
     if (held.length) throw new ApiError("guild_taken", { reason: "name" });
     const id = newId(now * 1000);
     try {
-      await this.#db.batch([{
-        sql: `INSERT INTO guilds (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, NULL, '', '')`,
-        params: [id, input.name, nameKey, own.realm, realmKey, side, playerId, input.character, now],
-      }]);
+      await this.#db.batch([
+        { sql: `INSERT INTO guilds (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'automatic', '')`,
+          params: [id, input.name, nameKey, own.realm, realmKey, side, playerId, input.character, now, now] },
+        { sql: "INSERT INTO guild_members (id, guild_id, player_id, character, role, state, requested_at, decided_at) VALUES (?, ?, ?, ?, 'owner', 'active', ?, ?)",
+          params: [newId(now * 1000), id, playerId, input.character, now, now] },
+      ]);
     } catch {
       // Two requests for the same name, or two from one player, at once: the unique indexes let one through.
       throw new ApiError("guild_taken", { reason: "name" });

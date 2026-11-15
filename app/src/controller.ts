@@ -60,6 +60,7 @@ export type Status = {
   startAtLogin: boolean;
   gameFolder: string | null;
   accounts: { account: string; mode: string | null; state: string; setupReady?: boolean }[];
+  guildCharacters: string[];
   lastSyncAt: number | null;
   tapeEntries: number | null; // roll-tape entries ready for the add-on, when any account plays Ranked
   standings: "fresh" | "kept" | "unavailable" | null;
@@ -96,7 +97,7 @@ function guildProblem(code: string, detail?: Record<string, unknown>): string {
   }
   if (code === "guild_taken") return reason === "name" ? "That guild name is already taken on this realm." : "You already have a guild, or an application waiting.";
   if (code === "guild_decided") return "That has already been decided.";
-  if (code === "not_found") return reason === "no-such-guild" ? "There is no approved guild with that name on that character's realm." : "There is nothing here.";
+  if (code === "not_found") return reason === "no-such-guild" ? "There is no guild binder with that name on this realm. Choose Create guild binder to start it." : "There is nothing here.";
   if (code === "rate_limited") return "Too many refused requests this week. Try again later.";
   if (code === "bad_request") {
     const field = String(detail?.["field"] ?? "");
@@ -180,6 +181,7 @@ export class Controller {
           ...(ready ? { setupReady: true } : {}) };
       }) ?? [],
       lastSyncAt: this.#lastSyncAt,
+      guildCharacters: this.#engine?.guildState().characters ?? [],
       tapeEntries: report?.tape && "count" in report.tape ? report.tape.count : null,
       standings: report?.standings ?? null,
       needsNewBinder: report?.accounts.some((entry) => entry.result.status === "diverged") ?? false,
@@ -557,8 +559,7 @@ export class Controller {
   // The guild screen: what the server says about the player's guild, and for an owner the roster. Asks the server each time it is opened.
   async guildPanel(message: string | null = null): Promise<GuildPanel> {
     const options = this.#options();
-    const state = this.#engine?.guildState();
-    const empty: GuildPanel = { signedIn: false, available: false, membership: null, requests: [], characters: state?.characters ?? [], roster: null, message };
+    const empty: GuildPanel = { signedIn: false, available: false, membership: null, requests: [], characters: this.#engine?.guildState().characters ?? [], roster: null, message };
     if (!options || !this.#settings.playerId) return empty;
     const reply = await fetchGuild(options, [], []);
     if (reply.status === "rejected" && reply.code === "not_found") return { ...empty, signedIn: true };
@@ -569,7 +570,7 @@ export class Controller {
       const listed = await guildAction(options, "roster");
       if (listed.status === "ok") { try { roster = parseRoster(listed.body).members; } catch { roster = null; } }
     }
-    return { signedIn: true, available: true, membership: reply.data.membership, requests: reply.data.requests, characters: state?.characters ?? [], roster, message };
+    return { signedIn: true, available: true, membership: reply.data.membership, requests: reply.data.requests, characters: this.#engine?.guildState().characters ?? [], roster, message };
   }
 
   // One guild action, then the screen as it stands, and the add-on's sync file brought up to date.
@@ -583,7 +584,7 @@ export class Controller {
     return this.guildPanel(done);
   }
   guildRequest(character: string, name: string): Promise<GuildPanel> {
-    return this.guildDo("request", { character, name }, "Your guild is waiting for someone to approve it.");
+    return this.guildDo("request", { character, name }, "Your guild binder is ready. Sync, then /reload in the game to open it.");
   }
   guildJoin(character: string, name: string): Promise<GuildPanel> {
     return this.guildDo("join", { character, name }, "Your application is waiting for the guild's owner.");

@@ -26,9 +26,9 @@ The panel never shows a Discord id, a key or the events of a binder (those are i
 
 A player who has been reset can still be found by the name on the binder that was put aside, or by player id, or from the Activity tab.
 
-## Guild requests (not in the panel yet)
+## Guild binders and legacy requests
 
-Guild binders (`docs/proposals/GUILD-BINDERS-DESIGN.md`): a player asks for a guild from the companion app, a person approves it, and from then on the guild's owner approves its members. Until the panel has a tab for guilds, use the admin routes with the admin token (`docs/API.md`, *Guilds*). They exist only when the server has `GUILDS_ENABLED = "true"`, which is not set in `wrangler.toml`, so guilds are off everywhere. Switching them on needs migrations `0015` to `0017` applied first, and the minimum companion and add-on versions raised to the ones that carry ledger version 11.
+Guild binders (`docs/proposals/GUILD-BINDERS-DESIGN.md`): a Ranked player creates a guild immediately from the companion app and becomes its owner. The guild's owner approves member applications; website approval is not required. Migration 0018 activates earlier pending requests when the owner has not joined another guild. The protected panel's Guild requests tab and the admin routes remain available for legacy pending requests. Guild routes require `GUILDS_ENABLED = "true"` and migrations 0015–0018; both deployed environments have guilds enabled. Minimum supported versions are unchanged, while donors need a companion and addon carrying ledger version 11.
 
 - **List the waiting requests:** `GET /v1/admin/guilds` (add `?state=active|refused|all`). Each shows the name, realm, side, the character it was asked from and the owner's player id, oldest first.
 - **Decide:** `POST /v1/admin/guilds/<id>` with `{"decision":"approve"}` or `{"decision":"refuse","note":"why"}`. The note is shown to the player, so write it for them. Both are recorded in the Activity tab (`guild-approve`, `guild-refuse`).

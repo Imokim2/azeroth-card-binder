@@ -2,6 +2,13 @@
 
 Notable changes, newest first. Versions follow [semantic versioning](https://semver.org): a new feature raises the middle number, a fix the last one. Read the entry for any version you upgrade across.
 
+## 1.0.16
+
+- Guild binders are created immediately in companion 1.0.4, with the creator as owner. New member applications still go to that owner. Existing pending guild requests are activated where the owner is eligible for a membership.
+- Fixed the empty character dropdown after launching the companion or pruning synced events. Ranked characters come from persistent faction records and appear as soon as syncing finishes, without extra background requests.
+- Added clear setup guidance when no Ranked character has been synced. Updated Guild help text throughout the addon and website.
+- Card collections, packs, Ranked progress and guild donations are preserved.
+
 ## Unreleased
 
 Nothing yet.

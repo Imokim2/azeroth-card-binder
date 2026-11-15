@@ -18,6 +18,7 @@ export type Binder = {
   events: BinderEvent[];
   snapshot: { counts: Record<string, number>; attempts: Record<string, number>; dust: number; sets: Record<string, boolean>; titles: Record<string, boolean> };
   character: { name: string; realm: string } | null;
+  characters?: string[]; // persistent faction records survive acknowledged ledger events being pruned
   // The cards the player marked as wanted, as card keys, sorted, at most 60 (what the server's wanted board takes).
   wanted: string[];
   // Reports about other players waiting to be sent, as the add-on wrote them (at most 20).
@@ -126,6 +127,9 @@ export function readBinder(fileText: string): Binder {
       dust: whole(db["dust"]) ? db["dust"] : 0, sets: flagMap(db["sets"]), titles: flagMap(db["titles"]),
     },
     character: last ? splitCharacter(last.char) : null,
+    characters: isRecord(db["sides"]) ? Object.entries(db["sides"])
+      .filter(([peer, side]) => (side === "alliance" || side === "horde") && peer.length <= 80 && /^[^\s|,<>&"'`-]{1,40}-[^|,<>&"'`]{1,40}$/.test(peer))
+      .map(([peer]) => peer).sort().slice(0, 100) : [],
     wanted: wantedKeys(db["wanted"]),
     reports: pendingReports(db["reports"]),
     addonVersion: typeof db["addonVersion"] === "string" && /^\d+\.\d+\.\d+$/.test(db["addonVersion"]) ? db["addonVersion"] : null,
