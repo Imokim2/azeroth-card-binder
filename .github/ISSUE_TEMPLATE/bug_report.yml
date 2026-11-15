@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping. The more of this you fill in, the faster it can be fixed. Please do not paste your saved-data file or the companion's data folder: they can hold personal information.
+        You do not need to diagnose the problem. Tell us what happened and where; leave anything you do not know blank. Please do not paste your saved-data file or the companion's data folder: they can hold personal information.
   - type: dropdown
     id: part
     attributes:
@@ -22,13 +22,13 @@ body:
     attributes:
       label: Add-on version
       description: Type `/acb version` in the game.
-      placeholder: "0.5.0"
+      placeholder: "1.0.10"
   - type: input
     id: companion-version
     attributes:
       label: Companion app version
       description: Shown at the bottom of the companion window.
-      placeholder: "0.3.0"
+      placeholder: "1.0.1"
   - type: textarea
     id: what
     attributes:
@@ -43,6 +43,24 @@ body:
       placeholder: |
         1. ...
         2. ...
+  - type: input
+    id: location
+    attributes:
+      label: Where were you when it happened?
+      description: For game issues, include the zone or dungeon and whether you were entering, leaving or on a flight path.
+      placeholder: "Entering Razorfen Kraul"
+  - type: dropdown
+    id: loading-recovery
+    attributes:
+      label: If the game flickered to the desktop during loading, what helped?
+      description: Optional. Try typing /reload if chat still responds; this has recovered an affected session, but is not guaranteed to work.
+      options:
+        - Not applicable
+        - Typing /reload let it finish loading
+        - Closing and restarting the game
+        - Pressing Escape
+        - Nothing yet
+        - Not sure
   - type: textarea
     id: log
     attributes:

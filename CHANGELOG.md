@@ -5,6 +5,7 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 ## Unreleased
 
 - Document `/reload` as a player-reported temporary recovery when the loading-screen loop still accepts chat input, with Alt+F4 and relaunch as the fallback. Keep the uncertainty and unsaved-progress warning explicit.
+- Make loading-loop reports easier: add optional location and recovery fields to the GitHub issue form, with no requirement to diagnose the graphics log.
 - Add a prominent GitHub warning and a shared known-issues page for the DX12 loading-screen problem, with the same disclosure in the unsubmitted CurseForge page. Explain that Warcards may aggravate the issue and 1.0.10 is a mitigation rather than a confirmed fix.
 
 ## 1.0.10 - 2026-11-15

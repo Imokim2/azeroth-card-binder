@@ -17,4 +17,6 @@ If it affects you:
 - If typing or reloading does not work, use **Alt+F4** to close the stuck client, then launch it again. Restarting has allowed affected players to enter normally. A forced exit can lose finds since the last normal saved-data write, such as a `/reload` or logout.
 - Before relaunching, keep a copy of the game's `Logs/gx.log`. When [reporting the problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose), include the location, addon and companion versions, and whether the binder had been used earlier in the session. Review logs before sharing them publicly.
 
+You do not need to interpret the error log to report this. Tell us where it happened and whether `/reload`, Escape or restarting helped; leave anything you do not know blank.
+
 For the technical investigation and controlled test steps, see the [display-loop runbook](docs/runbooks/DISPLAY-LOOP.md).
