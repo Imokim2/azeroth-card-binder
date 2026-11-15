@@ -22,6 +22,7 @@ The DX12 issue remains disclosed; this release does not claim to fix it. The Cur
 - The actual published files matched their hashes. The addon contains 105 entries with Guild.lua, GuildView.lua and the empty factory sync file. The companion extracted from the published installer passed imports, preload, renderer and actual executable startup as 1.0.3.
 - The signed update feed and actual addon install preserved both fixture accounts, both save backups and existing Ranked sync data byte-for-byte, with an addon backup kept.
 - The same verified feed is deployed to production. The normal public updater and download page passed exact-version and signature checks; production passed all 18 deep checks, including real download hashes. Discord updates and downloads channels were updated with the matching versions and Guild setup instructions. CurseForge project 1808775 and addon file 9638154 are submitted for processing/moderation, with automatic publication after approval.
+- The CurseForge gallery has all five supplied in-game/companion captures with individual titles and descriptions. Its description preview renders all images, links to Discord and help, and keeps the loading-screen warning near the bottom. At the final check the project was awaiting moderator approval and the file status was Uploading; it is not yet a public CurseForge release.
 
 Addon SHA-256: `0fd9337592d43cc94db7dc51f1a3144d773c9af56128bf3899ca09b045ed01e7`.
 
