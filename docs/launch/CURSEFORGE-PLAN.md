@@ -1,8 +1,8 @@
 # CurseForge release preparation
 
-**Updated 15 November 2026; not submitted.** The description matches the published **addon 1.0.15 / companion 1.0.3** baseline, with server 1.0.2. Harry's card changes and the older-collection compatibility fix are included in this matching release. Use the exact published 1.0.15 addon archive when submitting.
+**Submitted 15 November 2026; processing and moderator approval pending.** The description matches the published **addon 1.0.15 / companion 1.0.3** baseline, with server 1.0.2. Harry's card changes and the older-collection compatibility fix are included in this matching release. Project 1808775 has addon file 9638154, uploaded from the exact verified 1.0.15 archive for Forever 1.60.1. It is set to publish automatically once approved; it is not yet confirmed publicly available.
 
-The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGELOG.md), branding and five real screenshots are prepared. The Discord link is **https://worldofwarcards.co.uk/discord**, which redirects to the community's permanent invite. Forever and version 1.60.1 are listed on CurseForge; the old absent-client question is resolved. Refresh the gameplay gallery and match the final release before upload. An optional [companion enquiry](CURSEFORGE-SUPPORT-DRAFT.md) is prepared if moderation needs clarification; no ticket has been sent.
+The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGELOG.md), branding and five real screenshots are prepared. The Discord link is **https://worldofwarcards.co.uk/discord**, which redirects to the community's permanent invite. Forever and version 1.60.1 are listed on CurseForge; the old absent-client question is resolved. The listing uses the supplied genuine gameplay images. Add a current Guild capture when available; do not describe the older captures as taken from the new build. An optional [companion enquiry](CURSEFORGE-SUPPORT-DRAFT.md) is prepared if moderation needs clarification; no ticket has been sent.
 
 ## Page fields
 
@@ -24,7 +24,7 @@ The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGE
 | Comments | Enable; also provide the issue tracker and Discord help channels |
 | Supported client | World of Warcraft → Forever, version 1.60.1 for the current build; interface `16001`, `AllowLoadGameType: camelot` |
 
-The description puts the loading-screen notice near the bottom, just before Help and feedback, with community/homepage links in the footer. It includes no direct external installer link, fixed catalog count, active-season claim or planned guild-binder feature.
+The description puts the loading-screen notice near the bottom, just before Help and feedback, with community/homepage links in the footer. It includes no direct external installer link, fixed catalog count, active-season claim or unimplemented feature.
 
 ## Included card changes
 
@@ -56,3 +56,11 @@ This is a disclosed known issue, not an automatic publication hold awaiting a gr
 - Wait for the user's instruction to create/submit the CurseForge project or upload a release. Preparing these materials does not publish anything.
 
 References rechecked 15 November 2026: [Forever files and client tags](https://www.curseforge.com/wow/addons/quality-of-life-forever/files/all?gameVersionTypeId=88568&page=1&pageSize=20&showAlphaFiles=hide), [creating a project](https://support.curseforge.com/support/solutions/articles/9000197241-creating-and-submitting-a-project), [submission guide](https://support.curseforge.com/support/solutions/articles/9000199552-project-submission-guide-and-tips), [moderation policies](https://support.curseforge.com/support/solutions/articles/9000197279-moderation-policies). The platform lists Forever; this project's own moderation decision has not occurred because it has not been submitted.
+
+## CurseForge submission record
+
+- Project: [World of Warcards](https://authors.curseforge.com/#/projects/1808775/files), public slug `world-of-warcards`.
+- File: [World of Warcards 1.0.15](https://authors.curseforge.com/#/projects/1808775/files/9638154), uploaded as `AzerothCardBinder-1.0.15.zip`, Release, Forever 1.60.1. Automatic publication is selected for after approval.
+- The project creation form is complete, with the original icon, Minigames category, Guild and Achievements categories, comments enabled, GPLv3 and third-party distribution allowed. The description states GPL-3.0-or-later, matching the repository.
+- The description includes the Guild tab, permanent donations, separate companion setup, Discord and support links. Known issues remain near the bottom. The public GitHub repository is configured as Source; the official website, permanent Discord invite and setup guide are linked in project settings.
+- Approval has not been claimed. A new project is hidden until moderation approves it. The website and GitHub remain the working downloads in the meantime.
