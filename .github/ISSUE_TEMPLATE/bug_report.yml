@@ -22,7 +22,7 @@ body:
     attributes:
       label: Add-on version
       description: Type `/acb version` in the game.
-      placeholder: "1.0.12"
+      placeholder: "1.0.13"
   - type: input
     id: companion-version
     attributes:

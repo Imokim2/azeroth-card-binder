@@ -13,6 +13,8 @@ ACB.settings = {
         note = "Other players using the add-on can ask to see which cards you own." },
     { key = "cardModels", name = "3D card models", default = true,
         note = "Turn off if card models cause display problems. Cards use their zone artwork and a binder seal instead." },
+    { key = "openCurrentZone", name = "Open binder at current zone", default = false,
+        note = "Open at your current zone or dungeon. Keeps your last page when there is no matching collection." },
 }
 
 ACB.chatSettings = {

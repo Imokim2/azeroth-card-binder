@@ -4,6 +4,12 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+## 1.0.13 - 2026-11-15
+
+- Add Settings > General > Open binder at current zone. This optional setting starts off disabled. Normal opening uses the same zone/dungeon collection lookup as the zone bar, even when the bar is hidden. Locations with no matching collection keep the normal remembered page.
+- Card links, selected tabs, explicit card pages and trade selection keep their requested destination. Moving between zones while browsing does not turn the page automatically.
+- Companion 1.0.1 remains current. Existing collection progress and drop rules are unchanged.
+
 ## 1.0.12 - 2026-11-15
 
 - Explain that existing Casual finds prevent a binder from joining Ranked before checking companion setup. A synced Casual player is no longer told to download the companion again when trying to change modes. Rejected changes keep their collection and ledger intact.
