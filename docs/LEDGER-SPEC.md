@@ -1,6 +1,6 @@
 # Ledger specification
 
-Version 10. Version 10 adds `mode/faction1` and `mode/side:*` (cards only one faction can win, below). Version 9 adds `mode/launch1` (cards held back for seasons, below). Version 8 adds `mode/chase2` (the second set of drop rates, below). Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 11. Version 11 adds `mode/guild1` and the `donate` and `donateReturn` events (guild binders, below). Version 10 adds `mode/faction1` and `mode/side:*` (cards only one faction can win, below). Version 9 adds `mode/launch1` (cards held back for seasons, below). Version 8 adds `mode/chase2` (the second set of drop rates, below). Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
 
 ## Seasonal rewards (version 7)
 
@@ -17,6 +17,16 @@ Trade-only keys `pack:<pack-ID>` are allowed in `tradeIn` and `tradeOut`. Their 
 Replay uses `packType` to remember the full ID of an opened pack, and `packLeft` is 1, 3 or 5. When a pack is received, it initializes `packOutputs[pack-ID]`, then records subsequent packCard counts of that type. Pending, unmatched, Casual-origin or otherwise tainted pack trades exclude those outputs for Ranked scoring. Maintenance traces taint from packs to their opened cards and subsequent trades; when an honest pending pair matches, its outputs count again. This deliberately over-excludes when found and traded packs of the same type are mixed. Casual packFind events also constitute unverified provenance, even if they never drop a card or are traded before opening. Local integrity checks still cover card counts and dust; server replay is authoritative for pack counts.
 
 Specification 6 is required for `packs2`, tiered pack find/open IDs and pack trade keys; a collection that has used these cannot sync with an older companion. Legacy versions 2–5 remain replayable. See `satchel.json` and the Lua vectors for pack boundary/gift examples.
+
+## Guild donations (version 11)
+
+A Ranked binder can give a copy of a card to its guild for good (docs/proposals/GUILD-BINDERS-DESIGN.md). `mode/guild1` has count, dust, shiny and tape zero; it is valid only after `mode/faction1` and only once, and it sets `guild=1` and an empty `donations` map. Until a binder has it, replay refuses `donate`.
+
+`donate` has the card (or edition) key as `key`, the copies owned afterwards as `count` (exactly one lower than before, so at least one must be owned), the guild's 26-character id as `partner` and a 32-hex operation id as `trade`, made up by the add-on and never used twice in a binder. Dust, shiny and tape are zero. It is valid only while the binder's mode is Ranked, and never for a pack. Replay records `donations[trade] = "<guild id>|<card key>"` and refuses a repeated operation (rule `donate`).
+
+The copy leaves the binder at once, and the server settles the donation in the same transaction that stores the upload: it credits the guild, or refuses the donation (the donor is not an active member of that guild, the binder has Casual finds, or the card came from a trade nobody confirmed) and issues the copy back. A refused copy comes back as `donateReturn`: the same `key`, `partner` and `trade` as the donation, `count` exactly one higher, valid once, and only for an operation recorded as donated with that guild and card (replay sets it to `"returned"`). The server also checks that it really refused that operation and has not returned it before; otherwise it refuses the upload (`rule_broken`, rule `donate`). A `donateReturn` needs no Ranked mode. `partner` and `trade` are refused on every other kind of event except trades and `seasonReward`.
+
+A server refuses an upload that contains `guild1`, `donate` or `donateReturn`, or a binder already on it, unless `specVersion` is at least 11 (`client_too_old`), and refuses `donate` and `donateReturn` when guilds are switched off (rule `guilds-closed`). No hashed field or earlier event meaning changes.
 
 ## Faction cards (version 10)
 
@@ -78,7 +88,7 @@ It does **not** prove an event really happened in the game. The player's compute
 |---|---|---|
 | `seq` | integer, 1 or more | Position in the chain. The first event is 1; each next one is exactly one more. |
 | `t` | integer, 0 or more | When the add-on wrote it, by the player's clock. |
-| `kind` | string | One of `drop`, `craft`, `recycle`, `tradeIn`, `tradeOut`, `set`, `mode`, `miss`, `packFind`, `packOpen`, `packCard`. |
+| `kind` | string | One of `drop`, `craft`, `recycle`, `tradeIn`, `tradeOut`, `set`, `mode`, `miss`, `packFind`, `packOpen`, `packCard`, `seasonReward`, `donate`, `donateReturn`. |
 | `key` | string, not empty | The card key; for `set` the set code (for example `DM`); for `mode` `casual`, `ranked2` (or `ranked`, which only old history holds); for `packFind` and `packOpen` the zone (the set code). |
 | `count` | integer, 0 or more | How many copies of that card the player owns after this event. 0 for `set` and `mode`. For `miss` it is the length of the run of misses instead (1 or more); no copies change. For `packFind` and `packOpen` it is the number of packs of that zone held after the event. |
 | `dust` | integer, may be negative | Change in Binder Dust: plus for `recycle`, minus for `craft`, 0 otherwise. |

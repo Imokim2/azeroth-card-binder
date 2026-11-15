@@ -6,8 +6,9 @@
 // whole on every pass, so a crash, a restart or a failed request cannot leave the two out of step.
 import { readBinder, BinderFileError } from "./binderFile.ts";
 import type { Binder } from "./binderFile.ts";
-import { fetchReleases, fetchStandings, fetchTape, fetchSeasons, sendReports, syncBinder } from "./client.ts";
+import { fetchGuild, fetchReleases, fetchStandings, fetchTape, fetchSeasons, sendReports, syncBinder } from "./client.ts";
 import type { SeasonData } from "./seasons.ts";
+import type { GuildData } from "./guild.ts";
 import { cachedStandings } from "./communityCache.ts";
 import type { PendingReport } from "./binderFile.ts";
 import type { ClientOptions, Outcome, Standings } from "./client.ts";
@@ -70,6 +71,11 @@ export class Engine {
   #seasons: SeasonData | undefined;
   #seasonBinders: string[] = [];
   #checkedSeasons = false;
+  #guild: GuildData | undefined; // what the server last said about the player's guild
+  #guildAvailable = true; // false once the server says it has guilds switched off, until the app is started again
+  #checkedGuild = false;
+  #guildForced = false; // something the player just did needs the answer now
+  #characters = new Set<string>(); // the characters in the saved files, as name-realmname, for the guild screens
   #releases: Releases | undefined; // the versions the server last announced
   #releasesAt = 0;
   #reportsDone: string[] = []; // tokens of reports the server has settled, newest last; written to Sync.lua for the add-on
@@ -83,6 +89,18 @@ export class Engine {
   // The roll tape held for the player belongs to the binder they had; after a new binder it must not be written again.
   forgetTape(): void {
     this.#tape = undefined;
+  }
+
+  // The guild answer the last pass kept, and the characters the saved files hold, for the guild screens.
+  guildState(): { available: boolean; data: GuildData | undefined; characters: string[] } {
+    return { available: this.#guildAvailable, data: this.#guild, characters: [...this.#characters].sort() };
+  }
+
+  // Ask the server about the guild again, now, whatever else has or has not changed: after the player joins, asks, leaves or decides something.
+  async refreshGuild(): Promise<void> {
+    this.#guildForced = true;
+    await this.syncOnce();
+    if (this.#guildForced) await this.syncOnce(); // a pass that was already running did not look
   }
 
   useReleases(releases: Releases, checkedAt: number): void {
@@ -114,6 +132,7 @@ export class Engine {
     let uploadedProgress = false;
     const reports = new Map<string, PendingReport>();
     const seasonBinders: string[] = [];
+    const guildOps = new Set<string>();
     let running: string | null = null; // the oldest add-on version that last wrote an account's file
     for (const file of install.savedFiles) {
       let binder: Binder;
@@ -133,6 +152,8 @@ export class Engine {
       }
       if (binder.addonVersion && (running === null || compareVersions(binder.addonVersion, running) < 0)) running = binder.addonVersion;
       for (const report of binder.reports) reports.set(report.token, report);
+      for (const id of binder.guildOps ?? []) guildOps.add(id);
+      if (binder.character) this.#characters.add(`${binder.character.name.toLowerCase()}-${binder.character.realm.replace(/[\s'-]/g, "").toLowerCase()}`);
       const result = await syncBinder(client, binder, this.#acks.get(file.account) ?? null);
       if (result.status === "diverged" || result.status === "history-missing") {
         this.#acks.delete(file.account);
@@ -218,6 +239,16 @@ export class Engine {
       if (reply.status !== "retry-later") this.#checkedSeasons = true;
     }
 
+    // The guild: asked after something changed in the saved files or on the server (a donation settles in the same upload that carries it), when the
+    // add-on is waiting to hear about a donation, or when the player has just acted. A server with guilds switched off is asked only once.
+    if (seasonBinders.length && this.#guildAvailable && (!this.#checkedGuild || this.#guildForced || guildOps.size > 0 || savedFileChanged || uploadedProgress)) {
+      const reply = await fetchGuild(client, seasonBinders, [...guildOps].slice(0, 100));
+      if (reply.status === "guild") this.#guild = reply.data;
+      else if (reply.status === "rejected" && reply.code === "not_found") { this.#guildAvailable = false; this.#guild = undefined; }
+      else if (reply.status === "retry-later") retryAfterMs = Math.max(retryAfterMs ?? 0, reply.afterMs);
+      if (reply.status !== "retry-later") { this.#checkedGuild = true; this.#guildForced = false; }
+    }
+
     // Which versions are current: asked every so often, and kept when the server cannot be reached.
     if (!this.#releases || now - this.#releasesAt >= (this.#options.releasesEveryMs ?? 21_600_000)) {
       const reply = await fetchReleases(client);
@@ -245,6 +276,7 @@ export class Engine {
       ...(this.#releases ? { releases: { latestAddon: this.#releases.addon.latest, minAddon: this.#releases.addon.min } } : {}),
       ...(this.#tape ? { tape: this.#tape } : {}),
       ...(this.#seasons ? { seasonal: { ...this.#seasons, binders: this.#seasons.binders.filter(id => this.#seasonBinders.includes(id)) } } : {}),
+      ...(this.#guild ? { guild: { ...this.#guild, binders: this.#guild.binders.filter(id => this.#seasonBinders.includes(id)) } } : {}),
       ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts } : {}),
     });
     try {

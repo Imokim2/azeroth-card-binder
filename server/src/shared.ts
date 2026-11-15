@@ -30,6 +30,8 @@ export type LedgerState = {
   balance?: number;
   launch?: number; // 1 after mode/launch1: cards held back for seasons are not acquired before a season releases them
   faction?: number; // 1 after mode/faction1: cards added in spec 10 exist, and a character's faction (mode/side:*) gates the cards only one faction can win
+  guild?: number; // 1 after mode/guild1 (spec 11): a Ranked binder may donate copies to its guild (donate, donateReturn)
+  donations?: Record<string, string>; // each donation's operation id: "<guild id>|<card>" until it comes back (donateReturn), then "returned"
   sides?: Record<string, string>; // each character's declared faction ("alliance" or "horde"), by the name written in its events
   balanceAttempts?: Record<string, number>;
   balanceDrops?: Record<string, number>;

@@ -156,6 +156,8 @@ function ACB.initSlash(saved, tools)
             else
                 ACB.showToast(demo, { count = 1, first = true, shiny = true })
             end
+        elseif cmd == "guild" or cmd:match("^guild%s") then
+            ACB.guildCommand(saved, message:match("^%s*%S+%s*(.-)%s*$"), report)
         elseif cmd == "trade" or cmd:match("^trade%s+") then
             report("Right-click a player and choose Trade cards or packs to start a trade or gift.")
         elseif cmd == "index" or cmd == "achievements" or cmd == "seasons" then
@@ -163,7 +165,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, seasons, achievements, settings, bag, packs, dust, link, view, ask, privacy, title, popup, sound, hints, bar, version.")
+            report("/acb opens the binder. Options: index, seasons, achievements, settings, bag, packs, dust, link, view, ask, guild, privacy, title, popup, sound, hints, bar, version.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end

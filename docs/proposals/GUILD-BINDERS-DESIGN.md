@@ -72,13 +72,24 @@ New routes, all signed like `/v1/seasons`: apply, decide, leave, my guild (with 
 
 Donor name, card and time are kept for audit and shown to members only. A guild page lists a guild publicly only if the owner turns that on. Account deletion removes the donor's identity from the history but keeps the donation, because the guild still holds the card. This needs a line in `docs/PRIVACY.md` and the privacy page before launch.
 
-## Build order
+## Build order, and where it stands
 
-0. **Guild creation (server only; built).** Migration `0015_guilds`, `server/src/guilds.ts`, signed `POST /v1/guilds/request` and `/v1/guilds/mine`, admin `GET /v1/admin/guilds` and `POST /v1/admin/guilds/:id`, all off unless `GUILDS_ENABLED = "true"`. It changes no ledger, so it needs no spec bump. Two choices made while building it: the guild's side is taken from the asking character's declared side in its Ranked binder (so no side is typed in), and a guild's name is held on its realm while pending or active. The owner's membership row waits for the enrolment step, which adds `guild_members` and backfills each active guild's owner as its first member. No panel tab, companion screen or add-on page yet; an admin decides with the routes (`docs/runbooks/ADMIN.md`).
-1. **Shared and server, behind a switch.** Spec 11 rules, vectors, the member and donation tables, routes and tests. A server flag keeps it off in production.
-2. **Companion.** Enrolment screens, sync file, tolerant of the old add-on.
-3. **Add-on.** Guild binder page, donate flow, pending and refunded states, Lua ledger tables and tests.
-4. **Staging walkthrough** with two accounts and a guild, then the in-game pass, then raise the minimum versions and turn it on.
+Built and tested, all off unless the server has `GUILDS_ENABLED = "true"`:
+
+1. **Guild creation (server).** Migration `0015_guilds`, signed `POST /v1/guilds/request` and `/v1/guilds/mine`, admin `GET /v1/admin/guilds` and `POST /v1/admin/guilds/:id`. The guild's side comes from the asking character's declared side in its Ranked binder, and a name is held on its realm while pending or active.
+2. **Enrolment (server).** Migration `0016_guild_members`: apply, owner decides, leave, remove, roster. The owner is the first member, added when the guild is approved. One live row per account.
+3. **Ledger spec 11 (shared, server, add-on, companion).** `mode/guild1`, `donate`, `donateReturn` (`packages/shared/src/rules.js`, `docs/LEDGER-SPEC.md`); migration `0017_guild_donations`; the server settles each donation in the upload's own transaction (credited, or refused and issued back); `POST /v1/guilds/summary` and the public `GET /v1/guilds/leaderboard`.
+4. **Add-on.** `Guild.lua`: `/acb guild`, `/acb guild donate <card>` with a confirmation, the markers and events, pending donations kept in the saved file, refused copies written back as `donateReturn` when the game loads.
+5. **Companion.** The guild answer is fetched after uploads and written into `Sync.lua` paired to the binder; a Guild panel in the window to ask for a guild, join one, decide applications, remove members and leave.
+
+Not built yet:
+
+- **A picker in the binder for donating.** Donating today is by card name with a chat confirmation. The binder's trade picker is tied to the trade window, so a donation picker means generalising it.
+- **A guild tab in the admin panel.** Guild creation is decided with the admin routes (`docs/runbooks/ADMIN.md`).
+- **A guild page on the website**, and naming a new owner when an owner's account is deleted (no route yet).
+- **Staging walkthrough and an in-game pass.** Nothing here has been run against the real game, and the staging walkthrough does not check guilds.
+
+To turn it on: apply migrations 0015 to 0017, raise `MIN_CLIENT` and `MIN_ADDON` to the versions that carry spec 11 (an older companion cannot upload a binder that has donated), then set `GUILDS_ENABLED`.
 
 ## Tests required before it is switched on
 

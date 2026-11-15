@@ -5,6 +5,8 @@
 export type Ack = { seq: number; hash: string };
 import { parseSeasonData } from "./seasons.ts";
 import type { SeasonData } from "./seasons.ts";
+import { forAddon, luaLiteral } from "./guild.ts";
+import type { GuildData } from "./guild.ts";
 export type Standing = { rank: number; name: string; score: number; cards: number; sets: number };
 export type SyncData = {
   syncedAt: number; acks: Ack[]; tape?: { start: number; entries: string[] };
@@ -21,6 +23,7 @@ export type SyncData = {
   companionReady?: boolean;
   rankedSetups?: string[]; // local binder nonces eligible for the fresh-binder Ranked default
   seasonal?: SeasonData;
+  guild?: GuildData; // the player's guild and what became of their donations (docs/proposals/GUILD-BINDERS-DESIGN.md)
 };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
@@ -70,6 +73,11 @@ export function syncFileText(data: SyncData): string {
       throw new Error("invalid seasonal value");
     };
     extra.push("    seasonal = " + literal(checked) + ",");
+  }
+  if (data.guild) {
+    const checked = forAddon(data.guild);
+    if (checked.binders.length > 100 || checked.binders.some((id) => !isHash(id))) throw new Error("invalid guild binder pairing");
+    extra.push("    guild = " + luaLiteral(checked, luaString) + ",");
   }
   if (data.companionReady === true) extra.push("    companionReady = true,");
   if (data.rankedSetups) {

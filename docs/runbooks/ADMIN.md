@@ -28,12 +28,14 @@ A player who has been reset can still be found by the name on the binder that wa
 
 ## Guild requests (not in the panel yet)
 
-Guild binders are being built in steps (`docs/proposals/GUILD-BINDERS-DESIGN.md`). Creating a guild comes first: a player asks for one from the companion app (not built yet), and a person approves it. Until the panel has a tab for it, use the admin routes with the admin token (`docs/API.md`, *Guild requests*). They exist only when the server has `GUILDS_ENABLED = "true"`, which is not set in `wrangler.toml`, so guilds are off everywhere. Switching them on needs migration `0015_guilds` applied first.
+Guild binders (`docs/proposals/GUILD-BINDERS-DESIGN.md`): a player asks for a guild from the companion app, a person approves it, and from then on the guild's owner approves its members. Until the panel has a tab for guilds, use the admin routes with the admin token (`docs/API.md`, *Guilds*). They exist only when the server has `GUILDS_ENABLED = "true"`, which is not set in `wrangler.toml`, so guilds are off everywhere. Switching them on needs migrations `0015` to `0017` applied first, and the minimum companion and add-on versions raised to the ones that carry ledger version 11.
 
 - **List the waiting requests:** `GET /v1/admin/guilds` (add `?state=active|refused|all`). Each shows the name, realm, side, the character it was asked from and the owner's player id, oldest first.
 - **Decide:** `POST /v1/admin/guilds/<id>` with `{"decision":"approve"}` or `{"decision":"refuse","note":"why"}`. The note is shown to the player, so write it for them. Both are recorded in the Activity tab (`guild-approve`, `guild-refuse`).
 - **What to check.** Nobody can prove they lead a guild in the game, so approval is a judgment: is it a real guild on that realm, is the person its leader or officer (ask in the community Discord), and is the name one the game could have? A refusal frees the name. Three refusals in a week stops a player asking again for a while.
-- **If an owner deletes their account** an approved guild stays and has no owner. Name a new owner in the database, once there is a way to; this is rare and has no route yet.
+- **If an owner deletes their account** an approved guild stays, with its members and what it holds, and has no owner, so nobody can approve applications. Name a new owner in the database (add a `guild_members` row with role `owner` for the new person and set `guilds.owner_player_id`); this is rare and has no route yet.
+- **Donations need no review.** The server credits a donation when the donor is an active member and refuses it otherwise, giving the copy back. Cards a guild holds cannot be taken out by anyone, including you; if one was donated by mistake, the donor has to ask you to fix the database, and you should say no unless it is clearly a fault.
+- **A rebuild** (`POST /v1/admin/rebuild`) recomputes players' binders from their stored uploads and leaves the guild tables as they are.
 
 ## Signing in
 

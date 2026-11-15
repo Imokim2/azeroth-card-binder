@@ -69,7 +69,7 @@ export default {
     const store = new SqlStore(db);
     const handle = createApi({
       seasons: new SqlSeasons(db, catalog as Catalog),
-      ...(env.GUILDS_ENABLED === "true" ? { guilds: new SqlGuilds(db) } : {}),
+      ...(env.GUILDS_ENABLED === "true" ? { guilds: new SqlGuilds(db, catalog as Catalog) } : {}),
       players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, admin: store, access: accessFrom(env), rebuild: store, wanted: store, reports: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },

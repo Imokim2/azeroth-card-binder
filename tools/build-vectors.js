@@ -62,6 +62,11 @@ write("ledger-valid.json", { genesis: ledger.GENESIS, events, head, texts: event
 // Additive protocol-7 vector: retain the historical 20-event ledger unchanged.
 const seasonalReward = ledger.makeEvent({ ...base, seq: 1, t: 1200, kind: "seasonReward", key: "WF", count: 1, trade: "a".repeat(32) }, ledger.GENESIS);
 write("season-rewards.json", { events: [seasonalReward], head: { seq: 1, hash: seasonalReward.h }, texts: [ledger.eventText(seasonalReward)] });
+// Spec 11: a copy given to a guild and then returned when the server refused it. The rules for these are tested in tests/guild-donations.test.js.
+const guildOp = { partner: "01HF7YAT00QKSEP5RCNMPTQ3KN", trade: "b".repeat(32) };
+const donated = ledger.makeEvent({ ...base, seq: 1, t: 1300, kind: "donate", key: "npc:589", count: 0, ...guildOp }, ledger.GENESIS);
+const returned = ledger.makeEvent({ ...base, seq: 2, t: 1310, kind: "donateReturn", key: "npc:589", count: 1, ...guildOp }, donated.h);
+write("guild-donations.json", { events: [donated, returned], head: { seq: 2, hash: returned.h }, texts: [donated, returned].map(ledger.eventText) });
 
 // ---- Ledgers that must be rejected ----
 const copy = (list) => JSON.parse(JSON.stringify(list));

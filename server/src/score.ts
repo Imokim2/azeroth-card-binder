@@ -5,7 +5,7 @@ import type { Catalog, LedgerState } from "./shared.ts";
 import { baseCardKey, editionKeys } from "./shared.ts";
 
 export const RULES_VERSION = 2;
-const POINTS: Record<string, number> = { common: 1, rare: 2, epic: 5, legendary: 10 };
+export const POINTS: Record<string, number> = { common: 1, rare: 2, epic: 5, legendary: 10 };
 
 export type Score = { score: number; uniqueCards: number; setsDone: number };
 

@@ -179,6 +179,7 @@ function ACB.cleanSavedData(saved)
     end
     saved.sets, saved.titles = tableOrEmpty(saved.sets), tableOrEmpty(saved.titles)
     ACB.cleanSeasonData(saved)
+    if ACB.cleanGuildData then ACB.cleanGuildData(saved) end -- Guild.lua; the small tools that load only part of the add-on do not have it
     ACB.seasonRewardTitles(saved)
     for key, value in pairs(saved.sets) do
         if value ~= true then saved.sets[key] = nil end

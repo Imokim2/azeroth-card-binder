@@ -294,8 +294,7 @@ function ACB.tradePeer(text)
 end
 
 local function initialize()
-    saved = ACB.tableOrEmpty(AzerothCardBinderDB)
-    AzerothCardBinderDB = saved
+    saved = ACB.tableOrEmpty(AzerothCardBinderDB); AzerothCardBinderDB = saved
     ACB.modelSettings = saved
     saved.addonVersion = ACB.addonVersion() -- the companion app reads it, to tell when a newer one is installed but not loaded
     local _, upgraded = ACB.cleanSavedData(saved)
@@ -306,6 +305,7 @@ local function initialize()
         ledger:prune(ACB.sync and ACB.sync.acks)
         ACB.resumeRanked(saved, ledger)
         ACB.pruneReports(saved, ACB.sync and ACB.sync.reportsDone)
+        ACB.settleGuild(saved, ledger, report)
     end
     ACB.ledger = ledger
     collection = ACB.newCollection(saved, math.random, report, log, function(card, info)

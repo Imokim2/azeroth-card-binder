@@ -249,8 +249,92 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
   async function guildMine(request: Request): Promise<Response> {
     checkClient(request, deps);
     if (!deps.guilds) throw new ApiError("not_found");
-    const player = await signedPlayer(((await readJson(request)) ?? {}) as Record<string, unknown>, "guild-mine");
-    return json(200, { guilds: await deps.guilds.mine(player.id) }, { "cache-control": "no-store" });
+    const body = ((await readJson(request)) ?? {}) as Record<string, unknown>;
+    // The donations the add-on is still waiting to hear about, as their operation ids (up to 100). Signed along with the rest.
+    const operations = body["operations"];
+    const asked = operations === undefined ? [] : operations;
+    if (!Array.isArray(asked) || asked.length > 100 || asked.some((id) => typeof id !== "string" || !/^[0-9a-f]{32}$/.test(id)) || new Set(asked).size !== asked.length) throw new ApiError("bad_request", { field: "operations" });
+    const player = await signedPlayer(body, "guild-mine", operations === undefined ? {} : { operations });
+    return json(200, {
+      guilds: await deps.guilds.mine(player.id), membership: await deps.guilds.membership(player.id),
+      donations: await deps.guilds.donationNews(player.id, asked as string[]),
+    }, { "cache-control": "no-store" });
+  }
+
+  // What the player's own guild holds, with its points and place: for any active member.
+  async function guildSummary(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const player = await signedPlayer(((await readJson(request)) ?? {}) as Record<string, unknown>, "guild-summary");
+    return json(200, await deps.guilds.summary(player.id), { "cache-control": "no-store" });
+  }
+
+  // The guild ladder: public, like the player ladder. Guilds that hold at least one donated card, best first.
+  async function guildLeaderboard(url: URL): Promise<Response> {
+    if (!deps.guilds) throw new ApiError("not_found");
+    const asked = Number(url.searchParams.get("limit") ?? 100);
+    const limit = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, 100) : 100;
+    const standings = await deps.guilds.standings(limit);
+    return json(200, {
+      generatedAt: deps.now(),
+      entries: standings.map((entry, index) => ({ rank: index + 1, guildId: entry.guildId, name: entry.name, realm: entry.realm, side: entry.side, scoreTenths: entry.tenths, cards: entry.cards, members: entry.members })),
+    }, { "cache-control": "public, max-age=" + PUBLIC_CACHE_SECONDS });
+  }
+
+  // Apply to an active guild by name, from one of the player's own characters. The guild's owner decides.
+  async function guildJoin(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const body = ((await readJson(request)) ?? {}) as Record<string, unknown>;
+    const character = parseCharacter(body["character"]);
+    const name = parseGuildName(body["name"]);
+    const player = await signedPlayer(body, "guild-join", { character: body["character"], name: body["name"] });
+    return json(201, { membership: await deps.guilds.join(player.id, { character, name }, deps.now()) }, { "cache-control": "no-store" });
+  }
+
+  // The members and waiting applications of the guild the player owns.
+  async function guildRoster(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const player = await signedPlayer(((await readJson(request)) ?? {}) as Record<string, unknown>, "guild-roster");
+    return json(200, await deps.guilds.roster(player.id), { "cache-control": "no-store" });
+  }
+
+  const memberId = (value: unknown): string => {
+    if (typeof value !== "string" || !/^(owner-)?[0-9A-Z]{26}$/.test(value)) throw new ApiError("bad_request", { field: "member" });
+    return value;
+  };
+
+  // The owner's decision on a waiting application.
+  async function guildMemberDecision(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const body = ((await readJson(request)) ?? {}) as Record<string, unknown>;
+    const member = memberId(body["member"]);
+    const decision = body["decision"];
+    if (decision !== "approve" && decision !== "refuse") throw new ApiError("bad_request", { field: "decision" });
+    const player = await signedPlayer(body, "guild-decide", { member, decision });
+    return json(200, { member: await deps.guilds.decideMember(player.id, member, decision, deps.now()) }, { "cache-control": "no-store" });
+  }
+
+  // A member leaves, or withdraws an application.
+  async function guildLeave(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const player = await signedPlayer(((await readJson(request)) ?? {}) as Record<string, unknown>, "guild-leave");
+    await deps.guilds.leave(player.id, deps.now());
+    return json(200, { left: true }, { "cache-control": "no-store" });
+  }
+
+  // The owner removes a member.
+  async function guildRemove(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const body = ((await readJson(request)) ?? {}) as Record<string, unknown>;
+    const member = memberId(body["member"]);
+    const player = await signedPlayer(body, "guild-remove", { member });
+    await deps.guilds.remove(player.id, member, deps.now());
+    return json(200, { removed: true }, { "cache-control": "no-store" });
   }
 
   // For the people who review: guilds waiting for a decision (or in another state), oldest first.
@@ -587,7 +671,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
   }
 
   // The routes that make or remove things, or take secrets, get the tighter limit.
-  const STRICT = /^\/v1\/(register|reset|delete|export|report|guilds\/request|admin\/.*)$/;
+  const STRICT = /^\/v1\/(register|reset|delete|export|report|guilds\/(request|join|decide|leave|remove)|admin\/.*)$/;
   async function enforceLimits(request: Request, pathname: string): Promise<void> {
     if (!deps.limits || pathname === "/v1/health") return;
     const client = request.headers.get("cf-connecting-ip") ?? "unknown";
@@ -683,7 +767,14 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/seasons" ? allow("seasons", ["POST"], () => seasonal(request))
       : url.pathname === "/v1/guilds/request" ? allow("guild-request", ["POST"], () => guildRequest(request))
       : url.pathname === "/v1/guilds/mine" ? allow("guild-mine", ["POST"], () => guildMine(request))
-      : url.pathname === "/v1/reset" ?allow("reset", ["POST"], () => reset(request))
+      : url.pathname === "/v1/guilds/summary" ? allow("guild-summary", ["POST"], () => guildSummary(request))
+      : url.pathname === "/v1/guilds/leaderboard" ? allow("guild-leaderboard", ["GET"], () => guildLeaderboard(url))
+      : url.pathname === "/v1/guilds/join" ? allow("guild-join", ["POST"], () => guildJoin(request))
+      : url.pathname === "/v1/guilds/roster" ? allow("guild-roster", ["POST"], () => guildRoster(request))
+      : url.pathname === "/v1/guilds/decide" ? allow("guild-decide", ["POST"], () => guildMemberDecision(request))
+      : url.pathname === "/v1/guilds/leave" ? allow("guild-leave", ["POST"], () => guildLeave(request))
+      : url.pathname === "/v1/guilds/remove" ? allow("guild-remove", ["POST"], () => guildRemove(request))
+      : url.pathname === "/v1/reset" ? allow("reset", ["POST"], () => reset(request))
       : url.pathname === "/v1/export" ? allow("export", ["POST"], () => exportAccount(request))
       : url.pathname === "/v1/delete" ? allow("delete", ["POST"], () => deleteAccount(request))
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))

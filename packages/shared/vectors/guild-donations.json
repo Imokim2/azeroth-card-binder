@@ -1,0 +1,42 @@
+{
+  "events": [
+    {
+      "dust": 0,
+      "shiny": 0,
+      "tape": 0,
+      "partner": "01HF7YAT00QKSEP5RCNMPTQ3KN",
+      "trade": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "char": "Alice-RealmName",
+      "seq": 1,
+      "t": 1300,
+      "kind": "donate",
+      "key": "npc:589",
+      "count": 0,
+      "prev": "00000000000000000000000000000000",
+      "h": "7d2c6f7f12f7411250410fd06690d59c"
+    },
+    {
+      "dust": 0,
+      "shiny": 0,
+      "tape": 0,
+      "partner": "01HF7YAT00QKSEP5RCNMPTQ3KN",
+      "trade": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "char": "Alice-RealmName",
+      "seq": 2,
+      "t": 1310,
+      "kind": "donateReturn",
+      "key": "npc:589",
+      "count": 1,
+      "prev": "7d2c6f7f12f7411250410fd06690d59c",
+      "h": "5968da34170323a4b12e42691accf6d7"
+    }
+  ],
+  "head": {
+    "seq": 2,
+    "hash": "5968da34170323a4b12e42691accf6d7"
+  },
+  "texts": [
+    "1|1300|donate|npc:589|0|0|0|0|01HF7YAT00QKSEP5RCNMPTQ3KN|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb|Alice-RealmName|00000000000000000000000000000000",
+    "2|1310|donateReturn|npc:589|1|0|0|0|01HF7YAT00QKSEP5RCNMPTQ3KN|bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb|Alice-RealmName|7d2c6f7f12f7411250410fd06690d59c"
+  ]
+}
