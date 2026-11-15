@@ -10,6 +10,7 @@ Free and open source. Built for **Forever**; Retail and other Classic clients ar
 
 > [!WARNING]
 > **Known issue: DX12 loading screens.** Some Forever players experience a loading-screen hang with repeated desktop flickering. Warcards' 3D models may make this issue more likely or worse. Version 1.0.10 reduces preload-scene allocation, but is **not a confirmed fix**. Read the [known issues and troubleshooting steps](KNOWN-ISSUES.md) before installing.
+> If chat still works during the loop, try `/reload`; this has recovered an affected session. Otherwise a full client restart may be needed. These are temporary workarounds.
 
 ## Your collection, in game
 

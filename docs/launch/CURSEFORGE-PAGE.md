@@ -15,6 +15,8 @@ Collect cards from mobs, dungeon bosses and gathering nodes as you play. Browse 
 
 Some Forever players using DirectX 12 have reported loading screens that get stuck while the game repeatedly flickers to the desktop. **Warcards' 3D models may make this issue more likely or worse.** Addon 1.0.10 reduces the number of preload scenes, but it is **not a confirmed fix**. A stuck client may need a full restart, and a forced exit can lose finds since the last normal save.
 
+**Temporary workaround:** if chat still accepts typing during the loop, press Enter, type `/reload` and press Enter again. This has recovered an affected session, but is not guaranteed to work. If it fails, close the game with Alt+F4 and relaunch it. A forced exit can lose unsaved finds.
+
 See the [known issues and troubleshooting steps](https://github.com/Imokim2/azeroth-card-binder/blob/main/KNOWN-ISSUES.md) before installing. We are still investigating; the matching client reports do not establish an official diagnosis or a confirmed Blizzard fix.
 
 ## Your binder
