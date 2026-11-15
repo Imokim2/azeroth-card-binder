@@ -1,6 +1,6 @@
 # CurseForge release preparation
 
-**Updated 15 November 2026; not submitted.** The description matches the published **addon 1.0.14 / companion 1.0.2** baseline, with server 1.0.1. Harry's card changes and the older-collection compatibility fix are included in this matching release. Use the exact published 1.0.14 addon archive when submitting.
+**Updated 15 November 2026; not submitted.** The description matches the published **addon 1.0.15 / companion 1.0.3** baseline, with server 1.0.2. Harry's card changes and the older-collection compatibility fix are included in this matching release. Use the exact published 1.0.15 addon archive when submitting.
 
 The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGELOG.md), branding and five real screenshots are prepared. The Discord link is **https://worldofwarcards.co.uk/discord**, which redirects to the community's permanent invite. Forever and version 1.60.1 are listed on CurseForge; the old absent-client question is resolved. Refresh the gameplay gallery and match the final release before upload. An optional [companion enquiry](CURSEFORGE-SUPPORT-DRAFT.md) is prepared if moderation needs clarification; no ticket has been sent.
 
@@ -11,7 +11,7 @@ The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGE
 | Name | World of Warcards |
 | Summary | Trade cards and sealed zone packs, collect alternate editions and finish seasonal collections in World of Warcraft: Forever. |
 | Description | [CURSEFORGE-PAGE.md](CURSEFORGE-PAGE.md), checked against the final upload build |
-| Release notes | [CURSEFORGE-CHANGELOG.md](CURSEFORGE-CHANGELOG.md), matched to addon 1.0.14 and companion 1.0.2 |
+| Release notes | [CURSEFORGE-CHANGELOG.md](CURSEFORGE-CHANGELOG.md), matched to addon 1.0.15 and companion 1.0.3 |
 | Avatar | [project-icon.png](../media/project-icon.png), 400 × 400 PNG |
 | Header | [banner.png](../media/banner.png), branding rather than a gameplay capture |
 | Gallery | Five genuine supplied captures; refresh and complete using [SCREENSHOTS.md](SCREENSHOTS.md) |
@@ -20,7 +20,7 @@ The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGE
 | Issue tracker | https://github.com/Imokim2/azeroth-card-binder/issues/new/choose |
 | Homepage | https://worldofwarcards.co.uk |
 | Community | https://worldofwarcards.co.uk/discord |
-| Categories | Miscellaneous; add a suitable roleplay/collection category if offered in the editor |
+| Categories | Minigames; Guild and Achievements as additional categories |
 | Comments | Enable; also provide the issue tracker and Discord help channels |
 | Supported client | World of Warcraft → Forever, version 1.60.1 for the current build; interface `16001`, `AllowLoadGameType: camelot` |
 
@@ -28,16 +28,16 @@ The description puts the loading-screen notice near the bottom, just before Help
 
 ## Included card changes
 
-[Harry's PR #63](https://github.com/Imokim2/azeroth-card-binder/pull/63) is merged. The matching [1.0.14 release](https://github.com/Imokim2/azeroth-card-binder/releases/tag/v1.0.14) contains addon 1.0.14 and companion 1.0.2; server 1.0.1 supports its new card format. Install the companion first. [PR #65](https://github.com/Imokim2/azeroth-card-binder/pull/65) preserves the earlier active list for older finds, pack results and completed pages, so an update does not require a binder reset.
+[Harry's PR #63](https://github.com/Imokim2/azeroth-card-binder/pull/63) is merged. The matching [1.0.15 release](https://github.com/Imokim2/azeroth-card-binder/releases/tag/v1.0.15) contains addon 1.0.15 and companion 1.0.3; server 1.0.2 supports its new card format. Install the companion first. [PR #65](https://github.com/Imokim2/azeroth-card-binder/pull/65) preserves the earlier active list for older finds, pack results and completed pages, so an update does not require a binder reset.
 
-The description now includes faction bonus cards, expanded dungeon/raid lists and exclusions for known unkillable or one-off targets. Owned copies remain owned. Some creature data still needs in-game confirmation, so do not claim every encounter is covered or verified. The [release record](RELEASE-1.0.14.md) distinguishes automated checks from the remaining group test.
+The description includes the Guild tab and permanent donations, as well as faction bonus cards, expanded dungeon/raid lists and exclusions for known unkillable or one-off targets. Guild setup, membership approval and donations are included with the matching companion, server and database migrations. Owned copies remain owned. Some creature data still needs in-game confirmation, so do not claim every encounter is covered or verified. The [release record](RELEASE-1.0.15.md) distinguishes automated checks from the remaining group test.
 
 ## Before submission
 
 1. **Select the supported client.** Use **World of Warcraft → Forever → 1.60.1** for the current `16001` build. CurseForge's [published Forever file listing](https://www.curseforge.com/wow/addons/quality-of-life-forever/files/all?gameVersionTypeId=88568&page=1&pageSize=20&showAlphaFiles=hide) explicitly lists that flavour and version. Confirm the choices against the final tested client in the upload editor; do not select Retail or another Classic flavour.
 2. **Keep the companion wording descriptive.** The [moderation policies](https://support.curseforge.com/support/solutions/articles/9000197279-moderation-policies) prohibit external file-download links. The draft explains the separate Windows companion and puts the homepage at the bottom, with no direct installer link. Casual collecting works with the addon alone; Ranked trading, gifting, seasons and ladder features require the companion. Do not bundle its installer in the addon ZIP. The policy does not itself require a separate companion-support approval; the optional enquiry is available if a moderator asks or the final page needs a different link arrangement.
 3. **Finish the gameplay gallery.** The supplied binder, trade, achievements, empty-satchel and companion images are real, from 13 November. Refresh them for the final build: the companion capture visibly reports addon 1.0.0. Add actual pack-opening, alternate-edition and running-season captures where available. Keep the layout illustrations out of the public gallery. Upload genuine screenshots to CurseForge and replace relative image paths in the description with its gallery URLs.
-4. **Match the exact release.** Update the description and release notes to the final uploaded addon, matching companion and server. Harry's card changes are included in 1.0.14; use companion 1.0.2 with that addon. No fixed card counts are advertised while the active pool is changing. The upload is addon 1.0.14 from tag `v1.0.14`, source `d550122`, SHA-256 `e7c119467f45e9de15001d6762f0e64f2250badaf6a7df7646a49c6b5a938e60`.
+4. **Match the exact release.** Update the description and release notes to the final uploaded addon, matching companion and server. Harry's card changes are included in 1.0.15; use companion 1.0.3 with that addon. No fixed card counts are advertised while the active pool is changing. The upload is addon 1.0.15 from tag `v1.0.15`, source `a5e2697`, SHA-256 `0fd9337592d43cc94db7dc51f1a3144d773c9af56128bf3899ca09b045ed01e7`.
 5. **Check links and page presentation.** Verify the Discord redirect, help page, known-issue link and issue tracker. Keep promotional/community links at the bottom, as required by the moderation policy. The submission guide supports external issue trackers and recommends genuine gameplay images.
 
 ## Known issue to retain
