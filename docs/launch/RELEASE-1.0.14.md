@@ -1,6 +1,6 @@
 # Addon 1.0.14 and companion 1.0.2
 
-Prepared 15 November 2026 for group testing, with server 1.0.1 and ledger spec 10. Harry's card work is merged from PR #63. This record is updated after publication; preparation alone does not change website downloads.
+Published 15 November 2026 for group testing, with server 1.0.1 and ledger spec 10. Harry's card work is merged from PR #63; upgrade compatibility and matching versions are merged in PR #65.
 
 ## Included
 
@@ -28,3 +28,17 @@ Run the complete addon/shared/app/server suite and typechecks before tagging. Th
 Test updating the companion first and the addon second over an existing collection, then save/sync/reload. Check faction eligibility, dungeon cards, set completion, packs, trading/gifting and model framing in Forever. Automated checks are not an in-game pass.
 
 The DX12 loading-screen issue remains disclosed in [KNOWN-ISSUES.md](../../KNOWN-ISSUES.md). The model-pool limit is a mitigation, not a confirmed fix. This update does not change that mitigation. CurseForge submission remains separate and unsubmitted.
+
+## Publication checks, 15 November 2026
+
+- Tag `v1.0.14`, source `d550122`. Release workflow `43751785166` passed addon, Windows installer, actual packaged-app startup, native installer-process tests and publication.
+- Local verification passed 248 Lua checks and 382 Node tests without skips, both typechecks and a clean companion build.
+- Both Cloudflare databases had no pending migration. Managed recovery references were recorded; no player records were exported or reset.
+- The exact published files were downloaded and checked against the published hashes. The addon has 103 entries, all TOC modules, the expected assets and the empty factory sync file, with no developer studio, installer or credentials.
+- The companion extracted from the downloaded installer passed real ASAR imports and actual main/preload/renderer startup in isolated fresh data as version 1.0.2 with catalog `4301ff859016`.
+- The trusted signed manifest and real addon updater passed an isolated installation over two accounts. Both save files, both backup saves and existing Ranked sync data remained byte-for-byte unchanged; the old addon was backed up.
+- Staging passed all 18 deep checks. The same verified signed feed was deployed to production, where fresh requests showed the new versions and matching download links/checksums. Normal cached responses are checked separately before handoff.
+
+Published addon SHA-256: `e7c119467f45e9de15001d6762f0e64f2250badaf6a7df7646a49c6b5a938e60`.
+
+Published companion SHA-256: `ba8bfc21c78e60e9ce621d2af5b267de184d5dccd7738198b3d2ade17e60f88a`.

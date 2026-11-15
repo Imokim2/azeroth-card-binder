@@ -2,7 +2,7 @@
 
 Updated 15 November 2026. Received on 13 November: actual binder index, achievements, empty satchel, synced companion and trade-offer screenshots. These are published on GitHub and the website and prepared for the unsubmitted CurseForge page. The companion screenshot visibly reports addon 1.0.0, so refresh it for the final release. The supplied satchel is empty; the trade screenshot shows an offer before acceptance.
 
-The current description baseline is addon 1.0.13 / companion 1.0.1. If Harry's pending card changes ship first, capture that matching addon and companion instead. Do not label old captures as showing the newer build. Pack-opening, alternate editions and a running season still need genuine captures; no live season is implied by the draft.
+The current description baseline is addon 1.0.14 / companion 1.0.2, including Harry's merged card changes. Capture those matching versions. Do not label old captures as showing the newer build. Pack-opening, alternate editions and a running season still need genuine captures; no live season is implied by the draft.
 
 Capture the build intended for release. Keep full-size PNG originals, preferably 1920 × 1080 or higher, with the UI visible. Don’t use Alt+Z for addon shots: it hides the window we need to show. Move the cursor away unless you want a tooltip in the image. A quiet location, readable UI scale and consistent resolution will help the gallery look like one set.
 

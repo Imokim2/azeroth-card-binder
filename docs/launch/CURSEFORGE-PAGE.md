@@ -1,11 +1,9 @@
 # World of Warcards
 
 <!-- DESCRIPTION DRAFT ONLY — refreshed 15 November 2026.
-     Describes released addon 1.0.13 with companion 1.0.1. Harry's pending card
-     changes in PR #63 are recorded separately in CURSEFORGE-PLAN.md; do not
-     advertise them as part of the current download. Use genuine release-build
-     captures; upload them to the CurseForge gallery and replace these relative
-     image URLs before submission. -->
+     Describes addon 1.0.14, companion 1.0.2 and server 1.0.1, including Harry's
+     merged card changes. Use genuine captures of the upload build; upload them
+     to the CurseForge gallery and replace these relative image URLs. -->
 
 ![World of Warcards](../media/banner.png)
 
@@ -48,6 +46,12 @@ Both players need the companion set up and a **Ranked** binder. Trading and gift
 Some cards have separate collectible editions with different poses or animations. Inspect the 3D portrait and rotate it by hand; rarer cards and special editions can have extra movement or looping animations.
 
 <!-- Still needed: an actual alternate-edition comparison screenshot. -->
+
+## Cards from both sides of Azeroth
+
+Some bonus cards can only be earned by one faction. Trade or receive them as a gift to add the other side's cards to your binder. These extras are not required to finish a set and are not selected for seasons.
+
+The collection includes expanded dungeon and raid card lists. Cards tied to known unkillable creatures or one-off encounters are excluded from collection goals and seasonal lists. Copies you already own stay in your binder when the available card list changes.
 
 ## Achievements and titles
 
