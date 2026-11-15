@@ -4,7 +4,7 @@
 
 Find cards from mobs, dungeon bosses and gathering nodes while you play **World of Warcraft: Forever**. Keep them in your binder, open packs, trade your spares and work towards collection achievements.
 
-**[Download](https://worldofwarcards.co.uk/download)** · **[Website](https://worldofwarcards.co.uk)** · **[Help](https://worldofwarcards.co.uk/help)** · **[Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose)**
+**[Download](https://worldofwarcards.co.uk/download)** · **[Website](https://worldofwarcards.co.uk)** · **[Help](https://worldofwarcards.co.uk/help)** · **[Discord](https://worldofwarcards.co.uk/discord)** · **[Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose)**
 
 Free and open source. Built for **Forever**; Retail and other Classic clients are not currently supported.
 
@@ -15,6 +15,8 @@ Free and open source. Built for **Forever**; Retail and other Classic clients ar
 ## Your collection, in game
 
 Browse cards by zone or dungeon, see what you’re missing and take a closer look at your favourites. Some cards have separate collectible editions with different poses or animations.
+
+Want to open straight to where you’re playing? Enable **Settings → General → Open binder at current zone**. It finds your current zone or dungeon collection and keeps your previous page in places without one.
 
 Seasonal collections give everyone a shared list to hunt for alongside their normal Ranked binder. Finish in time for titles and packs, with extra rewards for the first finishers. Cards held back from the launch collection can return through seasons; copies you already own stay yours.
 
