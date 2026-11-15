@@ -11,7 +11,7 @@ import { siteAsset } from "./siteAssets.ts";
 import type { Releases } from "./releases.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
 import type { Limiter } from "./limit.ts";
-import { binderSets, fairPlayPage, ladderPage, notFoundPage, playerPage, privacyPage } from "./site.ts";
+import { binderSets, fairPlayPage, guildLadderPage, ladderPage, notFoundPage, playerPage, privacyPage } from "./site.ts";
 import { downloadPage, faqPage, helpPage, landingPage, statusBadge, statusPage } from "./sitePages.ts";
 import { ADMIN_HTML, scriptHash } from "./adminPage.ts";
 import { rebuild } from "./rebuild.ts";
@@ -741,6 +741,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       asset ? allow("site-asset", ["GET"], async () => asset)
       : url.pathname === "/" ? allow("site-home", ["GET"], async () => html(200, landingPage()))
       : url.pathname === "/ladder" ? allow("site-ladder", ["GET"], siteLadder)
+      : url.pathname === "/guilds" ? allow("site-guilds", ["GET"], async () => deps.guilds ? html(200, guildLadderPage(await deps.guilds.standings(100))) : html(404, notFoundPage()))
       : url.pathname === "/download" ? allow("site-download", ["GET"], async () => html(200, downloadPage({ ...downloadsFrom(deps.releases), releasesUrl: releasesPageFrom(deps.releasesUrl) })))
       : url.pathname === "/help" ? allow("site-help", ["GET"], async () => html(200, helpPage(communityRedirect(deps.discordInviteUrl).headers.get("location") !== "/help#community")))
       : url.pathname === "/discord" ? allow("site-community", ["GET"], async () => communityRedirect(deps.discordInviteUrl))

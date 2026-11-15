@@ -1,7 +1,7 @@
 # World of Warcards
 
 <!-- DESCRIPTION DRAFT ONLY — refreshed 15 November 2026.
-     Describes addon 1.0.14, companion 1.0.2 and server 1.0.1, including Harry's
+     Describes addon 1.0.15, companion 1.0.3 and server 1.0.2, including Harry's
      merged card changes. Use genuine captures of the upload build; upload them
      to the CurseForge gallery and replace these relative image URLs. -->
 
@@ -40,6 +40,14 @@ Sending a gift works the same way: the receiving player leaves their side empty,
 Both players need the companion set up and a **Ranked** binder. Trading and gifting are disabled in Casual. Cards and packs are addon-owned items, so trades use the Warcards window rather than the game's mail or auction house.
 
 ![The card trade window with a Dragonmaw Bonewarder offered](../media/gallery/trading.png)
+
+## Fill a guild binder
+
+Open **Guild** in your binder to browse the collection you build together. Donate a card from your Ranked binder, starting with your spare copies. Each donation is permanent: the copy leaves your collection and stays with the guild, even if you leave. Nobody can withdraw it, including officers.
+
+Start or join through the companion app. The team approves new guilds, and the guild owner approves members. Save and sync, then reload to see new donations and the shared collection. If the server cannot accept a donation, the copy comes back when the addon loads the reply.
+
+Wanted lists are still available from the Guild page or with `/acb wanted`.
 
 ## Collect alternate editions
 

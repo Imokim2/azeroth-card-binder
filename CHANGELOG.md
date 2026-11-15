@@ -4,6 +4,16 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.0.15 - 2026-11-15 (companion 1.0.3, server 1.0.2)
+
+- Replace the top Wanted tab with Guild, using the same parchment, type, buttons and card viewer as the binder. Browse the shared collection, search cards or donate from your own binder. Spare copies are shown first; last-copy donations require explicit confirmation.
+- Add guild membership setup and owner approval in the companion. New guilds are approved by the team; donations are permanent and are returned if the server cannot accept them. Progress syncs after saved changes, without idle polling.
+- Add the public guild ladder and guild-request review in the protected admin page. Wanted lists remain available from Guild or `/acb wanted`.
+- Update the companion to 1.0.3 for guild donations and shared inventory. Install the companion first. Existing personal cards, packs, history and settings are preserved; backup recovery refuses to discard pending guild donations.
+
+
 - Add guild binders, switched off until the server enables them: ask for a guild (approved by a person), apply to one (approved by its owner), and give cards to it for good from a Ranked binder with `/acb guild donate`. The server credits a donation or, if it must refuse it, gives the copy back. This is ledger version 11, so the companion must be updated before the add-on. Nothing changes for existing binders until guilds are switched on and a player donates.
 
 ## 1.0.14 - 2026-11-15 (companion 1.0.2, server 1.0.1)

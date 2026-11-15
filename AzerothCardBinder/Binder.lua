@@ -34,6 +34,7 @@ function ACB.initUI(saved, trade)
     local ladderView = ACB.createLadderView(frame, saved)
     local wantedView = ACB.createWantedView(frame, saved)
     local seasonsView = ACB.createSeasonsView(frame, saved)
+    local guildView = ACB.createGuildView(frame, saved)
 
     local invite = window("AzerothCardBinderTradeNotice", 360, 198, "Incoming trade")
     invite:ClearAllPoints()
@@ -67,7 +68,7 @@ function ACB.initUI(saved, trade)
     end)
 
     local tabs = {}
-    for index, destination in ipairs({ "index", "collection", "seasons", "achievements", "ladder", "wanted", "settings" }) do
+    for index, destination in ipairs({ "index", "collection", "seasons", "achievements", "ladder", "guild", "settings" }) do
         local caption = destination:sub(1, 1):upper() .. destination:sub(2)
         tabs[destination] = tab(frame, caption, index, function() ACB.open(destination) end)
     end
@@ -101,12 +102,18 @@ function ACB.initUI(saved, trade)
         titleMark:SetAlpha(tradeSelection and 0 or 1)
         local inTrade, inSettings = mode == "trade", mode == "settings"
         local inAchievements, inLadder, inWanted = mode == "achievements", mode == "ladder", mode == "wanted"
-        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder and not inWanted and mode ~= "seasons")
+        collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder and not inWanted and mode ~= "seasons" and mode ~= "guild")
         seasonsView:SetShown(mode == "seasons")
+        guildView:SetShown(mode == "guild")
         settingsView:SetShown(inSettings)
         achievementView:SetShown(inAchievements)
         ladderView:SetShown(inLadder)
         wantedView:SetShown(inWanted)
+        if mode == "guild" then
+            regionMark:SetText("BINDER  /  GUILD")
+            guildView:refresh()
+            return
+        end
         if mode == "seasons" then
             regionMark:SetText("BINDER  /  SEASONS")
             seasonsView:refresh()
@@ -161,7 +168,7 @@ function ACB.initUI(saved, trade)
         -- trade underneath ordinary binder pages where those layers can show through.
         tradeView:Hide()
         if not frame:IsShown() and ACB.playSound then ACB.playSound("binder") end
-        if tabs[destination] then
+        if tabs[destination] or destination == "wanted" then
             mode = destination
         elseif type(destination) == "number" and ACB.pages[destination] and #ACB.pages[destination].cards > 0 then
             page, mode = destination, "collection"

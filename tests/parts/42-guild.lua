@@ -220,4 +220,41 @@ do
         SlashCmdList.AZEROTHCARDBINDER("guild donate nothing")
         ACB.sync, ACB.ledger = keep, keepLedger
     end)
+    test("guild page confirms a permanent donation, supports cancellation and prevents repeat acceptance", function()
+        local keepSync, keepLedger, keepRefresh = ACB.sync, ACB.ledger, ACB.refresh
+        local saved, ledger = guildBinder(2)
+        ACB.ledger, ACB.refresh = ledger, function() end
+        ACB.sync.guild.summary = { guildId = GUILD, cards = 1, points = 10, inventory = { { card = CARD, copies = 1 } } }
+        local view = ACB.createGuildView(UIParent, saved)
+        view:refresh(); view.controls.contribute.OnClick()
+        view.controls.donate.OnClick()
+        equal(2, saved.counts[CARD]); assert(view.controls.confirm:IsShown())
+        view.controls.cancel.OnClick(); equal(2, saved.counts[CARD])
+        view.controls.donate.OnClick(); view.controls.accept.OnClick()
+        equal(1, saved.counts[CARD]); equal(1, ACB.pendingDonationCount(saved))
+        view.controls.accept.OnClick(); equal(1, saved.counts[CARD])
+        ACB.sync, ACB.ledger, ACB.refresh = keepSync, keepLedger, keepRefresh
+    end)
+
+    test("guild donation confirmation cannot be reused after membership changes", function()
+        local keepSync, keepLedger, keepRefresh = ACB.sync, ACB.ledger, ACB.refresh
+        local saved, ledger = guildBinder(2)
+        ACB.ledger, ACB.refresh = ledger, function() end
+        ACB.sync.guild.summary = { guildId = GUILD, cards = 0, points = 0, inventory = {} }
+        local view = ACB.createGuildView(UIParent, saved)
+        view:refresh(); view.controls.contribute.OnClick(); view.controls.donate.OnClick()
+        ACB.sync.guild.membership.guild.id = OTHER_GUILD
+        view.controls.accept.OnClick()
+        equal(2, saved.counts[CARD]); equal(0, ACB.pendingDonationCount(saved))
+        ACB.sync, ACB.ledger, ACB.refresh = keepSync, keepLedger, keepRefresh
+    end)
+
+    test("guild donation list defaults to spares and supports literal name searches", function()
+        local saved = { counts = { [CARD] = 1, [OTHER] = 2 } }
+        local rows = ACB.guildCardRows(saved, {}, true, true, "")
+        equal(1, #rows); equal(OTHER, rows[1].key)
+        equal(2, #ACB.guildCardRows(saved, {}, true, false, ""))
+        equal(0, #ACB.guildCardRows(saved, {}, true, false, "["))
+    end)
+
 end

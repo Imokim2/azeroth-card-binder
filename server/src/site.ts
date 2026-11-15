@@ -13,6 +13,11 @@ const date = (seconds: number): string => new Date(seconds * 1000).toISOString()
 export type LadderEntry = { rank: number; playerId: string; displayName: string; scoreTenths: number; uniqueCards: number; setsDone: number };
 export type First = { title: string; displayName: string; playerId: string; at: number };
 
+export function guildLadderPage(entries: { name: string; realm: string; side: string; tenths: number; cards: number; members: number }[]): string {
+  const rows = entries.map((entry, index) => `<tr><td class="num">${index + 1}</td><td>${escapeHtml(entry.name)}<br><span class="fine">${escapeHtml(entry.realm)} · ${entry.side === "horde" ? "Horde" : "Alliance"}</span></td><td class="num">${(entry.tenths / 10).toFixed(1)}</td><td class="num">${entry.cards}</td><td class="num">${entry.members}</td></tr>`).join("");
+  return layout("Guild collections: World of Warcards", `<div class="page-heading"><h1>Guild collections</h1><p class="lede">A binder you fill together. Donate cards from your Ranked collection and build something for the whole guild.</p><div class="actions"><a class="button" href="/ladder">Player ladder</a><a class="button" href="/help#guilds">How guild binders work</a></div></div><section class="section">${rows ? `<div class="table-wrap"><table class="ladder-table"><thead><tr><th>#</th><th>Guild</th><th>Points</th><th>Cards</th><th>Members</th></tr></thead><tbody>${rows}</tbody></table></div>` : `<div class="panel empty-state"><div><h2>The first page is waiting</h2><p>Guilds appear here once their first card donation has synced. Start or join a guild binder in the companion app.</p></div></div>`}<p class="fine">Donations stay with the guild permanently. Standings refresh after saved progress syncs; this page may take a few minutes to catch up.</p></section>`, "/ladder");
+}
+
 export function ladderPage(entries: LadderEntry[], firsts: First[]): string {
   const rows = entries.map((entry) =>
     `<tr><td class="num">${entry.rank}</td><td><a href="/player/${escapeHtml(entry.playerId)}">${escapeHtml(entry.displayName)}</a></td><td class="num">${(entry.scoreTenths / 10).toFixed(1)}</td><td class="num">${entry.uniqueCards}</td><td class="num">${entry.setsDone}</td></tr>`).join("\n");
@@ -24,7 +29,7 @@ export function ladderPage(entries: LadderEntry[], firsts: First[]): string {
     : `<p class="empty">No set has been finished yet.</p>`;
   return layout("World of Warcards: the ladder", `
 <div class="page-heading"><h1>The ladder</h1>
-<p class="lede">Compare public Ranked collections and see who finished each set first. Only <a href="/fair-play">Ranked</a> play counts towards these scores.</p></div><div class="page-content">
+<p class="lede">Compare public Ranked collections and see who finished each set first. Only <a href="/fair-play">Ranked</a> play counts towards these scores.</p><div class="actions"><a class="button" href="/guilds">Guild collections</a></div></div><div class="page-content">
 ${table}
 <div class="subheading"><h2>First to finish a set</h2></div>
 ${first}</div>
@@ -115,6 +120,7 @@ export function privacyPage(contact?: string): string {
 <li><strong>Your characters' names and realms</strong>, taken from your history.</li>
 <li><strong>Your history</strong>: every card found, crafted, recycled and traded, with times, the trade partner's character name and the trade id.</li>
 <li><strong>Your score</strong> and when it last changed.</li>
+<li><strong>Guild binders</strong> store your membership, selected character, role, requests and card donations. Approved guild names, realm, faction and collection totals appear on the guild ladder. Donations stay with the guild when you leave.</li>
 <li><strong>Legacy wanted lists</strong> uploaded by older companion versions may remain in your account data. Current companions keep wanted lists in game; they are not published on this site.</li>
 <li><strong>Reports</strong> you send about other players (the character's name, a reason and a short note you wrote) and reports other players sent about you. Only the people who run the service read them; they are not shown to anyone else, and they are erased with the rest when you delete your data.</li>
 <li><strong>Counts the server needs to check play</strong>: attempts per card, random-number positions used, and any fair-play flags with a reviewer's note.</li>
