@@ -20,6 +20,8 @@ import type { AdminStore, FlagRecord, IngestStore, LeaderboardStore, ModerationS
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
 import type { SqlSeasons } from "./seasons.ts";
+import { GUILD_STATES, parseCharacter, parseGuildName } from "./guilds.ts";
+import type { SqlGuilds } from "./guilds.ts";
 
 export const MAX_BODY_BYTES = 2_000_000;
 const PUBLIC_CACHE_SECONDS = 60;
@@ -36,6 +38,7 @@ export type Deps = {
   moderation: ModerationStore;
   admin: AdminStore; // finding players and the record of what reviewers did (the admin panel)
   seasons?: SqlSeasons;
+  guilds?: SqlGuilds; // guild binders (docs/proposals/GUILD-BINDERS-DESIGN.md); absent until switched on, and every guild route then answers not_found
   // When each card held back for seasons was released (from the scheduled seasons when absent): the start of the first season featuring it.
   released?: () => Promise<Record<string, number>>;
   // Rate limits per client address: `general` for everything, `strict` for the routes that create or destroy things.
@@ -217,6 +220,61 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const season = await deps.seasons.schedule(await readJson(request), deps.now());
     await audit(actor, "schedule-season", season.id, season.title);
     return json(201, { season }, { "cache-control": "no-store" });
+  }
+
+  // The player behind a request signed for one purpose, or an error. `fields` are signed along with the key and the time.
+  async function signedPlayer(body: Record<string, unknown>, purpose: string, fields: Record<string, unknown> = {}) {
+    const { key, sentAt, sig } = body;
+    if (typeof key !== "string" || !/^[0-9a-f]{64}$/.test(key) || !Number.isSafeInteger(sentAt) || typeof sig !== "string") throw new ApiError("bad_request");
+    if (Math.abs(deps.now() - (sentAt as number)) > 86_400) throw new ApiError("bad_request", { field: "sentAt" });
+    const player = await deps.players.findByActiveKey(key);
+    if (!player) throw new ApiError("unknown_key");
+    if (player.status !== "active") throw new ApiError("banned");
+    if (!(await verifySignature(key, sig, canonicalJson({ key, sentAt, ...fields, purpose })))) throw new ApiError("bad_signature");
+    return player;
+  }
+
+  // Ask for a guild from one of the player's own characters. It waits for a reviewer: nothing exists for other players until then.
+  async function guildRequest(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const body = ((await readJson(request)) ?? {}) as Record<string, unknown>;
+    const character = parseCharacter(body["character"]);
+    const name = parseGuildName(body["name"]);
+    const player = await signedPlayer(body, "guild-request", { character: body["character"], name: body["name"] });
+    return json(201, { guild: await deps.guilds.request(player.id, { character, name }, deps.now()) }, { "cache-control": "no-store" });
+  }
+
+  // The player's own guild requests and guilds, so the companion can show a decision.
+  async function guildMine(request: Request): Promise<Response> {
+    checkClient(request, deps);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const player = await signedPlayer(((await readJson(request)) ?? {}) as Record<string, unknown>, "guild-mine");
+    return json(200, { guilds: await deps.guilds.mine(player.id) }, { "cache-control": "no-store" });
+  }
+
+  // For the people who review: guilds waiting for a decision (or in another state), oldest first.
+  async function adminGuilds(request: Request, url: URL): Promise<Response> {
+    await requireAdmin(request);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const state = url.searchParams.get("state") ?? "pending";
+    if (!GUILD_STATES.includes(state as never)) throw new ApiError("bad_request", { field: "state" });
+    const asked = Number(url.searchParams.get("limit") ?? 100);
+    const limit = Number.isInteger(asked) && asked >= 1 ? Math.min(asked, 500) : 100;
+    return json(200, { guilds: await deps.guilds.list(state as (typeof GUILD_STATES)[number], limit) }, { "cache-control": "no-store" });
+  }
+
+  async function adminGuildDecision(request: Request, id: string): Promise<Response> {
+    const actor = await requireAdmin(request);
+    if (!deps.guilds) throw new ApiError("not_found");
+    const body = ((await readJson(request)) ?? {}) as Record<string, unknown>;
+    const { decision, note } = body;
+    if (decision !== "approve" && decision !== "refuse") throw new ApiError("bad_request", { field: "decision" });
+    if (note !== undefined && (typeof note !== "string" || note.length > 200 || /[\u0000-\u001f]/.test(note))) throw new ApiError("bad_request", { field: "note" });
+    const guild = await deps.guilds.decide(id, decision, typeof note === "string" ? note.trim() : "", actor, deps.now());
+    if (!guild) throw new ApiError("not_found");
+    await audit(actor, "guild-" + decision, id, `${guild.name} (${guild.realm}, ${guild.side})${guild.note ? " - " + guild.note : ""}`);
+    return json(200, { guild }, { "cache-control": "no-store" });
   }
 
   // Start a new binder: the old record is archived and the player begins again with an empty chain. Signed by the
@@ -529,7 +587,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
   }
 
   // The routes that make or remove things, or take secrets, get the tighter limit.
-  const STRICT = /^\/v1\/(register|reset|delete|export|report|admin\/.*)$/;
+  const STRICT = /^\/v1\/(register|reset|delete|export|report|guilds\/request|admin\/.*)$/;
   async function enforceLimits(request: Request, pathname: string): Promise<void> {
     if (!deps.limits || pathname === "/v1/health") return;
     const client = request.headers.get("cf-connecting-ip") ?? "unknown";
@@ -590,7 +648,8 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const reviewMatch = /^\/v1\/admin\/flags\/([0-9A-Za-z]{1,40})$/.exec(url.pathname);
     const banMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/ban$/.exec(url.pathname);
     const asset = siteAsset(url.pathname);
-    const deleteMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/delete$/.exec(url.pathname);
+    const guildMatch = /^\/v1\/admin\/guilds\/([0-9A-Z]{26})$/.exec(url.pathname);
+    const deleteMatch =/^\/v1\/admin\/players\/([0-9A-Z]{26})\/delete$/.exec(url.pathname);
     const resetMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/reset$/.exec(url.pathname);
     const restoreMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})\/restore$/.exec(url.pathname);
     const adminPlayerMatch = /^\/v1\/admin\/players\/([0-9A-Z]{26})$/.exec(url.pathname);
@@ -622,7 +681,9 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
       : url.pathname === "/v1/seasons" ? allow("seasons", ["POST"], () => seasonal(request))
-      : url.pathname === "/v1/reset" ? allow("reset", ["POST"], () => reset(request))
+      : url.pathname === "/v1/guilds/request" ? allow("guild-request", ["POST"], () => guildRequest(request))
+      : url.pathname === "/v1/guilds/mine" ? allow("guild-mine", ["POST"], () => guildMine(request))
+      : url.pathname === "/v1/reset" ?allow("reset", ["POST"], () => reset(request))
       : url.pathname === "/v1/export" ? allow("export", ["POST"], () => exportAccount(request))
       : url.pathname === "/v1/delete" ? allow("delete", ["POST"], () => deleteAccount(request))
       : url.pathname === "/v1/leaderboard" ? allow("leaderboard", ["GET"], () => leaderboard(url))
@@ -642,7 +703,9 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/admin/players" ? allow("admin-players", ["GET"], () => adminPlayers(request, url))
       : url.pathname === "/v1/admin/audit" ? allow("admin-audit", ["GET"], () => adminAudit(request, url))
       : url.pathname === "/v1/admin/me" ? allow("admin-me", ["GET"], () => adminMe(request))
-      : url.pathname === "/v1/admin/seasons" ? allow("admin-seasons", ["GET", "POST"], () => adminSeasons(request))
+      : url.pathname === "/v1/admin/guilds" ? allow("admin-guilds", ["GET"], () => adminGuilds(request, url))
+      : guildMatch ? allow("admin-guild-decision", ["POST"], () => adminGuildDecision(request, guildMatch[1] as string))
+      : url.pathname === "/v1/admin/seasons" ?allow("admin-seasons", ["GET", "POST"], () => adminSeasons(request))
       : playerMatch ? allow("player", ["GET"], () => player(playerMatch[1] as string))
       : { route: "unknown", response: Promise.resolve(errorResponse("not_found")) };
     return { route: chosen.route, response: await chosen.response };

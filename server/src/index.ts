@@ -10,6 +10,7 @@ import { runMaintenance } from "./maintenance.ts";
 import type { D1Like } from "./db.ts";
 import { SqlStore } from "./sqlStore.ts";
 import { SqlSeasons } from "./seasons.ts";
+import { SqlGuilds } from "./guilds.ts";
 import type { Catalog } from "./shared.ts";
 import catalog from "../../packages/shared/catalog.json";
 import bundledRelease from "./releases.json";
@@ -29,6 +30,7 @@ export interface Env {
   PRIVACY_EMAIL?: string; // where people can write about their data (shown on the privacy page), once the address exists
   SUPPORT_PAYPAL_URL?: string; // account-generated PayPal.Me/payment/hosted Donate link
   DISCORD_INVITE_URL?: string; // public community invite (not the companion's OAuth application)
+  GUILDS_ENABLED?: string; // "true" turns on the guild routes (docs/proposals/GUILD-BINDERS-DESIGN.md); anything else leaves them answering not_found
   VERSION: string;
   TAPE_SECRET?: string; // a secret (wrangler secret put TAPE_SECRET); without it Ranked is closed
   RATE_GENERAL?: RateLimitBinding; // Cloudflare rate-limit bindings (wrangler.toml); without them nothing is limited
@@ -67,6 +69,7 @@ export default {
     const store = new SqlStore(db);
     const handle = createApi({
       seasons: new SqlSeasons(db, catalog as Catalog),
+      ...(env.GUILDS_ENABLED === "true" ? { guilds: new SqlGuilds(db) } : {}),
       players: store, ingest: store, board: store, tapes: store, trades: store, moderation: store, admin: store, access: accessFrom(env), rebuild: store, wanted: store, reports: store, catalog: catalog as Catalog, tapeSecret: env.TAPE_SECRET, adminToken: env.ADMIN_TOKEN,
       now: () => Math.floor(Date.now() / 1000), log,
       health: async () => { await db.all("SELECT 1"); },

@@ -106,6 +106,17 @@ A player tells us about another player: a suspected cheat or a trade that went w
 
 For reviewers, behind the admin token (see Admin routes below): the newest reports about one player, `{ reports: [{ id, reporterId, targetName, targetId, reason, note, createdAt }] }` (`limit` 1 to 200, default 50).
 
+### Guild requests (off unless switched on)
+
+Guild binders are being built in steps (`docs/proposals/GUILD-BINDERS-DESIGN.md`). This first step is creating a guild: a player asks for one, and a person who runs the service approves it. There are no members and no donations yet. The routes exist only when the server has `GUILDS_ENABLED = "true"`; otherwise every route below, including the admin ones, answers `not_found`.
+
+- `POST /v1/guilds/request`: body `{ key, sentAt, character, name, sig }`, where `sig` is the Ed25519 signature, by the player's key, of the canonical JSON of `{ key, sentAt, character, name }` plus `"purpose": "guild-request"`. `character` is one the player has played, as players name each other (`name-realmname`); `name` is 2 to 24 letters with single spaces, apostrophes or dashes between them, and no control characters. `201 { guild }` with `status: "pending"`. The guild's realm is the character's realm and its side is the one the character declared (`mode/side` in the binder), so the binder has to be Ranked and have switched on the faction rules, or the answer is `guild_ineligible` with `detail.reason` of `no-binder`, `not-ranked`, `no-faction` or `no-side`. A name is held on its realm, whatever its case, spaces or apostrophes, while it is pending or active, and a player has one pending or active guild at a time: otherwise `guild_taken` with `detail.reason` of `name` or `already-have-one`. A player whose last three requests within a week were refused gets `rate_limited` until the oldest is a week old. A character that is not the player's, or a bad name, is `bad_request` (`detail.field`). This route has the stricter rate limit.
+- `POST /v1/guilds/mine`: body `{ key, sentAt, sig }` signed with `"purpose": "guild-mine"`. `200 { guilds }`: the player's own requests and guilds, newest first (at most ten), each `{ id, name, realm, side, status, character, requestedAt, decidedAt, note }` with `status` `pending`, `active` or `refused`. `note` is what the reviewer wrote when deciding, so a refusal can say why. Never cached.
+- `GET /v1/admin/guilds?state=pending|active|refused|all&limit=N` (admin; default `pending`, `limit` 1 to 500): `200 { guilds }`, oldest request first, each as above with `ownerId` and `decidedBy`.
+- `POST /v1/admin/guilds/:id { decision: "approve" | "refuse", note? }` (admin; note up to 200 characters, no control characters): decides a pending guild and records `guild-approve` or `guild-refuse` in the activity record. `200 { guild }`. `404` for an unknown guild, `guild_decided` if it was already decided, `guild_taken` if it can no longer be approved because its owner or name is held by another guild. A refusal frees the name for anyone.
+
+A guild keeps its id for good. If its owner deletes their account an approved guild stays, without the owner's id or character, and a person who runs the service names a new owner; a request that was never approved is deleted with the account. The export holds the player's own guild requests.
+
 ### Only Ranked counts
 
 A drop rolled in Casual mode (tape position 0) uses the player's own random numbers, which the server cannot recheck. Such uploads are stored and scored as before, but a player with **any** Casual drop is not listed on `/v1/leaderboard`, `/v1/player/:id` or `/v1/firsts`. Cards received in a trade from a player with Casual drops do not count towards the receiver's score either (the hourly job puts scores right after the fact). The count is `ledger_state.casual_drops`, and a rebuild recomputes it from the stored events.
@@ -127,7 +138,7 @@ For the people who run the service, not for clients. They need the header `autho
 - `POST /v1/admin/players/:id/delete { confirm: <the player id> }`: deletes everything held about the player, as `POST /v1/delete` does for the player themselves. `400` unless `confirm` repeats the id; `404` for an unknown player.
 - `POST /v1/admin/players/:id/reset { confirm: <the player id>, reason? }`: puts the player's binder aside (a private archive, as when the player starts over themselves, with a new epoch so the next binder has a new roll tape), takes them off the ladder, and records the time in `barredBefore`: until they start a new binder, an upload whose first event is not after that time is refused with `binder_reset`, because their add-on still holds the old history and would otherwise upload it again. `400` unless `confirm` repeats the id or if there is no binder to reset; `404` for an unknown player. Nothing is deleted.
 - `POST /v1/admin/players/:id/restore { confirm: <the player id>, archiveId, reason? }`: brings one of that player's archived binders back as the current one. A binder the player has now is put aside in its place (so a restore can itself be undone), the epoch goes back to the one the restored binder was written under, and `barredBefore` is cleared. `404` if the player, or an archive of theirs with that id, does not exist.
-- `GET /v1/admin/audit?limit=N` (1 to 200, default 100): `200 { entries: [{ id, at, actor, action, target, detail }] }`, newest first: what was done in the admin routes (`flag-cleared`, `flag-confirmed`, `ban`, `unban`, `delete-player`, `rebuild`, `rebuild-dry-run`), by whom, to which flag or player id, with the reason or note. It holds no names, Discord ids or keys.
+- `GET /v1/admin/audit?limit=N` (1 to 200, default 100): `200 { entries: [{ id, at, actor, action, target, detail }] }`, newest first: what was done in the admin routes (`flag-cleared`, `flag-confirmed`, `ban`, `unban`, `delete-player`, `rebuild`, `rebuild-dry-run`, `guild-approve`, `guild-refuse`), by whom, to which flag or player id, with the reason or note. It holds no names, Discord ids or keys.
 - `GET /v1/admin/me`: `200 { actor, access }`: who is acting (the Cloudflare Access email, or `token`) and whether Access is in front of the panel.
 - **Cloudflare Access.** When `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are set, every admin route and `/admin` also need Access's signed `cf-access-jwt-assertion` header (RS256, this team, this application, not expired); without it they answer `unauthorized`. The token is still needed too. `docs/runbooks/ADMIN.md` has the setup.
 - `POST /v1/admin/rebuild { after?, limit?, dryRun?, force? }`: recomputes everything derived from the stored batches (state, drops, trade halves, finished sets, score and its rules version) for one page of players (`limit` 1 to 200, default 50, in id order after `after`). `200 { checked, changed: [{ playerId, differences }], failed: [{ playerId, rule, index }], next, dryRun }`; carry on with `after: next` until it is `null`. A dry run writes nothing. A player whose stored history no longer passes the rules is listed in `failed` and left as it is. Trade halves come back open; the hourly job matches them again.
@@ -155,12 +166,15 @@ Every error is `{ "error": { "code", "message", "detail"?, "retryAfter"? } }` wi
 | `unauthorized` | 401 | The admin token is missing or wrong. |
 | `bad_identity` | 401 | The sign-in could not be verified. |
 | `banned` | 403 | This player is not allowed to upload. |
+| `guild_ineligible` | 403 | This binder cannot start a guild yet: it needs Ranked play and a declared faction. |
 | `not_found` | 404 | There is nothing here. |
 | `method_not_allowed` | 405 | That method is not supported here. |
 | `duplicate_batch` | 409 | These events are already stored with different contents. |
 | `replay` | 409 | These events were already stored. |
 | `gap` | 409 | Events are missing before this batch. |
 | `conflict` | 409 | Another upload for this player was in progress. Try again. |
+| `guild_taken` | 409 | That guild name is already taken on this realm, or this player already has a guild. |
+| `guild_decided` | 409 | That guild has already been decided. |
 | `binder_reset` | 409 | This binder was reset by the people who run the service. Start a new binder (in the companion app, then /acb newbinder confirm in the game) before syncing again. |
 | `too_soon` | 429 | A binder was started recently. Try again later. |
 | `rate_limited` | 429 | Too many requests. Slow down and try again. |

@@ -74,7 +74,8 @@ Donor name, card and time are kept for audit and shown to members only. A guild 
 
 ## Build order
 
-1. **Shared and server, behind a switch.** Spec 11 rules, vectors, migrations, routes and tests. A server flag keeps it off in production.
+0. **Guild creation (server only; built).** Migration `0015_guilds`, `server/src/guilds.ts`, signed `POST /v1/guilds/request` and `/v1/guilds/mine`, admin `GET /v1/admin/guilds` and `POST /v1/admin/guilds/:id`, all off unless `GUILDS_ENABLED = "true"`. It changes no ledger, so it needs no spec bump. Two choices made while building it: the guild's side is taken from the asking character's declared side in its Ranked binder (so no side is typed in), and a guild's name is held on its realm while pending or active. The owner's membership row waits for the enrolment step, which adds `guild_members` and backfills each active guild's owner as its first member. No panel tab, companion screen or add-on page yet; an admin decides with the routes (`docs/runbooks/ADMIN.md`).
+1. **Shared and server, behind a switch.** Spec 11 rules, vectors, the member and donation tables, routes and tests. A server flag keeps it off in production.
 2. **Companion.** Enrolment screens, sync file, tolerant of the old add-on.
 3. **Add-on.** Guild binder page, donate flow, pending and refunded states, Lua ledger tables and tests.
 4. **Staging walkthrough** with two accounts and a guild, then the in-game pass, then raise the minimum versions and turn it on.

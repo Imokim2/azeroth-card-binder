@@ -26,6 +26,15 @@ The panel never shows a Discord id, a key or the events of a binder (those are i
 
 A player who has been reset can still be found by the name on the binder that was put aside, or by player id, or from the Activity tab.
 
+## Guild requests (not in the panel yet)
+
+Guild binders are being built in steps (`docs/proposals/GUILD-BINDERS-DESIGN.md`). Creating a guild comes first: a player asks for one from the companion app (not built yet), and a person approves it. Until the panel has a tab for it, use the admin routes with the admin token (`docs/API.md`, *Guild requests*). They exist only when the server has `GUILDS_ENABLED = "true"`, which is not set in `wrangler.toml`, so guilds are off everywhere. Switching them on needs migration `0015_guilds` applied first.
+
+- **List the waiting requests:** `GET /v1/admin/guilds` (add `?state=active|refused|all`). Each shows the name, realm, side, the character it was asked from and the owner's player id, oldest first.
+- **Decide:** `POST /v1/admin/guilds/<id>` with `{"decision":"approve"}` or `{"decision":"refuse","note":"why"}`. The note is shown to the player, so write it for them. Both are recorded in the Activity tab (`guild-approve`, `guild-refuse`).
+- **What to check.** Nobody can prove they lead a guild in the game, so approval is a judgment: is it a real guild on that realm, is the person its leader or officer (ask in the community Discord), and is the name one the game could have? A refusal frees the name. Three refusals in a week stops a player asking again for a while.
+- **If an owner deletes their account** an approved guild stays and has no owner. Name a new owner in the database, once there is a way to; this is rare and has no route yet.
+
 ## Signing in
 
 Two locks, both needed once Cloudflare Access is set up:

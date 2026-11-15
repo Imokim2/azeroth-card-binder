@@ -106,6 +106,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       characters: await this.#db.all("SELECT name, realm, first_seen AS firstSeen, last_seen AS lastSeen FROM characters WHERE player_id = ? ORDER BY name, realm", [playerId]),
       binders: [await binder(playerId, false), ...(await Promise.all(archives.map((archive) => binder(archive.id, true))))],
       reportsSent: await this.#db.all("SELECT target_name AS targetName, reason, note, created_at AS createdAt FROM reports WHERE reporter_id = ? ORDER BY created_at", [playerId]),
+      guilds: await this.#db.all("SELECT id, name, realm, side, owner_character AS character, status, requested_at AS requestedAt, decided_at AS decidedAt, note FROM guilds WHERE owner_player_id = ? ORDER BY requested_at", [playerId]),
       seasonal: {
         acquisitions: await this.#db.all("SELECT * FROM season_acquisitions WHERE player_id = ?", [playerId]),
         completions: await this.#db.all("SELECT * FROM season_completions WHERE player_id = ?", [playerId]),
@@ -140,6 +141,10 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     await this.#db.batch([
       // Reports the player sent and reports about them, before the player they point at goes.
       { sql: `DELETE FROM reports WHERE reporter_id IN (${marks}) OR target_id IN (${marks})`, params: [...ids, ...ids] },
+      // A guild request that was never approved goes with the player. An approved guild stays, as it must for the guild's own sake: it loses
+      // its owner's name and character here, and the owner id is emptied when the player goes, so a person who runs the service names a new owner.
+      { sql: `DELETE FROM guilds WHERE owner_player_id IN (${marks}) AND status != 'active'`, params: ids },
+      { sql: `UPDATE guilds SET owner_character = '' WHERE owner_player_id IN (${marks})`, params: ids },
       ...tables.map((table) => ({ sql: `DELETE FROM ${table} WHERE player_id IN (${marks})`, params: ids })),
       { sql: `DELETE FROM players WHERE id IN (${marks})`, params: ids },
     ]);
