@@ -1,6 +1,6 @@
 # Fullscreen minimise/restore investigation
 
-Status: actual DX12 allocation/recovery failure captured; the trigger is not established. Addon 1.0.10 bounds the preloader's scene allocation. Do not describe it as a confirmed resolution or clear the public-release gate on automated checks alone.
+Status: actual DX12 allocation/recovery failure captured; the trigger is not established. Addon 1.0.10 bounds the preloader's scene allocation. At the user's request on 15 November 2026, carry this as a disclosed [known issue](../../KNOWN-ISSUES.md) on GitHub and the prepared CurseForge page. Do not describe the mitigation as a confirmed resolution or assume Blizzard has acknowledged a specific cause or delivered a fix. CurseForge submission remains a separate action requiring the user's instruction.
 
 Players reported the whole client repeatedly minimising and restoring roughly twice a second, during loading and a flight path, with the binder closed. It needed a forced exit. A sync-warning focus path in companion 1.0.0 was real and was removed in 1.0.1, but the affected player did not see the companion appear or a sync error. That path has not been established as the cause. A later recurrence was captured with companion 1.0.1 running.
 
@@ -75,4 +75,4 @@ Keep the client, graphics settings, character and dungeon/flight route consisten
 
 Use the latest mitigations for B/D/E. If the issue occurs with Warcards, repeat that same configuration with **3D card models** disabled in Settings. This disables model requests but still creates empty model widgets; it does not exclude every engine interaction with model frames.
 
-A short successful run is not proof for an intermittent failure. Collect repeated loading/flight sessions from affected players and preserve any recurrence trace before declaring the issue resolved. Do not release on CurseForge while the cause or stability remains in doubt.
+A short successful run is not proof for an intermittent failure. Collect repeated loading/flight sessions from affected players and preserve any recurrence trace before declaring the issue resolved. Keep the public known-issue notice current. The user has requested disclosure rather than an automatic publication hold for this issue; follow the separate CurseForge submission plan before publishing there.

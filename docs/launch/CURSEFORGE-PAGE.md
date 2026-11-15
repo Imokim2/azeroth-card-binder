@@ -11,6 +11,12 @@ Collect cards from mobs, dungeon bosses and gathering nodes as you play. Browse 
 
 **Built for World of Warcraft: Forever.** Retail and other Classic clients are not currently supported.
 
+## Known issue: loading screens
+
+Some Forever players using DirectX 12 have reported loading screens that get stuck while the game repeatedly flickers to the desktop. **Warcards' 3D models may make this issue more likely or worse.** Addon 1.0.10 reduces the number of preload scenes, but it is **not a confirmed fix**. A stuck client may need a full restart, and a forced exit can lose finds since the last normal save.
+
+See the [known issues and troubleshooting steps](https://github.com/Imokim2/azeroth-card-binder/blob/main/KNOWN-ISSUES.md) before installing. We are still investigating; the matching client reports do not establish an official diagnosis or a confirmed Blizzard fix.
+
 ## Your binder
 
 Find cards across different zones and dungeons. Your binder shows the cards you own, the cards you’re missing and the spare copies you can trade.
