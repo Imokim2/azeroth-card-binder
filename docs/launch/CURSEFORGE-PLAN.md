@@ -2,7 +2,7 @@
 
 **Updated 15 November 2026; not submitted.** The description matches the published **addon 1.0.13 / companion 1.0.1** baseline. Harry's incoming collection changes are recorded below and are not yet part of that download. Choose the final upload version after the combined release is ready; do not relabel the existing archive.
 
-The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGELOG.md), branding and five real screenshots are prepared. The Discord link is **https://worldofwarcards.co.uk/discord**, which redirects to the community's permanent invite. The [support enquiry](CURSEFORGE-SUPPORT-DRAFT.md) is prepared only; no ticket has been sent. Forever compatibility tags, companion wording and the final gameplay gallery still need confirmation.
+The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGELOG.md), branding and five real screenshots are prepared. The Discord link is **https://worldofwarcards.co.uk/discord**, which redirects to the community's permanent invite. Forever and version 1.60.1 are listed on CurseForge; the old absent-client question is resolved. Refresh the gameplay gallery and match the final release before upload. An optional [companion enquiry](CURSEFORGE-SUPPORT-DRAFT.md) is prepared if moderation needs clarification; no ticket has been sent.
 
 ## Page fields
 
@@ -20,9 +20,9 @@ The [description](CURSEFORGE-PAGE.md), [initial release notes](CURSEFORGE-CHANGE
 | Issue tracker | https://github.com/Imokim2/azeroth-card-binder/issues/new/choose |
 | Homepage | https://worldofwarcards.co.uk |
 | Community | https://worldofwarcards.co.uk/discord |
-| Categories | Choose the closest collection/roleplay and miscellaneous categories after confirming the supported client |
+| Categories | Miscellaneous; add a suitable roleplay/collection category if offered in the editor |
 | Comments | Enable; also provide the issue tracker and Discord help channels |
-| Supported client | Forever only; interface `16001`, `AllowLoadGameType: camelot`; confirm the platform target before choosing tags |
+| Supported client | World of Warcraft → Forever, version 1.60.1 for the current build; interface `16001`, `AllowLoadGameType: camelot` |
 
 The description puts the loading-screen notice near the top and community/homepage links at the bottom. It includes no direct external installer link, fixed catalog count, active-season claim or planned guild-binder feature.
 
@@ -42,8 +42,8 @@ The collection includes expanded dungeon and raid card lists. Cards tied to know
 
 ## Before submission
 
-1. **Confirm Forever support.** Ask CurseForge whether it accepts this client and which game/version tags to use. Do not select Retail or another Classic flavour to get the project listed. The [submission guide](https://support.curseforge.com/support/solutions/articles/9000199552-project-submission-guide-and-tips) explains how to request support for an absent game; it does not establish support for Forever.
-2. **Confirm companion wording.** The [moderation policies](https://support.curseforge.com/support/solutions/articles/9000197279-moderation-policies) prohibit external file-download links. Ask how to describe the separate Windows companion and link the homepage. Casual collecting works with the addon alone; Ranked trading, gifting, seasons and ladder features require the companion. Do not bundle its installer in the addon ZIP or put a direct external EXE link in the description.
+1. **Select the supported client.** Use **World of Warcraft → Forever → 1.60.1** for the current `16001` build. CurseForge's [published Forever file listing](https://www.curseforge.com/wow/addons/quality-of-life-forever/files/all?gameVersionTypeId=88568&page=1&pageSize=20&showAlphaFiles=hide) explicitly lists that flavour and version. Confirm the choices against the final tested client in the upload editor; do not select Retail or another Classic flavour.
+2. **Keep the companion wording descriptive.** The [moderation policies](https://support.curseforge.com/support/solutions/articles/9000197279-moderation-policies) prohibit external file-download links. The draft explains the separate Windows companion and puts the homepage at the bottom, with no direct installer link. Casual collecting works with the addon alone; Ranked trading, gifting, seasons and ladder features require the companion. Do not bundle its installer in the addon ZIP. The policy does not itself require a separate companion-support approval; the optional enquiry is available if a moderator asks or the final page needs a different link arrangement.
 3. **Finish the gameplay gallery.** The supplied binder, trade, achievements, empty-satchel and companion images are real, from 13 November. Refresh them for the final build: the companion capture visibly reports addon 1.0.0. Add actual pack-opening, alternate-edition and running-season captures where available. Keep the layout illustrations out of the public gallery. Upload genuine screenshots to CurseForge and replace relative image paths in the description with its gallery URLs.
 4. **Match the exact release.** Update the description and release notes to the final uploaded addon, matching companion and server. If PR #63 ships, add the section above only after the coordinated update is verified. No fixed card counts are advertised while the active pool is changing. Record the final version, source commit and archive checksum here.
 5. **Check links and page presentation.** Verify the Discord redirect, help page, known-issue link and issue tracker. Keep promotional/community links at the bottom, as required by the moderation policy. The submission guide supports external issue trackers and recommends genuine gameplay images.
@@ -52,7 +52,7 @@ The collection includes expanded dungeon and raid card lists. Cards tied to know
 
 The DX12 loading-screen/minimise loop is disclosed near the top of the description and in [KNOWN-ISSUES.md](../../KNOWN-ISSUES.md). Warcards' 3D models may exacerbate it. The bounded preloader in 1.0.10 is a mitigation, not a confirmed fix or an official Blizzard diagnosis. Include the `/reload` workaround when chat responds and Alt+F4/relaunch fallback, including the possibility of losing unsaved finds.
 
-This is a disclosed known issue, not an automatic publication hold awaiting a graphics fix. It does not remove the separate compatibility, companion and release checks above.
+This is a disclosed known issue, not an automatic publication hold awaiting a graphics fix. It does not remove the release and page checks above.
 
 ## Final upload review
 
@@ -63,4 +63,4 @@ This is a disclosed known issue, not an automatic publication hold awaiting a gr
 - Keep the loading-screen notice visible. If no season is active, do not present a test season as live community activity.
 - Wait for the user's instruction to create/submit the CurseForge project or upload a release. Preparing these materials does not publish anything.
 
-References rechecked 15 November 2026: [creating a project](https://support.curseforge.com/support/solutions/articles/9000197241-creating-and-submitting-a-project), [submission guide](https://support.curseforge.com/support/solutions/articles/9000199552-project-submission-guide-and-tips), [moderation policies](https://support.curseforge.com/support/solutions/articles/9000197279-moderation-policies). These establish page requirements; acceptance of this specific client and companion remains unconfirmed.
+References rechecked 15 November 2026: [Forever files and client tags](https://www.curseforge.com/wow/addons/quality-of-life-forever/files/all?gameVersionTypeId=88568&page=1&pageSize=20&showAlphaFiles=hide), [creating a project](https://support.curseforge.com/support/solutions/articles/9000197241-creating-and-submitting-a-project), [submission guide](https://support.curseforge.com/support/solutions/articles/9000199552-project-submission-guide-and-tips), [moderation policies](https://support.curseforge.com/support/solutions/articles/9000197279-moderation-policies). The platform lists Forever; this project's own moderation decision has not occurred because it has not been submitted.

@@ -87,8 +87,8 @@ For Ranked setup, `/reload`, wait for the companion to finish syncing, then `/re
 
 Install matching addon and companion updates, updating the companion first when a release requires it. **Updates keep your cards, packs and saved progress.** Keep your game's `WTF` folder and existing saved data. Starting a new binder is a separate, deliberate choice.
 
-<!-- Obtain CurseForge guidance on describing the optional external companion and
-     Forever compatibility before submission. Do not add direct external EXE links. -->
+<!-- Keep the companion description factual and the homepage link in the footer.
+     Do not add direct external EXE links or bundle an installer with the addon. -->
 
 ## Make it comfortable
 
