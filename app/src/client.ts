@@ -11,7 +11,7 @@ import { isVersion } from "./versions.ts";
 import type { Releases } from "./versions.ts";
 import { parseSeasonData } from "./seasons.ts";
 import type { SeasonData } from "./seasons.ts";
-import { parseGuildData } from "./guild.ts";
+import { parseGuildData, parseGuildSummary } from "./guild.ts";
 import type { GuildData } from "./guild.ts";
 
 export type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => Promise<{
@@ -193,7 +193,18 @@ export async function fetchGuild(options: ClientOptions, binders: string[], oper
   const reply = await sendWithRetries(options, "/v1/guilds/mine", { ...body, sig });
   if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
   if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
-  try { return { status: "guild", data: parseGuildData(reply.body, binders, options.now()) }; }
+  try {
+    const data = parseGuildData(reply.body, binders, options.now());
+    if (data.membership?.state === "active") {
+      const body = { key: options.identity.publicKeyHex, sentAt: options.now() };
+      const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "guild-summary" }));
+      const summary = await sendWithRetries(options, "/v1/guilds/summary", { ...body, sig });
+      if ("later" in summary) return { status: "retry-later", afterMs: summary.later, reason: summary.reason };
+      if (summary.status !== 200) return { status: "rejected", ...errorOf(summary) };
+      data.summary = parseGuildSummary(summary.body, data.membership.guild.id);
+    }
+    return { status: "guild", data };
+  }
   catch { return { status: "rejected", code: "bad_reply" }; }
 }
 

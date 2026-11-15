@@ -27,6 +27,12 @@ Seasonal collections give everyone a shared list to hunt for alongside their nor
 | ![The card trade window with a Dragonmaw Bonewarder offered.](docs/media/gallery/trading.png) | ![Collection achievements showing card and set progress.](docs/media/gallery/achievements.png) |
 | Swap spares or send a gift. Both players accept before anything moves. | Collect cards, finish sets and work towards titles. |
 
+### Build a guild binder
+
+Open **Guild** in the binder to browse your shared collection or donate cards from your Ranked binder. Donations are permanent: the copy leaves your own collection and stays with the guild, even if you leave. Nobody can withdraw cards.
+
+Start or join through the companion app. The team reviews new guilds, and the guild owner approves members. Save, sync and reload to see new donations. [Guild standings](https://worldofwarcards.co.uk/guilds) show the collections as they grow.
+
 ### Keep packs in your satchel
 
 Zone packs stay sealed in the Warcards Satchel until you open or trade them. Common packs hold one card, Rare packs three and Epic packs five, all from the pack’s zone.
@@ -68,7 +74,7 @@ The current Windows installer is **not code-signed yet**, so Windows may show an
 
 Collect through normal play, use the addon’s trade window and keep your companion synced. Edited collections, fake progress and exploiting bugs are not allowed.
 
-Read the [Ranked rules](https://worldofwarcards.co.uk/fair-play) **before starting a Ranked binder**. Casual drops affect eligibility. You can compare public collections on the [ladder](https://worldofwarcards.co.uk/ladder). Use the addon’s Wanted tab to compare lists in game.
+Read the [Ranked rules](https://worldofwarcards.co.uk/fair-play) **before starting a Ranked binder**. Casual drops affect eligibility. You can compare public collections on the [ladder](https://worldofwarcards.co.uk/ladder). Open Wanted lists from the Guild page, or type `/acb wanted`, to compare lists in game.
 
 ## Need a hand?
 

@@ -7,7 +7,8 @@ export type GuildMembership = { id: string; role: "owner" | "member"; state: Mem
 // A guild the player asked to start: waiting for a reviewer, active, or refused (with the reviewer's note).
 export type GuildRequest = { id: string; name: string; realm: string; side: GuildSide; status: "pending" | "active" | "refused"; character: string; requestedAt: number; decidedAt: number; note: string };
 export type Donations = { results: Record<string, "credited" | "refunded" | "returned">; refunds: { operation: string; guild: string; card: string }[] };
-export type GuildData = { at: number; binders: string[]; membership: GuildMembership | null; requests: GuildRequest[]; donations: Donations };
+export type GuildSummary = { guildId: string; points: number; cards: number; rank?: number; inventory: { card: string; copies: number }[] };
+export type GuildData = { at: number; binders: string[]; membership: GuildMembership | null; requests: GuildRequest[]; donations: Donations; summary?: GuildSummary };
 export type RosterEntry = { id: string; character: string; role: "owner" | "member"; state: "pending" | "active"; requestedAt: number };
 
 const row = (v: unknown): Record<string, unknown> => (v && typeof v === "object" && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -59,7 +60,14 @@ export function parseDonations(v: unknown): Donations {
 // What the server said about the player's guild, ready for the sync file. `binders` are the binders this answer is paired with.
 export function parseGuildData(input: unknown, binders: string[], at: number): GuildData {
   const data = row(input);
-  return { at: whole(at), binders: list(binders, 100).map(token), membership: parseMembership(data["membership"]), requests: parseRequests(data["guilds"]), donations: parseDonations(data["donations"]) };
+  const membership = parseMembership(data["membership"]);
+  let summary: GuildSummary | undefined;
+  if (data["summary"] !== undefined) {
+    const saved = row(data["summary"]);
+    if (membership?.state !== "active" || ulid(saved["guildId"]) !== membership.guild.id) throw new Error("guild summary does not match membership");
+    summary = parseGuildSummary({ ...saved, guild: membership.guild }, membership.guild.id);
+  }
+  return { at: whole(at), binders: list(binders, 100).map(token), membership, requests: parseRequests(data["guilds"]), donations: parseDonations(data["donations"]), ...(summary ? { summary } : {}) };
 }
 
 export function parseRoster(input: unknown): { guild: { id: string; name: string; realm: string; side: GuildSide }; members: RosterEntry[] } {
@@ -86,6 +94,21 @@ export function luaLiteral(v: unknown, luaString: (value: string, field: string)
 }
 
 // The part of the guild data the add-on reads: who the player is in which guild, and what became of their donations.
-export const forAddon = (data: GuildData): { at: number; binders: string[]; membership?: GuildMembership; donations: Donations } => ({
+export const forAddon = (data: GuildData): { at: number; binders: string[]; membership?: GuildMembership; donations: Donations; summary?: GuildSummary } => ({
   at: data.at, binders: data.binders, ...(data.membership ? { membership: data.membership } : {}), donations: data.donations,
+  ...(data.summary ? { summary: data.summary } : {}),
 });
+
+export function parseGuildSummary(input: unknown, expectedGuild: string): GuildSummary {
+  const data = row(input), guild = guildInfo(data["guild"]);
+  if (guild.id !== expectedGuild) throw new Error("guild summary does not match membership");
+  const seen = new Set<string>();
+  const inventory = list(data["inventory"], 10000).map(item => {
+    const entry = row(item), key = card(entry["card"]), copies = whole(entry["copies"]);
+    if (copies < 1 || seen.has(key)) throw new Error("invalid guild inventory");
+    seen.add(key);
+    return { card: key, copies };
+  });
+  return { guildId: guild.id, points: whole(data["points"]), cards: whole(data["cards"]), inventory,
+    ...(data["rank"] == null ? {} : { rank: whole(data["rank"]) }) };
+}

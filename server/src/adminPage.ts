@@ -46,7 +46,7 @@ export const ADMIN_SCRIPT = `
 (function () {
   "use strict";
   var token = "";
-  var views = ["flags", "players", "activity"];
+  var views = ["flags", "players", "guilds", "activity"];
   var $ = function (id) { return document.getElementById(id); };
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -78,6 +78,35 @@ export const ADMIN_SCRIPT = `
     });
     if (name === "players" && !$("players").children.length) search();
     if (name === "activity") loadAudit();
+    if (name === "guilds") loadGuilds();
+  }
+
+  async function loadGuilds() {
+    var target = $("guilds"); target.replaceChildren();
+    try {
+      var result = await api("/v1/admin/guilds?state=pending&limit=100");
+      if (!result.guilds.length) { target.appendChild(el("p", "empty", "No guilds waiting for approval.")); return; }
+      result.guilds.forEach(function (guild) {
+        var card = el("article", "card");
+        card.appendChild(el("h2", "", guild.name));
+        line(card, "Realm / faction", guild.realm + " / " + guild.side);
+        line(card, "Owner character", guild.character);
+        var note = el("textarea"); note.setAttribute("aria-label", "Review note for " + guild.name); note.maxLength = 200;
+        card.appendChild(note);
+        ["approve", "refuse"].forEach(function (decision) {
+          var control = el("button", "", decision === "approve" ? "Approve guild" : "Refuse request");
+          control.type = "button";
+          control.addEventListener("click", async function () {
+            if (decision === "approve" && !window.confirm("Approve " + guild.name + " and its requested owner? Check their in-game guild membership first.")) return;
+            control.disabled = true;
+            try { await api("/v1/admin/guilds/" + encodeURIComponent(guild.id), { method: "POST", body: JSON.stringify({ decision: decision, note: note.value }) }); say("Guild request " + (decision === "approve" ? "approved." : "refused."), "good"); await loadGuilds(); }
+            catch (error) { say(error.message, "bad"); control.disabled = false; }
+          });
+          card.appendChild(control);
+        });
+        target.appendChild(card);
+      });
+    } catch (error) { say(error.code === "not_found" ? "Guild binders are not available on this server." : error.message, "bad"); }
   }
 
   async function showReports(playerId, into, button) {
@@ -353,7 +382,7 @@ export const ADMIN_HTML = (): string => `<!doctype html>
 <p id="message" role="status"></p>
 <div id="app" hidden>
 <p id="who" class="who"></p>
-<div class="tabs"><button type="button" id="tab-flags" class="tab on">Flags</button><button type="button" id="tab-players" class="tab">Players</button><button type="button" id="tab-activity" class="tab">Activity</button></div>
+<div class="tabs"><button type="button" id="tab-flags" class="tab on">Flags</button><button type="button" id="tab-players" class="tab">Players</button><button type="button" id="tab-guilds" class="tab">Guild requests</button><button type="button" id="tab-activity" class="tab">Activity</button></div>
 <section id="view-flags">
 <div class="bar"><select id="state" aria-label="Which flags"><option value="open">Open</option><option value="cleared">Cleared</option><option value="confirmed">Confirmed</option><option value="all">All</option></select><button type="button" id="refresh">Refresh</button></div>
 <div id="flags"></div>
@@ -363,6 +392,7 @@ export const ADMIN_HTML = (): string => `<!doctype html>
 <div id="players"></div>
 <div id="player"></div>
 </section>
+<section id="view-guilds" hidden><h2>Guild requests</h2><p class="meta">Check the requested owner's in-game guild before approving. Members apply through the companion and are approved by the guild owner.</p><div id="guilds"></div></section>
 <section id="view-activity" hidden>
 <div class="bar"><button type="button" id="refresh-activity">Refresh</button></div>
 <div id="audit"></div>

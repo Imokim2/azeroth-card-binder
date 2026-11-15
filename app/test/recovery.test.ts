@@ -177,3 +177,16 @@ test("the repair action asks before restoring, never resets, and a declined rest
     assert.equal(controller.status().repairing, false);
   } finally { await controller?.stop(); await f.cleanup(); }
 });
+
+
+test("repair never drops a pending guild donation or treats its ledger marker as a preference", async () => {
+  const f = await fixture();
+  try {
+    const current = parseSavedVariables(f.current).AzerothCardBinderDB as Record<string, unknown>;
+    current.guildLedger = true;
+    current.guildDonations = { ["a".repeat(32)]: { key: "npc:589", guild: "01HF7YAT00QKSEP5RCNMPTQ3KN", t: 1 } };
+    await writeFile(f.path, "AzerothCardBinderDB = " + luaLiteral(current as never) + "\n");
+    assert.equal(await findRecovery(f.path, f.server), null);
+    assert.equal((parseSavedVariables(await readFile(f.path, "utf8")).AzerothCardBinderDB as Record<string, unknown>).guildLedger, true);
+  } finally { await f.cleanup(); }
+});

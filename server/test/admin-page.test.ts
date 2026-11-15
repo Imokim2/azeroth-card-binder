@@ -38,7 +38,8 @@ class Node_ {
 
 const IDS = [["signin", "form"], ["token", "input"], ["state", "select"], ["refresh", "button"], ["message", "p"], ["flags", "div"], ["app", "div"], ["who", "p"],
   ["tab-flags", "button"], ["tab-players", "button"], ["tab-activity", "button"], ["view-flags", "section"], ["view-players", "section"], ["view-activity", "section"],
-  ["find", "form"], ["query", "input"], ["players", "div"], ["player", "div"], ["audit", "div"], ["refresh-activity", "button"]] as const;
+  ["find", "form"], ["query", "input"], ["players", "div"], ["player", "div"], ["audit", "div"], ["refresh-activity", "button"],
+  ["tab-guilds", "button"], ["view-guilds", "section"], ["guilds", "div"]] as const;
 
 function page(fetchImpl: typeof fetch, answer = true, promptAnswers: (string | null)[] = []) {
   const ids: Record<string, Node_> = {};

@@ -157,10 +157,11 @@ function ACB.initSlash(saved, tools)
                 ACB.showToast(demo, { count = 1, first = true, shiny = true })
             end
         elseif cmd == "guild" or cmd:match("^guild%s") then
-            ACB.guildCommand(saved, message:match("^%s*%S+%s*(.-)%s*$"), report)
+            if cmd == "guild" then ACB.open("guild")
+            else ACB.guildCommand(saved, message:match("^%s*%S+%s*(.-)%s*$"), report) end
         elseif cmd == "trade" or cmd:match("^trade%s+") then
             report("Right-click a player and choose Trade cards or packs to start a trade or gift.")
-        elseif cmd == "index" or cmd == "achievements" or cmd == "seasons" then
+        elseif cmd == "index" or cmd == "achievements" or cmd == "seasons" or cmd == "wanted" then
             ACB.open(cmd)
         elseif cmd == "" then
             ACB.open()

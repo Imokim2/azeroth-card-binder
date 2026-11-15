@@ -1,6 +1,6 @@
 # Guild binders: design draft
 
-Status: draft for Ollie and Harry to agree before any code. It builds on [GUILD-BINDERS.md](GUILD-BINDERS.md) (the agreed behaviour) and settles the open question there: **how membership works**. Nothing in this document is implemented.
+Status: implemented for addon 1.0.15, companion 1.0.3 and server 1.0.2. Harry's service, membership and donation work is merged in PR #66. The Guild tab, shared inventory bridge, guild ladder and admin review page complete the UI. The decisions below describe the shipped flow; deployment enables guilds after migrations 0015–0017.
 
 ## Decisions taken
 

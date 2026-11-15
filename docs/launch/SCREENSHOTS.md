@@ -2,7 +2,7 @@
 
 Updated 15 November 2026. Received on 13 November: actual binder index, achievements, empty satchel, synced companion and trade-offer screenshots. These are published on GitHub and the website and prepared for the unsubmitted CurseForge page. The companion screenshot visibly reports addon 1.0.0, so refresh it for the final release. The supplied satchel is empty; the trade screenshot shows an offer before acceptance.
 
-The current description baseline is addon 1.0.14 / companion 1.0.2, including Harry's merged card changes. Capture those matching versions. Do not label old captures as showing the newer build. Pack-opening, alternate editions and a running season still need genuine captures; no live season is implied by the draft.
+The current description baseline is addon 1.0.15 / companion 1.0.3, including Harry's merged card changes. Capture those matching versions. Do not label old captures as showing the newer build. Pack-opening, alternate editions and a running season still need genuine captures; no live season is implied by the draft.
 
 Capture the build intended for release. Keep full-size PNG originals, preferably 1920 × 1080 or higher, with the UI visible. Don’t use Alt+Z for addon shots: it hides the window we need to show. Move the cursor away unless you want a tooltip in the image. A quiet location, readable UI scale and consistent resolution will help the gallery look like one set.
 
@@ -16,6 +16,7 @@ Capture the build intended for release. Keep full-size PNG originals, preferably
 | Next | `achievements.png` | Earned and unearned achievements with a title selected. A separate capture of another player’s title tooltip can help. | Finish sets and earn titles other addon users can see. |
 | First | `satchel.png` | The pack bag with named zone stacks. Include a zone/tier tooltip, keeping the cursor away from the cards themselves. | Unopened zone packs, ready to open or trade. |
 | Next | `seasons.png` | A configured season, its deadline, progress and listed rewards. Label a private test capture as a test; do not suggest a public season is running before one is announced. | Collect a fresh set alongside your normal Ranked binder. |
+| Next | `guild.png` | The Guild tab with a real shared collection and the donation confirmation. | Build a permanent collection with your guild. |
 | Optional | `settings.png` | General settings showing Open binder at current zone, or the Help page showing Report a bug and Discord. | Open at your current zone and find help from inside the binder. |
 | Optional | `holographic.png` | A short recording of a shiny card’s actual overlay and model movement, plus a still PNG. | A shiny version in the binder. |
 
