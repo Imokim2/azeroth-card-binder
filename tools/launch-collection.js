@@ -7,6 +7,8 @@
 //   node tools/launch-collection.js --chase keep    keep chase cards on ordinary creatures at launch (default: hold them back)
 //
 // The rule (deterministic, so two people get the same list and a review can be repeated):
+//   0. Never at launch: a card whose creature cannot be killed (catalog card.unobtainable, from AzerothCardBinder/UnobtainableCards.lua). It is held
+//      back for good, never released, and left out of every page's list of required cards.
 //   1. Always kept: every elite, rare-elite and boss card; every critter; every gathering node.
 //   2. Held back: chase cards on ordinary creatures (unless --chase keep).
 //   3. Of the remaining ordinary-creature cards, enough are kept to make the launch collection exactly half of the base cards.
@@ -37,6 +39,7 @@ function draft(catalog, options = {}) {
   const candidates = new Map(); // page code -> keys that could still be kept
   for (const key of baseKeys) {
     const card = catalog.cards[key];
+    if (card.unobtainable) continue; // held back for good
     if (always(card) || (chase === "keep" && chaseNormal(card))) { keep.add(key); continue; }
     if (chase === "season" && chaseNormal(card)) continue;
     const code = pageOf.get(key).code;
@@ -72,11 +75,12 @@ function draft(catalog, options = {}) {
 
   const launch = baseKeys.filter((key) => keep.has(key));
   const seasons = baseKeys.filter((key) => !keep.has(key));
+  const unobtainable = baseKeys.filter((key) => catalog.cards[key].unobtainable);
   const byPage = {};
   for (const set of catalog.sets) {
     byPage[set.code] = { title: set.title, group: set.group, launch: set.cards.filter((key) => keep.has(key)).length, seasons: set.cards.filter((key) => !keep.has(key)).length };
   }
-  return { launch, seasons, byPage, chase };
+  return { launch, seasons, unobtainable, byPage, chase };
 }
 
 function summary(catalog, result) {
@@ -90,7 +94,7 @@ function summary(catalog, result) {
     }
     return out;
   };
-  lines.push(`Base cards: ${result.launch.length + result.seasons.length}. Launch collection: ${result.launch.length}. Held back for seasons: ${result.seasons.length}. (chase cards on ordinary creatures: ${result.chase === "keep" ? "kept at launch" : "held back"})`);
+  lines.push(`Base cards: ${result.launch.length + result.seasons.length}. Launch collection: ${result.launch.length}. Held back for seasons: ${result.seasons.length} (${result.unobtainable.length} of them can never be won: their creature cannot be killed). (chase cards on ordinary creatures: ${result.chase === "keep" ? "kept at launch" : "held back"})`);
   lines.push("Launch by kind:   " + JSON.stringify(kind(result.launch)));
   lines.push("Seasons by kind:  " + JSON.stringify(kind(result.seasons)));
   const groups = {};
@@ -108,12 +112,14 @@ function files(catalog, result) {
   const decision = new Map();
   for (const key of result.launch) decision.set(key, "launch");
   for (const key of result.seasons) decision.set(key, "seasons");
+  for (const key of result.unobtainable) decision.set(key, "never");
   const json = JSON.stringify({
     format: 1,
     status: "DRAFT: a proposal for review. Nothing in the catalog, add-on or server uses this file.",
     catalogVersion: catalog.catalogVersion,
     rule: "tools/launch-collection.js (chase cards on ordinary creatures: " + result.chase + ")",
-    counts: { launch: result.launch.length, seasons: result.seasons.length },
+    counts: { launch: result.launch.length, seasons: result.seasons.length, unobtainable: result.unobtainable.length },
+    unobtainable: result.unobtainable,
     pages: result.byPage,
     launch: result.launch,
     seasons: result.seasons,

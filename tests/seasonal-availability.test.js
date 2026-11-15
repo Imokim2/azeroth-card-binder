@@ -20,7 +20,7 @@ test('the catalog holds back exactly half the base cards and never an elite, bos
     assert.equal(seasonal.length, 1712);
     assert.equal(launch.length, 1711);
     for (const [key, card] of base) {
-        if (card.rank === 'elite' || card.rank === 'rareelite' || card.boss || card.dropProfile.tier === 'critter' || card.rank === 'gathering') {
+        if (!card.unobtainable && (card.rank === 'elite' || card.rank === 'rareelite' || card.boss || card.dropProfile.tier === 'critter' || card.rank === 'gathering')) {
             assert.ok(!card.seasonal, key + ' ' + card.name);
         }
     }

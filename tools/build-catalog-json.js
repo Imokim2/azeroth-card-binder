@@ -19,7 +19,7 @@ const output = process.env.CATALOG_OUT || path.join(root, "packages", "shared", 
 const dump = String.raw`
 local addon = "AzerothCardBinder"
 local ACB = {}
-for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "DropRates.lua", "Editions.lua", "LaunchCollection.lua" }) do
+for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "DropRates.lua", "Editions.lua", "UnobtainableCards.lua", "LaunchCollection.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 
@@ -60,6 +60,7 @@ for _, page in ipairs(ACB.pages) do
         local entry = { name = card.name, rarity = card.rarity, rank = card.rank, set = page.code }
         if card.boss then entry.boss = true end
         if card.seasonal then entry.seasonal = true end -- held back for seasons (LaunchCollection.lua)
+        if card.unobtainable then entry.unobtainable = true end -- its creature cannot be killed (UnobtainableCards.lua)
         if card.profession then entry.profession = card.profession end
         entry.dropProfile, entry.critter = card.dropProfile, card.critter
         cards[card.key] = entry

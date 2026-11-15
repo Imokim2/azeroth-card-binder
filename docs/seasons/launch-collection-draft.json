@@ -1,12 +1,25 @@
 {
  "format": 1,
  "status": "DRAFT: a proposal for review. Nothing in the catalog, add-on or server uses this file.",
- "catalogVersion": "3d0b62359bee",
+ "catalogVersion": "9846362a4c21",
  "rule": "tools/launch-collection.js (chase cards on ordinary creatures: season)",
  "counts": {
   "launch": 1711,
-  "seasons": 1712
+  "seasons": 1712,
+  "unobtainable": 10
  },
+ "unobtainable": [
+  "npc:11446",
+  "npc:13916",
+  "npc:15481",
+  "npc:15896",
+  "npc:7381",
+  "npc:7382",
+  "npc:7384",
+  "npc:7385",
+  "npc:7389",
+  "npc:7390"
+ ],
  "pages": {
   "ABX": {
    "title": "Arathi Basin",
@@ -41,14 +54,14 @@
   "AXX": {
    "title": "Ashenvale",
    "group": "Zone",
-   "launch": 26,
-   "seasons": 76
+   "launch": 27,
+   "seasons": 75
   },
   "AXX2": {
    "title": "Azshara",
    "group": "Zone",
-   "launch": 27,
-   "seasons": 28
+   "launch": 26,
+   "seasons": 29
   },
   "BDX": {
    "title": "Blackfathom Deeps",
@@ -83,8 +96,8 @@
   "BSX2": {
    "title": "Burning Steppes",
    "group": "Zone",
-   "launch": 25,
-   "seasons": 32
+   "launch": 26,
+   "seasons": 31
   },
   "BXX": {
    "title": "Badlands",
@@ -95,8 +108,8 @@
   "BXX2": {
    "title": "The Barrens",
    "group": "Zone",
-   "launch": 77,
-   "seasons": 120
+   "launch": 78,
+   "seasons": 119
   },
   "DM": {
    "title": "Deadmines",
@@ -107,8 +120,8 @@
   "DMX": {
    "title": "Dire Maul",
    "group": "Dungeon",
-   "launch": 53,
-   "seasons": 8
+   "launch": 52,
+   "seasons": 9
   },
   "DMX2": {
    "title": "Dun Morogh",
@@ -155,8 +168,8 @@
   "EFX": {
    "title": "Elwynn Forest",
    "group": "Zone",
-   "launch": 17,
-   "seasons": 39
+   "launch": 16,
+   "seasons": 40
   },
   "EPX": {
    "title": "Eastern Plaguelands",
@@ -664,7 +677,6 @@
   "npc:11443",
   "npc:11444",
   "npc:11445",
-  "npc:11446",
   "npc:11448",
   "npc:11450",
   "npc:11451",
@@ -780,6 +792,7 @@
   "npc:11897",
   "npc:11911",
   "npc:11915",
+  "npc:11917",
   "npc:11918",
   "npc:11921",
   "npc:1193",
@@ -1046,7 +1059,6 @@
   "npc:15461",
   "npc:15462",
   "npc:15475",
-  "npc:15481",
   "npc:15505",
   "npc:15509",
   "npc:15510",
@@ -1772,6 +1784,7 @@
   "npc:599",
   "npc:60",
   "npc:6035",
+  "npc:6073",
   "npc:6093",
   "npc:6109",
   "npc:6117",
@@ -1860,6 +1873,7 @@
   "npc:7022",
   "npc:7023",
   "npc:7030",
+  "npc:7031",
   "npc:7039",
   "npc:7040",
   "npc:7041",
@@ -1932,7 +1946,6 @@
   "npc:7357",
   "npc:7358",
   "npc:7369",
-  "npc:7385",
   "npc:7396",
   "npc:7428",
   "npc:7429",
@@ -2273,6 +2286,7 @@
   "npc:11389",
   "npc:114",
   "npc:1140",
+  "npc:11446",
   "npc:11477",
   "npc:115",
   "npc:1151",
@@ -2342,7 +2356,6 @@
   "npc:11912",
   "npc:11913",
   "npc:11914",
-  "npc:11917",
   "npc:1192",
   "npc:1194",
   "npc:1195",
@@ -2510,6 +2523,7 @@
   "npc:1545",
   "npc:1547",
   "npc:1548",
+  "npc:15481",
   "npc:1549",
   "npc:1550",
   "npc:1551",
@@ -3428,7 +3442,6 @@
   "npc:603",
   "npc:6033",
   "npc:604",
-  "npc:6073",
   "npc:61",
   "npc:6113",
   "npc:6115",
@@ -3544,7 +3557,6 @@
   "npc:7028",
   "npc:7029",
   "npc:703",
-  "npc:7031",
   "npc:7032",
   "npc:7033",
   "npc:7034",
@@ -3616,6 +3628,7 @@
   "npc:7381",
   "npc:7382",
   "npc:7384",
+  "npc:7385",
   "npc:7389",
   "npc:7390",
   "npc:7397",
