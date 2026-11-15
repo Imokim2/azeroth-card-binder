@@ -4,6 +4,10 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+## 1.0.11 - 2026-11-15
+
+- Add Settings > Help, with links to bug reports, known issues and the community Discord. The General page also has a Report a bug button. Copying the report link fills in only the addon version, game build, mode, location and 3D-model setting; account files, player names and collection records are not included.
+- Add a stable website community address so an invite can change without another addon update. Keep community access separate from the companion's Discord sign-in. No new account, collection, drop or companion behaviour is introduced.
 - Document `/reload` as a player-reported temporary recovery when the loading-screen loop still accepts chat input, with Alt+F4 and relaunch as the fallback. Keep the uncertainty and unsaved-progress warning explicit.
 - Make loading-loop reports easier: add optional location and recovery fields to the GitHub issue form, with no requirement to diagnose the graphics log.
 - Add a prominent GitHub warning and a shared known-issues page for the DX12 loading-screen problem, with the same disclosure in the unsubmitted CurseForge page. Explain that Warcards may aggravate the issue and 1.0.10 is a mitigation rather than a confirmed fix.

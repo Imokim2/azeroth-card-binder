@@ -28,6 +28,7 @@ export interface Env {
   RELEASES_URL?: string; // the project's public releases page on GitHub, once the repository is public (the download page links to it)
   PRIVACY_EMAIL?: string; // where people can write about their data (shown on the privacy page), once the address exists
   SUPPORT_PAYPAL_URL?: string; // account-generated PayPal.Me/payment/hosted Donate link
+  DISCORD_INVITE_URL?: string; // public community invite (not the companion's OAuth application)
   VERSION: string;
   TAPE_SECRET?: string; // a secret (wrangler secret put TAPE_SECRET); without it Ranked is closed
   RATE_GENERAL?: RateLimitBinding; // Cloudflare rate-limit bindings (wrangler.toml); without them nothing is limited
@@ -74,6 +75,7 @@ export default {
       ...(env.RELEASES_URL ? { releasesUrl: env.RELEASES_URL } : {}),
       ...(env.PRIVACY_EMAIL ? { privacyEmail: env.PRIVACY_EMAIL } : {}),
       ...(env.SUPPORT_PAYPAL_URL ? { supportPayPalUrl: env.SUPPORT_PAYPAL_URL } : {}),
+      ...(env.DISCORD_INVITE_URL ? { discordInviteUrl: env.DISCORD_INVITE_URL } : {}),
       ...(env.RATE_GENERAL && env.RATE_STRICT ? { limits: { general: bindingLimiter(env.RATE_GENERAL), strict: bindingLimiter(env.RATE_STRICT) } } : {}),
       // Registration opens only when the Discord application is fully configured.
       ...(env.DISCORD_CLIENT_ID && env.DISCORD_CLIENT_SECRET && env.DISCORD_REDIRECT_URI

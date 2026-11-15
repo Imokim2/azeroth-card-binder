@@ -74,8 +74,8 @@ When upgrading for Ranked play, update the companion before the addon. Keep your
 
 ## Help and feedback
 
-Please include your addon version, any error message and what you were doing when reporting a problem.
+Open **Settings → Help → Report a bug** in the binder and copy the link into your browser. It includes basic game details; add what happened and what you were doing. You do not need to diagnose the cause first. Please include your companion version if you know it.
 
-[Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose) · [Source code](https://github.com/Imokim2/azeroth-card-binder) · [Website and help](https://worldofwarcards.co.uk/help)
+[Community Discord](https://worldofwarcards.co.uk/discord) · [Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose) · [Source code](https://github.com/Imokim2/azeroth-card-binder) · [Website and help](https://worldofwarcards.co.uk/help)
 
 World of Warcards is free and open source under GPL-3.0-or-later. It is a fan project, not affiliated with or endorsed by Blizzard Entertainment.

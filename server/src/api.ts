@@ -6,6 +6,7 @@ import { canonicalJson, newId, verifySignature } from "../../packages/shared/src
 import type { Catalog } from "./shared.ts";
 import { downloadsFrom, releasesPageFrom } from "./releases.ts";
 import { paypalSupport, supportSetupPage } from "./support.ts";
+import { communityRedirect } from "./community.ts";
 import { siteAsset } from "./siteAssets.ts";
 import type { Releases } from "./releases.ts";
 import { KeyUnavailable } from "./sqlStore.ts";
@@ -59,6 +60,7 @@ export type Deps = {
   releasesUrl?: string; // the public page of the project's releases (GitHub), once there is one: the download page links to it
   privacyEmail?: string; // where people can write about their data, once there is an address (the privacy page shows it)
   supportPayPalUrl?: string; // account-generated payment link; an email alone is insufficient
+  discordInviteUrl?: string; // public community invite, separate from companion OAuth sign-in
   version: string; // this server's version, shown by /v1/health
   // Turns the Discord sign-in the app obtained into a Discord account id, or null. Absent until registration opens.
   identity?: { verify(token: string): Promise<string | null> };
@@ -597,7 +599,8 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/" ? allow("site-home", ["GET"], async () => html(200, landingPage()))
       : url.pathname === "/ladder" ? allow("site-ladder", ["GET"], siteLadder)
       : url.pathname === "/download" ? allow("site-download", ["GET"], async () => html(200, downloadPage({ ...downloadsFrom(deps.releases), releasesUrl: releasesPageFrom(deps.releasesUrl) })))
-      : url.pathname === "/help" ? allow("site-help", ["GET"], async () => html(200, helpPage()))
+      : url.pathname === "/help" ? allow("site-help", ["GET"], async () => html(200, helpPage(communityRedirect(deps.discordInviteUrl).headers.get("location") !== "/help#community")))
+      : url.pathname === "/discord" ? allow("site-community", ["GET"], async () => communityRedirect(deps.discordInviteUrl))
       : url.pathname === "/faq" ? allow("site-faq", ["GET"], async () => html(200, faqPage()))
       : url.pathname === "/support" ? allow("site-support", ["GET"], async () => {
         const redirect = paypalSupport(deps.supportPayPalUrl);

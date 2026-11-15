@@ -22,7 +22,7 @@ body:
     attributes:
       label: Add-on version
       description: Type `/acb version` in the game.
-      placeholder: "1.0.10"
+      placeholder: "1.0.11"
   - type: input
     id: companion-version
     attributes:
@@ -64,8 +64,8 @@ body:
   - type: textarea
     id: log
     attributes:
-      label: Diagnostic lines (if it is about drops, kills, whispers or trading)
-      description: Type `/acb diag`, repeat the thing that went wrong, then `/acb log` and paste the relevant lines.
+      label: Support details or diagnostic lines (optional)
+      description: Settings > Help > Report a bug adds basic support details. For drops, kills, whispers or trading, you can also type `/acb diag`, repeat the problem, then copy the relevant lines from `/acb log`.
       render: text
   - type: dropdown
     id: mode
