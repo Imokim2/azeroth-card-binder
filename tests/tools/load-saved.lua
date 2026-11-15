@@ -25,6 +25,6 @@ local before = #saved.ledger
 local removed = verified and ledger:prune(ACB.sync.acks) or 0
 local afterCheck = ledger:verify()
 io.write(string.format(
-    '{"verified":%s,"detail":"%s","eventsBefore":%d,"removed":%d,"eventsAfter":%d,"verifiedAfter":%s,"headSeq":%d,"syncedAt":%d,"mode":"%s"}',
+    '{"verified":%s,"detail":"%s","eventsBefore":%d,"removed":%d,"eventsAfter":%d,"verifiedAfter":%s,"headSeq":%d,"syncedAt":%d,"mode":"%s","paired":%s}',
     tostring(verified), tostring(detail), before, removed, #saved.ledger, tostring(afterCheck), saved.head.seq,
-    ACB.sync.syncedAt or 0, saved.mode))
+    ACB.sync.syncedAt or 0, saved.mode, tostring(ACB.companionPaired(saved))))

@@ -10,6 +10,14 @@ function ACB.companionPaired(saved)
     for _, id in ipairs(type(sync.rankedSetups) == "table" and sync.rankedSetups or {}) do
         if id == saved.modeSetupID then return true end
     end
+    -- Companion 1.0.1 lists only untouched binders in rankedSetups. Its synced
+    -- seasonal payload also names the exact binders it successfully uploaded,
+    -- including established Ranked and explicitly chosen Casual collections.
+    -- Match the nonce, never merely the presence of a companion file or tape.
+    local seasonal = type(sync.seasonal) == "table" and sync.seasonal or {}
+    for _, id in ipairs(type(seasonal.binders) == "table" and seasonal.binders or {}) do
+        if id == saved.modeSetupID then return true end
+    end
     return false
 end
 

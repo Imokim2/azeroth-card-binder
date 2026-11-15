@@ -20,3 +20,9 @@ If it affects you:
 You do not need to interpret the error log to report this. Tell us where it happened and whether `/reload`, Escape or restarting helped; leave anything you do not know blank.
 
 For the technical investigation and controlled test steps, see the [display-loop runbook](docs/runbooks/DISPLAY-LOOP.md).
+
+## Incorrect companion setup warning when choosing Ranked
+
+Fixed in addon **1.0.12**. Earlier versions could tell a successfully synced Casual player to download the companion again when they tried to enable Ranked. The addon checked pairing before explaining that the binder already contained Casual finds. The same update recognises established synced binders when companion 1.0.1 no longer lists them as untouched starter collections.
+
+A successful sync does not convert Casual cards into Ranked cards. Keep that binder in Casual, or deliberately start a fresh active binder if you want Ranked. Starting over replaces the active collection; it is never required just to install an update. Ask in the [community Discord](https://worldofwarcards.co.uk/discord) if you are unsure. The correction does not reset cards or history, and companion 1.0.1 remains current.

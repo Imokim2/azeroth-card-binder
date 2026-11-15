@@ -2,6 +2,10 @@
 
 The community server belongs to the project owner. Companion Discord sign-in is a separate OAuth application and does not create a community server or require a bot.
 
+Created on 15 November 2026: **World of Warcards**, server ID `1571503821098586322`. The public invite lands in `welcome`, never expires, has no usage limit and does not grant temporary membership. It is configured in both Worker environments. No friends were sent invitations or assigned team privileges during setup.
+
+Welcome, downloads, bug-report guidance and known issues were pinned. Information channels inherit read-only posting/thread permissions from START HERE; the rules channel was explicitly synced to that category. Discord created a private moderator-only updates channel. Community defaults require verified email and media filtering, and use mentions-only notifications.
+
 ## Public links
 
 Use `https://worldofwarcards.co.uk/discord` in the addon, README, issue chooser and CurseForge description. The Worker redirects it to `DISCORD_INVITE_URL`. Set that public variable for staging and production once a real invitation exists. It accepts only clean HTTPS `discord.gg/<code>` and `discord.com/invite/<code>` links. Invalid or absent configuration leads to the community section of Help, which explains when setup is pending. The redirect does not access the database and is not cached.
