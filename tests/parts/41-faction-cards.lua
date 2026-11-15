@@ -10,6 +10,33 @@ local function asFaction(group, check)
     if not ok then error(problem, 0) end
 end
 
+test("older Ranked binders register on login without loot, cards or tape consumption", function()
+    local saved = ACB.cleanSavedData({ mode = "ranked" })
+    local ledger = ACB.newLedger(saved, function() return 1700000000 end, function() return "Alice-RealmName" end)
+    ledger:begin(false)
+    local count, tape = 0, saved.tape and saved.tape.next
+    for _ in pairs(saved.counts) do count = count + 1 end
+    local original = ACB.characterName
+    ACB.characterName = function() return "Alice-RealmName" end
+    asFaction("Alliance", function()
+        equal(ACB.registerRankedCharacter(saved, ledger), true)
+        equal(saved.sides["Alice-RealmName"], "alliance")
+        equal(ledger:check(), true)
+        local head = saved.head.seq
+        equal(ACB.registerRankedCharacter(saved, ledger), false)
+        equal(saved.head.seq, head, "zone changes do not add repeated events")
+        saved.mode = "casual"
+        saved.sides = nil
+        equal(ACB.registerRankedCharacter(saved, ledger), false)
+        equal(saved.head.seq, head, "Casual is unchanged")
+    end)
+    ACB.characterName = original
+    local after = 0
+    for _ in pairs(saved.counts) do after = after + 1 end
+    equal(after, count)
+    equal(saved.tape and saved.tape.next, tape)
+end)
+
 local function factionCard(side)
     for _, page in ipairs(ACB.pages) do
         for _, card in ipairs(page.cards) do

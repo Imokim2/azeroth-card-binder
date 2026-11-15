@@ -108,6 +108,19 @@ function ACB.activateDropBalance(saved, ledger)
     end
 end
 
+-- Record identity even when an older Ranked binder has no new loot events. These ordinary mode events
+-- sync the same way as roll-time faction declarations, without awarding a card or consuming a roll.
+function ACB.registerRankedCharacter(saved, ledger)
+    if saved.mode ~= "ranked" or saved.balancedDrops ~= 2 or not ledger then return false end
+    local side = ACB.playerSide()
+    if not side then return false end
+    local who = ACB.characterName()
+    if who:find("Unknown", 1, true) or (saved.factionLedger and saved.sides and saved.sides[who]) then return false end
+    if #saved.ledger + 5 > ACB.backlogLimit or not ledger:check() then return false end
+    ACB.activateDropBalance(saved, ledger)
+    return saved.sides and saved.sides[who] == side or false
+end
+
 function ACB.discoveryText(card)
     local tier = card.dropProfile and card.dropProfile.tier
     if tier == "critter" then return "A tiny encounter. An extraordinary find." end

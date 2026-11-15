@@ -292,7 +292,6 @@ function ACB.tradePeer(text)
     local own = name and normalizePeer(name:find("%s") and name or realm and realm ~= "" and (name .. "-" .. realm) or name)
     if own and peer and peer ~= own then return peer end
 end
-
 local function initialize()
     saved = ACB.tableOrEmpty(AzerothCardBinderDB); AzerothCardBinderDB = saved
     ACB.modelSettings = saved
@@ -391,6 +390,7 @@ local handlers = {
     LOADING_SCREEN_DISABLED = function() ACB.setModelWorldState("loadingScreen", false) end,
     PLAYER_ENTERING_WORLD = function()
         ACB.setModelWorldState("worldChanging", false)
+        if saved then ACB.registerRankedCharacter(saved, ACB.ledger) end
         ACB.announceUpdates(report)
         readyLoot, gather, pickpocketAt, encounter = nil, nil, nil, nil
         if kills then kills:reset() end
