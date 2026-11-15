@@ -59,22 +59,27 @@ function ACB.createSettingsView(frame, saved)
     general:SetAllPoints(settingsView)
     local audio = ACB.createSoundSettingsView(settingsView, saved)
     local chat = createChatView(settingsView, saved)
+    local help = ACB.createSupportView(settingsView, saved)
     audio:Hide()
     chat:Hide()
-    local generalTab, soundTab, chatTab
+    help:Hide()
+    local generalTab, soundTab, chatTab, helpTab
     local function selectTab(tab)
         general:SetShown(tab == "general")
         audio:SetShown(tab == "sounds")
         chat:SetShown(tab == "chat")
+        help:SetShown(tab == "help")
         if tab ~= "sounds" then ACB.stopSounds() end
         generalTab:SetEnabled(tab ~= "general")
         soundTab:SetEnabled(tab ~= "sounds")
         chatTab:SetEnabled(tab ~= "chat")
+        helpTab:SetEnabled(tab ~= "help")
         settingsView:refresh()
     end
-    generalTab = button(settingsView, "General", 526, 16, 104, function() selectTab("general") end)
-    chatTab = button(settingsView, "Chat", 640, 16, 104, function() selectTab("chat") end)
-    soundTab = button(settingsView, "Sounds", 754, 16, 104, function() selectTab("sounds") end)
+    generalTab = button(settingsView, "General", 412, 16, 104, function() selectTab("general") end)
+    chatTab = button(settingsView, "Chat", 526, 16, 104, function() selectTab("chat") end)
+    soundTab = button(settingsView, "Sounds", 640, 16, 104, function() selectTab("sounds") end)
+    helpTab = button(settingsView, "Help", 754, 16, 104, function() selectTab("help") end)
     generalTab:SetEnabled(false)
     local checks = {}
     for index, setting in ipairs(ACB.settings) do
@@ -102,6 +107,10 @@ function ACB.createSettingsView(frame, saved)
     end)
     local modeNote = label(general, "GameFontHighlightSmall", 230, controlsY + 53, brass, "")
     modeNote:SetWidth(615)
+    local reportBug = button(general, "Report a bug", 32, controlsY + 92, 182, function()
+        selectTab("help"); help:choose("report")
+    end)
+    label(general, "GameFontHighlightSmall", 230, controlsY + 99, muted, "Get help, check known issues or join the community.")
 
     function settingsView:refresh()
         audio:refresh()
@@ -113,5 +122,7 @@ function ACB.createSettingsView(frame, saved)
     settingsView:SetScript("OnHide", function() ACB.stopSounds() end)
     settingsView.soundControls = audio.controls
     settingsView.chatControls = chat.controls
+    settingsView.supportControls = help.controls
+    settingsView.reportBugButton = reportBug
     return settingsView
 end

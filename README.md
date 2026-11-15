@@ -70,6 +70,9 @@ Read the [Ranked rules](https://worldofwarcards.co.uk/fair-play) **before starti
 
 ## Need a hand?
 
+Open **Settings → Help** in the binder to copy a bug-report link with basic game details already filled in, check known issues or find the community.
+
+- [Community Discord](https://worldofwarcards.co.uk/discord)
 - [Setup and troubleshooting](https://worldofwarcards.co.uk/help)
 - [Frequently asked questions](https://worldofwarcards.co.uk/faq)
 - [Known issues](KNOWN-ISSUES.md)

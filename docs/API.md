@@ -2,6 +2,8 @@
 
 Version 1, served under `/v1`. The server is `server/`; the ledger and signing rules it enforces are in [LEDGER-SPEC.md](LEDGER-SPEC.md). Everything is JSON. Times are whole seconds since 1970-01-01 UTC.
 
+The public website also has `GET /discord`, a database-free, non-cached redirect to the configured community invite. Without a valid invite it leads to `/help#community`. Request query parameters cannot override the destination. This route has no relationship to the companion's Discord OAuth sign-in.
+
 ## Rules for clients
 
 - Send `Content-Type: application/json` on POST, and `X-Warcards-Client: <x.y.z>` (the companion app's version) on `/v1/register` and `/v1/ledger`. A version below the server's `minClient` is refused with `client_too_old`; every successful upload reply states the current `minClient`.
