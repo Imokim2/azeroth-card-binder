@@ -6,6 +6,7 @@ import { createApi } from "../src/api.ts";
 import type { Deps } from "../src/api.ts";
 import { canonicalJson } from "../../packages/shared/src/crypto.ts";
 import { SqlStore } from "../src/sqlStore.ts";
+import { SqlGuilds } from "../src/guilds.ts";
 import { replay } from "../src/shared.ts";
 import type { Catalog, LedgerState } from "../src/shared.ts";
 import { chanceAfter } from "../src/stack.ts";
@@ -34,7 +35,7 @@ export const NOW = 1_700_000_000;
 export const TAPE_SECRET = "test-only tape secret, never used anywhere real";
 export const ADMIN_TOKEN = "test-only admin token, never used anywhere real";
 
-export function setup(options: { identity?: boolean } = {}) {
+export function setup(options: { identity?: boolean; guilds?: boolean } = {}) {
   const { db, raw } = openTestDb();
   const store = new SqlStore(db);
   const clock = { now: NOW };
@@ -46,6 +47,7 @@ export function setup(options: { identity?: boolean } = {}) {
     now: () => clock.now, log: (entry) => logs.push(entry),
     health: async () => { if (!healthy) throw new Error("database down"); await db.all("SELECT 1"); },
     minClient: "0.1.0", version: "test", ...(identity ? { identity } : {}),
+    ...(options.guilds ? { guilds: new SqlGuilds(db, catalog) } : {}), // guild routes are off unless a test asks for them, as in production
     // The older tests were written before cards were held back for seasons: here every such card is released from the start of time. The
     // tests about holding cards back replace this (server/test/availability.test.ts).
     released: async () => Object.fromEntries(Object.entries(catalog.cards).filter(([, card]) => card.seasonal).map(([key]) => [key, 0])),

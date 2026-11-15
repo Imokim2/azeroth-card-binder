@@ -45,6 +45,7 @@ const copyState = (state) => ({
     ...(state.packType ? { packType: state.packType } : {}),
     ...(state.tieredPacks ? { tieredPacks: true } : {}),
     ...(state.seasonClaims ? { seasonClaims: { ...state.seasonClaims } } : {}),
+    ...(state.guild === 1 ? { guild: 1, donations: { ...(state.donations || {}) } } : {}),
 });
 
 // Returns the name of the rule an event breaks, or null. Mutates `state` only when the event is fine.
@@ -86,9 +87,25 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
     if (state.packLeft > 0 && event.kind !== "packCard") return "pack";
     if (!usesTape && event.tape !== 0) return "field";
     if (event.kind !== "recycle" && event.kind !== "craft" && event.dust !== 0) return "dust";
-    if (event.kind !== "tradeIn" && event.kind !== "tradeOut" && event.kind !== "seasonReward" && (event.partner !== "" || event.trade !== "")) return "trade";
+    if (event.kind !== "tradeIn" && event.kind !== "tradeOut" && event.kind !== "seasonReward" && event.kind !== "donate" && event.kind !== "donateReturn" && (event.partner !== "" || event.trade !== "")) return "trade";
     let counts = state.counts;
     switch (event.kind) {
+        // Spec 11: a Ranked binder gives one copy of a card to its guild (docs/proposals/GUILD-BINDERS-DESIGN.md). `partner` is the guild's id and
+        // `trade` an operation id made up by the add-on, used once. The copy leaves the binder at once. The server credits the guild, or
+        // refuses and issues the copy back, which the binder then writes as donateReturn (the same operation, guild and card).
+        case "donate": {
+            if (state.guild !== 1 || isPackKey || (state.mode !== "ranked" && state.mode !== "ranked2")) return "donate";
+            if (before < 1 || event.count !== before - 1) return "donate";
+            if (!/^[0-9A-Z]{26}$/.test(event.partner) || !/^[0-9a-f]{32}$/.test(event.trade) || state.donations?.[event.trade]) return "donate";
+            state.donations = { ...(state.donations || {}), [event.trade]: event.partner + "|" + event.key };
+            break;
+        }
+        case "donateReturn": {
+            if (state.guild !== 1 || isPackKey || event.count !== before + 1) return "donate";
+            if (state.donations?.[event.trade] !== event.partner + "|" + event.key) return "donate";
+            state.donations = { ...state.donations, [event.trade]: "returned" };
+            break;
+        }
         case "seasonReward": {
             if (!packInfo(catalog, event.key) || event.partner !== "" || !/^[0-9a-f]{32}$/.test(event.trade)) return "season-reward";
             if (state.seasonClaims?.[event.trade] || event.count !== (state.packs[event.key] || 0) + 1) return "season-reward";
@@ -246,6 +263,13 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
                 // A character's faction, declared once, before it acquires a card only one faction can win.
                 if (event.count !== 0 || state.faction !== 1 || state.sides[event.char]) return "mode";
                 state.sides = { ...state.sides, [event.char]: event.key.slice(5) };
+                break;
+            }
+            if (event.key === "guild1") {
+                // Spec 11: a binder may donate to its guild from here on. Only after faction1, once.
+                if (event.count !== 0 || state.faction !== 1 || state.guild === 1) return "mode";
+                state.guild = 1;
+                state.donations = {};
                 break;
             }
             if (event.key === "editions1") {

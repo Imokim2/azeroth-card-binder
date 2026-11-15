@@ -106,6 +106,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       characters: await this.#db.all("SELECT name, realm, first_seen AS firstSeen, last_seen AS lastSeen FROM characters WHERE player_id = ? ORDER BY name, realm", [playerId]),
       binders: [await binder(playerId, false), ...(await Promise.all(archives.map((archive) => binder(archive.id, true))))],
       reportsSent: await this.#db.all("SELECT target_name AS targetName, reason, note, created_at AS createdAt FROM reports WHERE reporter_id = ? ORDER BY created_at", [playerId]),
+      guilds: await this.#db.all("SELECT id, name, realm, side, owner_character AS character, status, requested_at AS requestedAt, decided_at AS decidedAt, note FROM guilds WHERE owner_player_id = ? ORDER BY requested_at", [playerId]),
       seasonal: {
         acquisitions: await this.#db.all("SELECT * FROM season_acquisitions WHERE player_id = ?", [playerId]),
         completions: await this.#db.all("SELECT * FROM season_completions WHERE player_id = ?", [playerId]),
@@ -140,25 +141,29 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     await this.#db.batch([
       // Reports the player sent and reports about them, before the player they point at goes.
       { sql: `DELETE FROM reports WHERE reporter_id IN (${marks}) OR target_id IN (${marks})`, params: [...ids, ...ids] },
+      // A guild request that was never approved goes with the player. An approved guild stays, as it must for the guild's own sake: it loses
+      // its owner's name and character here, and the owner id is emptied when the player goes, so a person who runs the service names a new owner.
+      { sql: `DELETE FROM guilds WHERE owner_player_id IN (${marks}) AND status != 'active'`, params: ids },
+      { sql: `UPDATE guilds SET owner_character = '' WHERE owner_player_id IN (${marks})`, params: ids },
       ...tables.map((table) => ({ sql: `DELETE FROM ${table} WHERE player_id IN (${marks})`, params: ids })),
       { sql: `DELETE FROM players WHERE id IN (${marks})`, params: ids },
     ]);
   }
 
   async load(playerId: string): Promise<StoredLedger> {
-    const rows = await this.#db.all<{ head_seq: number; head_hash: string; state_json: string; tape_next: number; pity_json: string; drops_json: string; updated_at: number }>(
-      "SELECT head_seq, head_hash, state_json, tape_next, pity_json, drops_json, updated_at FROM ledger_state WHERE player_id = ?", [playerId]);
+    const rows = await this.#db.all<{ head_seq: number; head_hash: string; state_json: string; tape_next: number; pity_json: string; drops_json: string; casual_drops: number; updated_at: number }>(
+      "SELECT head_seq, head_hash, state_json, tape_next, pity_json, drops_json, casual_drops, updated_at FROM ledger_state WHERE player_id = ?", [playerId]);
     const flags = await this.#db.all<{ kind: string }>("SELECT DISTINCT kind FROM flags WHERE player_id = ? AND state != 'cleared'", [playerId]);
     const openFlags = flags.map((flag) => flag.kind);
     // Luck that a reviewer has already looked at and cleared: only clearly more than that is flagged again.
     const cleared = await this.#db.all<{ notes: string }>("SELECT notes FROM flags WHERE player_id = ? AND state = 'cleared' AND kind IN ('luck-review', 'luck-hold')", [playerId]);
     const clearedLuck = Math.max(0, ...cleared.map((flag) => Number(/luck ([\d.]+)/.exec(flag.notes)?.[1] ?? 0)));
     const row = rows[0];
-    if (!row) return { head: { seq: 0, hash: GENESIS }, state: newState(), pity: {}, tapeNext: 1, drops: {}, lastUpload: null, openFlags, clearedLuck };
+    if (!row) return { head: { seq: 0, hash: GENESIS }, state: newState(), pity: {}, tapeNext: 1, drops: {}, lastUpload: null, openFlags, clearedLuck, casualDrops: 0 };
     return {
       head: { seq: row.head_seq, hash: row.head_hash }, state: JSON.parse(row.state_json) as LedgerState,
       pity: JSON.parse(row.pity_json) as Record<string, number>, tapeNext: row.tape_next,
-      drops: JSON.parse(row.drops_json) as Record<string, number>, lastUpload: row.updated_at, openFlags, clearedLuck,
+      drops: JSON.parse(row.drops_json) as Record<string, number>, lastUpload: row.updated_at, openFlags, clearedLuck, casualDrops: row.casual_drops,
     };
   }
 
@@ -195,6 +200,22 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
         AND EXISTS(SELECT 1 FROM json_each(s.cards_json) c WHERE c.value = ?)`,
         params: [playerId, commit.seasonal!.epoch, event.seq, event.key, zone, event.kind, commit.receivedAt,
           event.t, event.t, commit.receivedAt, commit.receivedAt, event.key] });
+    }
+    // Guild donations settle in the same transaction as the upload: the receipt, the guild's inventory and, for a returned copy, the redemption.
+    for (const donation of commit.guild?.donations ?? []) {
+      statements.push({
+        sql: "INSERT INTO guild_donations (operation_id, guild_id, donor_player_id, card_key, seq, t, result, reason, decided_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params: [donation.operation, donation.guildId, playerId, donation.key, donation.seq, donation.t, donation.result, donation.reason, commit.receivedAt],
+      });
+      if (donation.result === "credited") {
+        statements.push({
+          sql: "INSERT INTO guild_inventory (guild_id, card_key, copies) VALUES (?, ?, 1) ON CONFLICT (guild_id, card_key) DO UPDATE SET copies = copies + 1",
+          params: [donation.guildId, donation.key],
+        });
+      }
+    }
+    for (const given of commit.guild?.returns ?? []) {
+      statements.push({ sql: "UPDATE guild_donations SET returned_seq = ? WHERE operation_id = ? AND donor_player_id = ? AND result = 'refunded' AND returned_seq IS NULL", params: [given.seq, given.operation, playerId] });
     }
     for (const event of commit.events) if (event.kind === "seasonReward") {
       statements.push({ sql: "INSERT INTO season_redemptions (grant_id, player_id, seq) VALUES (?, ?, ?)", params: [event.trade, playerId, event.seq] });

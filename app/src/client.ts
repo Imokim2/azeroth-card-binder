@@ -11,6 +11,8 @@ import { isVersion } from "./versions.ts";
 import type { Releases } from "./versions.ts";
 import { parseSeasonData } from "./seasons.ts";
 import type { SeasonData } from "./seasons.ts";
+import { parseGuildData } from "./guild.ts";
+import type { GuildData } from "./guild.ts";
 
 export type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => Promise<{
   status: number;
@@ -80,8 +82,8 @@ async function sendWithRetries(options: PublicClientOptions, path: string, body?
 
 async function uploadBody(options: ClientOptions, binder: Binder, events: BinderEvent[]): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {
-    // Spec 10 adds mode/faction1 and mode/side:* (cards only one faction can win), 9 mode/launch1 (cards held back for seasons), 8 mode/chase2 (the second set of drop rates), 7 seasonal rewards. The server refuses a binder that needs more than it is told.
-    specVersion: 10, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
+    // Spec 11 adds mode/guild1 and the donate and donateReturn events (guild binders), 10 adds mode/faction1 and mode/side:* (cards only one faction can win), 9 mode/launch1 (cards held back for seasons), 8 mode/chase2 (the second set of drop rates), 7 seasonal rewards. The server refuses a binder that needs more than it is told.
+    specVersion: 11, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
     realm: binder.character?.realm ?? "Unknown", schema: binder.schema, catalogVersion: options.catalogVersion,
     events, snapshot: binder.snapshot, tapeIndex: binder.tapeNext, sentAt: options.now(),
   };
@@ -181,6 +183,30 @@ export async function fetchSeasons(options: ClientOptions, binders: string[]): P
   if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
   try { return { status: "seasons", data: parseSeasonData(reply.body, binders) }; }
   catch { return { status: "rejected", code: "bad_reply" }; }
+}
+
+// The player's guild (docs/proposals/GUILD-BINDERS-DESIGN.md): their membership and guild requests, and what became of the donations their add-on is
+// waiting to hear about (`operations`, up to 100). `not_found` means the server has guilds switched off.
+export async function fetchGuild(options: ClientOptions, binders: string[], operations: string[]): Promise<{ status: "guild"; data: GuildData } | Outcome> {
+  const body: Record<string, unknown> = { key: options.identity.publicKeyHex, sentAt: options.now(), ...(operations.length ? { operations } : {}) };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: "guild-mine" }));
+  const reply = await sendWithRetries(options, "/v1/guilds/mine", { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  try { return { status: "guild", data: parseGuildData(reply.body, binders, options.now()) }; }
+  catch { return { status: "rejected", code: "bad_reply" }; }
+}
+
+// One of the player's own guild actions: ask for a guild, join one, look at the roster, decide an application, leave, remove a member. `fields` are
+// signed along with the key and the time; the answer is returned as the server sent it.
+export const GUILD_ACTIONS = { request: "guild-request", join: "guild-join", roster: "guild-roster", decide: "guild-decide", leave: "guild-leave", remove: "guild-remove" } as const;
+export async function guildAction(options: ClientOptions, action: keyof typeof GUILD_ACTIONS, fields: Record<string, unknown> = {}): Promise<{ status: "ok"; body: Record<string, unknown> } | Outcome> {
+  const body = { key: options.identity.publicKeyHex, sentAt: options.now(), ...fields };
+  const sig = await options.identity.sign(canonicalJson({ ...body, purpose: GUILD_ACTIONS[action] }));
+  const reply = await sendWithRetries(options, "/v1/guilds/" + action, { ...body, sig });
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status < 200 || reply.status >= 300) return { status: "rejected", ...errorOf(reply) };
+  return { status: "ok", body: reply.body };
 }
 
 // Link this key to a Discord account (the sign-in itself is obtained by the app's window; here it is just a token).

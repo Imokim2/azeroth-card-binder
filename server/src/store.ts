@@ -47,6 +47,7 @@ export type StoredLedger = {
   drops: Record<string, number>; lastUpload: number | null; openFlags: string[];
   // The highest luck score a reviewer has already cleared for this player, so the same luck is not flagged again.
   clearedLuck: number;
+  casualDrops: number; // the Casual finds stored so far (a binder with any is not on the ladder, and cannot donate to a guild)
 };
 
 export type Commit = {
@@ -66,6 +67,8 @@ export type Commit = {
   // Drop events in this batch that were rolled in Casual mode (tape position 0); added to the player's running count.
   casualDrops: number;
   seasonal?: { epoch: number; cards: { event: LedgerEvent; zone: string }[] };
+  // Spec 11: how each donation in the batch was settled (credited to the guild, or refused), and the refused donations this batch gives back.
+  guild?: { donations: { operation: string; guildId: string; key: string; seq: number; t: number; result: "credited" | "refunded"; reason: string }[]; returns: { operation: string; seq: number }[] };
 };
 
 export type TradeRow = { seq: number; tradeId: string; direction: "in" | "out"; key: string; char: string; partner: string; t: number };

@@ -2,7 +2,9 @@
 // game folder, runs the sync engine and keeps a plain description of how things stand (`status()`) for whatever draws the
 // window. The Electron shell only supplies the parts that need Electron (opening the browser, a folder dialog, the
 // system's key protection), so all of this is tested without a screen.
-import { deleteAccount, exportAccount, fetchReleases, resetBinder } from "./client.ts";
+import { deleteAccount, exportAccount, fetchGuild, fetchReleases, guildAction, resetBinder } from "./client.ts";
+import { parseRoster } from "./guild.ts";
+import type { GuildMembership, GuildRequest, RosterEntry } from "./guild.ts";
 import type { ClientOptions, FetchLike } from "./client.ts";
 import { Engine } from "./engine.ts";
 import type { PassReport } from "./engine.ts";
@@ -72,6 +74,37 @@ export type Status = {
   updateCheckMessage: string | null;
   newer: { addon: string | null; app: string | null; notes: { addon: string; app: string } } | null; // what the signed manifest offers
 };
+
+// What the guild screen shows (docs/proposals/GUILD-BINDERS-DESIGN.md). `available` is false when the server has guilds switched off.
+export type GuildPanel = {
+  signedIn: boolean; available: boolean; membership: GuildMembership | null; requests: GuildRequest[]; characters: string[];
+  roster: RosterEntry[] | null; // the members and waiting applications, for the owner of a guild
+  message: string | null;
+};
+
+// Why the server refused a guild action, in words for the player.
+function guildProblem(code: string, detail?: Record<string, unknown>): string {
+  const reason = String(detail?.["reason"] ?? "");
+  if (code === "guild_ineligible") {
+    return ({
+      "not-ranked": "That character's binder is not in Ranked mode yet.",
+      "no-faction": "That binder needs the latest add-on and a Ranked roll before it can use guilds.",
+      "no-side": "That character has not picked up its faction yet. Log in with it and roll once.",
+      "no-binder": "Sync that character's binder first.",
+      "other-side": "That guild is on the other faction.",
+    } as Record<string, string>)[reason] ?? "That binder cannot use guilds yet.";
+  }
+  if (code === "guild_taken") return reason === "name" ? "That guild name is already taken on this realm." : "You already have a guild, or an application waiting.";
+  if (code === "guild_decided") return "That has already been decided.";
+  if (code === "not_found") return reason === "no-such-guild" ? "There is no approved guild with that name on that character's realm." : "There is nothing here.";
+  if (code === "rate_limited") return "Too many refused requests this week. Try again later.";
+  if (code === "bad_request") {
+    const field = String(detail?.["field"] ?? "");
+    return field === "name" ? "Guild names are 2 to 24 letters, with single spaces, apostrophes or dashes." : field === "character" ? "Choose one of your own characters." : "The server could not understand that.";
+  }
+  if (code === "client_too_old") return "Update the companion app first.";
+  return "The server refused it (" + code + ").";
+}
 
 const SIGN_IN_FAILURES: Record<string, string> = {
   denied: "Sign-in was cancelled.",
@@ -519,6 +552,50 @@ export class Controller {
       return this.#say(`You started a new binder recently. Try again in about ${Math.max(1, Math.ceil(wait / 3600))} hour(s).`);
     }
     this.#say(result.status === "rejected" ? `The server refused it (${result.code}).` : "The server could not be reached. Try again.");
+  }
+
+  // The guild screen: what the server says about the player's guild, and for an owner the roster. Asks the server each time it is opened.
+  async guildPanel(message: string | null = null): Promise<GuildPanel> {
+    const options = this.#options();
+    const state = this.#engine?.guildState();
+    const empty: GuildPanel = { signedIn: false, available: false, membership: null, requests: [], characters: state?.characters ?? [], roster: null, message };
+    if (!options || !this.#settings.playerId) return empty;
+    const reply = await fetchGuild(options, [], []);
+    if (reply.status === "rejected" && reply.code === "not_found") return { ...empty, signedIn: true };
+    if (reply.status !== "guild") return { ...empty, signedIn: true, available: true, message: message ?? "The server could not be reached. Try again." };
+    const owner = reply.data.membership?.role === "owner" && reply.data.membership.state === "active";
+    let roster: RosterEntry[] | null = null;
+    if (owner) {
+      const listed = await guildAction(options, "roster");
+      if (listed.status === "ok") { try { roster = parseRoster(listed.body).members; } catch { roster = null; } }
+    }
+    return { signedIn: true, available: true, membership: reply.data.membership, requests: reply.data.requests, characters: state?.characters ?? [], roster, message };
+  }
+
+  // One guild action, then the screen as it stands, and the add-on's sync file brought up to date.
+  async guildDo(action: "request" | "join" | "decide" | "leave" | "remove", fields: Record<string, unknown>, done: string): Promise<GuildPanel> {
+    const options = this.#options();
+    if (!options || !this.#settings.playerId) return this.guildPanel("Sign in with Discord first.");
+    const result = await guildAction(options, action, fields);
+    if (result.status === "retry-later") return this.guildPanel("The server could not be reached. Try again.");
+    if (result.status !== "ok") return this.guildPanel(result.status === "rejected" ? guildProblem(result.code, result.detail) : "The server could not be reached. Try again.");
+    try { await this.#engine?.refreshGuild(); } catch { /* the sync file catches up on the next pass */ }
+    return this.guildPanel(done);
+  }
+  guildRequest(character: string, name: string): Promise<GuildPanel> {
+    return this.guildDo("request", { character, name }, "Your guild is waiting for someone to approve it.");
+  }
+  guildJoin(character: string, name: string): Promise<GuildPanel> {
+    return this.guildDo("join", { character, name }, "Your application is waiting for the guild's owner.");
+  }
+  guildDecide(member: string, decision: "approve" | "refuse"): Promise<GuildPanel> {
+    return this.guildDo("decide", { member, decision }, decision === "approve" ? "Approved." : "Refused.");
+  }
+  guildLeave(): Promise<GuildPanel> {
+    return this.guildDo("leave", {}, "You left the guild. Cards you gave it stay with it.");
+  }
+  guildRemove(member: string): Promise<GuildPanel> {
+    return this.guildDo("remove", { member }, "Removed. Cards they gave stay with the guild.");
   }
 
   // Delete everything the server holds about the player. Their cards in the game and on this computer are not touched.

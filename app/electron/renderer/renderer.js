@@ -149,6 +149,76 @@ function render(status) {
   $("version").textContent = "Version " + status.version;
 }
 
+// ---- The guild screen ----
+// It asks the server only when it is opened, after the player acts, and when they press Refresh: never on a timer.
+let guildPanelKey = "";
+function renderGuild(panel) {
+  const section = $("guild");
+  section.hidden = !panel.signedIn || !panel.available;
+  if (section.hidden) return;
+  const member = panel.membership;
+  const open = panel.requests.find((request) => request.status === "pending");
+  const refused = panel.requests.find((request) => request.status === "refused" && (!member || request.requestedAt > member.requestedAt));
+  const inGuild = member && (member.state === "active" || member.state === "pending");
+  const owns = member && member.role === "owner" && member.state === "active";
+  $("guild-state").textContent = member && member.state === "active" ? member.guild.name : member && member.state === "pending" ? "Application waiting" : open ? "Waiting for approval" : "Not in a guild";
+  $("guild-state").classList.toggle("complete", !!(member && member.state === "active"));
+  let text = "Join a guild binder, or ask for a new one. Cards given to it stay with it for good.";
+  if (member && member.state === "active") text = member.guild.name + " on " + member.guild.realm + " (" + member.guild.side + "), " + member.guild.members + (member.guild.members === 1 ? " member. " : " members. ") + (owns ? "You are its owner. " : "") + "Give cards in the game with /acb guild donate.";
+  else if (member && member.state === "pending") text = "Your application to " + member.guild.name + " is waiting for its owner to decide.";
+  else if (open) text = "Your guild, " + open.name + " on " + open.realm + ", is waiting for a person to approve it.";
+  else if (refused) text = "Your request for " + refused.name + " was not approved" + (refused.note ? ": " + refused.note : ".");
+  else if (member && (member.state === "removed" || member.state === "left")) text = (member.state === "removed" ? "You were removed from " : "You left ") + member.guild.name + ". Cards you gave it stay with it.";
+  $("guild-text").textContent = text;
+  const select = $("guild-character");
+  const chosen = select.value;
+  select.replaceChildren();
+  for (const name of panel.characters) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    select.append(option);
+  }
+  if (panel.characters.includes(chosen)) select.value = chosen;
+  const canAsk = !inGuild && !open;
+  $("guild-form").hidden = !canAsk;
+  $("guild-join").disabled = $("guild-request").disabled = panel.characters.length === 0;
+  const roster = $("guild-roster");
+  roster.replaceChildren();
+  roster.hidden = !(owns && panel.roster && panel.roster.length > 0);
+  for (const entry of panel.roster || []) {
+    const item = document.createElement("li");
+    const left = document.createElement("span");
+    const name = document.createElement("span");
+    name.className = "name";
+    name.textContent = entry.character;
+    const role = document.createElement("span");
+    role.className = "mode" + (entry.role === "owner" ? " ranked" : "");
+    role.textContent = entry.role === "owner" ? "Owner" : entry.state === "pending" ? "Applied" : "Member";
+    left.append(name, role);
+    const actions = document.createElement("span");
+    actions.className = "buttons";
+    const act = (label, run, primary) => { const button = document.createElement("button"); button.textContent = label; if (primary) button.className = "primary"; button.addEventListener("click", run); actions.append(button); };
+    if (entry.state === "pending") {
+      act("Approve", () => guildDo(window.warcards.guildDecide(entry.id, "approve")), true);
+      act("Refuse", () => guildDo(window.warcards.guildDecide(entry.id, "refuse")));
+    } else if (entry.role !== "owner") {
+      act("Remove", () => guildDo(window.warcards.guildRemove(entry.id)));
+    }
+    item.append(left, actions);
+    roster.append(item);
+  }
+  $("guild-leave").hidden = !(member && (member.state === "active" || member.state === "pending") && member.role !== "owner");
+  $("guild-leave").textContent = member && member.state === "pending" ? "Withdraw application" : "Leave guild";
+  const message = $("guild-message");
+  message.hidden = !panel.message;
+  message.textContent = panel.message || "";
+}
+function guildDo(promise) {
+  for (const id of ["guild-join", "guild-request", "guild-leave", "guild-refresh"]) $(id).disabled = true;
+  return promise.then((panel) => { $("guild-refresh").disabled = false; renderGuild(panel); }, () => { $("guild-refresh").disabled = false; });
+}
+
 const demo = /^#demo-(\w+)$/.exec(location.hash);
 if (demo && demos[demo[1]]) {
   render(demos[demo[1]]);
@@ -170,8 +240,19 @@ if (demo && demos[demo[1]]) {
   $("export-data").addEventListener("click", () => api.exportMyData());
   $("delete-data").addEventListener("click", () => api.deleteMyData());
   $("start-at-login").addEventListener("change", (event) => api.setStartAtLogin(event.target.checked));
-  api.onStatus(render);
-  api.status().then(render);
+  $("guild-join").addEventListener("click", () => guildDo(api.guildJoin($("guild-character").value, $("guild-name").value.trim())));
+  $("guild-request").addEventListener("click", () => guildDo(api.guildRequest($("guild-character").value, $("guild-name").value.trim())));
+  $("guild-leave").addEventListener("click", () => guildDo(api.guildLeave()));
+  $("guild-refresh").addEventListener("click", () => guildDo(api.guildPanel()));
+  // Open the guild screen once signed in, and again when the signed-in state changes; the status itself never asks the server.
+  const showGuild = (status) => {
+    const key = String(status.signedIn);
+    if (key === guildPanelKey) return;
+    guildPanelKey = key;
+    if (status.signedIn) guildDo(api.guildPanel()); else $("guild").hidden = true;
+  };
+  api.onStatus((status) => { render(status); showGuild(status); });
+  api.status().then((status) => { render(status); showGuild(status); });
   // "5 min ago" should keep ticking even when nothing else changes.
   setInterval(() => api.status().then(render), 30000);
 }

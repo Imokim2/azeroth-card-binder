@@ -107,6 +107,29 @@
           <div class="reload-note"><span class="note-symbol" aria-hidden="true">i</span><p>Sync happens after you reload or leave the game. Use <code>/reload</code> again to bring updates into your binder.</p></div>
         </div>
       </section>
+      <section id="guild" class="panel guild-panel" aria-labelledby="guild-title" hidden>
+        <div class="section-heading">
+          <span class="sync-mark" aria-hidden="true">&#9873;</span>
+          <div><p class="eyebrow">YOUR GUILD</p><h2 id="guild-title">Guild binder</h2></div>
+          <span id="guild-state" class="section-state">Not in a guild</span>
+        </div>
+        <p id="guild-text" class="section-description"></p>
+        <div id="guild-form" class="guild-form" hidden>
+          <label>Character<select id="guild-character"></select></label>
+          <label>Guild name<input id="guild-name" type="text" maxlength="24" autocomplete="off" spellcheck="false"></label>
+          <div class="buttons">
+            <button id="guild-join" class="primary">Join this guild</button>
+            <button id="guild-request">Ask for a new guild</button>
+          </div>
+          <p class="note">A new guild is checked by a person before it exists. Joining needs the guild owner to approve you. You can be in one guild at a time, and only a Ranked character that has picked its faction can use guilds.</p>
+        </div>
+        <ul id="guild-roster" class="accounts" aria-label="Members and applications" hidden></ul>
+        <div class="buttons">
+          <button id="guild-leave" class="quiet" hidden>Leave guild</button>
+          <button id="guild-refresh" class="quiet">Refresh</button>
+        </div>
+        <p id="guild-message" class="note" role="status" hidden></p>
+      </section>
     </main>
 
     <p id="message" class="message" role="status" hidden></p>

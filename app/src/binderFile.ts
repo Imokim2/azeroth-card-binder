@@ -25,6 +25,8 @@ export type Binder = {
   addonVersion: string | null; // the add-on version that last wrote this file, as the add-on says it (x.y.z)
   rankedStarter?: boolean; // untouched collection that can default to Ranked when the companion supplies it
   modeSetupID?: string | null;
+  // Donations to a guild the add-on has written down and the server has not settled yet (docs/proposals/GUILD-BINDERS-DESIGN.md), as operation ids.
+  guildOps?: string[];
 };
 
 export type PendingReport = { token: string; target: string; reason: "cheating" | "trading" | "other"; note: string };
@@ -90,6 +92,11 @@ function wantedKeys(value: LuaValue | undefined): string[] {
   return Object.entries(value).filter(([key, flag]) => flag === true && CARD_KEY.test(key)).map(([key]) => key).sort().slice(0, 60);
 }
 
+function guildOperations(value: LuaValue | undefined): string[] {
+  if (!isRecord(value)) return [];
+  return Object.keys(value).filter((id) => /^[0-9a-f]{32}$/.test(id)).sort().slice(0, 100);
+}
+
 // "Name-Realm" as the add-on writes it. A character name never contains a hyphen; a realm may.
 export function splitCharacter(char: string): { name: string; realm: string } | null {
   const at = char.indexOf("-");
@@ -123,6 +130,7 @@ export function readBinder(fileText: string): Binder {
     reports: pendingReports(db["reports"]),
     addonVersion: typeof db["addonVersion"] === "string" && /^\d+\.\d+\.\d+$/.test(db["addonVersion"]) ? db["addonVersion"] : null,
     modeSetupID: typeof db["modeSetupID"] === "string" && /^[0-9a-f]{32}$/.test(db["modeSetupID"]) ? db["modeSetupID"] : null,
+    guildOps: guildOperations(db["guildDonations"]),
     rankedStarter: typeof db["modeSetupID"] === "string" && /^[0-9a-f]{32}$/.test(db["modeSetupID"])
       && db["modeChoice"] !== "casual" && db["legacy"] !== true && !(Number(db["casualDrops"]) > 0)
       && Object.keys(numberMap(db["counts"], 1)).length === 0 && Object.keys(numberMap(db["attempts"], 1)).length === 0,

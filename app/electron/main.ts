@@ -161,6 +161,12 @@ async function main(): Promise<void> {
   ipcMain.handle("repairSync", () => controller.repairSync());
   ipcMain.handle("startNewBinder", () => controller.startNewBinder());
   ipcMain.handle("deleteMyData", () => controller.deleteMyData());
+  ipcMain.handle("guildPanel", () => controller.guildPanel());
+  ipcMain.handle("guildRequest", (_event, character: unknown, name: unknown) => typeof character === "string" && typeof name === "string" ? controller.guildRequest(character, name) : controller.guildPanel("Choose a character and a name."));
+  ipcMain.handle("guildJoin", (_event, character: unknown, name: unknown) => typeof character === "string" && typeof name === "string" ? controller.guildJoin(character, name) : controller.guildPanel("Choose a character and a name."));
+  ipcMain.handle("guildDecide", (_event, member: unknown, decision: unknown) => typeof member === "string" && (decision === "approve" || decision === "refuse") ? controller.guildDecide(member, decision) : controller.guildPanel());
+  ipcMain.handle("guildLeave", () => controller.guildLeave());
+  ipcMain.handle("guildRemove", (_event, member: unknown) => typeof member === "string" ? controller.guildRemove(member) : controller.guildPanel());
   ipcMain.handle("exportMyData", () => controller.exportMyData());
   ipcMain.handle("setStartAtLogin", (_event, on: unknown) => controller.setStartAtLogin(on === true));
   ipcMain.handle("updateAddon", () => controller.updateAddon());

@@ -14,8 +14,9 @@ import { checkTape, tapeKey, tapeOwner } from "./tape.ts";
 import { integrityFlags } from "./integrity.ts";
 import { seasonalCandidates } from "./seasons.ts";
 import type { SqlSeasons } from "./seasons.ts";
+import type { SqlGuilds } from "./guilds.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10]; // 10 adds mode/faction1 and mode/side:* (cards only one faction can win); 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates); 9 adds mode/launch1 (cards held back for seasons)
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]; // 11 adds mode/guild1 and the donate and donateReturn events (guild binders); 10 adds mode/faction1 and mode/side:* (cards only one faction can win); 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates); 9 adds mode/launch1 (cards held back for seasons)
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -84,7 +85,7 @@ const CHAIN_ERRORS: Record<string, ErrorCode> = {
 // Verify a signed upload from a registered player and store it. Uploading the same batch twice is safe: the
 // second time nothing is written and the answer is the same.
 export async function acceptUpload(
-  deps: { ingest: IngestStore; tapes: TapeStore; trades: TradeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined; seasons?: SqlSeasons; released?: () => Promise<Record<string, number>> },
+  deps: { ingest: IngestStore; tapes: TapeStore; trades: TradeStore; catalog: Catalog; now: () => number; tapeSecret?: string | undefined; seasons?: SqlSeasons; guilds?: SqlGuilds; released?: () => Promise<Record<string, number>> },
   player: Player,
   upload: Upload,
 ): Promise<Ack> {
@@ -118,6 +119,12 @@ export async function acceptUpload(
   }
   // A binder on spec 10 (mode/faction1) can only be uploaded by a companion that knows which cards each faction can win.
   if (upload.specVersion < 10 && (stored.state.faction === 1 || events.some((event) => event["kind"] === "mode" && (event["key"] === "faction1" || String(event["key"]).startsWith("side:"))))) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
+  // A binder that has recorded mode/guild1, or any donation, can only be uploaded by a companion that knows the guild events.
+  const guildEvents = events.filter((event) => event["kind"] === "donate" || event["kind"] === "donateReturn");
+  const guildMarker = events.some((event) => event["kind"] === "mode" && event["key"] === "guild1");
+  if (upload.specVersion < 11 && (stored.state.guild === 1 || guildMarker || guildEvents.length)) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
   // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.
@@ -161,6 +168,10 @@ export async function acceptUpload(
   const available = (key: string, t: number): boolean => released[key] !== undefined && (released[key] as number) <= Math.min(t, now);
   const played = replay(events, deps.catalog, stored.state, { strict: true, available });
   if (!played.ok) throw new ApiError("rule_broken", { rule: played.rule, index: played.index });
+  // With guilds switched off a donation cannot be settled, so the upload is refused whole (the marker alone is harmless). A copy given back must be one
+  // the server refused.
+  if (guildEvents.length && !deps.guilds) throw new ApiError("rule_broken", { rule: "guilds-closed" });
+  if (deps.guilds && !(await deps.guilds.checkReturns(player.id, events as unknown as LedgerEvent[]))) throw new ApiError("rule_broken", { rule: "donate" });
 
   // Every ranked attempt (a drop, or a run of misses) must match the tape entries the server issued, with the chance
   // that the card's own run of misses had built up. Entering ranked2 starts every card's run again.
@@ -192,6 +203,9 @@ export async function acceptUpload(
   for (const event of events) if (event["kind"] === "tradeIn" && String(event["key"]).startsWith("pack:")) {
     const key = String(event["key"]); excluded[key] = (excluded[key] || 0) + 1;
   }
+  // Donations are settled now, from what the server knows, and stored with the upload.
+  const donations = deps.guilds ? await deps.guilds.decideDonations(player.id, events as unknown as LedgerEvent[], { excluded, casualDrops: stored.casualDrops + casualDropsOf(events) }, deps.now()) : [];
+  const returns = events.filter((event) => event["kind"] === "donateReturn").map((event) => ({ operation: String(event["trade"]), seq: Number(event["seq"]) }));
   const score = scoreOf(deps.catalog, played.state, excluded);
   // The trade halves and finished sets in this batch, for matching and the firsts feed.
   const trades = tradeRowsOf(events);
@@ -205,6 +219,7 @@ export async function acceptUpload(
       character: { name: upload.character, realm: upload.realm },
       score: { displayName: `${upload.character}-${upload.realm}`, ...score, attempts, rulesVersion: RULES_VERSION },
       flags, trades, completions, casualDrops: casualDropsOf(events),
+      ...(donations.length || returns.length ? { guild: { donations, returns } } : {}),
       ...(seasonCards.length ? { seasonal: { epoch: player.epoch, cards: seasonCards.map(event => ({ event, zone: deps.catalog.cards[event.key]!.set })) } } : {}),
     });
   } catch (error) {
