@@ -1,6 +1,6 @@
 # World of Warcards
 
-<!-- Current release description: addon 1.0.20 / companion 1.0.6 / server 1.0.5. Updated 16 November 2026. Existing gallery captures are genuine earlier-build screenshots; a Guild/batch capture is still needed. -->
+<!-- Current release description: addon 1.0.21 / companion 1.0.6 / server 1.0.5. Updated 16 November 2026. Existing gallery captures are genuine earlier-build screenshots; a Guild/batch capture is still needed. -->
 
 ![World of Warcards](../media/banner.png)
 
