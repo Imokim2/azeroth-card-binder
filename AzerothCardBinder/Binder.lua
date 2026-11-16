@@ -99,7 +99,8 @@ function ACB.initUI(saved, trade)
         end
         titleMark:SetText(saved.title and ("Title: " .. saved.title) or "")
         collectionMode:SetText(ACB.collectionModeText(saved))
-        titleMark:SetAlpha(tradeSelection and 0 or 1)
+        titleMark:SetAlpha((tradeSelection or mode == "guild") and 0 or 1)
+        collectionMode:SetAlpha(mode == "guild" and 0 or 1)
         local inTrade, inSettings = mode == "trade", mode == "settings"
         local inAchievements, inLadder, inWanted = mode == "achievements", mode == "ladder", mode == "wanted"
         collectionView:SetShown(not inTrade and not inSettings and not inAchievements and not inLadder and not inWanted and mode ~= "seasons" and mode ~= "guild")
@@ -169,6 +170,7 @@ function ACB.initUI(saved, trade)
         tradeView:Hide()
         if not frame:IsShown() and ACB.playSound then ACB.playSound("binder") end
         if tabs[destination] or destination == "wanted" then
+            if destination == "guild" and mode ~= "guild" then guildView:open() end
             mode = destination
         elseif type(destination) == "number" and ACB.pages[destination] and #ACB.pages[destination].cards > 0 then
             page, mode = destination, "collection"

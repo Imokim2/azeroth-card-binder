@@ -68,7 +68,7 @@ export type Commit = {
   casualDrops: number;
   seasonal?: { epoch: number; cards: { event: LedgerEvent; zone: string }[] };
   // Spec 11: how each donation in the batch was settled (credited to the guild, or refused), and the refused donations this batch gives back.
-  guild?: { donations: { operation: string; guildId: string; key: string; seq: number; t: number; result: "credited" | "refunded"; reason: string }[]; returns: { operation: string; seq: number }[] };
+  guild?: { donations: { operation: string; guildId: string; key: string; seq: number; t: number; character: string; result: "credited" | "refunded"; reason: string }[]; returns: { operation: string; seq: number }[] };
 };
 
 export type TradeRow = { seq: number; tradeId: string; direction: "in" | "out"; key: string; char: string; partner: string; t: number };
