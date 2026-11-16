@@ -4,7 +4,7 @@
 
 Find cards from mobs, dungeon bosses and gathering nodes while you play **World of Warcraft: Forever**. Keep them in your binder, open packs, trade your spares and work towards collection achievements.
 
-**[Download](https://worldofwarcards.co.uk/download)** · **[Website](https://worldofwarcards.co.uk)** · **[Help](https://worldofwarcards.co.uk/help)** · **[Discord](https://worldofwarcards.co.uk/discord)** · **[Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose)**
+**[Download](https://worldofwarcards.co.uk/download)** · **[CurseForge](https://www.curseforge.com/wow/addons/world-of-warcards)** · **[Website](https://worldofwarcards.co.uk)** · **[Help](https://worldofwarcards.co.uk/help)** · **[Discord](https://worldofwarcards.co.uk/discord)** · **[Report a problem](https://github.com/Imokim2/azeroth-card-binder/issues/new/choose)**
 
 Free and open source. Built for **Forever**; Retail and other Classic clients are not currently supported.
 

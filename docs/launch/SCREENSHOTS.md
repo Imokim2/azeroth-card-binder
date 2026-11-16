@@ -16,7 +16,7 @@ Capture the build intended for release. Keep full-size PNG originals, preferably
 | Next | `achievements.png` | Earned and unearned achievements with a title selected. A separate capture of another player’s title tooltip can help. | Finish sets and earn titles other addon users can see. |
 | First | `satchel.png` | The pack bag with named zone stacks. Include a zone/tier tooltip, keeping the cursor away from the cards themselves. | Unopened zone packs, ready to open or trade. |
 | Next | `seasons.png` | A configured season, its deadline, progress and listed rewards. Label a private test capture as a test; do not suggest a public season is running before one is announced. | Collect a fresh set alongside your normal Ranked binder. |
-| Next | `guild.png` | The Guild tab with a real shared collection and the donation confirmation. | Build a permanent collection with your guild. |
+| Next | `guild.png` | The full Guild binder with real confirmed and pending cards, plus the donation tray review and a last-copy warning. | Build a permanent collection with your guild. |
 | Optional | `settings.png` | General settings showing Open binder at current zone, or the Help page showing Report a bug and Discord. | Open at your current zone and find help from inside the binder. |
 | Optional | `holographic.png` | A short recording of a shiny card’s actual overlay and model movement, plus a still PNG. | A shiny version in the binder. |
 
