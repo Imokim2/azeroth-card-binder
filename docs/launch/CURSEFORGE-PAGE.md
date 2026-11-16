@@ -1,9 +1,6 @@
 # World of Warcards
 
-<!-- DESCRIPTION DRAFT ONLY — refreshed 15 November 2026.
-     Describes addon 1.0.15, companion 1.0.3 and server 1.0.2, including Harry's
-     merged card changes. Use genuine captures of the upload build; upload them
-     to the CurseForge gallery and replace these relative image URLs. -->
+<!-- Current release description: addon 1.0.19 / companion 1.0.5 / server 1.0.4. Updated 16 November 2026. Existing gallery captures are genuine earlier-build screenshots; a Guild/batch capture is still needed. -->
 
 ![World of Warcards](../media/banner.png)
 
@@ -43,9 +40,15 @@ Both players need the companion set up and a **Ranked** binder. Trading and gift
 
 ## Fill a guild binder
 
-Open **Guild** in your binder to browse the collection you build together. Donate a card from your Ranked binder, starting with your spare copies. Each donation is permanent: the copy leaves your collection and stays with the guild, even if you leave. Nobody can withdraw it, including officers.
+Open **Guild** to browse a full shared binder, with the same index, card pages, missing slots and edition previews as your personal collection.
 
-Start or join through the companion app. New guild binders are ready immediately. The person who creates one becomes its owner and approves members. Save and sync, then reload to see new donations and the shared collection. If the server cannot accept a donation, the copy comes back when the addon loads the reply.
+Choose **Donate cards** to open your own binder at a spare copy. Click cards to select them, or use **Add one copy to tray** for extra copies. Spare copies are offered first; **All owned** lets you include last copies. **Review tray** lists the batch before anything leaves your binder. Remove cards or keep choosing, and check the last-copy warnings before confirming.
+
+Donations are permanent: copies leave your collection and stay with the guild, even if you leave. Nobody can withdraw them, including officers. Donated copies appear as **Waiting for sync**; they do not add to confirmed ownership, completion or points until accepted.
+
+Keep companion **1.0.5** open. After confirming the batch, click **Save & sync** once to save it with a reload. The companion syncs automatically. Once it finishes, click **Refresh after sync** to load the reply. You do not need to switch apps or sync after every card. If the server cannot accept a donation, the copy returns when the addon loads the reply.
+
+Create or join through the companion. New guild binders are ready immediately, and their owner approves member applications. Forever characters have first names and surnames; everyone uses the same Forever world for guild lookup.
 
 Wanted lists are still available from the Guild page or with `/acb wanted`.
 
