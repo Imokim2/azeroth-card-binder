@@ -1,6 +1,6 @@
 # The campfire boost
 
-Forever's camping system lets a camp give buffs to the players sitting at it. While you have the campfire buff, your chance of a card drop is **doubled**. The buff is the game's own, so the boost starts and ends with it: an hour for the welcoming campfire (spell 1229739), two hours when the camp has been dusted with violet (spell 1289723). These ids were read from the game with `/acb auras`.
+Forever's camping system lets a camp give buffs to the players sitting at it. While you have the campfire buff, your chance of a card drop is **doubled**. The buff is the game's own, so the boost starts and ends with it: an hour for the welcoming campfire (spell 1229739), two hours when the camp has been dusted with violet (spell 1289723). The buff that shows on the buff bar is **Camp Benefits** (spell 1229741), which counts too: it is a welcoming or a violet buff by its own length (more than an hour in all is violet). These ids were read from the game with `/acb auras`.
 
 ## What it changes
 
@@ -10,11 +10,15 @@ Forever's camping system lets a camp give buffs to the players sitting at it. Wh
 
 ## What the player sees
 
-A small icon with the buff's own picture and the time left appears beside the buff bar while the buff lasts, with a tooltip. An add-on cannot add a real buff to the game's buff bar, so this is an icon of the add-on's own, placed next to it. It disappears when the buff ends.
+The game's own **Camp Benefits** buff stays on the buff bar. Two things say that the card rate has gone up with it:
 
-- `/acb campfire` says whether you have the buff and how long is left.
-- `/acb campfire icon` hides or shows the icon. The boost does not depend on the icon.
-- `/acb auras` lists everything on your character with spell ids (used to find the two ids above).
+1. **A line on that buff's tooltip**: "World of Warcards: common and rare card drop chance doubled." It is added wherever the game lets an add-on do it: both the newer tooltip data and the older `SetUnitAura`/`SetUnitBuff` calls are hooked, and it appears only while you have the buff.
+2. **An icon of the add-on's own, if that does not work.** An add-on cannot add a real buff to the buff bar, and whether the tooltip line shows depends on the client, which has not been checked. So the icon is shown beside the buff bar (with the buff's own picture and the time left) until the tooltip line has been seen working once on this computer, and then it hides itself. It can be **dragged** with the left mouse button anywhere on screen; where it is let go is remembered, and `/acb campfire reset` puts it back.
+
+- `/acb campfire` says whether you have the buff, how long is left, and whether the tooltip line has been seen.
+- `/acb campfire icon on` keeps the icon always, `off` never shows it, `auto` is the default described above and starts again; with no word it switches between on and off.
+- `/acb campfire reset` puts the icon back beside the buff bar.
+- `/acb auras` lists everything on your character with spell ids (used to find the ids above).
 - A new camp claim also earns a roll for the Fireside Friend card (docs/FELLOWSHIP.md), which a camp doubles like any common or rare card.
 
 ## Ranked and the server
@@ -32,5 +36,6 @@ The server then rechecks each of those rolls at double the chance: a boosted dro
 ## Things that depend on the game
 
 - The buff is detected by its spell id in the player's auras. If a game patch changes the ids, the boost stops until `ACB.campAuras` in `AzerothCardBinder/Campfire.lua` is updated.
-- Several camp features can give several buffs; only these two ids count. The icon and the boost use whichever has the longer time left.
+- Several camp features can give several buffs; only these three ids count. The icon and the boost use whichever has the longer time left.
+- If Camp Benefits shows with no timer, there is no time left to claim and the boost does not apply: the claim needs the buff's remaining seconds.
 - Nothing here has been tried in the real game yet: the aura calls, the icon's position beside the buff bar and the way the buff behaves when a camp ends all need a look in game.

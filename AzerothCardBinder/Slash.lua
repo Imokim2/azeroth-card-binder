@@ -14,7 +14,7 @@ function ACB.initSlash(saved, tools)
             report("Diagnostics " .. (saved.diagnostics and "on. Use /acb log to copy." or "off."))
         elseif cmd == "log" then
             ACB.showLog(table.concat(diagnostics, "\n"), saved.diagnostics)
-        elseif cmd == "campfire" or cmd == "campfire icon" then
+        elseif cmd == "campfire" or cmd:match("^campfire%s") then
             ACB.campfireCommand(saved, cmd:match("^campfire%s*(.-)$"), report)
         elseif cmd == "auras" then
             ACB.auraCommand(report)

@@ -5,6 +5,7 @@ local methods = {
     GetHeight = function(self) return self.height end,
     SetPoint = function(self, ...) self.point = { ... } end,
     SetFrameStrata = function(self, strata) self.strata = strata end, SetClampedToScreen = ignore,
+    GetPoint = function(self) local at = self.point or {}; return at[1], at[2], at[3], at[4], at[5] end,
     SetMovable = ignore, EnableMouse = function(self, enabled) self.mouseEnabled = enabled end,
     SetBackdrop = function(self) equal(self.template, "BackdropTemplate") end,
     SetBackdropColor = ignore,
@@ -146,8 +147,12 @@ math.random = function(min, max)
 end
 AzerothCardBinderDB = { counts = { invalid = -1 }, diagnostics = true }
 hintCallbacks = {}
-TooltipDataProcessor = { AddTooltipPostCall = function(_, callback) hintCallbacks[#hintCallbacks + 1] = callback end }
-Enum = { TooltipDataType = { Unit = 1, Object = 2 } }
+-- Only the unit and object tooltips are the hints' (tests use hintCallbacks[1]); the aura and spell ones are the campfire's.
+auraCallbacks = {}
+TooltipDataProcessor = { AddTooltipPostCall = function(kind, callback)
+    if kind == 1 or kind == 2 then hintCallbacks[#hintCallbacks + 1] = callback else auraCallbacks[#auraCallbacks + 1] = { kind = kind, callback = callback } end
+end }
+Enum = { TooltipDataType = { Unit = 1, Object = 2, Spell = 3, UnitAura = 4 } }
 loadAddon("CardPresentations.lua")
 loadAddon("CardDesigns.lua")
 loadAddon("CardModels.lua")
@@ -174,6 +179,7 @@ loadAddon("Guild.lua")
 loadAddon("GuildBatch.lua")
 loadAddon("Auras.lua")
 loadAddon("Campfire.lua")
+loadAddon("CampfireIcon.lua")
 loadAddon("Fellowship.lua")
 loadAddon("FolioUi.lua")
 loadAddon("FolioIndex.lua")

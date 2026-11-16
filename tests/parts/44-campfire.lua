@@ -162,9 +162,9 @@ do
             AzerothCardBinderDB = AzerothCardBinderDB or {}
             local keep = AzerothCardBinderDB.campfireIcon
             ACB.campfireCommand(AzerothCardBinderDB, "icon", say)
-            equal(AzerothCardBinderDB.campfireIcon, false); equal(ACB.campfireShown(), false, "hidden by the setting")
+            equal(AzerothCardBinderDB.campfireIcon, "off"); equal(ACB.campfireShown(), false, "hidden by the setting")
             ACB.campfireCommand(AzerothCardBinderDB, "icon", say)
-            equal(AzerothCardBinderDB.campfireIcon, true); equal(ACB.campfireShown(), true)
+            equal(AzerothCardBinderDB.campfireIcon, "on"); equal(ACB.campfireShown(), true)
             AzerothCardBinderDB.campfireIcon = keep
         end)
         withBuffs({ { spellId = VIOLET, remaining = 7000, duration = 7200 } }, function()
