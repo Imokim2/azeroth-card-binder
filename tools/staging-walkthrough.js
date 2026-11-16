@@ -80,7 +80,7 @@ function checkout(options = {}) {
   });
   guard("the catalog carries both sets of rates and the held-back list, and the committed list is what the rule gives", () => {
     const catalog = JSON.parse(read("packages/shared/catalog.json"));
-    const base = Object.values(catalog.cards).filter((card) => !card.baseKey && !card.faction); // the cards both factions can win: the launch half is of these
+    const base = Object.values(catalog.cards).filter((card) => !card.baseKey && !card.faction && !card.activity); // the cards both factions can win: the launch half is of these
     const withRates = base.filter((card) => Number.isInteger(card.dropProfile.rate2)).length;
     const held = base.filter((card) => card.seasonal).length;
     const { draft, files } = require("./launch-collection.js");

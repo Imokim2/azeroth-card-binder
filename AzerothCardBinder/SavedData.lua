@@ -107,7 +107,7 @@ local function cleanLedgerFields(saved)
     local run = saved.run
     local function count(value) return type(value) == "number" and value >= 1 and value == math.floor(value) end
     if type(run) == "table" and type(run.key) == "string" and ACB.cards[run.key] and count(run.n) and count(run.last) and run.last >= run.n then
-        saved.run = { key = run.key, n = run.n, last = run.last }
+        saved.run = { key = run.key, n = run.n, last = run.last, boost = run.boost == true or nil }
     else
         saved.run = nil
     end
@@ -179,6 +179,7 @@ function ACB.cleanSavedData(saved)
     end
     saved.sets, saved.titles = tableOrEmpty(saved.sets), tableOrEmpty(saved.titles)
     ACB.cleanSeasonData(saved)
+    if ACB.cleanFellowship then ACB.cleanFellowship(saved) end -- Fellowship.lua
     if ACB.cleanGuildData then ACB.cleanGuildData(saved) end -- Guild.lua; the small tools that load only part of the add-on do not have it
     ACB.seasonRewardTitles(saved)
     for key, value in pairs(saved.sets) do

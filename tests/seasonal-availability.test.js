@@ -12,7 +12,7 @@ const event = (kind, key, count = 0, tape = 0, extra = {}) => ({ seq: 1, t: 1700
 const base = Object.entries(catalog.cards).filter(([, card]) => !card.baseKey);
 const seasonal = base.filter(([, card]) => card.seasonal).map(([key]) => key);
 // Cards only one faction can win (card.faction, spec 10) are always available and never required, so they are neither.
-const launch = base.filter(([, card]) => !card.seasonal && !card.faction).map(([key]) => key);
+const launch = base.filter(([, card]) => !card.seasonal && !card.faction && !card.activity).map(([key]) => key); // nor are the Fellowship cards (earned by an activity)
 const markers = ['chase1', 'chase2', 'launch1'].map(key => event('mode', key, 0, 0, { t: 1000 }));
 const nobody = () => false;
 const everybody = () => true;
@@ -35,7 +35,7 @@ test('a page lists its launch cards as required, only where that differs from al
         assert.deepEqual(needed.slice().sort(), set.cards.filter(key => !catalog.cards[key].seasonal && !catalog.cards[key].faction).sort(), set.title);
         if (set.required) assert.ok(set.required.length < set.cards.length, set.title);
     }
-    assert.equal(catalog.sets.reduce((sum, set) => sum + (set.required || set.cards).length, 0), launch.length);
+    assert.equal(catalog.sets.reduce((sum, set) => sum + (set.required || set.cards).length, 0), launch.length + base.filter(([, card]) => card.activity).length); // the pages need the launch cards and the Fellowship cards
 });
 
 test('mode/launch1 comes once, only after chase2, with nothing else in it', () => {

@@ -1,0 +1,42 @@
+{
+  "events": [
+    {
+      "dust": 0,
+      "shiny": 0,
+      "tape": 0,
+      "partner": "",
+      "trade": "",
+      "char": "Alice-RealmName",
+      "seq": 1,
+      "t": 1400,
+      "kind": "camp",
+      "key": "violet",
+      "count": 7200,
+      "prev": "00000000000000000000000000000000",
+      "h": "db4fba5ef34faed9ede9b05d42130550"
+    },
+    {
+      "dust": 0,
+      "shiny": 0,
+      "tape": 1,
+      "partner": "camp",
+      "trade": "",
+      "char": "Alice-RealmName",
+      "seq": 2,
+      "t": 1410,
+      "kind": "drop",
+      "key": "npc:589",
+      "count": 1,
+      "prev": "db4fba5ef34faed9ede9b05d42130550",
+      "h": "22e473c3f67d408002026ade733af250"
+    }
+  ],
+  "head": {
+    "seq": 2,
+    "hash": "22e473c3f67d408002026ade733af250"
+  },
+  "texts": [
+    "1|1400|camp|violet|7200|0|0|0|||Alice-RealmName|00000000000000000000000000000000",
+    "2|1410|drop|npc:589|1|0|0|1|camp||Alice-RealmName|db4fba5ef34faed9ede9b05d42130550"
+  ]
+}

@@ -113,7 +113,7 @@ function ACB.cardModelReady(card, model)
 end
 
 local function loadModel(model, entry)
-    if ACB.modelsBlocked() or not model:IsVisible() then return end
+    if ACB.modelsBlocked() or not model:IsVisible() or entry.activity then return end
     if entry.profession then
         if entry.model then safe(model.SetModel, model, entry.model) end
     else

@@ -15,6 +15,7 @@ test('every card has rate2 by the published rule, and critter editions inherit i
     let critters = 0, limited = 0;
     for (const card of base) {
         const p = card.dropProfile;
+        if (card.activity) continue; // a flat profile: the same in every generation
         assert.ok(Number.isInteger(p.rate2) && p.rate2 >= p.rate && p.rate2 <= 10000, card.name);
         if (p.tier === 'critter') { assert.equal(p.rate2, Math.min(10000, p.rate * 4), card.name); critters++; }
         else if (p.tier === 'chase' && p.style !== 'chase') { assert.equal(p.rate2, p.rate, card.name); limited++; }

@@ -2,7 +2,7 @@ test("ordinary cards stay still without repeated facing calls but can be rotated
     local seen = {}
     shiftDown = false
     for _, entry in pairs(ACB.cards) do
-        if not entry.baseKey and (not entry.profession or entry.model) and (entry.rarity == "common" or entry.rarity == "rare") then
+        if not entry.baseKey and not entry.activity and (not entry.profession or entry.model) and (entry.rarity == "common" or entry.rarity == "rare") then -- (an activity card is an icon, not a model)
             local card = ACB.createCard(UIParent, true, ignore)
             card:set(entry, 1)
             card.model.fileID = entry.model or 1000

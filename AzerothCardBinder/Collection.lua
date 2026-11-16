@@ -172,10 +172,13 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     end
 
     function collection:roll(guid, origin, observedRank)
-        local card = ACB.source(guid)
-        if not card or (card.profession ~= nil) ~= (origin == "gather") then return end
+        if origin ~= "activity" and ACB.settleFellowship then ACB.settleFellowship(self) end -- rolls owed for a camp, before this attempt takes its tape entry
+        -- An activity card (Fellowship.lua) is rolled by its own key, once for each activity completed: there is no creature to remember.
+        local activity = origin == "activity"
+        local card = activity and ACB.cards[guid] or ACB.source(guid)
+        if not card or (card.profession ~= nil) ~= (origin == "gather") or (card.activity ~= nil) ~= activity then return end
         if origin == "encounter" and not card.boss then return end
-        if self.rolled[guid] then
+        if not activity and self.rolled[guid] then
             log("Already rolled: " .. card.name .. " (" .. origin .. ")")
             return
         end
@@ -197,30 +200,33 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             end
             self.pausedNotice = nil
         end
-        remember(guid)
+        if not activity then remember(guid) end
         -- Ranked uses the card's listed rate, so the server can recheck every drop without seeing the creature.
         saved.misses = saved.misses or {}
         -- Each profile decides when protection rises; a drop starts it over.
         local misses = ACB.luck(saved, card)
         local chance = ACB.dropChance(card, misses, saved.balancedDrops, not ranked and observedRank or nil)
+        -- At a camp with its buff the chance is doubled, and a Ranked binder writes that down first (Campfire.lua).
+        local boost = ACB.campBoost ~= nil and ACB.campBoost(saved, ledger, ranked, card) -- Campfire.lua; the small tools that load only part of the add-on lack it
+        if boost then chance = math.min(10000, chance * ACB.campFactor) end
         local guaranteed = chance >= 10000
         -- A certain drop needs no roll; a Casual roll is drawn only when it is needed.
         local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= chance
         -- Any attempt on a creature can find a card pack (see Packs.lua), whether or not the card drops.
-        local packWin = self.packRoll and self:packRoll(card, ranked and entry or nil)
+        local packWin = not activity and self.packRoll and self:packRoll(card, ranked and entry or nil)
         if saved.attempts then saved.attempts[card.key] = (saved.attempts[card.key] or 0) + 1 end
-        log(("%s: %s at %g%% (%s)"):format(origin, card.name, chance / 100,
+        log(("%s: %s at %g%%%s (%s)"):format(origin, card.name, chance / 100, boost and " with the campfire" or "",
             guaranteed and "card, certain by now" or dropped and "card" or "miss"))
         if not dropped then
             saved.misses[card.key] = misses + 1
             -- Ranked writes every attempt down: misses in a row on one card are one run, kept open until something else happens.
             if ranked and ledger then
                 local run = saved.run
-                if run and run.key == card.key and run.last == tapeIndex - 1 then
+                if run and run.key == card.key and run.last == tapeIndex - 1 and (run.boost == true) == boost then
                     run.n, run.last = run.n + 1, tapeIndex
                 else
                     ledger:flushRun()
-                    saved.run = { key = card.key, n = 1, last = tapeIndex }
+                    saved.run = { key = card.key, n = 1, last = tapeIndex, boost = boost or nil }
                 end
             end
             if packWin then
@@ -246,7 +252,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             if ranked then shiny = ACB.tapeShiny(entry, ACB.shinyOdds) == 1 else shiny = random(1, ACB.shinyOdds) == 1 end
         end
         if shiny then saved.shiny[card.key] = true end
-        record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex })
+        record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex, partner = boost and ranked and "camp" or nil })
         if packWin then self:addPack(card, tapeIndex, entry) end
         -- A drop rolled with this computer's own random numbers cannot be rechecked by the server.
         if not ranked then saved.casualDrops = (saved.casualDrops or 0) + 1 end
@@ -265,6 +271,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         if (not out and not into) or (give and not out) or (take and not into)
             or give == take or (out and ACB.itemCount(saved, give) < 1) then return false end
         if ledger then ledger:flushRun() end
+        local fellow = ACB.fellowshipMarker and ACB.fellowshipMarker(saved, ledger) -- Fellowship.lua: the trade or gift earns a roll once its marker is written
         local function transfer(kind, item, delta)
             if item.pack then
                 saved.packs = saved.packs or {}
@@ -297,6 +304,7 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             report(("Gifted %s."):format(out.name))
         end
         if ACB.refreshSatchel then ACB.refreshSatchel() end
+        if fellow then ACB.fellowshipEarn(saved, out and into and "trade" or "gift", self) end
         return true
     end
 

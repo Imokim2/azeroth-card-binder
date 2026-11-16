@@ -24,6 +24,7 @@ test('balance vectors cover both policies, late guarantee boundaries and weighte
     for (const item of vectors.packs) assert.equal(packPick(catalog, item.zone, item.entry, catalog.shinyOdds, true), item.key);
     for (const card of Object.values(catalog.cards)) {
         const p = card.dropProfile;
+        if (card.activity) { assert.deepEqual([p.style, p.rate, p.rate2, p.packWeight], ['flat', 100, 100, 0], card.name); continue; } // Fellowship: flat, never in a pack
         assert.ok(Number.isInteger(p.rate) && p.rate > 0 && p.rate <= 10000);
         assert.ok(Number.isInteger(p.packWeight) && p.packWeight > 0);
         if (card.baseKey) assert.deepEqual(p, catalog.cards[card.baseKey].dropProfile);

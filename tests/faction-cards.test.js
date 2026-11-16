@@ -37,7 +37,7 @@ test('the catalog: 162 cards for each side, all added in spec 10, never held bac
     }
     const added = base.filter(([, card]) => card.since === 10);
     assert.equal(added.filter(([, card]) => !card.faction).length, 36, 'the dungeon and raid creatures that are friendly to both sides');
-    for (const [key, card] of base) if (card.since) assert.equal(card.since, 10, key);
+    for (const [key, card] of base) if (card.since && !card.activity) assert.equal(card.since, 10, key); // the Fellowship cards are spec 12
 });
 
 test('faction1 comes once, only after launch1, with nothing else in it; a side only after faction1, once per character', () => {

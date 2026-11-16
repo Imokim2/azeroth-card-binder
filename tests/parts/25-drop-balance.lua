@@ -61,7 +61,7 @@ test("the second drop generation: critters four times as likely, ordinary cards 
     end
     local seen = { critter = 0, regular = 0, limited = 0, chase = 0 }
     for _, card in pairs(ACB.cards) do
-        local p = not card.baseKey and card.dropProfile
+        local p = not card.baseKey and not card.activity and card.dropProfile -- an activity card has a flat profile of its own (Fellowship)
         if p then
             if p.tier == "critter" then
                 seen.critter = seen.critter + 1

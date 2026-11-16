@@ -41,7 +41,7 @@ test("every card has what the ledger rules need: a name, a known rarity and a kn
         assert.ok(card.name && !/[|\r\n]/.test(card.name), `${key} has a bad name`);
         assert.ok(committed.dust.recycle[card.rarity] > 0, `${key}: no dust value for ${card.rarity}`);
         assert.strictEqual(committed.dust.craft[card.rarity], committed.dust.recycle[card.rarity] * 10);
-        assert.ok(committed.rates[card.rank] > 0, `${key}: no rate for ${card.rank}`);
+        if (!card.activity) assert.ok(committed.rates[card.rank] > 0, `${key}: no rate for ${card.rank}`); // an activity card has a flat profile of its own
     }
     assert.ok(committed.shinyOdds >= 1);
 });

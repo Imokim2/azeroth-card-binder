@@ -26,6 +26,8 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 ## Unreleased
 
+- Add the Fellowship set: four new cards that drop only when you do something together, at one in a hundred each time and never building up after misses. The Trader (a trade, for both players), The Gifter (a gift, given or received), The Benefactor (a card donated to your guild binder) and Fireside Friend (sitting at a camp with the campfire buff). A camp doubles the chance. Finishing the set earns the Better Together achievement and the Fellow Traveler title. This is ledger version 12 too. The cards use game icons for now.
+- Add the campfire boost. While you have the welcoming campfire buff (or the violet one, which lasts two hours), your chance of a common or rare card drop is doubled, in Casual and in Ranked (elites, rare spawns and bosses are not boosted). A small icon with the time left appears beside the buff bar and goes when the buff does; `/acb campfire` says where it stands and `/acb campfire icon` hides the icon. A Ranked binder writes the camp into its ledger, so this is ledger version 12 and the companion must be updated before the add-on. Pack finds and shiny chances are unchanged. Also adds `/acb auras`, which lists the buffs on your character with their spell ids.
 Nothing yet.
 
 ## 1.0.15 - 2026-11-15 (companion 1.0.3, server 1.0.2)

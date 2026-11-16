@@ -144,7 +144,9 @@ test("gift inventory events contain only the real transfer and gift history surv
     local collection = ACB.newCollection(saved, function() return 10000 end, ignore, ignore, nil, nil, ledger)
     local before = #saved.ledger
     assert(collection:swap("npc:589", nil, "bob-realm", "gift-ledger"))
-    equal(#saved.ledger, before + 1)
+    -- The first trade or gift also writes the markers that come before it (the drop rules, the faction rules, mode/fellow1); the transfer is the one event after them.
+    for index = before + 1, #saved.ledger - 1 do equal(saved.ledger[index].kind, "mode") end
+    equal(saved.ledger[#saved.ledger - 1].key, "fellow1")
     equal(saved.ledger[#saved.ledger].kind, "tradeOut")
     equal(saved.ledger[#saved.ledger].key, "npc:589")
     assert(collection:swap(nil, "npc:573", "bob-realm", "gift-received"))

@@ -49,7 +49,7 @@ test("the Achievements tab lists earned titles and lets the player equip and hid
     for _, widget in ipairs(widgets) do
         if widget.title == "Card Trader" and widget.OnClick then choose = widget end
         if widget.text == "Hide title" then hide = widget.parent end
-        if widget.text == "1 / 18 achievements earned" then status = widget end
+        if widget.text == "1 / 19 achievements earned" then status = widget end
     end
     assert(status and choose and hide)
     choose:OnClick()

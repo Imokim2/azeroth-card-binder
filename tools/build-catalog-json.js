@@ -19,7 +19,7 @@ const output = process.env.CATALOG_OUT || path.join(root, "packages", "shared", 
 const dump = String.raw`
 local addon = "AzerothCardBinder"
 local ACB = {}
-for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "DropRates.lua", "Editions.lua", "UnobtainableCards.lua", "LaunchCollection.lua" }) do
+for _, file in ipairs({ "Catalog.lua", "CatalogForever.lua", "CatalogExtra.lua", "CatalogNodes.lua", "CatalogFellowship.lua", "DropRates.lua", "Editions.lua", "UnobtainableCards.lua", "LaunchCollection.lua" }) do
     assert(loadfile(addon .. "/" .. file))(addon, ACB)
 end
 
@@ -62,6 +62,7 @@ for _, page in ipairs(ACB.pages) do
         if card.seasonal then entry.seasonal = true end -- held back for seasons (LaunchCollection.lua)
         if card.unobtainable then entry.unobtainable = true end -- its creature cannot be killed (UnobtainableCards.lua)
         if card.faction then entry.faction = card.faction end -- only that faction can win it ("alliance" or "horde"; ledger spec 10)
+        if card.activity then entry.activity = card.activity end -- earned only by completing this activity (Fellowship, ledger spec 12)
         if card.since then entry.since = card.since end -- added in this ledger spec: not acquired before mode/faction1
         if card.profession then entry.profession = card.profession end
         entry.dropProfile, entry.critter = card.dropProfile, card.critter

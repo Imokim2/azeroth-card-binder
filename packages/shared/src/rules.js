@@ -21,6 +21,13 @@ const PACK_SIZE = 5;
 // The first time a binder enters ranked2 it may name a tape position this far past the last one it recorded, for the
 // misses a binder kept before attempts were written down. Afterwards no gap is allowed at all.
 const BASELINE_GAP = 2000;
+// Spec 12, the campfire (docs/CAMPFIRE.md): standing at a camp with its buff doubles the chance of a card drop. A boosted attempt is written with partner
+// "camp". The camp event says how long the buff has left, which can be at most the buff's own length.
+const CAMP_SECONDS = { welcoming: 3600, violet: 7200 };
+const CAMP_GRACE = 120; // a boosted drop may be written this long after the claimed buff ended (the add-on notices a buff ending a moment later)
+const CAMP_FACTOR = 2;
+// The boost is for ordinary creatures: the cards of common and rare rarity. Elites, rare spawns and bosses (epic and legendary cards) are not boosted.
+const CAMP_RARITIES = ["common", "rare"];
 const { familyCount } = require("./editions.js");
 const { packInfo } = require("./packs.js");
 
@@ -46,7 +53,19 @@ const copyState = (state) => ({
     ...(state.tieredPacks ? { tieredPacks: true } : {}),
     ...(state.seasonClaims ? { seasonClaims: { ...state.seasonClaims } } : {}),
     ...(state.guild === 1 ? { guild: 1, donations: { ...(state.donations || {}) } } : {}),
+    ...(state.camp === 1 ? { camp: 1, campEnd: state.campEnd || 0, campBoosted: state.campBoosted || 0 } : {}),
+    ...(state.fellow === 1 ? { fellow: 1, credits: { ...(state.credits || {}) }, ...(state.lastOut ? { lastOut: { ...state.lastOut } } : {}) } : {}),
 });
+
+// An activity card (Fellowship) can be tried for only as often as its activity was completed. Returns true when this attempt has no roll to use; otherwise
+// spends `attempts` rolls. (Called only once the rest of the event is known to be fine, so a refused event changes nothing.)
+function spendActivity(state, catalog, event, attempts) {
+    const activity = catalog.cards[event.key]?.activity;
+    if (!activity) return false;
+    if (state.fellow !== 1 || (state.credits?.[activity] || 0) < attempts) return true;
+    state.credits = { ...state.credits, [activity]: state.credits[activity] - attempts };
+    return false;
+}
 
 // Returns the name of the rule an event breaks, or null. Mutates `state` only when the event is fine.
 // `available(baseKey, t)`, when given, says whether a card held back for seasons (catalog card.seasonal) may be acquired at time t. It is
@@ -61,7 +80,7 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
     const packTrade = isPackKey && (event.kind === "tradeIn" || event.kind === "tradeOut");
     if (packTrade && !pack) return "unknown-set";
     const before = packTrade ? state.packs[packZone] || 0 : state.counts[event.key] || 0;
-    const isCardEvent = event.kind !== "set" && event.kind !== "mode" && event.kind !== "packFind" && event.kind !== "packOpen" && event.kind !== "seasonReward";
+    const isCardEvent = event.kind !== "set" && event.kind !== "mode" && event.kind !== "packFind" && event.kind !== "packOpen" && event.kind !== "seasonReward" && event.kind !== "camp";
     if (isCardEvent && !card && !packTrade) return "unknown-card";
     if (card && card.baseKey && (event.kind === "miss" || event.kind === "craft")) return "edition";
     if (card && card.baseKey && !state.editions && (event.kind === "drop" || event.kind === "packCard")) return "edition";
@@ -78,6 +97,8 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
         if (added?.since && state.faction !== 1) return "retired";
         if (added?.faction && state.sides?.[event.char] !== added.faction) return "faction";
     }
+    // An activity card is earned by its activity and nothing else: it cannot be crafted. (A pack never holds one, and a trade or a donation of it is fine.)
+    if (card?.activity && event.kind === "craft") return "activity";
     if (card && card.balanceOnly && !(state.balance >= 1) && (event.kind === "drop" || event.kind === "packCard")) return "balance";
     // Only a drop may be shiny; only a drop, a miss or the switch into ranked2 may use the tape; only a recycle or a craft moves dust.
     const usesTape = event.kind === "drop" || event.kind === "miss" || event.kind === "packFind" || event.kind === "packOpen" || event.kind === "packCard"
@@ -87,9 +108,26 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
     if (state.packLeft > 0 && event.kind !== "packCard") return "pack";
     if (!usesTape && event.tape !== 0) return "field";
     if (event.kind !== "recycle" && event.kind !== "craft" && event.dust !== 0) return "dust";
-    if (event.kind !== "tradeIn" && event.kind !== "tradeOut" && event.kind !== "seasonReward" && event.kind !== "donate" && event.kind !== "donateReturn" && (event.partner !== "" || event.trade !== "")) return "trade";
+    // An attempt made at a camp with its buff says so in `partner`. Only a Ranked attempt can be boosted, and a boosted drop must fall within the buff the
+    // binder claimed (a run of misses is written when something else happens, so its own time says nothing about when its attempts were made).
+    const boosted = (event.kind === "drop" || event.kind === "miss") && event.partner === "camp" && event.trade === "";
+    if (boosted) {
+        if (state.camp !== 1 || state.mode !== "ranked2" || event.tape < 1) return "camp";
+        if (!CAMP_RARITIES.includes(catalog.cards[card.baseKey || event.key]?.rarity)) return "camp";
+        if (event.kind === "drop" && event.t > (state.campEnd || 0) + CAMP_GRACE) return "camp";
+    }
+    if (!boosted && event.kind !== "tradeIn" && event.kind !== "tradeOut" && event.kind !== "seasonReward" && event.kind !== "donate" && event.kind !== "donateReturn" && (event.partner !== "" || event.trade !== "")) return "trade";
     let counts = state.counts;
     switch (event.kind) {
+        // Spec 12: the binder says it is standing at a camp with its buff, and how long the buff has left. Only a Ranked binder that has recorded
+        // mode/camp1. The buff cannot have more time left than it lasts, and the claim can only reach further than the one before.
+        case "camp": {
+            if (state.camp !== 1 || state.mode !== "ranked2") return "camp";
+            const longest = CAMP_SECONDS[event.key];
+            if (!longest || event.count < 1 || event.count > longest) return "camp";
+            state.campEnd = Math.max(state.campEnd || 0, event.t + event.count);
+            break;
+        }
         // Spec 11: a Ranked binder gives one copy of a card to its guild (docs/proposals/GUILD-BINDERS-DESIGN.md). `partner` is the guild's id and
         // `trade` an operation id made up by the add-on, used once. The copy leaves the binder at once. The server credits the guild, or
         // refuses and issues the copy back, which the binder then writes as donateReturn (the same operation, guild and card).
@@ -123,6 +161,7 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
             } else if (event.tape !== 0) {
                 return "tape";
             }
+            if (spendActivity(state, catalog, event, 1)) return "activity";
             if (event.shiny === 1) state.shiny[event.key] = true;
             if (event.tape > 0) { state.lastTape = event.tape; state.lastAttempt = { key: event.key, tape: event.tape }; }
             break;
@@ -132,6 +171,7 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
             if (state.mode !== "ranked2") return "mode";
             if (event.count < 1) return "miss";
             if (event.tape - event.count !== state.lastTape) return "tape";
+            if (spendActivity(state, catalog, event, event.count)) return "activity";
             state.lastTape = event.tape;
             state.lastAttempt = { key: event.key, tape: event.tape };
             break;
@@ -272,6 +312,21 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
                 state.donations = {};
                 break;
             }
+            if (event.key === "fellow1") {
+                // Spec 12: activities earn rolls for the Fellowship cards from here on. Only after faction1, once.
+                if (event.count !== 0 || state.faction !== 1 || state.fellow === 1) return "mode";
+                state.fellow = 1;
+                state.credits = { trade: 0, gift: 0, donate: 0, camp: 0 };
+                break;
+            }
+            if (event.key === "camp1") {
+                // Spec 12: campfire boosts are allowed from here on. Only after faction1, once.
+                if (event.count !== 0 || state.faction !== 1 || state.camp === 1) return "mode";
+                state.camp = 1;
+                state.campEnd = 0;
+                state.campBoosted = 0;
+                break;
+            }
             if (event.key === "editions1") {
                 if (event.count !== 0) return "mode";
                 state.editions = true;
@@ -292,15 +347,29 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
         default:
             return "kind";
     }
+    // Spec 12, the Fellowship cards (docs/FELLOWSHIP.md): each completed activity earns one roll for its card, and a drop or miss of an activity card
+    // spends one. A swap is a tradeOut with its tradeIn straight after; a tradeOut with none is a gift given, a tradeIn with no tradeOut before it a
+    // gift received. Both sides of a swap, and both ends of a gift, earn a roll. Nothing is earned before mode/fellow1.
+    if (state.fellow === 1) {
+        const earn = (activity, amount = 1) => { state.credits = { ...(state.credits || {}), [activity]: (state.credits?.[activity] || 0) + amount }; };
+        if (event.kind === "tradeOut") { earn("gift"); state.lastOut = { trade: event.trade, seq: event.seq }; }
+        else if (event.kind === "tradeIn") {
+            if (state.lastOut && state.lastOut.trade === event.trade && state.lastOut.seq === event.seq - 1) { earn("gift", -1); earn("trade"); } else earn("gift");
+        } else if (event.kind === "donate") earn("donate");
+        else if (event.kind === "camp") earn("camp");
+    }
     if (state.balance >= 1 && event.tape > 0 && (event.kind === "drop" || event.kind === "miss")) {
         const source = card.baseKey || event.key;
         // The first cycle may have inherited old pity. Start statistics after its
         // first drop, so only complete cycles under this policy are compared.
         if (state.balanceReady[source]) {
-            state.balanceAttempts[source] = (state.balanceAttempts[source] || 0) + (event.kind === "miss" ? event.count : 1);
+            // A boosted attempt had double the chance, so it counts double in the luck statistics: a camper is not mistaken for a lucky player.
+            const attempts = event.kind === "miss" ? event.count : 1;
+            state.balanceAttempts[source] = (state.balanceAttempts[source] || 0) + attempts * (boosted ? CAMP_FACTOR : 1);
             if (event.kind === "drop") state.balanceDrops[source] = (state.balanceDrops[source] || 0) + 1;
         } else if (event.kind === "drop") state.balanceReady[source] = true;
     }
+    if (boosted) state.campBoosted = (state.campBoosted || 0) + (event.kind === "miss" ? event.count : 1);
     if (packTrade) {
         if (event.count === 0) delete state.packs[packZone]; else state.packs[packZone] = event.count;
     } else if (isCardEvent && event.kind !== "miss") counts[event.key] = event.count;
@@ -344,4 +413,4 @@ function snapshotDifferences(snapshot, state) {
     return wrong;
 }
 
-module.exports = { newState, copyState, applyEvent, replay, snapshotDifferences, BASELINE_GAP };
+module.exports = { newState, copyState, applyEvent, replay, snapshotDifferences, BASELINE_GAP, CAMP_SECONDS, CAMP_GRACE, CAMP_FACTOR, CAMP_RARITIES };

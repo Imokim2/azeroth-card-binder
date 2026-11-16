@@ -127,7 +127,8 @@ test("the generated catalog is large, consistent and fits the card", function()
             assert(card.name ~= "" and #card.name <= 44, "card name fits: " .. card.name)
             assert(card.id and not ids[card.key], "unique card " .. card.key)
             ids[card.key] = true
-            assert(ACB.sources[card.profession and "GameObject" or "Creature"][card.id] == card, "source index for " .. card.key)
+            -- An activity card (Fellowship) has no creature: it is earned by an activity, so there is nothing to find it by.
+            assert(card.activity and not ACB.sources.Creature[card.id] or ACB.sources[card.profession and "GameObject" or "Creature"][card.id] == card, "source index for " .. card.key)
         end
     end
     assert(count > 3000, "the catalog should hold thousands of cards, has " .. count)

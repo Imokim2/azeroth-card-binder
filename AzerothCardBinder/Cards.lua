@@ -27,7 +27,7 @@ local panel, plate = { 0.055, 0.05, 0.045 }, { 0.06, 0.05, 0.04 }
 
 local typeNames = { mining = "Mining", herbalism = "Herbalism" }
 local function typeName(entry)
-    if entry.profession then return typeNames[entry.profession] or "Gathering" end
+    if entry.profession or entry.activity then return entry.activity and "Fellowship" or typeNames[entry.profession] or "Gathering" end
     if entry.boss then return "Boss" end
     if entry.rank == "elite" then return "Elite" end
     if entry.rank == "rare" or entry.rank == "rareelite" then return "Rare" end
@@ -329,7 +329,7 @@ function ACB.createCard(parent, previewUnowned, share, options)
     function card:set(entry, count, shiny, wanted)
         local found, had = count > 0, self.owned > 0
         self.showModels = useModels and not ACB.modelsBlocked()
-        local showModel = self.showModels and (found or previewUnowned)
+        local showModel = self.showModels and (found or previewUnowned) and not entry.activity -- an activity card is a game icon, not a model
         shiny = found and shiny == true
         wanted = not found and wanted == true
         if self.entry ~= entry then
@@ -366,8 +366,8 @@ function ACB.createCard(parent, previewUnowned, share, options)
         self.veil:SetShown(not found)
         self.node:SetDesaturated(not found)
         self.node:SetAlpha(found and 1 or 0.68)
-        self.node:SetTexture(entry.profession and entry.icon or ACB.folioArt .. "Seal.tga")
-        self.node:SetShown(not self.showModels or (entry.profession ~= nil and not (modelReady and self.modelFor == entry.key)))
+        self.node:SetTexture((entry.profession or entry.activity) and entry.icon or ACB.folioArt .. "Seal.tga")
+        self.node:SetShown(not self.showModels or entry.activity ~= nil or (entry.profession ~= nil and not (modelReady and self.modelFor == entry.key)))
 
         -- Creatures use their in-game model by NPC ID, gathering nodes by the model file of the node.
         self.model:SetShown(showModel == true)

@@ -1,6 +1,6 @@
 # Ledger specification
 
-Version 11. Version 11 adds `mode/guild1` and the `donate` and `donateReturn` events (guild binders, below). Version 10 adds `mode/faction1` and `mode/side:*` (cards only one faction can win, below). Version 9 adds `mode/launch1` (cards held back for seasons, below). Version 8 adds `mode/chase2` (the second set of drop rates, below). Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
+Version 12. Version 12 adds `mode/camp1`, the `camp` event and boosted attempts (the campfire, below), and `mode/fellow1` with the Fellowship cards earned by activities (below). Version 11 adds `mode/guild1` and the `donate` and `donateReturn` events (guild binders, below). Version 10 adds `mode/faction1` and `mode/side:*` (cards only one faction can win, below). Version 9 adds `mode/launch1` (cards held back for seasons, below). Version 8 adds `mode/chase2` (the second set of drop rates, below). Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
 
 ## Seasonal rewards (version 7)
 
@@ -17,6 +17,28 @@ Trade-only keys `pack:<pack-ID>` are allowed in `tradeIn` and `tradeOut`. Their 
 Replay uses `packType` to remember the full ID of an opened pack, and `packLeft` is 1, 3 or 5. When a pack is received, it initializes `packOutputs[pack-ID]`, then records subsequent packCard counts of that type. Pending, unmatched, Casual-origin or otherwise tainted pack trades exclude those outputs for Ranked scoring. Maintenance traces taint from packs to their opened cards and subsequent trades; when an honest pending pair matches, its outputs count again. This deliberately over-excludes when found and traded packs of the same type are mixed. Casual packFind events also constitute unverified provenance, even if they never drop a card or are traded before opening. Local integrity checks still cover card counts and dust; server replay is authoritative for pack counts.
 
 Specification 6 is required for `packs2`, tiered pack find/open IDs and pack trade keys; a collection that has used these cannot sync with an older companion. Legacy versions 2–5 remain replayable. See `satchel.json` and the Lua vectors for pack boundary/gift examples.
+
+## Fellowship cards (version 12)
+
+Four cards, `npc:900000001` to `npc:900000004` (the page `FW`, docs/FELLOWSHIP.md), are earned only by completing an activity. The catalog marks them `activity` (`trade`, `gift`, `donate` or `camp`), `since: 12`, rarity rare, and gives them a drop profile of style `flat`: the chance is its `rate` (100, one in a hundred) whatever the misses before, for every generation. They are never in a pack, a season or the launch split, and a `craft` of one is refused (rule `activity`).
+
+`mode/fellow1` has count, dust, shiny and tape zero; it is valid only after `mode/faction1` and only once, and it sets `fellow=1` and four counters, `credits`, at zero. From then on each event earns a roll, which is a count of attempts the binder may make for that activity's card:
+
+- a `tradeOut` followed at once (the next `seq`) by a `tradeIn` with the same `trade` is a swap: it earns one `trade` roll;
+- any other `tradeOut`, and any `tradeIn` that does not complete a swap, is a gift given or received: it earns one `gift` roll (so both sides of a trade or a gift roll);
+- a `donate` earns one `donate` roll, and a `camp` claim one `camp` roll.
+
+A `drop` of an activity card spends one roll of its activity and a `miss` run spends `count`, in any order after the activity; with too few the event is refused (rule `activity`), and so is any attempt before `fellow1`. Rolls are earned by events in any mode, so a Casual binder's counters keep pace with its trades even though Casual misses are not written down. The attempt uses a tape entry like any other attempt and is checked by the server at the card's flat chance, doubled when it is written as boosted (the card is rare, so it qualifies). A refused event earns and spends nothing. A server refuses an upload that records `fellow1`, or a binder already on it, unless `specVersion` is at least 12 (`client_too_old`).
+
+## Campfire boost (version 12)
+
+Standing at a camp with its buff doubles the chance of a card drop (docs/CAMPFIRE.md). `mode/camp1` has count, dust, shiny and tape zero; it is valid only after `mode/faction1` and only once, and it sets `camp=1`, `campEnd=0` and `campBoosted=0`.
+
+`camp` says how long the buff has left. Its `key` is `welcoming` or `violet`, its `count` the seconds left (1 to 3600 for the welcoming campfire, 1 to 7200 for the violet one), and its `t` is when the claim was written. Dust, shiny, tape, partner and trade are zero or empty. It is valid only after `camp1` and only while the binder's mode is Ranked (`ranked2`). Replay keeps `campEnd` as the latest of `t + count` over the claims, so a later claim reaches further and an earlier one never shortens it.
+
+An attempt made under the buff is a `drop` or a `miss` with `partner = "camp"` (and an empty `trade`); a run of misses is written as boosted only if all its attempts were. A boosted attempt needs `camp1`, Ranked mode, a tape position and a card of common or rare rarity (rule `camp`; elites, rare spawns and bosses are epic or legendary and are never boosted), and a boosted `drop` must have `t` no later than `campEnd` plus 120 seconds. A run of misses is written when something else happens, so its own `t` says nothing about when its attempts were made and is not checked. A `partner` on a drop or miss that is not `camp` is still refused.
+
+The server checks every boosted roll against double the plain chance, capped at certain: a boosted drop must have rolled at or below it, a boosted miss above it. A boosted attempt counts twice in the luck statistics (`balanceAttempts`), so a camper is not mistaken for a lucky player, and `campBoosted` counts them once. The server cannot see a camp, so the claim is the player's word, like a faction: it bounds what can be claimed (the buff's own length, the claim in step with the drops) and leaves the rest to the same luck checks as everything else. A server refuses an upload that contains `camp1`, a `camp` event or a boosted attempt, or a binder already on it, unless `specVersion` is at least 12 (`client_too_old`). No hashed field or earlier event meaning changes.
 
 ## Guild donations (version 11)
 
@@ -88,7 +110,7 @@ It does **not** prove an event really happened in the game. The player's compute
 |---|---|---|
 | `seq` | integer, 1 or more | Position in the chain. The first event is 1; each next one is exactly one more. |
 | `t` | integer, 0 or more | When the add-on wrote it, by the player's clock. |
-| `kind` | string | One of `drop`, `craft`, `recycle`, `tradeIn`, `tradeOut`, `set`, `mode`, `miss`, `packFind`, `packOpen`, `packCard`, `seasonReward`, `donate`, `donateReturn`. |
+| `kind` | string | One of `drop`, `craft`, `recycle`, `tradeIn`, `tradeOut`, `set`, `mode`, `miss`, `packFind`, `packOpen`, `packCard`, `seasonReward`, `donate`, `donateReturn`, `camp`. |
 | `key` | string, not empty | The card key; for `set` the set code (for example `DM`); for `mode` `casual`, `ranked2` (or `ranked`, which only old history holds); for `packFind` and `packOpen` the zone (the set code). |
 | `count` | integer, 0 or more | How many copies of that card the player owns after this event. 0 for `set` and `mode`. For `miss` it is the length of the run of misses instead (1 or more); no copies change. For `packFind` and `packOpen` it is the number of packs of that zone held after the event. |
 | `dust` | integer, may be negative | Change in Binder Dust: plus for `recycle`, minus for `craft`, 0 otherwise. |

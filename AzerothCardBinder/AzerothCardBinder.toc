@@ -11,6 +11,7 @@ Catalog.lua
 CatalogForever.lua
 CatalogExtra.lua
 CatalogNodes.lua
+CatalogFellowship.lua
 Lore.lua
 DropRates.lua
 Editions.lua
@@ -29,6 +30,9 @@ Packs.lua
 Seasons.lua
 Guild.lua
 GuildBatch.lua
+Auras.lua
+Campfire.lua
+Fellowship.lua
 Trade.lua
 TradeSession.lua
 Range.lua

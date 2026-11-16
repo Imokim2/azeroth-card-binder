@@ -10,7 +10,7 @@ ACB.GENESIS = GENESIS
 
 local KINDS = {
     drop = true, craft = true, recycle = true, tradeIn = true, tradeOut = true, set = true, mode = true, miss = true,
-    packFind = true, packOpen = true, packCard = true, seasonReward = true, donate = true, donateReturn = true,
+    packFind = true, packOpen = true, packCard = true, seasonReward = true, donate = true, donateReturn = true, camp = true,
 }
 -- Un-synced events at which Ranked rolls pause until the companion app has picked them up.
 ACB.backlogLimit = 5000
@@ -165,7 +165,8 @@ function ACB.newLedger(saved, now, character)
         local run = saved.run
         if not run then return end
         saved.run = nil
-        self:record("miss", run.key, { count = run.n, tape = run.last })
+        -- A run made at a camp with its buff (Campfire.lua) is written as one, so the server rechecks it at the doubled chance.
+        self:record("miss", run.key, { count = run.n, tape = run.last, partner = run.boost and "camp" or nil })
     end
 
     -- Check the saved ledger. Returns true and the number of events kept, or false and what is wrong.
