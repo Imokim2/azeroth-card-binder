@@ -50,6 +50,7 @@ local parts = {
     "43-auras",
     "44-campfire",
     "45-fellowship",
+    "46-campfire-icon",
 }
 
 local source, ranges, line = {}, {}, 1

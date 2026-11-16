@@ -32,6 +32,7 @@ Guild.lua
 GuildBatch.lua
 Auras.lua
 Campfire.lua
+CampfireIcon.lua
 Fellowship.lua
 Trade.lua
 TradeSession.lua
