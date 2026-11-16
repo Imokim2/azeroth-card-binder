@@ -66,6 +66,11 @@ local function createIndex(parent, saved, selectSet, openCard)
     local back = turnButton(index, 23, "Previous", function() turn(-1) end)
     local more = turnButton(index, 353, "Next", function() turn(1) end)
     local pageLabel = text(index, 105, 461, "", 12, SEPIA, 240, "CENTER")
+    function index:compactFooter()
+        back:ClearAllPoints(); back:SetPoint("TOPLEFT", 23, -449)
+        more:ClearAllPoints(); more:SetPoint("TOPLEFT", 353, -449)
+        pageLabel:ClearAllPoints(); pageLabel:SetPoint("TOPLEFT", 105, -455)
+    end
     index:EnableMouseWheel(true)
     index:SetScript("OnMouseWheel", function(_, delta) turn(delta > 0 and -1 or 1) end)
 
