@@ -314,6 +314,30 @@ do
         ACB.sync = keep
     end)
 
+    test("guild navigation returns to the index and cancels without debiting", function()
+        local keepSync, keepLedger, keepRefresh = ACB.sync, ACB.ledger, ACB.refresh
+        local saved, ledger = guildBinder(3)
+        ACB.ledger, ACB.refresh = ledger, ignore
+        ACB.sync.guild.summary = { guildId = GUILD, cards = 1, points = 10, inventory = { { card = CARD, copies = 1, donor = "filfred-whizzlebang" } } }
+        local view = ACB.createGuildView(UIParent, saved)
+        view:open(); view:refresh(); equal(view.controls.browse.enabled, false)
+        view:showCard(CARD); equal(view.controls.browse.enabled, true)
+        local found = false
+        for _, widget in ipairs(widgets) do if widget.text == "Latest donation: Filfred Whizzlebang" then found = true end end
+        assert(found)
+        view.controls.browse.OnClick(); equal(view.controls.browse.enabled, false)
+        view.controls.contribute.OnClick(); view:add(CARD); view.controls.review.OnClick()
+        view.controls.stop.OnClick(); equal(view:selection(), 0); equal(saved.counts[CARD], 3)
+        equal(view.controls.confirm:IsShown(), false); equal(view.controls.contribute:IsShown(), true)
+        view.controls.accept.OnClick(); equal(saved.counts[CARD], 3)
+        view.controls.contribute.OnClick(); view:add(CARD); view.controls.browse.OnClick()
+        equal(view:selection(), 0); equal(ACB.pendingDonationCount(saved), 0)
+        view.controls.contribute.OnClick(); view:add(CARD); view.controls.review.OnClick()
+        view.controls.discard.OnClick(); equal(view:selection(), 0); equal(saved.counts[CARD], 3)
+        equal(view.controls.contribute:IsShown(), true); equal(view.controls.confirm:IsShown(), false)
+        ACB.sync, ACB.ledger, ACB.refresh = keepSync, keepLedger, keepRefresh
+    end)
+
     test("guild index keeps provisional copies unowned until confirmed", function()
         local saved = { counts = { [CARD] = 1 }, indexProgressCounts = {} }
         saved.indexCardStatus = function(card, count) return card.key == CARD and "1 waiting" or "Missing" end

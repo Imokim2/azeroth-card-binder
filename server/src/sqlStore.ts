@@ -145,6 +145,7 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
       // its owner's name and character here, and the owner id is emptied when the player goes, so a person who runs the service names a new owner.
       { sql: `DELETE FROM guilds WHERE owner_player_id IN (${marks}) AND status != 'active'`, params: ids },
       { sql: `UPDATE guilds SET owner_character = '' WHERE owner_player_id IN (${marks})`, params: ids },
+      { sql: `UPDATE guild_donations SET donor_character = '' WHERE donor_player_id IN (${marks})`, params: ids },
       ...tables.map((table) => ({ sql: `DELETE FROM ${table} WHERE player_id IN (${marks})`, params: ids })),
       { sql: `DELETE FROM players WHERE id IN (${marks})`, params: ids },
     ]);
@@ -204,8 +205,8 @@ export class SqlStore implements PlayerStore, IngestStore, LeaderboardStore, Tap
     // Guild donations settle in the same transaction as the upload: the receipt, the guild's inventory and, for a returned copy, the redemption.
     for (const donation of commit.guild?.donations ?? []) {
       statements.push({
-        sql: "INSERT INTO guild_donations (operation_id, guild_id, donor_player_id, card_key, seq, t, result, reason, decided_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        params: [donation.operation, donation.guildId, playerId, donation.key, donation.seq, donation.t, donation.result, donation.reason, commit.receivedAt],
+        sql: "INSERT INTO guild_donations (operation_id, guild_id, donor_player_id, card_key, seq, t, result, reason, decided_at, donor_character) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params: [donation.operation, donation.guildId, playerId, donation.key, donation.seq, donation.t, donation.result, donation.reason, commit.receivedAt, donation.character],
       });
       if (donation.result === "credited") {
         statements.push({

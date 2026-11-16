@@ -181,13 +181,16 @@ test("the guild actions are signed and reach the server, and a refresh asks agai
 test("guild inventory is paired to the member's guild and survives the Lua bridge", () => {
   const reply = guildReply();
   const summary = parseGuildSummary({ guild: reply.membership.guild, points: 10, cards: 1, rank: null,
-    inventory: [{ card: "npc:589", copies: 2 }] }, GUILD);
+    inventory: [{ card: "npc:589", copies: 2, donor: "filfred-whizzlebang" }] }, GUILD);
   const data = { ...parseGuildData(reply, ["c".repeat(32)], 500), summary };
   const lua = syncFileText({ syncedAt: 500, acks: [], guild: data });
   const decoded = parseSavedVariables(lua.replace("local _, ACB = ...", "").replace("ACB.sync", "AzerothCardBinderDB"))["AzerothCardBinderDB"] as Record<string, unknown>;
-  const guild = decoded["guild"] as { summary: { guildId: string; inventory: Record<string, {card: string; copies: number}> } };
+  const guild = decoded["guild"] as { summary: { guildId: string; inventory: Record<string, {card: string; copies: number; donor?: string}> } };
   assert.equal(guild.summary.guildId, GUILD);
   assert.equal(Object.values(guild.summary.inventory)[0]?.copies, 2);
+  assert.equal(Object.values(guild.summary.inventory)[0]?.donor, "filfred-whizzlebang");
+  for (const donor of ["|Hbad|h", "x".repeat(81), "bad\nname", 42]) assert.throws(() => parseGuildSummary({
+    guild: reply.membership.guild, points: 0, cards: 1, inventory: [{ card: "npc:589", copies: 1, donor }] }, GUILD));
   assert.throws(() => parseGuildSummary({ guild: { ...reply.membership.guild, id: "0".repeat(26) }, inventory: [] }, GUILD));
   assert.throws(() => parseGuildSummary({ guild: reply.membership.guild, points: 0, cards: 1,
     inventory: [{ card: "npc:589", copies: -1 }] }, GUILD));

@@ -1,7 +1,7 @@
 local _, ACB = ...
 local ui, kit = ACB.folioUi, ACB.uiKit
 
-function ACB.createGuildReview(remove, accept)
+function ACB.createGuildReview(remove, accept, discard)
     local frame = kit.window("AzerothCardBinderGuildConfirm", 620, 530, "Review donation", true)
     frame.edition:Hide()
     frame:SetFrameStrata("FULLSCREEN_DIALOG")
@@ -17,8 +17,9 @@ function ACB.createGuildReview(remove, accept)
     local rows = {}
     local warning = ui.text(body, 15, 315, "", 12, ui.INK, 550)
     warning:SetWordWrap(true); warning:SetHeight(44)
-    local cancel = kit.button(frame, "Keep choosing", 25, 469, 270, function() frame:Hide() end)
-    local donate = kit.button(frame, "Donate selected cards", 311, 469, 284, function() accept() end)
+    local cancel = kit.button(frame, "Keep choosing", 25, 469, 180, function() frame:Hide() end)
+    local stop = kit.button(frame, "Cancel donation", 220, 469, 180, function() if discard then discard() else frame:Hide() end end)
+    local donate = kit.button(frame, "Accept donation", 415, 469, 180, function() accept() end)
     ui.text(frame, 25, 504, "Your selection changes nothing until you confirm.", 11, kit.muted, 570, "CENTER")
     function frame:present(plan)
         heading:SetText(("%d copies for %s"):format(plan.total, plan.name))
@@ -41,10 +42,10 @@ function ACB.createGuildReview(remove, accept)
         for index = #plan.rows + 1, #rows do rows[index].text:Hide(); rows[index].flag:Hide(); rows[index].remove:Hide() end
         warning:SetText(plan.lastCopies > 0 and ("LAST COPY WARNING: %d selected card%s will no longer be in your personal binder."):format(plan.lastCopies, plan.lastCopies == 1 and "" or "s")
             or "Only spare copies selected. Your personal binder keeps at least one of each card.")
-        donate:SetText(("Donate %d %s"):format(plan.total, plan.total == 1 and "copy" or "copies"))
+        donate:SetText(("Accept: donate %d"):format(plan.total))
         scroll:SetVerticalScroll(0)
         frame:Show()
     end
-    frame.controls = { accept = donate, cancel = cancel, rows = rows, warning = warning }
+    frame.controls = { accept = donate, cancel = cancel, discard = stop, rows = rows, warning = warning }
     return frame
 end
