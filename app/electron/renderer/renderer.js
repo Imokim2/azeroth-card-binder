@@ -157,9 +157,6 @@ let guildBusy = false;
 function guildCharacterName(peer) {
   return peer.replace("-", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
 }
-function guildCharacterName(peer) {
-  return peer.replace("-", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
-}
 function renderGuildCharacters(characters) {
   const select = $("guild-character");
   const chosen = select.value;
