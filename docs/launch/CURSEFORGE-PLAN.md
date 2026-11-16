@@ -1,11 +1,11 @@
 # CurseForge release record
 
-**Addon 1.0.20 was submitted on 16 November 2026; CurseForge is completing post-processing.** Companion 1.0.6 and server 1.0.5 are already live on the website/updater. Update the companion first for Harry's ledger spec 12 campfire/Fellowship changes and the optional donor-name bridge. Existing collections are preserved.
+**Addon 1.0.21 was submitted on 16 November 2026 and is processing.** Addon 1.0.20 is now approved. The website and trusted updater already offer 1.0.21 with unchanged companion 1.0.6 and server 1.0.5. Existing companion 1.0.6 installs need only the addon update, then `/reload`. Older companions should be updated first. Collections are preserved.
 
 - Public project: [World of Warcards](https://www.curseforge.com/wow/addons/world-of-warcards), ID 1808775.
-- Submitted file: [World of Warcards 1.0.20](https://authors.curseforge.com/#/projects/1808775/files/9653989), uploaded from the exact verified published ZIP as Release, Forever 1.60.1, automatic publication after approval.
+- Submitted file: [World of Warcards 1.0.21](https://authors.curseforge.com/#/projects/1808775/files/9655605), uploaded from the exact verified published ZIP as Release, Forever 1.60.1, automatic publication after approval.
 - Earlier addon files 1.0.15 and 1.0.16 are also approved and remain historical releases.
-- Matching [GitHub release](https://github.com/Imokim2/azeroth-card-binder/releases/tag/v1.0.20), [website downloads](https://worldofwarcards.co.uk/download) and trusted updater provide addon 1.0.20 / companion 1.0.6.
+- Matching [GitHub release](https://github.com/Imokim2/azeroth-card-binder/releases/tag/v1.0.21), [website downloads](https://worldofwarcards.co.uk/download) and trusted updater provide addon 1.0.21 / companion 1.0.6.
 
 ## Page and setup
 
@@ -21,4 +21,4 @@ All five supplied genuine captures remain in the gallery, with individual titles
 
 GitHub README/release notes and Discord updates/downloads channels describe the same guild flow and versions. The website help page already covers batch donations. Existing collections, guild donations, packs and progress remain preserved; starting a new binder is not an update step.
 
-Current implementation and automated validation are recorded in [RELEASE-1.0.20.md](RELEASE-1.0.20.md). Earlier card/catalog work and collection compatibility remain included.
+Current implementation and automated validation are recorded in [RELEASE-1.0.21.md](RELEASE-1.0.21.md). Earlier card/catalog work and collection compatibility remain included.
