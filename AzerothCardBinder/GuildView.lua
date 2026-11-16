@@ -1,163 +1,181 @@
 local _, ACB = ...
 local ui, kit = ACB.folioUi, ACB.uiKit
 
-function ACB.guildCardRows(saved, inventory, giving, spares, query)
-    local rows = {}
-    query = (query or ""):lower()
-    for key, count in pairs(giving and (saved.counts or {}) or inventory) do
-        local card = ACB.cards[key]
-        if card and count > 0 and (not giving or not spares or count > 1)
-            and (query == "" or card.name:lower():find(query, 1, true)) then
-            rows[#rows + 1] = card
-        end
-    end
-    table.sort(rows, function(a, b) return a.name == b.name and a.key < b.key or a.name < b.name end)
-    return rows
-end
-
 function ACB.createGuildView(parent, saved)
     local view = CreateFrame("Frame", nil, parent)
     view:SetAllPoints(parent)
-    local left, right = ui.paper(view, 20), ui.paper(view, 471, true)
-    ui.text(left, 23, 17, "YOUR GUILD'S COLLECTION", 10, ui.SEPIA, 402)
-    local heading = ui.text(left, 23, 35, "Guild binder", 29, ui.INK, 402, "LEFT", true)
-    heading:SetWordWrap(false); heading:SetHeight(36)
-    local membership = ui.text(left, 23, 77, "", 11, ui.SEPIA, 402)
-    local stats = {}
-    for index, caption in ipairs({ "CARDS", "POINTS", "GUILD RANK" }) do
-        local x = 23 + (index - 1) * 138
-        ui.text(left, x, 106, caption, 9, ui.SEPIA, 126)
-        stats[index] = ui.text(left, x, 121, "—", 20, ui.INK, 126, "LEFT", true)
+    local seen = { counts = {}, shiny = {}, wanted = {}, achievements = {}, attempts = {}, misses = {}, dust = 0 }
+    local giving, spares, region, indexShown = false, true, 1, true
+    local tray, guildID, reviewed = {}, nil, nil
+    local confirmed, pending, folio, review = {}, {}, nil, nil
+    local summary, active
+    local function total()
+        local count = 0
+        for _, copies in pairs(tray) do count = count + copies end
+        return count
     end
-    ui.rule(left, 23, 148, 402)
-    local giving, spares, leaf, selected = false, true, 1, nil
-    local query, inventory, rows = "", {}, {}
-    local browse = kit.button(left, "Guild collection", 23, 162, 195, function() giving = false; leaf = 1; view:refresh() end)
-    local contribute = kit.button(left, "Donate cards", 230, 162, 195, function() giving = true; leaf = 1; view:refresh() end)
-    local search = ui.panel(left, "EditBox", 23, 198, 290, 24, { .88, .80, .62 }, ui.EDGE)
-    search:SetFontObject("GameFontHighlightSmall"); search:SetTextColor(unpack(ui.INK))
-    search:SetTextInsets(7, 7, 0, 0); search:SetAutoFocus(false)
-    local hint = ui.text(search, 7, 6, "Search cards…", 11, ui.SEPIA, 270)
-    search:SetScript("OnTextChanged", function(self)
-        query = self:GetText() or ""; hint:SetShown(query == ""); leaf = 1; view:refresh()
-    end)
-    search:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    local filter = kit.button(left, "Spare copies", 323, 198, 102, function() spares = not spares; leaf = 1; view:refresh() end)
-    local slots = {}
-    for index = 1, 8 do
-        local row = ui.panel(left, "Button", 23, 231 + (index - 1) * 27, 402, 24, ui.POCKET, ui.EDGE)
-        local title = ui.text(row, 7, 5, "", 12, ui.INK, 267)
-        title:SetWordWrap(false)
-        local count = ui.text(row, 277, 6, "", 10, ui.SEPIA, 118, "RIGHT")
-        row:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
-        row:SetScript("OnClick", function() selected = rows[(leaf - 1) * 8 + index].key; view:refresh() end)
-        slots[index] = { frame = row, title = title, count = count }
+    local function available(key)
+        return math.max(0, (saved.counts[key] or 0) - (spares and 1 or 0) - (tray[key] or 0))
     end
-    local previous = ui.turnButton(left, 23, "Previous", function() leaf = leaf - 1; view:refresh() end)
-    local nextPage = ui.turnButton(left, 353, "Next", function() leaf = leaf + 1; view:refresh() end)
-    local page = ui.text(left, 103, 461, "", 11, ui.SEPIA, 240, "CENTER")
-    local waiting = ui.text(left, 23, 486, "", 10, ui.SEPIA, 402)
-    local empty = ui.text(left, 38, 270, "", 15, ui.INK, 372, "CENTER")
-    empty:SetWordWrap(true); empty:SetHeight(130)
-    ui.text(right, 23, 17, "A COLLECTION YOU BUILD TOGETHER", 10, ui.SEPIA, 402)
-    local name = ui.text(right, 23, 37, "Guild binder", 25, ui.INK, 402, "LEFT", true)
-    name:SetWordWrap(false); name:SetHeight(33)
-    local note = ui.text(right, 23, 78, "", 11, ui.SEPIA, 402)
-    local big = ui.mountCard(right, 30, 113, 1.55, function(entry) ACB.linkCard(saved, entry) end)
-    ui.text(right, 260, 127, "IN YOUR GUILD", 10, ui.SEPIA, 165)
-    local guildCount = ui.text(right, 260, 151, "—", 31, ui.INK, 165, "LEFT", true)
-    ui.text(right, 260, 217, "IN YOUR BINDER", 10, ui.SEPIA, 165)
-    local ownCount = ui.text(right, 260, 241, "—", 31, ui.INK, 165, "LEFT", true)
-    local terms = ui.text(right, 260, 309, "Donated cards stay with the guild. Nobody can withdraw them.", 12, ui.SEPIA, 160)
-    terms:SetWordWrap(true); terms:SetHeight(86)
-    ui.rule(right, 23, 412, 402)
-    local reason = ui.text(right, 23, 423, "", 11, ui.SEPIA, 402, "CENTER")
-    reason:SetWordWrap(true); reason:SetHeight(30)
-    local confirm = kit.window("AzerothCardBinderGuildConfirm", 460, 262, "Donate to your guild")
-    confirm:SetFrameStrata("FULLSCREEN_DIALOG")
-    local question = kit.label(confirm, "GameFontHighlight", 25, 57, kit.parchment, "")
-    question:SetWidth(410); question:SetHeight(136); question:SetWordWrap(true)
-    local pending
-    local cancel = kit.button(confirm, "Keep card", 25, 212, 195, function() pending = nil; confirm:Hide() end)
-    local accept = kit.button(confirm, "Donate one copy", 236, 212, 199, function()
-        local choice = pending
-        pending = nil; confirm:Hide()
-        local guild = ACB.guildMembership(saved)
-        if not choice or not guild or guild.id ~= choice.guild then
-            ACB.say("Your guild changed. Select the card again before donating."); return
-        end
-        local ok, result = ACB.donateCard(saved, ACB.ledger, choice.key)
-        ACB.say(ok and "Donation saved. Sync with the companion, then /reload to see it in the guild binder." or result)
+    local function allowed(key)
+        return giving and active and available(key) > 0 and total() + ACB.pendingDonationCount(saved) < ACB.maxPendingDonations
+            and ACB.canDonate(saved, ACB.ledger, key) == true
+    end
+    local function add(key, toggle)
+        if toggle and tray[key] then tray[key] = nil
+        elseif allowed(key) then tray[key] = (tray[key] or 0) + 1
+        else return end
         view:refresh()
-    end)
-    local donate = kit.button(right, "Donate one copy", 23, 460, 245, function()
-        local ok, guild = ACB.canDonate(saved, ACB.ledger, selected)
-        if not ok then ACB.say(guild); return end
-        pending = { key = selected, guild = guild.id }
-        local last = (saved.counts[selected] or 0) == 1
-        question:SetText(("Give one %s to %s?\n\n%sThe card leaves your binder permanently. Nobody can take it out of the guild binder.")
-            :format(ACB.cards[selected].name, guild.name, last and "This is your last copy.\n" or ""))
-        confirm:Show()
-    end)
-    kit.button(right, "Wanted lists", 279, 460, 146, function() ACB.open("wanted") end)
-    ui.text(right, 23, 488, "Save and sync, then /reload to refresh this page.", 10, ui.SEPIA, 402, "CENTER")
-    view:SetScript("OnHide", function() pending = nil; confirm:Hide(); search:ClearFocus() end)
-    function view:refresh()
-        local data = ACB.guildData(saved)
-        local guild, role = ACB.guildMembership(saved)
-        local summary = guild and data and data.summary
-        if summary and summary.guildId ~= guild.id then summary = nil end
-        inventory = {}
-        for _, entry in ipairs(summary and summary.inventory or {}) do inventory[entry.card] = entry.copies end
-        heading:SetText(guild and guild.name or "Guild binder")
-        heading:SetFont(ui.DISPLAY_FONT, guild and math.max(19, math.min(29, 630 / #guild.name)) or 29, "")
-        membership:SetText(guild and (guild.realm .. "  /  " .. (role == "owner" and "Guild owner" or "Member")) or "Build a shared collection with your guild.")
-        stats[1]:SetText(summary and tostring(summary.cards) or "—")
-        stats[2]:SetText(summary and ACB.pointsText(summary.points) or "—")
-        stats[3]:SetText(summary and summary.rank and ("#" .. summary.rank) or "—")
-        local active = guild ~= nil and summary ~= nil
-        browse:SetEnabled(active and giving); contribute:SetEnabled(active and not giving)
-        search:SetShown(active); filter:SetShown(active and giving)
-        filter:SetText(spares and "Spare copies" or "All owned")
-        rows = active and ACB.guildCardRows(saved, inventory, giving, spares, query) or {}
-        leaf = math.max(1, math.min(math.max(1, math.ceil(#rows / 8)), leaf))
-        local found
-        for _, entry in ipairs(rows) do if entry.key == selected then found = true end end
-        if not found then selected = rows[(leaf - 1) * 8 + 1] and rows[(leaf - 1) * 8 + 1].key end
-        for index, slot in ipairs(slots) do
-            local entry = rows[(leaf - 1) * 8 + index]
-            slot.frame:SetShown(entry ~= nil)
-            if entry then
-                slot.title:SetText(entry.name)
-                slot.count:SetText(("%d guild / %d you"):format(inventory[entry.key] or 0, saved.counts[entry.key] or 0))
-                slot.frame:SetBackdropColor(unpack(entry.key == selected and ui.SELECTED or ui.POCKET))
-            end
-        end
-        previous:SetShown(active); nextPage:SetShown(active)
-        previous:SetEnabled(leaf > 1); nextPage:SetEnabled(leaf * 8 < #rows)
-        page:SetText(active and ("Page " .. leaf .. " / " .. math.max(1, math.ceil(#rows / 8))) or "")
-        local pendingCount = ACB.pendingDonationCount(saved)
-        waiting:SetText(pendingCount > 0 and ("%d donation%s waiting for sync"):format(pendingCount, pendingCount == 1 and "" or "s") or "")
-        empty:SetShown(#rows == 0)
-        local member = data and data.membership
-        empty:SetText(not guild and (member and member.state == "pending" and "Your guild application is waiting for its owner.\n\nThe companion app will show the decision." or
-            "Create or join a guild binder in the companion app.\n\nNew binders are ready straight away. Members are approved by their guild binder's owner.") or not summary and
-            "Update and sync the companion, then /reload to load your guild's collection." or giving and
-            "No cards match this list.\n\nChoose All owned to include your last copies, or change your search." or
-            (query ~= "" and "No cards match this search.\n\nTry another card name." or "Your guild binder is waiting for its first card.\n\nChoose Donate cards to get it started."))
-        local card = selected and ACB.cards[selected]
-        big.holder:SetShown(card ~= nil)
-        if card then ui.setCard(big, card, math.max(inventory[selected] or 0, saved.counts[selected] or 0), giving and saved.shiny[selected]) end
-        name:SetText(card and card.name or "A shared collection")
-        name:SetFont(ui.DISPLAY_FONT, card and math.max(17, math.min(25, 680 / #card.name)) or 25, "")
-        note:SetText(giving and "Choose a card from your binder to donate." or "Cards your guild has collected together.")
-        guildCount:SetText(active and tostring(inventory[selected] or 0) or "—")
-        ownCount:SetText(card and tostring(saved.counts[selected] or 0) or "—")
-        local ok, why = false, "Choose a card to donate."
-        if card and active then ok, why = ACB.canDonate(saved, ACB.ledger, selected) end
-        donate:SetEnabled(ok)
-        reason:SetText(ok and ((saved.counts[selected] or 0) == 1 and "This is your last copy. Donating removes it from your binder." or "One copy will leave your binder permanently.") or why)
     end
-    view.controls = { donate = donate, confirm = confirm, accept = accept, cancel = cancel, contribute = contribute, browse = browse, filter = filter, search = search }
+    folio = ACB.createFolio(view, seen, function(setIndex)
+        region, indexShown = setIndex, false; view:refresh()
+    end, {
+        mine = function() return saved.counts end,
+        progressCounts = function() return giving and saved.counts or confirmed end,
+        ownedCount = function(card, count) return giving and count or (confirmed[card.key] or 0) end,
+        collectionStatus = function(card, count)
+            if giving then return count > 0 and "Collected" or "Undiscovered" end
+            return (confirmed[card.key] or 0) > 0 and "Collected" or (pending[card.key] or 0) > 0 and "Pending" or "Undiscovered"
+        end,
+        heading = function()
+            return giving and "YOUR BINDER  /  CHOOSE DONATIONS"
+                or ("GUILD COLLECTION  /  %d CONFIRMED CARDS"):format(summary and summary.cards or 0)
+        end,
+        pickPocket = function(key) if giving then add(key, true) end end,
+        pocketStatus = function(card, count)
+            if giving then
+                return tray[card.key] and ("%d selected / %d owned"):format(tray[card.key], saved.counts[card.key] or 0)
+                    or (count > 0 and (spares and count == 1 and "Last copy / choose All owned" or ("%d owned / click to select"):format(count)) or "Missing")
+            end
+            local waiting, owned = ACB.familyCount(pending, card), ACB.familyCount(confirmed, card)
+            return waiting > 0 and ("%d confirmed / %d waiting for sync"):format(owned, waiting)
+                or (owned > 0 and ("%d in guild binder"):format(owned) or "Missing from guild binder")
+        end,
+        status = function(card)
+            if giving then return ("%d selected / %d available"):format(tray[card.key] or 0, available(card.key)) end
+            return ("%d confirmed / %d waiting\nYou own: %d"):format(confirmed[card.key] or 0, pending[card.key] or 0, saved.counts[card.key] or 0)
+        end,
+        note = function(card)
+            if giving then return (tray[card.key] or 0) > 0 and "Selected only. Review the tray before anything leaves your binder."
+                or "Click a card to select it. Add one copy below to select extra spares." end
+            return (pending[card.key] or 0) > 0 and "Waiting for sync. These copies do not count towards confirmed guild progress yet."
+                or ((confirmed[card.key] or 0) > 0 and card.lore or ("Missing from the guild binder. " .. ACB.whereToFind(card)))
+        end,
+    })
+    local messageLeft, messageRight = ui.paper(view, 20), ui.paper(view, 471, true)
+    ui.text(messageLeft, 23, 35, "Guild binder", 32, ui.INK, 402, "LEFT", true)
+    local message = ui.text(messageLeft, 23, 112, "", 16, ui.INK, 402)
+    message:SetWordWrap(true); message:SetHeight(230)
+    ui.text(messageRight, 23, 35, "A collection together", 29, ui.INK, 402, "LEFT", true)
+    local instructions = ui.text(messageRight, 23, 112, "Create or join a guild binder in the companion. New binders are ready immediately; the binder owner approves new members.\n\nBrowse the full collection or choose Donate cards. Select several cards and review them together.\n\nDonations are permanent. Nobody can withdraw them.", 14, ui.SEPIA, 402)
+    instructions:SetWordWrap(true); instructions:SetHeight(280)
+    folio:compactFooter()
+    local selection = ui.text(view, 494, 566, "", 10, ui.SEPIA, 401, "RIGHT")
+    local controls = {}
+    controls.browse = kit.button(view, "Guild collection", 43, 584, 113, function()
+        giving, indexShown = false, true; folio:setIndexOwnership("all"); view:refresh()
+    end)
+    controls.contribute = kit.button(view, "Donate cards", 162, 584, 109, function()
+        giving, indexShown = true, false
+        local focus
+        local order = { region }
+        for _, setIndex in ipairs(ACB.setOrder()) do if setIndex ~= region then order[#order + 1] = setIndex end end
+        for _, setIndex in ipairs(order) do
+            for _, base in ipairs(ACB.pages[setIndex].cards) do
+                for _, card in ipairs(ACB.cardEditions(base)) do
+                    if not focus and available(card.key) > 0 then focus = card end
+                end
+            end
+            if focus then break end
+        end
+        if focus then region = focus.page; folio:selectCard(region, focus.key) end
+        folio:setIndexOwnership("owned"); view:refresh()
+    end)
+    controls.index = kit.button(view, "Index", 277, 584, 55, function() indexShown = true; view:refresh() end)
+    controls.filter = kit.button(view, "Spare copies", 494, 584, 110, function() spares = not spares; view:refresh() end)
+    local function openReview()
+        local plan, why = ACB.guildBatchPlan(saved, ACB.ledger, tray, guildID)
+        if not plan then ACB.say(why); return end
+        reviewed = plan; review:present(plan)
+    end
+    controls.review = kit.button(view, "Review tray (0)", 611, 584, 140, openReview)
+    controls.sync = kit.button(view, "Save & sync", 758, 584, 137, function()
+        if total() == 0 and ACB.pendingDonationCount(saved) > 0 then saved.guildSyncHead = saved.head.hash; ReloadUI() end
+    end)
+    controls.wanted = kit.button(view, "Wanted lists", 338, 584, 106, function() ACB.open("wanted") end)
+    for _, control in pairs(controls) do control:SetHeight(22) end
+    review = ACB.createGuildReview(function(key)
+        tray[key] = nil
+        if total() > 0 then openReview() else reviewed = nil; review:Hide() end
+        view:refresh()
+    end, function()
+        if not review:IsShown() then return end
+        local choice = reviewed
+        reviewed = nil; review:Hide()
+        if not choice then return end
+        local ok, why, done = ACB.donateGuildBatch(saved, ACB.ledger, choice)
+        local left = done or 0
+        for _, row in ipairs(choice.rows) do
+            local used = math.min(left, row.count)
+            if used > 0 then tray[row.key] = math.max(0, (tray[row.key] or 0) - used); if tray[row.key] == 0 then tray[row.key] = nil end end
+            left = left - used
+        end
+        if ok then giving, indexShown = false, false end
+        ACB.say(why); view:refresh()
+    end)
+    review:SetScript("OnHide", function() reviewed = nil end)
+    controls.confirm, controls.accept, controls.cancel = review, review.controls.accept, review.controls.cancel
+    controls.donate, controls.rows, controls.warning = folio.tradeButton, review.controls.rows, review.controls.warning
+    view.controls, view.folio = controls, folio
+    function view:add(key) add(key) end
+    function view:selection() return total(), tray end
+    function view:showCard(key)
+        local card = ACB.cards[key]
+        if card and folio:selectCard(card.page, key) then region, indexShown = card.page, false; self:refresh(); return true end
+    end
+    function view:refresh()
+        local guild = ACB.guildMembership(saved)
+        local currentID = guild and guild.id
+        if currentID ~= guildID then tray, reviewed = {}, nil; review:Hide(); guildID = currentID end
+        local data = ACB.guildData(saved)
+        summary = data and data.summary
+        if summary and summary.guildId ~= guildID then summary = nil end
+        active = guild ~= nil and summary ~= nil
+        local shown
+        confirmed, pending, shown = ACB.guildInventoryView(saved, guildID)
+        seen.counts, seen.shiny = giving and saved.counts or shown, giving and saved.shiny or {}
+        seen.indexProgressCounts = giving and saved.counts or confirmed
+        seen.indexCardStatus = not giving and function(card, count)
+            local waiting = pending[card.key] or 0
+            return waiting > 0 and ("%d + %d waiting"):format(count, waiting) or count > 0 and ("%d in guild"):format(count) or "Missing"
+        end or nil
+        seen.indexCardFilter = giving and function(card) return (saved.counts[card.key] or 0) > (spares and 1 or 0) end or nil
+        folio:SetShown(active)
+        messageLeft:SetShown(not active); messageRight:SetShown(not active)
+        for _, name in ipairs({ "browse", "contribute", "index", "review", "sync" }) do controls[name]:SetShown(active) end
+        controls.filter:SetShown(active and giving); controls.filter:SetText(spares and "Spare copies" or "All owned")
+        local count, waiting = total(), ACB.pendingDonationCount(saved)
+        controls.browse:SetEnabled(active and giving); controls.contribute:SetEnabled(active and not giving)
+        controls.review:SetText(("Review tray (%d)"):format(count)); controls.review:SetEnabled(active and count > 0)
+        controls.sync:SetEnabled(active and waiting > 0 and count == 0)
+        local savedForSync = saved.guildSyncHead == saved.head.hash
+        controls.sync:SetText(savedForSync and waiting > 0 and "Refresh after sync" or "Save & sync")
+        selection:SetText(active and (count > 0 and ("%d selected. Review the tray before reloading."):format(count)
+            or waiting > 0 and (savedForSync and "Saved. Allow the companion to sync, then refresh." or ("%d waiting. Keep the companion open, then Save & sync."):format(waiting))
+            or ("%s  /  %s points  /  %s"):format(guild.name, ACB.pointsText(summary.points or 0), summary.rank and ("#" .. summary.rank) or "Unranked")) or "")
+        if not active then
+            message:SetText(guild and "Sync the companion and /reload to load your guild's collection." or data and data.membership and data.membership.state == "pending"
+                and "Your application is waiting for the guild binder owner. Refresh in the companion after approval, then sync and /reload."
+                or "You are not in a guild binder yet. Start or join one in the companion app.")
+            return
+        end
+        local visible = {}
+        for key, copies in pairs(saved.counts) do visible[key] = copies end
+        for key, copies in pairs(shown) do visible[key] = math.max(visible[key] or 0, copies) end
+        ACB.refreshVisibleCards({ counts = visible })
+        folio:setTradePicker(giving and function(key) add(key) end or nil, allowed, "Add one copy to tray")
+        folio:showRegion(region, indexShown)
+    end
+    view:SetScript("OnHide", function() reviewed = nil; review:Hide() end)
     return view
 end

@@ -67,7 +67,7 @@ end
 
 -- Give one copy of a card to the guild. The copy leaves the binder now and cannot be undone by the player; if the server refuses it, it comes back.
 -- Returns true and the operation id, or false and the reason.
-function ACB.donateCard(saved, ledger, key)
+function ACB.donateCard(saved, ledger, key, quiet)
     local ok, guild = ACB.canDonate(saved, ledger, key)
     if not ok then return false, guild end
     -- The markers that come before it, written once each: the drop-rate generations, the faction rules and this character's side.
@@ -87,8 +87,8 @@ function ACB.donateCard(saved, ledger, key)
     ledger:record("donate", key, { before = before, partner = guild.id, trade = operation })
     if saved.counts[key] == 0 then saved.counts[key] = nil end
     saved.guildDonations[operation] = { key = key, guild = guild.id, t = time() }
-    if ACB.refresh then ACB.refresh() end
-    if ACB.refreshZoneBar then ACB.refreshZoneBar() end
+    if not quiet and ACB.refresh then ACB.refresh() end
+    if not quiet and ACB.refreshZoneBar then ACB.refreshZoneBar() end
     return true, operation
 end
 

@@ -66,11 +66,17 @@ local function createIndex(parent, saved, selectSet, openCard)
     local back = turnButton(index, 23, "Previous", function() turn(-1) end)
     local more = turnButton(index, 353, "Next", function() turn(1) end)
     local pageLabel = text(index, 105, 461, "", 12, SEPIA, 240, "CENTER")
+    function index:compactFooter()
+        back:ClearAllPoints(); back:SetPoint("TOPLEFT", 23, -449)
+        more:ClearAllPoints(); more:SetPoint("TOPLEFT", 353, -449)
+        pageLabel:ClearAllPoints(); pageLabel:SetPoint("TOPLEFT", 105, -455)
+    end
     index:EnableMouseWheel(true)
     index:SetScript("OnMouseWheel", function(_, delta) turn(delta > 0 and -1 or 1) end)
 
     function index:showSets(current)
         activeSet = current
+        local inventory = saved.indexProgressCounts or saved.counts
         for key, control in pairs(filters) do
             control:SetEnabled(key ~= ownership)
             control:SetBackdropColor(unpack(key == ownership and SELECTED or POCKET))
@@ -87,8 +93,9 @@ local function createIndex(parent, saved, selectSet, openCard)
                 for _, base in ipairs(entry.cards) do
                   for _, card in ipairs(ACB.cardEditions(base)) do
                     local name = card.name:lower()
-                    local owned = (saved.counts[card.key] or 0) > 0
+                    local owned = (inventory[card.key] or 0) > 0
                     local allowed = ownership == "all" or (ownership == "owned" and owned) or (ownership == "unowned" and not owned)
+                    if saved.indexCardFilter then allowed = allowed and saved.indexCardFilter(card) end
                     if allowed and (name:find(query, 1, true) or (ownership ~= "all" and setMatches)) then
                         local list = name == query and exact or matches
                         list[#list + 1] = card
@@ -123,7 +130,7 @@ local function createIndex(parent, saved, selectSet, openCard)
             row.frame:SetShown(result ~= nil)
             if setIndex then
                 local entry = ACB.pages[setIndex]
-                local collected, cards = ACB.progress(saved.counts, setIndex)
+                local collected, cards = ACB.progress(inventory, setIndex)
                 local active = setIndex == activeSet
                 row.frame:SetBackdropColor(unpack(active and SELECTED or POCKET))
                 row.frame:SetBackdropBorderColor(unpack(active and INK or EDGE))
@@ -132,12 +139,13 @@ local function createIndex(parent, saved, selectSet, openCard)
                 row.progress:SetText(collected >= cards and "Complete" or ("%d / %d"):format(collected, cards))
                 row.bar:set(collected, cards)
             elseif card then
-                local count = saved.counts[card.key] or 0
+                local count = inventory[card.key] or 0
                 row.frame:SetBackdropColor(unpack(POCKET))
                 row.frame:SetBackdropBorderColor(unpack(EDGE))
                 row.title:SetText(card.name)
                 row.group:SetText(ACB.pages[card.page].title .. "  /  " .. ACB.rarities[card.rarity].name)
                 row.progress:SetText(count > 0 and ("%d owned"):format(count) or "Missing")
+                if saved.indexCardStatus then row.progress:SetText(saved.indexCardStatus(card, count)) end
                 row.bar:set(count > 0 and 1 or 0, 1)
             end
         end
