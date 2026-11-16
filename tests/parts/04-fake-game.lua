@@ -59,6 +59,7 @@ local methods = {
     SetScript = function(self, name, handler) self[name] = handler end,
     RegisterEvent = function(self, event)
         assert(not event:match("^COMBAT_LOG"))
+        if event == "ADDON_LOADED" then self.isEventFrame = true end -- the add-on's own event frame, whichever frame was made first
         self[event] = true
     end,
     UnregisterEvent = function(self, event) self[event] = nil end,
@@ -172,6 +173,8 @@ loadAddon("Seasons.lua")
 loadAddon("Guild.lua")
 loadAddon("GuildBatch.lua")
 loadAddon("Auras.lua")
+loadAddon("Campfire.lua")
+loadAddon("Fellowship.lua")
 loadAddon("FolioUi.lua")
 loadAddon("FolioIndex.lua")
 loadAddon("EditionView.lua")
@@ -198,6 +201,7 @@ loadAddon("Slash.lua")
 loadAddon("Forever.lua")
 
 local function emit(event, ...)
+    for _, widget in ipairs(widgets) do if widget.isEventFrame then eventFrame = widget end end
     assert(eventFrame[event], "event not registered: " .. event)
     eventFrame:OnEvent(event, ...)
 end

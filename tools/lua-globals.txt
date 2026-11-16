@@ -2,6 +2,7 @@
 # A new line here should be a deliberate choice: a misspelt variable name shows up as a new global.
 # Regenerate with: node tools/release.js globals
 GGET AzerothCardBinderDB
+GGET BuffFrame
 GGET C_AddOns
 GGET C_ChatInfo
 GGET C_Map

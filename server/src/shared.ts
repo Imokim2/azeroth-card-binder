@@ -7,7 +7,7 @@ import * as editions from "../../packages/shared/src/editions.js";
 export type Catalog = {
   catalogVersion: string;
   cards: Record<string, { name: string; rarity: string; rank: string; set: string; boss?: boolean; profession?: string; baseKey?: string; editionTitle?: string;
-    critter?: boolean; balanceOnly?: boolean; seasonal?: boolean; seasonalBeforeFaction?: boolean; unobtainable?: boolean; faction?: "alliance" | "horde"; since?: number; dropProfile?: { rate: number; rate2?: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
+    critter?: boolean; balanceOnly?: boolean; seasonal?: boolean; seasonalBeforeFaction?: boolean; unobtainable?: boolean; faction?: "alliance" | "horde"; activity?: string; since?: number; dropProfile?: { rate: number; rate2?: number; style: string; packWeight: number; tier: string; noCraft: boolean } }>;
   editions?: Record<string, { key: string; weight: number }[]>;
   sets: { code: string; title: string; group: string; reward: string; cards: string[]; required?: string[]; requiredBeforeFaction?: string[] }[];
   dust: { recycle: Record<string, number>; craft: Record<string, number> };
@@ -30,6 +30,12 @@ export type LedgerState = {
   balance?: number;
   launch?: number; // 1 after mode/launch1: cards held back for seasons are not acquired before a season releases them
   faction?: number; // 1 after mode/faction1: cards added in spec 10 exist, and a character's faction (mode/side:*) gates the cards only one faction can win
+  fellow?: number; // 1 after mode/fellow1 (spec 12): activities earn a roll for a Fellowship card
+  credits?: Record<string, number>; // the rolls earned and not yet used, by activity (trade, gift, donate, camp)
+  lastOut?: { trade: string; seq: number }; // the last tradeOut, so a swap (its tradeIn follows at once) can be told from a gift
+  camp?: number; // 1 after mode/camp1 (spec 12): campfire events and boosted attempts are allowed
+  campEnd?: number; // the latest time a claimed campfire boost lasts to, by the binder's own clock
+  campBoosted?: number; // attempts written down as boosted, for the integrity checks
   guild?: number; // 1 after mode/guild1 (spec 11): a Ranked binder may donate copies to its guild (donate, donateReturn)
   donations?: Record<string, string>; // each donation's operation id: "<guild id>|<card>" until it comes back (donateReturn), then "returned"
   sides?: Record<string, string>; // each character's declared faction ("alliance" or "horde"), by the name written in its events
@@ -59,6 +65,7 @@ export const snapshotDifferences = shared.snapshotDifferences as (
 ) => string[];
 
 export const PACK_SIZE = packs.PACK_SIZE as number;
+export const CAMP_FACTOR = shared.CAMP_FACTOR as number; // the chance of a card drop is this many times higher for an attempt made at a camp with its buff (spec 12)
 export const PACK_ODDS = packs.PACK_ODDS as number;
 export const packInfo = packs.packInfo as (catalog: Catalog, id: string) => { id: string; zone: string; tier: string; size: number } | null;
 export const packTier = packs.packTier as (entry: string, shinyOdds: number) => string;

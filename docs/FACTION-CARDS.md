@@ -47,7 +47,8 @@ Slow respawn is **not** a reason: world bosses and rares that come back after mo
 | = both factions can win | 3,459 (1,729 at launch, 1,730 held back for seasons, 31 of them never winnable) |
 | Only the Alliance can win | 162 |
 | Only the Horde can win | 162 |
-| **Catalog** | **3,783** base cards |
+| + the Fellowship cards, earned by activities ([FELLOWSHIP.md](FELLOWSHIP.md)) | +4 |
+| **Catalog** | **3,787** base cards |
 
 An Alliance character can win 3,459 - 31 + 162 = 3,590 of them (the 31 never-winnable cards are among the 3,459), and so can a Horde character.
 

@@ -16,7 +16,7 @@ import { seasonalCandidates } from "./seasons.ts";
 import type { SqlSeasons } from "./seasons.ts";
 import type { SqlGuilds } from "./guilds.ts";
 
-export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11]; // 11 adds mode/guild1 and the donate and donateReturn events (guild binders); 10 adds mode/faction1 and mode/side:* (cards only one faction can win); 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates); 9 adds mode/launch1 (cards held back for seasons)
+export const SUPPORTED_SPEC_VERSIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]; // 12 adds mode/camp1, the camp event and boosted attempts (partner "camp");  11 adds mode/guild1 and the donate and donateReturn events (guild binders); 10 adds mode/faction1 and mode/side:* (cards only one faction can win); 7 adds server-authorised seasonal pack rewards; 8 adds mode/chase2 (the second set of drop rates); 9 adds mode/launch1 (cards held back for seasons)
 export const MAX_EVENTS_PER_UPLOAD = 5000;
 
 export type Snapshot = {
@@ -125,6 +125,12 @@ export async function acceptUpload(
   const guildEvents = events.filter((event) => event["kind"] === "donate" || event["kind"] === "donateReturn");
   const guildMarker = events.some((event) => event["kind"] === "mode" && event["key"] === "guild1");
   if (upload.specVersion < 11 && (stored.state.guild === 1 || guildMarker || guildEvents.length)) {
+    throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
+  }
+  // A binder that has recorded mode/camp1, or any camp claim or boosted attempt, can only be uploaded by a companion that knows spec 12.
+  const campMarker = events.some((event) => event["kind"] === "mode" && event["key"] === "camp1");
+  const campEvents = events.some((event) => event["kind"] === "camp" || ((event["kind"] === "drop" || event["kind"] === "miss") && event["partner"] === "camp"));
+  if (upload.specVersion < 12 && (stored.state.camp === 1 || campMarker || campEvents)) {
     throw new ApiError("client_too_old", { supported: SUPPORTED_SPEC_VERSIONS });
   }
   // The add-on can never be past the first entry after the last one issued: it only uses entries it was given.

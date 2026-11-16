@@ -18,14 +18,14 @@ function ACB.playerAuras()
                 if not ok then break end
                 api = "C_UnitAuras" -- the call works, even if there is nothing to list
                 if type(data) ~= "table" then break end
-                entry = { name = read(data.name, "string"), spellId = read(data.spellId, "number"), duration = read(data.duration, "number"),
+                entry = { name = read(data.name, "string"), icon = read(data.icon, "number"), spellId = read(data.spellId, "number"), duration = read(data.duration, "number"),
                     expires = read(data.expirationTime, "number"), count = read(data.applications, "number"), source = read(data.sourceUnit, "string") }
             elseif UnitAura then
                 local values = { pcall(UnitAura, "player", index, kind) }
                 if not values[1] then break end
                 api = "UnitAura"
                 if values[2] == nil then break end
-                entry = { name = read(values[2], "string"), count = read(values[4], "number"), duration = read(values[6], "number"),
+                entry = { name = read(values[2], "string"), icon = read(values[3], "number"), count = read(values[4], "number"), duration = read(values[6], "number"),
                     expires = read(values[7], "number"), source = read(values[8], "string"), spellId = read(values[11], "number") }
             else
                 break

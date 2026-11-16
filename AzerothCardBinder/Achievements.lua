@@ -25,6 +25,9 @@ ACB.achievementTracks = {
         { key = "shiny15", goal = 15, name = "All That Glitters", title = "Foil Curator" },
         { key = "shiny50", goal = 50, name = "A Dazzling Display", title = "Keeper of the Glint" },
     } },
+    { label = "Fellowship", metric = "fellowship", entries = {
+        { key = "fellowship4", goal = 4, name = "Better Together", title = "Fellow Traveler" },
+    } },
     { label = "Deadmines", entries = ACB.achievements },
 }
 
@@ -72,12 +75,13 @@ function ACB.selectTitle(saved, title)
 end
 
 function ACB.achievementTotals(saved)
-    local totals = { cards = 0, sets = 0, trades = saved.tradeCount or 0, shiny = 0 }
+    local totals = { cards = 0, sets = 0, trades = saved.tradeCount or 0, shiny = 0, fellowship = 0 }
     local creatures = {}
     for key, count in pairs(saved.counts) do
         if count > 0 and ACB.cards[key] then
             local base = ACB.baseCard(ACB.cards[key]).key
             if not creatures[base] then totals.cards = totals.cards + 1; creatures[base] = true end
+            if ACB.cards[key].activity then totals.fellowship = totals.fellowship + 1 end
             if saved.shiny and saved.shiny[key] then totals.shiny = totals.shiny + 1 end
         end
     end

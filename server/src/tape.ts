@@ -3,7 +3,7 @@
 // an entry they have not been given. Roll and shiny values follow the spec and the shared vectors exactly.
 import { sha256Hex, toHex } from "../../packages/shared/src/crypto.ts";
 import type { LedgerEvent } from "./ledger.ts";
-import { packPick, packValue, baseCardKey, pickEdition, packInfo, packTier } from "./shared.ts";
+import { packPick, packValue, baseCardKey, pickEdition, packInfo, packTier, CAMP_FACTOR } from "./shared.ts";
 import type { Catalog, LedgerState } from "./shared.ts";
 import { chanceFor } from "../../packages/shared/src/drops.js";
 
@@ -109,18 +109,21 @@ export async function checkTape(args: {
     const card = args.catalog.cards[event.key];
     if (!card) continue; // the rules have already refused unknown cards
     const source = baseCardKey(args.catalog, event.key);
+    // An attempt made at a camp with its buff (spec 12) had a higher chance. The rules have already checked that the binder may claim it.
+    const factor = event.partner === "camp" ? CAMP_FACTOR : 1;
+    const chanceAt = (misses: number): number => Math.min(10000, chanceFor(args.catalog, source, misses, balanced) * factor);
     if (event.kind === "miss") {
       for (let position = event.tape - event.count + 1; position <= event.tape; position++) {
         const misses = stack[source] ?? 0;
         // A miss that the roll would have won is a drop the player left out.
-        if (rollValue(await entryAt(position)) <= chanceFor(args.catalog, source, misses, balanced)) return { failure: { reason: "roll", index } };
+        if (rollValue(await entryAt(position)) <= chanceAt(misses)) return { failure: { reason: "roll", index } };
         stack[source] = misses + 1;
       }
       lastTape = event.tape;
       continue;
     }
     const entry = await entryAt(event.tape);
-    if (rollValue(entry) > chanceFor(args.catalog, source, stack[source] ?? 0, balanced)) return { failure: { reason: "roll", index } };
+    if (rollValue(entry) > chanceAt(stack[source] ?? 0)) return { failure: { reason: "roll", index } };
     if (editions && pickEdition(args.catalog, source, await editionValue(entry), balanced) !== event.key) return { failure: { reason: "edition", index } };
     delete stack[source];
     // While a card has no shiny copy, a drop is shiny exactly when its entry says so. Once it has one, the rules

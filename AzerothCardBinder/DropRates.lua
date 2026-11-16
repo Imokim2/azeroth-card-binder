@@ -30,6 +30,11 @@ function ACB.rateV2(profile, rate)
 end
 
 for _, card in pairs(ACB.cards) do
+    if card.activity then
+        -- Earned only by completing its activity (CatalogFellowship.lua): one in a hundred each time, flat, never crafted, never found in a pack.
+        card.dropScale = 100
+        card.dropProfile = { rate = 100, rate2 = 100, style = "flat", packWeight = 0, tier = "activity", noCraft = true }
+    else
     local value = seed("distribution-v1|" .. card.key) % 1000
     local detail = seed("rate-v1|" .. card.key)
     local tier = value < 820 and "regular" or value < 970 and "uncommon" or "chase"
@@ -47,6 +52,7 @@ for _, card in pairs(ACB.cards) do
         tier = critter and "critter" or tier, noCraft = critter or tier == "chase",
     }
     card.dropProfile.rate2 = ACB.rateV2(card.dropProfile, card.dropProfile.rate)
+    end
 end
 
 -- `balanced` is the drop generation: false (the original rank rates), true or 1 (mode/chase1), or 2 (mode/chase2, the current rates).
@@ -63,6 +69,7 @@ function ACB.dropRate(card, balanced, observedRank)
 end
 
 function ACB.dropChance(card, misses, balanced, observedRank)
+    if card.activity then return card.dropProfile.rate end -- flat: misses do not build it up
     local rate = ACB.dropRate(card, balanced, observedRank)
     if not balanced or not card.dropProfile or card.dropProfile.style ~= "chase" then
         return math.min(10000, rate + rate * (ACB.stackFactor or 0) * misses)

@@ -56,7 +56,7 @@ export function luckScore(catalog: Catalog, attempts: Record<string, number>, dr
   let observed = 0;
   for (const [key, count] of Object.entries(attempts)) {
     const card = catalog.cards[key];
-    if (!card || count < 1) continue;
+    if (!card || card.activity || count < 1) continue; // an activity card is rolled once per activity, flat: nothing to compare with a luck model
     const profile = profileFor(catalog, key, balanced);
     const model = dropModel(profile.rate, catalog.stackFactor, profile.style);
     mean += count * model.perAttempt;

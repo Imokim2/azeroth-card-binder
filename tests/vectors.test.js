@@ -48,10 +48,13 @@ test("the valid ledger verifies, in one batch and in two", () => {
     // Every kind of event is covered.
     const seasonal = load("season-rewards.json");
     assert.deepEqual(ledger.verifyChain(seasonal.events), { ok: true, head: seasonal.head });
+    const camp = load("camp.json");
+    assert.deepEqual(ledger.verifyChain(camp.events), { ok: true, head: camp.head });
+    camp.events.forEach((event, index) => assert.equal(ledger.eventText(event), camp.texts[index]));
     const guild = load("guild-donations.json");
     assert.deepEqual(ledger.verifyChain(guild.events), { ok: true, head: guild.head });
     guild.events.forEach((event, index) => assert.equal(ledger.eventText(event), guild.texts[index]));
-    assert.deepEqual([...new Set([...valid.events, ...seasonal.events, ...guild.events].map((event) => event.kind))].sort(), [...ledger.KINDS].sort());
+    assert.deepEqual([...new Set([...valid.events, ...seasonal.events, ...guild.events, ...camp.events].map((event) => event.kind))].sort(), [...ledger.KINDS].sort());
 });
 
 test("every invalid ledger is rejected for the stated reason", () => {

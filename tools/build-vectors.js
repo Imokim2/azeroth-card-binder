@@ -66,6 +66,10 @@ write("season-rewards.json", { events: [seasonalReward], head: { seq: 1, hash: s
 const guildOp = { partner: "01HF7YAT00QKSEP5RCNMPTQ3KN", trade: "b".repeat(32) };
 const donated = ledger.makeEvent({ ...base, seq: 1, t: 1300, kind: "donate", key: "npc:589", count: 0, ...guildOp }, ledger.GENESIS);
 const returned = ledger.makeEvent({ ...base, seq: 2, t: 1310, kind: "donateReturn", key: "npc:589", count: 1, ...guildOp }, donated.h);
+// Spec 12: a camp claim, and a boosted drop that follows it.
+const camped = ledger.makeEvent({ ...base, seq: 1, t: 1400, kind: "camp", key: "violet", count: 7200 }, ledger.GENESIS);
+const boostedDrop = ledger.makeEvent({ ...base, seq: 2, t: 1410, kind: "drop", key: "npc:589", count: 1, tape: 1, partner: "camp" }, camped.h);
+write("camp.json", { events: [camped, boostedDrop], head: { seq: 2, hash: boostedDrop.h }, texts: [camped, boostedDrop].map(ledger.eventText) });
 write("guild-donations.json", { events: [donated, returned], head: { seq: 2, hash: returned.h }, texts: [donated, returned].map(ledger.eventText) });
 
 // ---- Ledgers that must be rejected ----

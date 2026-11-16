@@ -48,6 +48,8 @@ local parts = {
     "41-faction-cards",
     "42-guild",
     "43-auras",
+    "44-campfire",
+    "45-fellowship",
 }
 
 local source, ranges, line = {}, {}, 1

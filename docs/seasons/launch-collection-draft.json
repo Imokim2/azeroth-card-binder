@@ -1,13 +1,14 @@
 {
  "format": 1,
  "status": "DRAFT: a proposal for review. Nothing in the catalog, add-on or server uses this file.",
- "catalogVersion": "4301ff859016",
+ "catalogVersion": "39500d3ae8ca",
  "rule": "tools/launch-collection.js (chase cards on ordinary creatures: season)",
  "counts": {
   "launch": 1729,
   "seasons": 1730,
   "unobtainable": 31,
-  "faction": 324
+  "faction": 324,
+  "activity": 4
  },
  "unobtainable": [
   "npc:10116",
@@ -374,490 +375,568 @@
    "group": "Battleground",
    "launch": 3,
    "seasons": 11,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "AHX": {
    "title": "Arathi Highlands",
    "group": "Zone",
    "launch": 24,
    "seasons": 33,
-   "faction": 14
+   "faction": 14,
+   "activity": 0
   },
   "AMX": {
    "title": "Alterac Mountains",
    "group": "Zone",
    "launch": 19,
    "seasons": 19,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "AQT": {
    "title": "Ahn'Qiraj Temple",
    "group": "Raid",
    "launch": 29,
    "seasons": 4,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "AVX": {
    "title": "Alterac Valley",
    "group": "Battleground",
    "launch": 6,
    "seasons": 15,
-   "faction": 42
+   "faction": 42,
+   "activity": 0
   },
   "AXX": {
    "title": "Ashenvale",
    "group": "Zone",
    "launch": 27,
    "seasons": 75,
-   "faction": 24
+   "faction": 24,
+   "activity": 0
   },
   "AXX2": {
    "title": "Azshara",
    "group": "Zone",
    "launch": 26,
    "seasons": 29,
-   "faction": 1
+   "faction": 1,
+   "activity": 0
   },
   "BDX": {
    "title": "Blackfathom Deeps",
    "group": "Dungeon",
    "launch": 27,
    "seasons": 0,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "BDX2": {
    "title": "Blackrock Depths",
    "group": "Dungeon",
    "launch": 50,
    "seasons": 14,
-   "faction": 1
+   "faction": 1,
+   "activity": 0
   },
   "BLX": {
    "title": "Blackwing Lair",
    "group": "Raid",
    "launch": 22,
    "seasons": 6,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "BLX2": {
    "title": "Blasted Lands",
    "group": "Zone",
    "launch": 15,
    "seasons": 18,
-   "faction": 5
+   "faction": 5,
+   "activity": 0
   },
   "BSX": {
    "title": "Blackrock Spire",
    "group": "Dungeon",
    "launch": 65,
    "seasons": 5,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "BSX2": {
    "title": "Burning Steppes",
    "group": "Zone",
    "launch": 25,
    "seasons": 32,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "BXX": {
    "title": "Badlands",
    "group": "Zone",
    "launch": 22,
    "seasons": 27,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "BXX2": {
    "title": "The Barrens",
    "group": "Zone",
    "launch": 76,
    "seasons": 121,
-   "faction": 34
+   "faction": 34,
+   "activity": 0
   },
   "DM": {
    "title": "Deadmines",
    "group": "Dungeon",
    "launch": 21,
    "seasons": 2,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "DMX": {
    "title": "Dire Maul",
    "group": "Dungeon",
    "launch": 53,
    "seasons": 10,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "DMX2": {
    "title": "Dun Morogh",
    "group": "Zone",
    "launch": 19,
    "seasons": 37,
-   "faction": 9
+   "faction": 9,
+   "activity": 0
   },
   "DMX3": {
    "title": "Dustwallow Marsh",
    "group": "Zone",
    "launch": 25,
    "seasons": 38,
-   "faction": 10
+   "faction": 10,
+   "activity": 0
   },
   "DPX": {
    "title": "Deadwind Pass",
    "group": "Zone",
    "launch": 2,
    "seasons": 7,
-   "faction": 1
+   "faction": 1,
+   "activity": 0
   },
   "DXX": {
    "title": "Duskwood",
    "group": "Zone",
    "launch": 12,
    "seasons": 36,
-   "faction": 8
+   "faction": 8,
+   "activity": 0
   },
   "DXX2": {
    "title": "Durotar",
    "group": "Zone",
    "launch": 13,
    "seasons": 34,
-   "faction": 10
+   "faction": 10,
+   "activity": 0
   },
   "DXX3": {
    "title": "Darkshore",
    "group": "Zone",
    "launch": 18,
    "seasons": 49,
-   "faction": 1
+   "faction": 1,
+   "activity": 0
   },
   "DXX4": {
    "title": "Desolace",
    "group": "Zone",
    "launch": 30,
    "seasons": 78,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "EFX": {
    "title": "Elwynn Forest",
    "group": "Zone",
    "launch": 16,
    "seasons": 40,
-   "faction": 13
+   "faction": 13,
+   "activity": 0
   },
   "EPX": {
    "title": "Eastern Plaguelands",
    "group": "Zone",
    "launch": 28,
    "seasons": 51,
-   "faction": 7
+   "faction": 7,
+   "activity": 0
+  },
+  "FW": {
+   "title": "Fellowship",
+   "group": "Social",
+   "launch": 4,
+   "seasons": 0,
+   "faction": 0,
+   "activity": 4
   },
   "FXX": {
    "title": "Feralas",
    "group": "Zone",
    "launch": 29,
    "seasons": 56,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "FXX2": {
    "title": "Felwood",
    "group": "Zone",
    "launch": 20,
    "seasons": 45,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "GA": {
    "title": "Gathering",
    "group": "Profession",
    "launch": 39,
    "seasons": 0,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "GXX": {
    "title": "Gnomeregan",
    "group": "Dungeon",
    "launch": 12,
    "seasons": 6,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "HFX": {
    "title": "Hillsbrad Foothills",
    "group": "Zone",
    "launch": 17,
    "seasons": 35,
-   "faction": 24
+   "faction": 24,
+   "activity": 0
   },
   "HXX": {
    "title": "The Hinterlands",
    "group": "Zone",
    "launch": 31,
    "seasons": 23,
-   "faction": 7
+   "faction": 7,
+   "activity": 0
   },
   "LMX": {
    "title": "Loch Modan",
    "group": "Zone",
    "launch": 16,
    "seasons": 28,
-   "faction": 1
+   "faction": 1,
+   "activity": 0
   },
   "MCX": {
    "title": "Molten Core",
    "group": "Raid",
    "launch": 23,
    "seasons": 0,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "MXX": {
    "title": "Maraudon",
    "group": "Dungeon",
    "launch": 28,
    "seasons": 7,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "MXX2": {
    "title": "Mulgore",
    "group": "Zone",
    "launch": 7,
    "seasons": 20,
-   "faction": 13
+   "faction": 13,
+   "activity": 0
   },
   "MXX3": {
    "title": "Moonglade",
    "group": "Zone",
    "launch": 4,
    "seasons": 5,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "NXX": {
    "title": "Naxxramas",
    "group": "Raid",
    "launch": 75,
    "seasons": 5,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "OSL": {
    "title": "Onyxia's Lair",
    "group": "Raid",
    "launch": 2,
    "seasons": 0,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "RAQ": {
    "title": "Ruins of Ahn'Qiraj",
    "group": "Raid",
    "launch": 30,
    "seasons": 2,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "RCX": {
    "title": "Ragefire Chasm",
    "group": "Dungeon",
    "launch": 11,
    "seasons": 0,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "RDX": {
    "title": "Razorfen Downs",
    "group": "Dungeon",
    "launch": 19,
    "seasons": 5,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "RKX": {
    "title": "Razorfen Kraul",
    "group": "Dungeon",
    "launch": 34,
    "seasons": 1,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "RMX": {
    "title": "Redridge Mountains",
    "group": "Zone",
    "launch": 19,
    "seasons": 32,
-   "faction": 3
+   "faction": 3,
+   "activity": 0
   },
   "SFX": {
    "title": "Silverpine Forest",
    "group": "Zone",
    "launch": 14,
    "seasons": 37,
-   "faction": 11
+   "faction": 11,
+   "activity": 0
   },
   "SGX": {
    "title": "Searing Gorge",
    "group": "Zone",
    "launch": 17,
    "seasons": 24,
-   "faction": 3
+   "faction": 3,
+   "activity": 0
   },
   "SKX": {
    "title": "Shadowfang Keep",
    "group": "Dungeon",
    "launch": 26,
    "seasons": 1,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "SMX": {
    "title": "Scarlet Monastery",
    "group": "Dungeon",
    "launch": 31,
    "seasons": 1,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "SMX2": {
    "title": "Stonetalon Mountains",
    "group": "Zone",
    "launch": 14,
    "seasons": 37,
-   "faction": 5
+   "faction": 5,
+   "activity": 0
   },
   "SSX": {
    "title": "Stormwind Stockade",
    "group": "Dungeon",
    "launch": 7,
    "seasons": 0,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "SSX2": {
    "title": "Swamp of Sorrows",
    "group": "Zone",
    "launch": 19,
    "seasons": 28,
-   "faction": 9
+   "faction": 9,
+   "activity": 0
   },
   "STX": {
    "title": "Sunken Temple",
    "group": "Dungeon",
    "launch": 13,
    "seasons": 2,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "SVX": {
    "title": "Stranglethorn Vale",
    "group": "Zone",
    "launch": 56,
    "seasons": 86,
-   "faction": 4
+   "faction": 4,
+   "activity": 0
   },
   "SXX": {
    "title": "Scholomance",
    "group": "Dungeon",
    "launch": 32,
    "seasons": 3,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "SXX2": {
    "title": "Stratholme",
    "group": "Dungeon",
    "launch": 39,
    "seasons": 4,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "SXX3": {
    "title": "Silithus",
    "group": "Zone",
    "launch": 47,
    "seasons": 25,
-   "faction": 8
+   "faction": 8,
+   "activity": 0
   },
   "TGX": {
    "title": "Tirisfal Glades",
    "group": "Zone",
    "launch": 16,
    "seasons": 49,
-   "faction": 24
+   "faction": 24,
+   "activity": 0
   },
   "TNX": {
    "title": "Thousand Needles",
    "group": "Zone",
    "launch": 22,
    "seasons": 38,
-   "faction": 7
+   "faction": 7,
+   "activity": 0
   },
   "TXX": {
    "title": "Teldrassil",
    "group": "Zone",
    "launch": 14,
    "seasons": 47,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "TXX2": {
    "title": "Tanaris",
    "group": "Zone",
    "launch": 29,
    "seasons": 47,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "UGC": {
    "title": "Un'Goro Crater",
    "group": "Zone",
    "launch": 20,
    "seasons": 25,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "UXX": {
    "title": "Uldaman",
    "group": "Dungeon",
    "launch": 26,
    "seasons": 8,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "WCX": {
    "title": "Wailing Caverns",
    "group": "Dungeon",
    "launch": 17,
    "seasons": 5,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "WF": {
    "title": "Westfall",
    "group": "Zone",
    "launch": 20,
    "seasons": 46,
-   "faction": 5
+   "faction": 5,
+   "activity": 0
   },
   "WPX": {
    "title": "Western Plaguelands",
    "group": "Zone",
    "launch": 31,
    "seasons": 39,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "WXX": {
    "title": "Wetlands",
    "group": "Zone",
    "launch": 28,
    "seasons": 49,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "WXX2": {
    "title": "Winterspring",
    "group": "Zone",
    "launch": 37,
    "seasons": 58,
-   "faction": 2
+   "faction": 2,
+   "activity": 0
   },
   "ZFX": {
    "title": "Zul'Farrak",
    "group": "Dungeon",
    "launch": 20,
    "seasons": 1,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "ZGX": {
    "title": "Zul'Gurub",
    "group": "Raid",
    "launch": 41,
    "seasons": 5,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   },
   "ZIX": {
    "title": "Zephras Isle",
    "group": "Zone",
    "launch": 4,
    "seasons": 4,
-   "faction": 0
+   "faction": 0,
+   "activity": 0
   }
  },
  "launch": [

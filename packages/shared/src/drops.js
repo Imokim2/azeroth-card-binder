@@ -2,6 +2,7 @@
 
 function profileChance(profile, misses, factor = 1) {
     const rate = profile.rate;
+    if (profile.style === "flat") return Math.min(10000, rate); // an activity card (Fellowship): the same chance every time, whatever came before
     if (profile.style !== "chase") return Math.min(10000, rate + rate * factor * misses);
     const limit = Math.ceil(10000 / rate), start = Math.floor(limit * .75);
     if (misses >= limit - 1) return 10000;

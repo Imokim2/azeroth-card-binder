@@ -80,6 +80,7 @@ function ACB.donateCard(saved, ledger, key, quiet)
         ledger:record("mode", "guild1")
         saved.guildLedger = true
     end
+    local fellow = ACB.fellowshipMarker and ACB.fellowshipMarker(saved, ledger) -- Fellowship.lua: a donation earns a roll once its marker is written
     local before = saved.counts[key]
     -- One id for this donation: it follows from where the history stands and what is given, so it is new every time and the same on every machine.
     local operation = ACB.sha256("donate|" .. saved.head.hash .. "|" .. key .. "|" .. saved.head.seq):sub(1, 32)
@@ -87,6 +88,7 @@ function ACB.donateCard(saved, ledger, key, quiet)
     ledger:record("donate", key, { before = before, partner = guild.id, trade = operation })
     if saved.counts[key] == 0 then saved.counts[key] = nil end
     saved.guildDonations[operation] = { key = key, guild = guild.id, t = time() }
+    if fellow then ACB.fellowshipEarn(saved, "donate") end
     if not quiet and ACB.refresh then ACB.refresh() end
     if not quiet and ACB.refreshZoneBar then ACB.refreshZoneBar() end
     return true, operation

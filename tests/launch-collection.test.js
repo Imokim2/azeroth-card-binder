@@ -9,7 +9,7 @@ const catalog = require("../packages/shared/catalog.json");
 const { draft, files } = require("../tools/launch-collection.js");
 
 // The cards both factions can win. Cards only one faction can win (card.faction) are outside the split: always available, never required.
-const base = Object.keys(catalog.cards).filter((key) => !catalog.cards[key].baseKey && !catalog.cards[key].faction);
+const base = Object.keys(catalog.cards).filter((key) => !catalog.cards[key].baseKey && !catalog.cards[key].faction && !catalog.cards[key].activity); // Fellowship cards are outside the split too
 
 test("the launch collection is exactly half of the base cards, and every held-back card is a real base card", () => {
     const result = draft(catalog);

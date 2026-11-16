@@ -31,7 +31,10 @@ function draft(catalog, options = {}) {
   const everyKey = Object.keys(catalog.cards).filter((key) => !catalog.cards[key].baseKey);
   const faction = everyKey.filter((key) => catalog.cards[key].faction && !catalog.cards[key].unobtainable);
   const factionSet = new Set(faction);
-  const baseKeys = everyKey.filter((key) => !factionSet.has(key)); // the cards both factions can win (and any faction card that cannot be won at all)
+  // Cards earned only by completing an activity (catalog card.activity, the Fellowship set) are outside the split too: always available, and a page needs them.
+  const activity = everyKey.filter((key) => catalog.cards[key].activity);
+  const activitySet = new Set(activity);
+  const baseKeys = everyKey.filter((key) => !factionSet.has(key) && !activitySet.has(key)); // the cards both factions can win (and any faction card that cannot be won at all)
   const target = Math.floor(baseKeys.length / 2);
   const pageOf = new Map();
   for (const set of catalog.sets) for (const key of set.cards) pageOf.set(key, set);
@@ -83,10 +86,10 @@ function draft(catalog, options = {}) {
   const unobtainable = baseKeys.filter((key) => catalog.cards[key].unobtainable);
   const byPage = {};
   for (const set of catalog.sets) {
-    byPage[set.code] = { title: set.title, group: set.group, launch: set.cards.filter((key) => keep.has(key)).length,
-      seasons: set.cards.filter((key) => !keep.has(key) && !factionSet.has(key)).length, faction: set.cards.filter((key) => factionSet.has(key)).length };
+    byPage[set.code] = { title: set.title, group: set.group, launch: set.cards.filter((key) => keep.has(key) || activitySet.has(key)).length,
+      seasons: set.cards.filter((key) => !keep.has(key) && !factionSet.has(key) && !activitySet.has(key)).length, faction: set.cards.filter((key) => factionSet.has(key)).length, activity: set.cards.filter((key) => activitySet.has(key)).length };
   }
-  return { launch, seasons, unobtainable, faction, byPage, chase };
+  return { launch, seasons, unobtainable, faction, activity, byPage, chase };
 }
 
 function summary(catalog, result) {
@@ -119,13 +122,14 @@ function files(catalog, result) {
   for (const key of result.launch) decision.set(key, "launch");
   for (const key of result.seasons) decision.set(key, "seasons");
   for (const key of result.faction) decision.set(key, "faction");
+  for (const key of result.activity) decision.set(key, "activity");
   for (const key of result.unobtainable) decision.set(key, "never");
   const json = JSON.stringify({
     format: 1,
     status: "DRAFT: a proposal for review. Nothing in the catalog, add-on or server uses this file.",
     catalogVersion: catalog.catalogVersion,
     rule: "tools/launch-collection.js (chase cards on ordinary creatures: " + result.chase + ")",
-    counts: { launch: result.launch.length, seasons: result.seasons.length, unobtainable: result.unobtainable.length, faction: result.faction.length },
+    counts: { launch: result.launch.length, seasons: result.seasons.length, unobtainable: result.unobtainable.length, faction: result.faction.length, activity: result.activity.length },
     unobtainable: result.unobtainable,
     faction: result.faction,
     pages: result.byPage,
