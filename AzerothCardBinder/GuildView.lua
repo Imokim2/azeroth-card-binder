@@ -144,6 +144,11 @@ function ACB.createGuildView(parent, saved)
         local shown
         confirmed, pending, shown = ACB.guildInventoryView(saved, guildID)
         seen.counts, seen.shiny = giving and saved.counts or shown, giving and saved.shiny or {}
+        seen.indexProgressCounts = giving and saved.counts or confirmed
+        seen.indexCardStatus = not giving and function(card, count)
+            local waiting = pending[card.key] or 0
+            return waiting > 0 and ("%d + %d waiting"):format(count, waiting) or count > 0 and ("%d in guild"):format(count) or "Missing"
+        end or nil
         seen.indexCardFilter = giving and function(card) return (saved.counts[card.key] or 0) > (spares and 1 or 0) end or nil
         folio:SetShown(active)
         messageLeft:SetShown(not active); messageRight:SetShown(not active)

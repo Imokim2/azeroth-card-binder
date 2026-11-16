@@ -314,4 +314,23 @@ do
         ACB.sync = keep
     end)
 
+    test("guild index keeps provisional copies unowned until confirmed", function()
+        local saved = { counts = { [CARD] = 1 }, indexProgressCounts = {} }
+        saved.indexCardStatus = function(card, count) return card.key == CARD and "1 waiting" or "Missing" end
+        local index = ACB.createFolioIndex(UIParent, saved, ignore)
+        index.search:SetText(ACB.cards[CARD].name); index:showSets(ACB.cards[CARD].page)
+        index:setOwnership("owned"); equal(#indexCards(index), 0)
+        index:setOwnership("unowned")
+        local found, waiting = false, false
+        for _, row in ipairs(indexCards(index)) do
+            if row.cardKey == CARD then
+                found = true
+                for _, widget in ipairs(widgets) do if widget.parent == row and widget.text == "1 waiting" then waiting = true end end
+            end
+        end
+        equal(found, true); equal(waiting, true)
+        saved.indexProgressCounts[CARD] = 1
+        index:setOwnership("owned"); equal(indexCards(index)[1].cardKey, CARD)
+    end)
+
 end
