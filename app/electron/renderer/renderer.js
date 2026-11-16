@@ -24,7 +24,7 @@ const demos = {
 };
 
 function ago(seconds) {
-  if (seconds === null) return "–";
+  if (seconds === null) return "â€“";
   const gap = Math.max(0, Math.floor(Date.now() / 1000) - seconds);
   if (gap < 60) return "just now";
   if (gap < 3600) return Math.floor(gap / 60) + " min ago";
@@ -51,7 +51,7 @@ function render(status) {
   const synced = ready && status.lastSyncAt !== null && status.accounts.length > 0 && !attention;
   const pill = $("pill");
   pill.className = "pill " + (status.problem ? "bad" : attention || status.busy || hasUpdate || !synced ? "warn" : "ok");
-  pill.textContent = attention ? "Needs attention" : status.busy || status.updating ? "Working…" : hasUpdate ? "Update available" : synced ? "Up to date" : ready ? "Ready to sync" : "Setup needed";
+  pill.textContent = attention ? "Needs attention" : status.busy || status.updating ? "Workingâ€¦" : hasUpdate ? "Update available" : synced ? "Up to date" : ready ? "Ready to sync" : "Setup needed";
   $("overview-title").textContent = attention ? "Your connection needs attention." : status.busy ? "Updating your companion." : synced ? "Your binder is up to date." : ready ? "Ready for your first sync." : "Set up your companion.";
   $("overview-description").textContent = attention ? "Review the message below to continue syncing your collection."
     : synced ? "Your latest saved collection has been synced."
@@ -118,7 +118,7 @@ function render(status) {
   $("last-sync").textContent = ago(status.lastSyncAt);
   $("standings").textContent = status.standings === "fresh" ? "Up to date" : status.standings === "kept" ? "Recent" : "Not available";
   const updates = status.updates || null;
-  $("addon-version").textContent = !updates ? "–" : updates.addon.installed === null ? "Not found"
+  $("addon-version").textContent = !updates ? "â€“" : updates.addon.installed === null ? "Not found"
     : updates.addon.installed + (updates.addon.state === "required" ? " (too old)" : updates.addon.state === "update" ? " (update available)" : "");
   const note = updateNote(updates, status.gameFolder);
   $("update-prompt").hidden = !note && !hasUpdate;
@@ -130,12 +130,12 @@ function render(status) {
   $("update-addon").hidden = !can.addon;
   $("update-app").hidden = !can.app;
   $("update-addon").disabled = $("update-app").disabled = !!status.updating || status.busy || !!status.checkingUpdates;
-  $("update-addon").textContent = status.updating === "addon" ? "Installing…" : (updates && updates.addon.installed === null ? "Install addon" : "Update addon") + (status.newer && status.newer.addon ? " to " + status.newer.addon : "");
-  $("update-app").textContent = status.updating === "app" ? "Updating…" : "Update companion" + (status.newer && status.newer.app ? " to " + status.newer.app : "");
+  $("update-addon").textContent = status.updating === "addon" ? "Installingâ€¦" : (updates && updates.addon.installed === null ? "Install addon" : "Update addon") + (status.newer && status.newer.addon ? " to " + status.newer.addon : "");
+  $("update-app").textContent = status.updating === "app" ? "Updatingâ€¦" : "Update companion" + (status.newer && status.newer.app ? " to " + status.newer.app : "");
   $("sync-now").disabled = !ready || status.busy || !!status.problem;
   $("repair-sync").hidden = !ready || (!accountIssues && !status.needsNewBinder && !status.repairing);
   $("repair-sync").disabled = status.busy || status.repairing === true;
-  $("repair-sync").textContent = status.repairing ? "Checking repair…" : "Repair sync";
+  $("repair-sync").textContent = status.repairing ? "Checking repairâ€¦" : "Repair sync";
 
   const message = $("message");
   message.hidden = !status.message;
@@ -143,7 +143,7 @@ function render(status) {
   $("start-at-login").checked = status.startAtLogin;
   $("start-at-login").disabled = status.busy;
   $("check-updates").disabled = !!status.checkingUpdates || !!status.updating;
-  $("check-updates").textContent = status.checkingUpdates ? "Checking for updates…" : "Check for updates";
+  $("check-updates").textContent = status.checkingUpdates ? "Checking for updatesâ€¦" : "Check for updates";
   $("update-check-message").hidden = !status.updateCheckMessage;
   $("update-check-message").textContent = status.updateCheckMessage || "";
   $("version").textContent = "Version " + status.version;
@@ -154,6 +154,12 @@ function render(status) {
 // It asks the server only when it is opened, after the player acts, and when they press Refresh: never on a timer.
 let guildPanelKey = "";
 let guildBusy = false;
+function guildCharacterName(peer) {
+  return peer.replace("-", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+}
+function guildCharacterName(peer) {
+  return peer.replace("-", " ").replace(/(^|\s)\S/g, (letter) => letter.toUpperCase());
+}
 function renderGuildCharacters(characters) {
   const select = $("guild-character");
   const chosen = select.value;
@@ -163,7 +169,7 @@ function renderGuildCharacters(characters) {
     for (const name of characters.length ? characters : [""]) {
       const option = document.createElement("option");
       option.value = name;
-      option.textContent = name || "No Ranked characters synced yet";
+      option.textContent = name ? guildCharacterName(name) : "No Ranked characters synced yet";
       select.append(option);
     }
     if (characters.includes(chosen)) select.value = chosen;
@@ -183,9 +189,9 @@ function renderGuild(panel) {
   $("guild-state").textContent = member && member.state === "active" ? member.guild.name : member && member.state === "pending" ? "Application waiting" : open ? "Waiting for approval" : "Not in a guild";
   $("guild-state").classList.toggle("complete", !!(member && member.state === "active"));
   let text = "Join your guild's binder, or create one to get started. Cards given to it stay with it for good.";
-  if (member && member.state === "active") text = member.guild.name + " on " + member.guild.realm + " (" + member.guild.side + "), " + member.guild.members + (member.guild.members === 1 ? " member. " : " members. ") + (owns ? "You are its owner. " : "") + "Open Guild in your in-game binder to donate cards.";
+  if (member && member.state === "active") text = member.guild.name + " (" + member.guild.side + "), " + member.guild.members + (member.guild.members === 1 ? " member. " : " members. ") + (owns ? "You are its owner. " : "") + "Open Guild in your in-game binder to donate cards.";
   else if (member && member.state === "pending") text = "Your application to " + member.guild.name + " is waiting for its owner to decide.";
-  else if (open) text = "Your guild, " + open.name + " on " + open.realm + ", is waiting for a person to approve it.";
+  else if (open) text = "Your guild, " + open.name + ", is waiting for a person to approve it.";
   else if (refused) text = "Your request for " + refused.name + " was not approved" + (refused.note ? ": " + refused.note : ".");
   else if (member && (member.state === "removed" || member.state === "left")) text = (member.state === "removed" ? "You were removed from " : "You left ") + member.guild.name + ". Cards you gave it stay with it.";
   $("guild-text").textContent = text;
@@ -200,7 +206,7 @@ function renderGuild(panel) {
     const left = document.createElement("span");
     const name = document.createElement("span");
     name.className = "name";
-    name.textContent = entry.character;
+    name.textContent = guildCharacterName(entry.character);
     const role = document.createElement("span");
     role.className = "mode" + (entry.role === "owner" ? " ranked" : "");
     role.textContent = entry.role === "owner" ? "Owner" : entry.state === "pending" ? "Applied" : "Member";

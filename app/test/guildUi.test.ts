@@ -30,6 +30,7 @@ test("the guild dropdown fills after the first sync, preserves selection, and ex
   const select = elements.get("guild-character")!;
   assert.deepEqual(select.options.map(o => o.value), ["alice-realmname", "bob-realmname"]);
   assert.equal(elements.get("guild-request")!.disabled, false);
+  assert.equal(select.options[0]!.textContent, "Alice Realmname");
   assert.equal(elements.get("guild-character-hint")!.hidden, true);
   select.value = "bob-realmname";
   vm.runInContext('render({ ...demos.syncing, guildCharacters: ["alice-realmname", "bob-realmname", "charlie-realmname"] })', context);

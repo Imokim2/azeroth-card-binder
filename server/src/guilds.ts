@@ -10,6 +10,7 @@ import { baseCardKey } from "./shared.ts";
 import type { LedgerEvent } from "./ledger.ts";
 import { POINTS } from "./score.ts";
 
+export const GUILD_WORLD = "Forever"; // UnitFullName returns a surname on Forever, not a realm.
 export type GuildSide = "alliance" | "horde";
 export type GuildStatus = "pending" | "active" | "refused";
 export const GUILD_STATES = ["pending", "active", "refused", "all"] as const;
@@ -30,19 +31,19 @@ export type GuildView = { id: string; name: string; realm: string; side: GuildSi
 export type GuildReview = GuildView & { ownerId: string | null; decidedBy: string };
 
 const view = (row: Row): GuildView => ({
-  id: row.id, name: row.name, realm: row.realm, side: row.side, status: row.status, character: row.owner_character,
+  id: row.id, name: row.name, realm: GUILD_WORLD, side: row.side, status: row.status, character: row.owner_character,
   requestedAt: row.requested_at, decidedAt: row.decided_at, note: row.note,
 });
 const review = (row: Row): GuildReview => ({ ...view(row), ownerId: row.owner_player_id, decidedBy: row.decided_by });
 
 // Names and realms are compared without case, spaces, apostrophes or dashes (the way peerName compares a realm).
-export const guildKey = (text: string): string => text.toLowerCase().replace(/[\s'’-]/g, "");
+export const guildKey = (text: string): string => text.toLowerCase().replace(/[\s'â€™-]/g, "");
 
 // A guild name as typed, checked and tidied: letters, with single spaces, apostrophes and dashes between them.
 export function parseGuildName(value: unknown): string {
   if (typeof value !== "string" || /[\u0000-\u001f\u007f]/.test(value)) throw new ApiError("bad_request", { field: "name" }); // no control characters, not even a tab or line break
   const name = value.normalize("NFC").trim().replace(/\s+/g, " ");
-  const ok = name.length >= GUILD_NAME_MIN && name.length <= GUILD_NAME_MAX && /^\p{L}[\p{L}\p{M}' -]*\p{L}$/u.test(name) && !/['’ -]{2,}/.test(name)
+  const ok = name.length >= GUILD_NAME_MIN && name.length <= GUILD_NAME_MAX && /^\p{L}[\p{L}\p{M}' -]*\p{L}$/u.test(name) && !/['â€™ -]{2,}/.test(name)
     && guildKey(name).length >= GUILD_NAME_MIN;
   if (!ok) throw new ApiError("bad_request", { field: "name" });
   return name;
@@ -179,24 +180,24 @@ export class SqlGuilds {
       `SELECT ${COLUMNS.split(", ").map((column) => "g." + column).join(", ")}, (SELECT COUNT(*) FROM guild_members m WHERE m.guild_id = g.id AND m.state = 'active') AS members FROM guilds g WHERE g.status = 'active'`);
     return guilds.filter((guild) => byGuild.has(guild.id)).map((guild) => {
       const { tenths, cards } = guildPoints(this.#catalog, byGuild.get(guild.id)!);
-      return { guildId: guild.id, name: guild.name, realm: guild.realm, side: guild.side, tenths, cards, members: guild.members };
+      return { guildId: guild.id, name: guild.name, realm: GUILD_WORLD, side: guild.side, tenths, cards, members: guild.members };
     }).sort((a, b) => b.tenths - a.tenths || b.cards - a.cards || a.name.localeCompare(b.name) || a.guildId.localeCompare(b.guildId)).slice(0, limit);
   }
 
   // Create the guild and its first member atomically, from one of the player's own Ranked characters.
   async request(playerId: string, input: { character: string; name: string }, now: number): Promise<GuildView> {
-    const { own, side } = await this.#eligible(playerId, input.character);
+    const { side } = await this.#eligible(playerId, input.character);
     const refused = (await this.#db.all<{ n: number }>("SELECT COUNT(*) AS n FROM guilds WHERE owner_player_id = ? AND status = 'refused' AND requested_at > ?", [playerId, now - WEEK]))[0]?.n ?? 0;
     if (refused >= MAX_REFUSED_PER_WEEK) throw new ApiError("rate_limited", undefined, 86_400);
     if (await this.#hasLiveGuild(playerId)) throw new ApiError("guild_taken", { reason: "already-have-one" });
-    const nameKey = guildKey(input.name), realmKey = guildKey(own.realm);
-    const held = await this.#db.all("SELECT 1 FROM guilds WHERE realm_key = ? AND name_key = ? AND status IN ('pending', 'active')", [realmKey, nameKey]);
+    const nameKey = guildKey(input.name), realmKey = guildKey(GUILD_WORLD);
+    const held = await this.#db.all("SELECT 1 FROM guilds WHERE name_key = ? AND status IN ('pending', 'active')", [nameKey]);
     if (held.length) throw new ApiError("guild_taken", { reason: "name" });
     const id = newId(now * 1000);
     try {
       await this.#db.batch([
         { sql: `INSERT INTO guilds (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, 'automatic', '')`,
-          params: [id, input.name, nameKey, own.realm, realmKey, side, playerId, input.character, now, now] },
+          params: [id, input.name, nameKey, GUILD_WORLD, realmKey, side, playerId, input.character, now, now] },
         { sql: "INSERT INTO guild_members (id, guild_id, player_id, character, role, state, requested_at, decided_at) VALUES (?, ?, ?, ?, 'owner', 'active', ?, ?)",
           params: [newId(now * 1000), id, playerId, input.character, now, now] },
       ]);
@@ -255,8 +256,8 @@ export class SqlGuilds {
 
   // Apply to an active guild, by name, from one of the player's own characters on the guild's realm that declared the guild's side.
   async join(playerId: string, input: { character: string; name: string }, now: number): Promise<MembershipView> {
-    const { own, side } = await this.#eligible(playerId, input.character);
-    const guild = (await this.#db.all<Row>(`SELECT ${COLUMNS} FROM guilds WHERE realm_key = ? AND name_key = ? AND status = 'active'`, [guildKey(own.realm), guildKey(input.name)]))[0];
+    const { side } = await this.#eligible(playerId, input.character);
+    const guild = (await this.#db.all<Row>(`SELECT ${COLUMNS} FROM guilds WHERE name_key = ? AND status = 'active'`, [guildKey(input.name)]))[0];
     if (!guild) throw new ApiError("not_found", { reason: "no-such-guild" });
     if (guild.side !== side) throw new ApiError("guild_ineligible", { reason: "other-side" });
     const refused = (await this.#db.all<{ n: number }>("SELECT COUNT(*) AS n FROM guild_members WHERE player_id = ? AND state = 'refused' AND requested_at > ?", [playerId, now - WEEK]))[0]?.n ?? 0;
@@ -345,7 +346,7 @@ export class SqlGuilds {
     const members = (await this.#db.all<{ n: number }>("SELECT COUNT(*) AS n FROM guild_members WHERE guild_id = ? AND state = 'active'", [row.guild_id]))[0]?.n ?? 0;
     return {
       id: row.id, role: row.role, state: row.state, character: row.character, requestedAt: row.requested_at, decidedAt: row.decided_at,
-      guild: { id: row.guild_id, name: row.guild_name, realm: row.guild_realm, side: row.guild_side, members },
+      guild: { id: row.guild_id, name: row.guild_name, realm: GUILD_WORLD, side: row.guild_side, members },
     };
   }
 

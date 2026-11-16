@@ -95,9 +95,9 @@ function guildProblem(code: string, detail?: Record<string, unknown>): string {
       "other-side": "That guild is on the other faction.",
     } as Record<string, string>)[reason] ?? "That binder cannot use guilds yet.";
   }
-  if (code === "guild_taken") return reason === "name" ? "That guild name is already taken on this realm." : "You already have a guild, or an application waiting.";
+  if (code === "guild_taken") return reason === "name" ? "That guild name is already taken." : "You already have a guild, or an application waiting.";
   if (code === "guild_decided") return "That has already been decided.";
-  if (code === "not_found") return reason === "no-such-guild" ? "There is no guild binder with that name on this realm. Choose Create guild binder to start it." : "There is nothing here.";
+  if (code === "not_found") return reason === "no-such-guild" ? "There is no guild binder with that name. Choose Create guild binder to start it." : "There is nothing here.";
   if (code === "rate_limited") return "Too many refused requests this week. Try again later.";
   if (code === "bad_request") {
     const field = String(detail?.["field"] ?? "");
