@@ -7,7 +7,7 @@ export type GuildMembership = { id: string; role: "owner" | "member"; state: Mem
 // A guild the player asked to start: waiting for a reviewer, active, or refused (with the reviewer's note).
 export type GuildRequest = { id: string; name: string; realm: string; side: GuildSide; status: "pending" | "active" | "refused"; character: string; requestedAt: number; decidedAt: number; note: string };
 export type Donations = { results: Record<string, "credited" | "refunded" | "returned">; refunds: { operation: string; guild: string; card: string }[] };
-export type GuildSummary = { guildId: string; points: number; cards: number; rank?: number; inventory: { card: string; copies: number }[] };
+export type GuildSummary = { guildId: string; points: number; cards: number; rank?: number; inventory: { card: string; copies: number; donor?: string }[] };
 export type GuildData = { at: number; binders: string[]; membership: GuildMembership | null; requests: GuildRequest[]; donations: Donations; summary?: GuildSummary };
 export type RosterEntry = { id: string; character: string; role: "owner" | "member"; state: "pending" | "active"; requestedAt: number };
 
@@ -107,7 +107,9 @@ export function parseGuildSummary(input: unknown, expectedGuild: string): GuildS
     const entry = row(item), key = card(entry["card"]), copies = whole(entry["copies"]);
     if (copies < 1 || seen.has(key)) throw new Error("invalid guild inventory");
     seen.add(key);
-    return { card: key, copies };
+    const donor = entry["donor"] === undefined ? undefined : text(entry["donor"], 80);
+    if (donor !== undefined && /[|]/.test(donor)) throw new Error("invalid donor character");
+    return { card: key, copies, ...(donor ? { donor } : {}) };
   });
   return { guildId: guild.id, points: whole(data["points"]), cards: whole(data["cards"]), inventory,
     ...(data["rank"] == null ? {} : { rank: whole(data["rank"]) }) };

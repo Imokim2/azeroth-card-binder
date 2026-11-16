@@ -31,6 +31,7 @@ function ACB.createGuildView(parent, saved)
         region, indexShown = setIndex, false; view:refresh()
     end, {
         mine = function() return saved.counts end,
+        onOpenCard = function(card) region, indexShown = card.page, false; view:refresh() end,
         progressCounts = function() return giving and saved.counts or confirmed end,
         ownedCount = function(card, count) return giving and count or (confirmed[card.key] or 0) end,
         collectionStatus = function(card, count)
@@ -58,6 +59,11 @@ function ACB.createGuildView(parent, saved)
         note = function(card)
             if giving then return (tray[card.key] or 0) > 0 and "Selected only. Review the tray before anything leaves your binder."
                 or "Click a card to select it. Add one copy below to select extra spares." end
+            local donor
+            for _, entry in ipairs(summary and summary.inventory or {}) do
+                if entry.card == card.key and entry.donor and entry.donor ~= "" then donor = entry.donor end
+            end
+            if donor then return "Latest donation: " .. donor:gsub("|", ""):gsub("%-", " "):gsub("%a[%w']*", function(word) return word:sub(1, 1):upper() .. word:sub(2) end) end
             return (pending[card.key] or 0) > 0 and "Waiting for sync. These copies do not count towards confirmed guild progress yet."
                 or ((confirmed[card.key] or 0) > 0 and card.lore or ("Missing from the guild binder. " .. ACB.whereToFind(card)))
         end,
@@ -72,10 +78,11 @@ function ACB.createGuildView(parent, saved)
     folio:compactFooter()
     local selection = ui.text(view, 494, 566, "", 10, ui.SEPIA, 401, "RIGHT")
     local controls = {}
-    controls.browse = kit.button(view, "Guild collection", 43, 584, 113, function()
+    controls.browse = kit.button(view, "Guild index", 250, 53, 120, function()
+        tray, reviewed = {}, nil; review:Hide()
         giving, indexShown = false, true; folio:setIndexOwnership("all"); view:refresh()
     end)
-    controls.contribute = kit.button(view, "Donate cards", 162, 584, 109, function()
+    controls.contribute = kit.button(view, "Add cards", 382, 53, 120, function()
         giving, indexShown = true, false
         local focus
         local order = { region }
@@ -91,18 +98,22 @@ function ACB.createGuildView(parent, saved)
         if focus then region = focus.page; folio:selectCard(region, focus.key) end
         folio:setIndexOwnership("owned"); view:refresh()
     end)
-    controls.index = kit.button(view, "Index", 277, 584, 55, function() indexShown = true; view:refresh() end)
+    controls.index = kit.button(view, "Your card index", 382, 53, 120, function() indexShown = true; view:refresh() end)
+    controls.stop = kit.button(view, "Cancel", 790, 53, 110, function()
+        tray, reviewed, giving, indexShown = {}, nil, false, true
+        review:Hide(); folio:setIndexOwnership("all"); view:refresh()
+    end)
     controls.filter = kit.button(view, "Spare copies", 494, 584, 110, function() spares = not spares; view:refresh() end)
     local function openReview()
         local plan, why = ACB.guildBatchPlan(saved, ACB.ledger, tray, guildID)
         if not plan then ACB.say(why); return end
         reviewed = plan; review:present(plan)
     end
-    controls.review = kit.button(view, "Review tray (0)", 611, 584, 140, openReview)
+    controls.review = kit.button(view, "Review selected (0)", 646, 53, 132, openReview)
     controls.sync = kit.button(view, "Save & sync", 758, 584, 137, function()
         if total() == 0 and ACB.pendingDonationCount(saved) > 0 then saved.guildSyncHead = saved.head.hash; ReloadUI() end
     end)
-    controls.wanted = kit.button(view, "Wanted lists", 338, 584, 106, function() ACB.open("wanted") end)
+    controls.wanted = kit.button(view, "Wanted lists", 43, 584, 106, function() ACB.open("wanted") end)
     for _, control in pairs(controls) do control:SetHeight(22) end
     review = ACB.createGuildReview(function(key)
         tray[key] = nil
@@ -120,15 +131,24 @@ function ACB.createGuildView(parent, saved)
             if used > 0 then tray[row.key] = math.max(0, (tray[row.key] or 0) - used); if tray[row.key] == 0 then tray[row.key] = nil end end
             left = left - used
         end
-        if ok then giving, indexShown = false, false end
+        if ok then giving, indexShown = false, true; folio:setIndexOwnership("all") end
         ACB.say(why); view:refresh()
+    end, function()
+        tray, reviewed, giving, indexShown = {}, nil, false, true
+        review:Hide(); folio:setIndexOwnership("all"); view:refresh()
     end)
     review:SetScript("OnHide", function() reviewed = nil end)
     controls.confirm, controls.accept, controls.cancel = review, review.controls.accept, review.controls.cancel
+    controls.discard = review.controls.discard
     controls.donate, controls.rows, controls.warning = folio.tradeButton, review.controls.rows, review.controls.warning
     view.controls, view.folio = controls, folio
     function view:add(key) add(key) end
     function view:selection() return total(), tray end
+    function view:open()
+        tray, reviewed = {}, nil; review:Hide()
+        giving, indexShown = false, true
+        folio:setIndexOwnership("all")
+    end
     function view:showCard(key)
         local card = ACB.cards[key]
         if card and folio:selectCard(card.page, key) then region, indexShown = card.page, false; self:refresh(); return true end
@@ -152,11 +172,13 @@ function ACB.createGuildView(parent, saved)
         seen.indexCardFilter = giving and function(card) return (saved.counts[card.key] or 0) > (spares and 1 or 0) end or nil
         folio:SetShown(active)
         messageLeft:SetShown(not active); messageRight:SetShown(not active)
-        for _, name in ipairs({ "browse", "contribute", "index", "review", "sync" }) do controls[name]:SetShown(active) end
+        for _, name in ipairs({ "browse", "sync" }) do controls[name]:SetShown(active) end
+        controls.contribute:SetShown(active and not giving)
+        for _, name in ipairs({ "index", "review", "stop" }) do controls[name]:SetShown(active and giving) end
         controls.filter:SetShown(active and giving); controls.filter:SetText(spares and "Spare copies" or "All owned")
         local count, waiting = total(), ACB.pendingDonationCount(saved)
-        controls.browse:SetEnabled(active and giving); controls.contribute:SetEnabled(active and not giving)
-        controls.review:SetText(("Review tray (%d)"):format(count)); controls.review:SetEnabled(active and count > 0)
+        controls.browse:SetEnabled(active and (giving or not indexShown)); controls.contribute:SetEnabled(active and not giving)
+        controls.review:SetText(("Review selected (%d)"):format(count)); controls.review:SetEnabled(active and count > 0)
         controls.sync:SetEnabled(active and waiting > 0 and count == 0)
         local savedForSync = saved.guildSyncHead == saved.head.hash
         controls.sync:SetText(savedForSync and waiting > 0 and "Refresh after sync" or "Save & sync")
@@ -176,6 +198,6 @@ function ACB.createGuildView(parent, saved)
         folio:setTradePicker(giving and function(key) add(key) end or nil, allowed, "Add one copy to tray")
         folio:showRegion(region, indexShown)
     end
-    view:SetScript("OnHide", function() reviewed = nil; review:Hide() end)
+    view:SetScript("OnHide", function() tray, reviewed = {}, nil; review:Hide() end)
     return view
 end

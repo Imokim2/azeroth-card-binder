@@ -113,7 +113,7 @@ test("a member's donation is credited to the guild in the same upload, and the c
   const summary = await read(await post(env, bob.player, "summary", "guild-summary"));
   const points = (rarity: string) => ({ common: 1, rare: 2, epic: 5, legendary: 10 })[rarity]! * 10;
   assert.deepEqual([summary["points"], summary["cards"], summary["rank"]], [points(catalog.cards[card]!.rarity) + points(catalog.cards[other]!.rarity), 2, 1]);
-  assert.deepEqual(summary["inventory"], [{ card, copies: 2 }, { card: other, copies: 1 }]);
+  assert.deepEqual(summary["inventory"], [{ card, copies: 2, donor: bob.binder.char }, { card: other, copies: 1, donor: bob.binder.char }]);
   const ladder = await read(await env.call("/v1/guilds/leaderboard"));
   assert.deepEqual((ladder["entries"] as { rank: number; name: string; cards: number; members: number }[]).map((entry) => [entry.rank, entry.name, entry.cards, entry.members]), [[1, "Knights of Light", 2, 2]]);
 });
@@ -292,9 +292,14 @@ test("deleting a donor's account keeps the guild's cards; deleting the owner lea
   await enrol(env, "Knights of Light", bob, ann);
   bob.binder.add(bob.binder.donate(card, 1, guild, op(1)));
   assert.equal((await bob.binder.upload()).status, 200);
+  const named = await read(await post(env, ann.player, "summary", "guild-summary"));
+  assert.deepEqual(named["inventory"], [{ card, copies: 1, donor: bob.binder.char }]);
   await env.store.deletePlayer(bob.id);
   assert.deepEqual(inventory(env, guild), [{ card, copies: 1 }]);
   assert.deepEqual(env.raw.prepare("SELECT donor_player_id AS donor FROM guild_donations").all().map((row) => ({ ...row })), [{ donor: null }]);
+  assert.equal(env.raw.prepare("SELECT donor_character AS donor FROM guild_donations").get()!["donor"], "");
+  const anonymous = await read(await post(env, ann.player, "summary", "guild-summary"));
+  assert.deepEqual(anonymous["inventory"], [{ card, copies: 1 }]);
   await env.store.deletePlayer(ann.id);
   assert.deepEqual(inventory(env, guild), [{ card, copies: 1 }]);
   assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM guilds WHERE id = ?").get(guild)!["n"], 1);

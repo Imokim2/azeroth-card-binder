@@ -81,7 +81,7 @@ export type MembershipView = {
 };
 
 // How a donation was settled when its upload was stored, and why when it was refused.
-export type DonationDecision = { operation: string; guildId: string; key: string; seq: number; t: number; result: "credited" | "refunded"; reason: string };
+export type DonationDecision = { operation: string; guildId: string; key: string; seq: number; t: number; character: string; result: "credited" | "refunded"; reason: string };
 export type DonationReason = "" | "not-member" | "casual" | "untrusted";
 
 // A guild's points, in tenths like a personal score: each distinct card it holds is worth its rarity's points (the copies and the editions of a
@@ -128,7 +128,7 @@ export class SqlGuilds {
       if (member === null || member !== event.partner) reason = "not-member";
       else if (context.casualDrops > 0) reason = "casual";
       else if ((context.excluded[event.key] ?? 0) > 0 || (context.excluded[base] ?? 0) > 0) reason = "untrusted";
-      decisions.push({ operation: event.trade, guildId: event.partner, key: event.key, seq: event.seq, t: event.t, result: reason === "" ? "credited" : "refunded", reason });
+      decisions.push({ operation: event.trade, guildId: event.partner, key: event.key, seq: event.seq, t: event.t, character: event.char, result: reason === "" ? "credited" : "refunded", reason });
     }
     return decisions;
   }
@@ -160,14 +160,18 @@ export class SqlGuilds {
   }
 
   // What the guild a player belongs to holds, with its points and place. Any active member may ask.
-  async summary(playerId: string): Promise<{ guild: MembershipView["guild"]; points: number; cards: number; rank: number | null; inventory: { card: string; copies: number }[] }> {
+  async summary(playerId: string): Promise<{ guild: MembershipView["guild"]; points: number; cards: number; rank: number | null; inventory: { card: string; copies: number; donor?: string }[] }> {
     const membership = await this.membership(playerId);
     if (!membership || membership.state !== "active") throw new ApiError("not_found");
-    const inventory = await this.#db.all<{ card_key: string; copies: number }>("SELECT card_key, copies FROM guild_inventory WHERE guild_id = ? ORDER BY card_key", [membership.guild.id]);
+    const inventory = await this.#db.all<{ card_key: string; copies: number; donor: string | null }>(
+      `SELECT i.card_key, i.copies, (SELECT d.donor_character FROM guild_donations d
+       WHERE d.guild_id = i.guild_id AND d.card_key = i.card_key AND d.result = 'credited'
+       ORDER BY d.decided_at DESC, d.seq DESC, d.operation_id DESC LIMIT 1) AS donor
+       FROM guild_inventory i WHERE i.guild_id = ? ORDER BY i.card_key`, [membership.guild.id]);
     const { tenths, cards } = guildPoints(this.#catalog, inventory);
     const standings = await this.standings(500);
     const place = standings.findIndex((standing) => standing.guildId === membership.guild.id);
-    return { guild: membership.guild, points: tenths, cards, rank: place < 0 ? null : place + 1, inventory: inventory.map((row) => ({ card: row.card_key, copies: row.copies })) };
+    return { guild: membership.guild, points: tenths, cards, rank: place < 0 ? null : place + 1, inventory: inventory.map((row) => ({ card: row.card_key, copies: row.copies, ...(row.donor ? { donor: row.donor } : {}) })) };
   }
 
   // The guild ladder: guilds that hold at least one card, by points, then cards, then name.

@@ -1,6 +1,6 @@
 # World of Warcards
 
-<!-- Current release description: addon 1.0.19 / companion 1.0.5 / server 1.0.4. Updated 16 November 2026. Existing gallery captures are genuine earlier-build screenshots; a Guild/batch capture is still needed. -->
+<!-- Current release description: addon 1.0.20 / companion 1.0.6 / server 1.0.5. Updated 16 November 2026. Existing gallery captures are genuine earlier-build screenshots; a Guild/batch capture is still needed. -->
 
 ![World of Warcards](../media/banner.png)
 
@@ -42,11 +42,13 @@ Both players need the companion set up and a **Ranked** binder. Trading and gift
 
 Open **Guild** to browse a full shared binder, with the same index, card pages, missing slots and edition previews as your personal collection.
 
-Choose **Donate cards** to open your own binder at a spare copy. Click cards to select them, or use **Add one copy to tray** for extra copies. Spare copies are offered first; **All owned** lets you include last copies. **Review tray** lists the batch before anything leaves your binder. Remove cards or keep choosing, and check the last-copy warnings before confirming.
+Choose **Add cards** to open your own binder at a spare copy. Click cards to select them, or use **Add one copy to tray** for extra copies. Spare copies are offered first; **All owned** lets you include last copies. **Review selected** lists the batch before anything leaves your binder. Remove cards or keep choosing, and check the last-copy warnings before confirming.
+
+Use **Guild index** at the top to return from any section. **Cancel donation** clears the selection without moving cards. New confirmed donations show the latest donating character; older donations may not have a recorded name.
 
 Donations are permanent: copies leave your collection and stay with the guild, even if you leave. Nobody can withdraw them, including officers. Donated copies appear as **Waiting for sync**; they do not add to confirmed ownership, completion or points until accepted.
 
-Keep companion **1.0.5** open. After confirming the batch, click **Save & sync** once to save it with a reload. The companion syncs automatically. Once it finishes, click **Refresh after sync** to load the reply. You do not need to switch apps or sync after every card. If the server cannot accept a donation, the copy returns when the addon loads the reply.
+Keep companion **1.0.6** open. After confirming the batch, click **Save & sync** once to save it with a reload. The companion syncs automatically. Once it finishes, click **Refresh after sync** to load the reply. You do not need to switch apps or sync after every card. If the server cannot accept a donation, the copy returns when the addon loads the reply.
 
 Create or join through the companion. New guild binders are ready immediately, and their owner approves member applications. Forever characters have first names and surnames; everyone uses the same Forever world for guild lookup.
 

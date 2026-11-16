@@ -28,7 +28,10 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
     local left, right = paper(view, 20), paper(view, 471, true)
     local openCard = viewing and function(key)
         local card = ACB.cards[key]
-        if card and view:selectCard(card.page, key) then view:showRegion(card.page) end
+        if card and view:selectCard(card.page, key) then
+            if viewing.onOpenCard then viewing.onOpenCard(card) end
+            view:showRegion(card.page)
+        end
     end
     local indexPage = createIndex(view, saved, selectSet, openCard)
     local preloadPortraits = ACB.createPortraitLoader(view, left)
