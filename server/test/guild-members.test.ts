@@ -97,7 +97,7 @@ test("an application can be refused or withdrawn, and a refused player cannot ke
   assert.equal((await joinAs(env, bob.player, bob.peer, "Knights of Light")).status, 201);
 });
 
-test("only the right characters can join: same realm, same side, Ranked, and one guild at a time", async () => {
+test("only the right characters can join: different surnames, same side, Ranked, and one guild at a time", async () => {
   const env = setup({ guilds: true });
   const { ann } = await guildWithOwner(env);
   const join = async (player: Player, peer: string, name = "Knights of Light") => read(await joinAs(env, player, peer, name));
@@ -105,7 +105,7 @@ test("only the right characters can join: same realm, same side, Ranked, and one
   const refused = await join(horde.player, horde.peer);
   assert.deepEqual([refused.error?.code, refused.error?.detail], ["guild_ineligible", { reason: "other-side" }]);
   const away = await founder(env, "Cyd", { realm: "Other Realm" });
-  assert.equal((await join(away.player, away.peer)).error?.code, "not_found"); // no such guild on that realm
+  assert.equal((await joinAs(env, away.player, away.peer, "Knights of Light")).status, 201); // surnames do not split the world
   const casual = await founder(env, "Cas", { mode: "casual" });
   assert.equal((await join(casual.player, casual.peer)).error?.detail?.["reason"], "not-ranked");
   const bob = await founder(env, "Bob");

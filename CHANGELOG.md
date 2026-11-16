@@ -2,6 +2,10 @@
 
 Notable changes, newest first. Versions follow [semantic versioning](https://semver.org): a new feature raises the middle number, a fix the last one. Read the entry for any version you upgrade across.
 
+## 1.0.18
+
+- Guilds use the shared Forever world, so characters with different surnames can join the same binder. Companion 1.0.5 displays full names while keeping existing signed identities and collection histories intact.
+
 ## 1.0.17
 
 - Older Ranked binders now register their character and faction on entering the world, even with no recent loot events. This lets companion 1.0.4 list them for guild setup without requiring another kill. No cards or rolls are added or spent.

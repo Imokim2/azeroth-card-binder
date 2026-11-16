@@ -45,6 +45,22 @@ test("a failed owner insert rolls back creation of the guild", async () => {
   assert.equal(env.raw.prepare("SELECT COUNT(*) AS n FROM guilds").get()!["n"], 0);
 });
 
+test("Forever surnames do not separate guilds, and legacy guild migration keeps identities and progress", async () => {
+  const env = setup({ guilds: true });
+  const harry = await founder(env, "Falstad", { realm: "Wildslammer" });
+  const ollie = await founder(env, "Filfred", { realm: "Whizzlebang" });
+  const guild = (await read(await createGuild(env, harry.player, harry.peer, "World of Warcards"))).guild!;
+  env.raw.exec("DROP INDEX guilds_forever_live_name");
+  env.raw.prepare("UPDATE guilds SET realm = 'Wildslammer', realm_key = 'wildslammer' WHERE id = ?").run(guild["id"] as string);
+  const before = env.raw.prepare("SELECT * FROM ledger_state ORDER BY player_id").all();
+  env.raw.exec(readFileSync(new URL("../migrations/0019_forever_guild_world.sql", import.meta.url), "utf8"));
+  const joined = await read(await post(env, ollie.player, "join", "guild-join", { character: ollie.peer, name: "WorldofWarcards" }));
+  const member = joined["membership"] as { character: string; state: string; guild: { id: string; realm: string } };
+  assert.deepEqual([member.character, member.state, member.guild.id, member.guild.realm], ["filfred-whizzlebang", "pending", guild["id"], "Forever"]);
+  assert.deepEqual(env.raw.prepare("SELECT * FROM ledger_state ORDER BY player_id").all(), before);
+  assert.equal(await code(await createGuild(env, ollie.player, ollie.peer, "World of Warcards")), "guild_taken");
+});
+
 test("the migration activates existing pending requests without replacing memberships or collection data", async () => {
   const env = setup({ guilds: true });
   const ann = await founder(env, "Ann");
@@ -74,7 +90,7 @@ test("a Ranked character with a declared side asks for a guild, and a reviewer a
   const guild = (await read(response)).guild!;
   assert.match(guild["id"] as string, /^[0-9A-Z]{26}$/);
   assert.deepEqual({ ...guild, id: undefined }, {
-    id: undefined, name: "Knights of Light", realm: "Realm Name", side: "horde", status: "pending", character: "ann-realmname", requestedAt: NOW, decidedAt: null, note: "",
+    id: undefined, name: "Knights of Light", realm: "Forever", side: "horde", status: "pending", character: "ann-realmname", requestedAt: NOW, decidedAt: null, note: "",
   });
   assert.deepEqual(await mine(env, ann.player), [guild]);
 
@@ -93,7 +109,7 @@ test("a Ranked character with a declared side asks for a guild, and a reviewer a
   assert.equal((await read(await env.call("/v1/admin/guilds?state=active", { headers: admin }))).guilds!.length, 1);
   const audit = (await read(await env.call("/v1/admin/audit", { headers: admin }))) as unknown as { entries: { action: string; target: string; detail: string }[] };
   assert.deepEqual(audit.entries.filter((entry) => entry.action.startsWith("guild-")).map((entry) => [entry.action, entry.target, entry.detail]),
-    [["guild-approve", guild["id"], "Knights of Light (Realm Name, horde) - welcome"]]);
+    [["guild-approve", guild["id"], "Knights of Light (Forever, horde) - welcome"]]);
 });
 
 test("a binder that has declared its side through the real faction events can start a guild", async () => {
@@ -115,7 +131,7 @@ test("a binder that has declared its side through the real faction events can st
   assert.deepEqual([refused.error?.code, refused.error?.detail], ["guild_ineligible", { reason: "not-ranked" }]);
   env.raw.prepare("UPDATE ledger_state SET state_json = json_set(state_json, '$.mode', 'ranked2') WHERE player_id = ?").run(id);
   const guild = (await read(await ask(env, player, "hal-realm", "Horde Heroes"))).guild!;
-  assert.deepEqual([guild["side"], guild["realm"]], ["horde", "Realm"]);
+  assert.deepEqual([guild["side"], guild["realm"]], ["horde", "Forever"]);
 });
 
 test("a binder that is not Ranked, has no faction rules or has declared no side cannot start a guild", async () => {
@@ -164,11 +180,9 @@ test("a name is held on its realm while it is pending or active, however it is s
   assert.deepEqual([same.error?.code, same.error?.detail], ["guild_taken", { reason: "name" }]);
   assert.equal(await code(await ask(env, bob.player, bob.peer, "Knight's of Light")), "guild_taken"); // apostrophes do not tell names apart
   const elsewhere = await founder(env, "Cyd", { realm: "Other Realm" });
-  assert.equal((await ask(env, elsewhere.player, elsewhere.peer, "Knights of Light")).status, 201); // another realm, another guild
+  assert.equal(await code(await ask(env, elsewhere.player, elsewhere.peer, "Knights of Light")), "guild_taken"); // a different surname is still the same world
   assert.equal((await decide(env, first["id"] as string, "approve")).status, 200);
   assert.equal(await code(await ask(env, bob.player, bob.peer, "Knights of Light")), "guild_taken"); // still held once active
-  assert.equal((await decide(env, (await mine(env, elsewhere.player))[0]!["id"] as string, "refuse", "name is taken in game")).status, 200);
-  assert.equal((await ask(env, elsewhere.player, elsewhere.peer, "Knights of Light")).status, 201); // a refusal frees the name
   // Two accounts racing for one name: the unique index lets one through.
   const racers = await Promise.all([ask(env, bob.player, bob.peer, "Fast Guild"), ask(env, bob.player, bob.peer, "Fast Guild")]);
   assert.deepEqual(racers.map((response) => response.status).sort(), [201, 409]);
