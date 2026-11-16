@@ -31,7 +31,7 @@ function ACB.createGuildView(parent, saved)
         region, indexShown = setIndex, false; view:refresh()
     end, {
         mine = function() return saved.counts end,
-        onOpenCard = function(card) region, indexShown = card.page, false end,
+        onOpenCard = function(card) region, indexShown = card.page, false; view:refresh() end,
         progressCounts = function() return giving and saved.counts or confirmed end,
         ownedCount = function(card, count) return giving and count or (confirmed[card.key] or 0) end,
         collectionStatus = function(card, count)
@@ -133,9 +133,13 @@ function ACB.createGuildView(parent, saved)
         end
         if ok then giving, indexShown = false, true; folio:setIndexOwnership("all") end
         ACB.say(why); view:refresh()
+    end, function()
+        tray, reviewed, giving, indexShown = {}, nil, false, true
+        review:Hide(); folio:setIndexOwnership("all"); view:refresh()
     end)
     review:SetScript("OnHide", function() reviewed = nil end)
     controls.confirm, controls.accept, controls.cancel = review, review.controls.accept, review.controls.cancel
+    controls.discard = review.controls.discard
     controls.donate, controls.rows, controls.warning = folio.tradeButton, review.controls.rows, review.controls.warning
     view.controls, view.folio = controls, folio
     function view:add(key) add(key) end

@@ -332,6 +332,9 @@ do
         view.controls.accept.OnClick(); equal(saved.counts[CARD], 3)
         view.controls.contribute.OnClick(); view:add(CARD); view.controls.browse.OnClick()
         equal(view:selection(), 0); equal(ACB.pendingDonationCount(saved), 0)
+        view.controls.contribute.OnClick(); view:add(CARD); view.controls.review.OnClick()
+        view.controls.discard.OnClick(); equal(view:selection(), 0); equal(saved.counts[CARD], 3)
+        equal(view.controls.contribute:IsShown(), true); equal(view.controls.confirm:IsShown(), false)
         ACB.sync, ACB.ledger, ACB.refresh = keepSync, keepLedger, keepRefresh
     end)
 

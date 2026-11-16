@@ -29,9 +29,11 @@ Seasonal collections give everyone a shared list to hunt for alongside their nor
 
 ### Build a guild binder
 
-Open **Guild** to browse the full shared binder, including missing slots. **Donate cards** opens your personal binder at a spare copy. Select several cards, then **Review tray** to remove entries, check last-copy warnings and confirm the batch. No cards leave until you confirm.
+Open **Guild** to browse the full shared binder, including missing slots. **Add cards** opens your personal binder at a spare copy. Select several cards, then **Review selected** to remove entries, check last-copy warnings and confirm the batch. No cards leave until you confirm.
 
-Donations are permanent. Nobody can withdraw cards, and they stay with the guild if you leave. Pending copies are labelled **Waiting for sync** and do not increase confirmed guild progress or points. Keep companion **1.0.5** open, then use **Save & sync** once for the batch and **Refresh after sync** when it finishes.
+Use **Guild index** at the top to return from any section. **Cancel donation** clears your selection and returns there without moving cards. Confirmed cards show their latest donating character; older donations may not have a recorded name.
+
+Donations are permanent. Nobody can withdraw cards, and they stay with the guild if you leave. Pending copies are labelled **Waiting for sync** and do not increase confirmed guild progress or points. Keep companion **1.0.6** open, then use **Save & sync** once for the batch and **Refresh after sync** when it finishes.
 
 Create or join through the companion. New guild binders are ready immediately; their owner approves members. Forever uses first names and surnames, so different surnames can join the same guild. [Guild setup](https://worldofwarcards.co.uk/help#guilds) · [Guild standings](https://worldofwarcards.co.uk/guilds).
 
