@@ -7,6 +7,7 @@ GGET C_ChatInfo
 GGET C_Map
 GGET C_Spell
 GGET C_Timer
+GGET C_UnitAuras
 GGET ChatEdit_InsertLink
 GGET ChatFontNormal
 GGET ChatFrameUtil
@@ -55,6 +56,7 @@ GGET UIErrorsFrame
 GGET UIParent
 GGET UISpecialFrames
 GGET UnitAffectingCombat
+GGET UnitAura
 GGET UnitClassification
 GGET UnitDistanceSquared
 GGET UnitFactionGroup

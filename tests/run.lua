@@ -47,6 +47,7 @@ local parts = {
     "40-ranked-setup-recovery",
     "41-faction-cards",
     "42-guild",
+    "43-auras",
 }
 
 local source, ranges, line = {}, {}, 1

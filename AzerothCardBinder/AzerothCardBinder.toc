@@ -29,6 +29,7 @@ Packs.lua
 Seasons.lua
 Guild.lua
 GuildBatch.lua
+Auras.lua
 Trade.lua
 TradeSession.lua
 Range.lua
