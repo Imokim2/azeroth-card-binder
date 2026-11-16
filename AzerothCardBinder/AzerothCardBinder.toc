@@ -27,6 +27,7 @@ Collection.lua
 Kills.lua
 Packs.lua
 Seasons.lua
+Auras.lua
 Trade.lua
 TradeSession.lua
 Range.lua

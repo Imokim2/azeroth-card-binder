@@ -14,6 +14,8 @@ function ACB.initSlash(saved, tools)
             report("Diagnostics " .. (saved.diagnostics and "on. Use /acb log to copy." or "off."))
         elseif cmd == "log" then
             ACB.showLog(table.concat(diagnostics, "\n"), saved.diagnostics)
+        elseif cmd == "auras" then
+            ACB.auraCommand(report)
         elseif cmd == "version" then
             ACB.reportVersion(report)
         elseif cmd == "sound" or cmd == "sounds" then
@@ -163,7 +165,7 @@ function ACB.initSlash(saved, tools)
         elseif cmd == "" then
             ACB.open()
         else
-            report("/acb opens the binder. Options: index, seasons, achievements, settings, bag, packs, dust, link, view, ask, privacy, title, popup, sound, hints, bar, version.")
+            report("/acb opens the binder. Options: index, seasons, achievements, settings, bag, packs, dust, link, view, ask, privacy, title, popup, sound, hints, bar, auras, version.")
         end
         if ACB.refresh then ACB.refresh() end -- a switch may have changed on the Settings tab
     end
