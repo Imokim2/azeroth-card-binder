@@ -69,13 +69,13 @@ function ACB.createGuildView(parent, saved)
     ui.text(messageRight, 23, 35, "A collection together", 29, ui.INK, 402, "LEFT", true)
     local instructions = ui.text(messageRight, 23, 112, "Create or join a guild binder in the companion. New binders are ready immediately; the binder owner approves new members.\n\nBrowse the full collection or choose Donate cards. Select several cards and review them together.\n\nDonations are permanent. Nobody can withdraw them.", 14, ui.SEPIA, 402)
     instructions:SetWordWrap(true); instructions:SetHeight(280)
-    local status = ui.text(view, 43, 593, "", 10, ui.SEPIA, 401)
-    local selection = ui.text(view, 494, 593, "", 10, ui.SEPIA, 401, "RIGHT")
+    folio:compactFooter()
+    local selection = ui.text(view, 494, 566, "", 10, ui.SEPIA, 401, "RIGHT")
     local controls = {}
-    controls.browse = kit.button(view, "Guild collection", 39, 613, 135, function()
+    controls.browse = kit.button(view, "Guild collection", 43, 584, 113, function()
         giving, indexShown = false, true; folio:setIndexOwnership("all"); view:refresh()
     end)
-    controls.contribute = kit.button(view, "Donate cards", 181, 613, 125, function()
+    controls.contribute = kit.button(view, "Donate cards", 162, 584, 109, function()
         giving, indexShown = true, false
         local focus
         local order = { region }
@@ -91,18 +91,19 @@ function ACB.createGuildView(parent, saved)
         if focus then region = focus.page; folio:selectCard(region, focus.key) end
         folio:setIndexOwnership("owned"); view:refresh()
     end)
-    controls.index = kit.button(view, "Index", 313, 613, 70, function() indexShown = true; view:refresh() end)
-    controls.filter = kit.button(view, "Spare copies", 390, 613, 105, function() spares = not spares; view:refresh() end)
+    controls.index = kit.button(view, "Index", 277, 584, 55, function() indexShown = true; view:refresh() end)
+    controls.filter = kit.button(view, "Spare copies", 494, 584, 110, function() spares = not spares; view:refresh() end)
     local function openReview()
         local plan, why = ACB.guildBatchPlan(saved, ACB.ledger, tray, guildID)
         if not plan then ACB.say(why); return end
         reviewed = plan; review:present(plan)
     end
-    controls.review = kit.button(view, "Review tray (0)", 502, 613, 137, openReview)
-    controls.sync = kit.button(view, "Save & sync", 646, 613, 125, function()
+    controls.review = kit.button(view, "Review tray (0)", 611, 584, 140, openReview)
+    controls.sync = kit.button(view, "Save & sync", 758, 584, 137, function()
         if total() == 0 and ACB.pendingDonationCount(saved) > 0 then saved.guildSyncHead = saved.head.hash; ReloadUI() end
     end)
-    kit.button(view, "Wanted lists", 778, 613, 122, function() ACB.open("wanted") end)
+    controls.wanted = kit.button(view, "Wanted lists", 338, 584, 106, function() ACB.open("wanted") end)
+    for _, control in pairs(controls) do control:SetHeight(22) end
     review = ACB.createGuildReview(function(key)
         tray[key] = nil
         if total() > 0 then openReview() else reviewed = nil; review:Hide() end
@@ -154,10 +155,9 @@ function ACB.createGuildView(parent, saved)
         controls.sync:SetEnabled(active and waiting > 0 and count == 0)
         local savedForSync = saved.guildSyncHead == saved.head.hash
         controls.sync:SetText(savedForSync and waiting > 0 and "Refresh after sync" or "Save & sync")
-        status:SetText(active and (waiting > 0 and (savedForSync and "Saved. Allow the companion to sync, then refresh." or ("%d waiting for sync. Save & sync once after your batch."):format(waiting))
-            or ("%s  /  %s points  /  %s"):format(guild.name, ACB.pointsText(summary.points or 0), summary.rank and ("#" .. summary.rank) or "Unranked")) or "")
         selection:SetText(active and (count > 0 and ("%d selected. Review the tray before reloading."):format(count)
-            or waiting > 0 and "Keep the companion open; it syncs your saved batch automatically." or "Select cards, then review and donate together.") or "")
+            or waiting > 0 and (savedForSync and "Saved. Allow the companion to sync, then refresh." or ("%d waiting. Keep the companion open, then Save & sync."):format(waiting))
+            or ("%s  /  %s points  /  %s"):format(guild.name, ACB.pointsText(summary.points or 0), summary.rank and ("#" .. summary.rank) or "Unranked")) or "")
         if not active then
             message:SetText(guild and "Sync the companion and /reload to load your guild's collection." or data and data.membership and data.membership.state == "pending"
                 and "Your application is waiting for the guild binder owner. Refresh in the companion after approval, then sync and /reload."

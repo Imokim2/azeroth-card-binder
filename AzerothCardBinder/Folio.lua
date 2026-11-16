@@ -82,6 +82,11 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
         view:showRegion(region)
     end)
     local leafLabel = text(left, 105, 461, "", 12, SEPIA, 240, "CENTER")
+    function view:compactFooter()
+        prevLeaf:ClearAllPoints(); prevLeaf:SetPoint("TOPLEFT", 23, -449)
+        nextLeaf:ClearAllPoints(); nextLeaf:SetPoint("TOPLEFT", 353, -449)
+        leafLabel:ClearAllPoints(); leafLabel:SetPoint("TOPLEFT", 105, -455)
+    end
     -- Big sets run to many pages: the wheel turns one page, Shift turns ten.
     left:EnableMouseWheel(true)
     left:SetScript("OnMouseWheel", function(_, delta)
