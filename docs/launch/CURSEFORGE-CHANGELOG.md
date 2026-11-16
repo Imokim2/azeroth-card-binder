@@ -1,15 +1,16 @@
-# World of Warcards 1.0.20
+# World of Warcards 1.0.21
 
-Use companion **1.0.6** with addon **1.0.20**. Keep the companion open while playing Ranked. Updates preserve your collection and saved progress.
+Harry's campfire fixes:
 
-- The Guild tab opens the guild collection index. **Guild index** at the top takes you back from any section.
-- **Add cards** opens your own binder. Choose cards, use **Review selected** to check the full selection and last-copy warnings, then accept the donation.
-- **Keep choosing** returns to your selection. **Cancel donation** discards it and returns to the guild index. Cards only move after acceptance.
-- Confirmed guild cards show their latest donating character. Older donations without a recorded character remain unnamed.
-- Keep the companion open, use **Save & sync** after donating, then **Refresh after sync** once the companion finishes.
-- Includes Harry's campfire boost and four Fellowship cards for camping, trading, gifting and guild donations, plus their collection achievement and title.
+- The game's **Camp Benefits** buff now activates the campfire boost. Its duration determines whether it is the ordinary or violet camp buff.
+- The buff's tooltip explains the boost where the client supports it. A separate icon remains available as a fallback.
+- Drag the fallback icon to move it; its position is saved. Use `/acb campfire reset` to put it back, or `/acb campfire icon on`, `off` or `auto` to choose when it appears.
 
-Help: https://worldofwarcards.co.uk/help
+Keep companion **1.0.6**. If you already have it, only the addon needs updating, then `/reload` in game. Players upgrading from an older companion should update that first. Your cards, packs, guild donations and saved progress are preserved. No ledger or server rule changes are needed for these fixes.
+
+The guild index, card selection, review, cancellation and donor-name improvements from 1.0.20 remain included.
+
+Downloads: https://worldofwarcards.co.uk/download
 Discord: https://discord.gg/266naSpg7
 
 Known issue: some Forever clients can enter a fullscreen minimise/restore loop near loading screens. This release does not claim to fix it. If chat responds, type `/reload`; otherwise close the game with Alt+F4 and relaunch. Unsaved finds may be lost.
