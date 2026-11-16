@@ -54,6 +54,10 @@ Create or join through the companion. New guild binders are ready immediately, a
 
 Wanted lists are still available from the Guild page or with `/acb wanted`.
 
+## Collect together
+
+The Fellowship set rewards the things you do with other players: trading, gifting, donating to your guild binder and sitting at a campfire. Collect all four for the Better Together achievement and Fellow Traveler title. An active campfire buff also boosts common and rare creature-card finds.
+
 ## Collect alternate editions
 
 Some cards have separate collectible editions with different poses or animations. Inspect the 3D portrait and rotate it by hand; rarer cards and special editions can have extra movement or looping animations.

@@ -37,6 +37,10 @@ Donations are permanent. Nobody can withdraw cards, and they stay with the guild
 
 Create or join through the companion. New guild binders are ready immediately; their owner approves members. Forever uses first names and surnames, so different surnames can join the same guild. [Guild setup](https://worldofwarcards.co.uk/help#guilds) · [Guild standings](https://worldofwarcards.co.uk/guilds).
 
+### Collect together
+
+The Fellowship set rewards the things you do with other players: trading, gifting, donating to your guild binder and sitting at a campfire. Collect all four for the Better Together achievement and Fellow Traveler title. An active campfire buff also boosts common and rare creature-card finds.
+
 ### Keep packs in your satchel
 
 Zone packs stay sealed in the Warcards Satchel until you open or trade them. Common packs hold one card, Rare packs three and Epic packs five, all from the pack’s zone.
