@@ -89,6 +89,7 @@ local function createIndex(parent, saved, selectSet, openCard)
                     local name = card.name:lower()
                     local owned = (saved.counts[card.key] or 0) > 0
                     local allowed = ownership == "all" or (ownership == "owned" and owned) or (ownership == "unowned" and not owned)
+                    if saved.indexCardFilter then allowed = allowed and saved.indexCardFilter(card) end
                     if allowed and (name:find(query, 1, true) or (ownership ~= "all" and setMatches)) then
                         local list = name == query and exact or matches
                         list[#list + 1] = card

@@ -37,7 +37,7 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
     local byRegion = {}
     local function share(entry) if not viewing then ACB.linkCard(saved, entry) end end
 
-    text(left, 23, 17, "REGION COLLECTION", 10, SEPIA, 180)
+    local regionLabel = text(left, 23, 17, "REGION COLLECTION", 10, SEPIA, 402)
     local title = text(left, 22, 33, "", 35, INK, 280, "LEFT", true)
     local subtitle = text(left, 24, 77, "", 13, SEPIA, 390)
     local progress = text(left, 253, 42, "", 12, SEPIA, 171, "RIGHT")
@@ -66,6 +66,7 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
             end
             state.slot = slot
             view:showRegion(region)
+            if viewing and viewing.pickPocket then viewing.pickPocket(ACB.firstOwnedEdition(saved.counts, entry).key) end
         end)
     end
 
@@ -159,16 +160,19 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
     rule(right, 23, 412, 402)
     local detailNote = text(right, 26, 424, "", 12, SEPIA, 396, "CENTER")
     local tradeButton = ACB.uiKit.button(right, "Add to trade", 28, 420, 201, function()
-        if not tradePick or not state or not tradeAllowed() then return end
+        if not tradePick or not state then return end
         local entry = ACB.cards[state.edition] or ACB.pages[region].cards[state.slot]
+        if not tradeAllowed(entry.key) then return end
         if (saved.counts[entry.key] or 0) > 0 then tradePick(entry.key) end
     end)
     tradeButton:Hide()
     view.tradeButton = tradeButton
-    function view:setTradePicker(choose, allowed)
+    function view:setTradePicker(choose, allowed, caption)
         tradePick, tradeAllowed = choose, allowed
+        tradeButton:SetText(caption or "Add to trade")
         tradeButton:SetShown(choose ~= nil)
     end
+    function view:setIndexOwnership(mode) indexPage:setOwnership(mode) end
     local milestones = {}
     for index, achievement in ipairs(ACB.achievements) do
         milestones[index] = text(right, 24, 455 + (index - 1) * 20, achievement.name, 11, INK, 400)
@@ -187,7 +191,8 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
 
     function view:showRegion(index, showIndex)
         local page = ACB.pages[index]
-        local have, total = ACB.progress(saved.counts, index)
+        local have, total = ACB.progress(viewing and viewing.progressCounts and viewing.progressCounts() or saved.counts, index)
+        regionLabel:SetText(viewing and viewing.heading and viewing.heading() or "REGION COLLECTION")
         region = index
         state = byRegion[index]
         if not state then
@@ -226,6 +231,7 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
                 local wanted = saved.wanted and saved.wanted[entry.key] == true
                 pocket.status:SetText(count > 0 and ("%d owned / %d spare%s"):format(count, ACB.familySpares(saved.counts, entry), shiny and " / Shiny" or "")
                     or (wanted and "Missing / Wanted" or "Missing"))
+                if viewing and viewing.pocketStatus then pocket.status:SetText(viewing.pocketStatus(entry, count)) end
                 local picture = ACB.firstOwnedEdition(saved.counts, entry)
                 setCard(pocket.miniature, picture, saved.counts[picture.key] or 0, saved.shiny and saved.shiny[picture.key], wanted)
             end
@@ -238,7 +244,7 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
         detail.frame:SetScale(scale)
         local count = saved.counts[entry.key] or 0
         tradeButton:SetShown(tradePick ~= nil)
-        tradeButton:SetEnabled(tradePick ~= nil and count > 0 and tradeAllowed() == true)
+        tradeButton:SetEnabled(tradePick ~= nil and count > 0 and tradeAllowed(entry.key) == true)
         detailNote:SetShown(tradePick == nil)
         dustButton:SetShown(tradePick == nil)
         wantButton:SetShown(tradePick == nil)
@@ -271,6 +277,10 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
         dustButton:SetAlpha(usable and 1 or 0.55)
         owned:SetText(tostring(count))
         spare:SetText(tostring(math.max(0, count - 1)))
+        if viewing and viewing.ownedCount then
+            local shownCount = viewing.ownedCount(entry, count)
+            owned:SetText(tostring(shownCount)); spare:SetText(tostring(math.max(0, shownCount - 1)))
+        end
         detailNote:SetText(count > 0 and entry.lore or ("Missing from your binder. " .. ACB.whereToFind(entry)))
         local wanted = saved.wanted and saved.wanted[entry.key] == true
         wantText:SetText(count > 0 and "Link in chat" or (wanted and "On your wanted list" or "Add to wanted list"))
@@ -289,6 +299,9 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
             local mine = viewing.mine and viewing.mine() or {}
             luckText:SetText(("You own: %d"):format(mine[entry.key] or 0))
             detailNote:SetText(count > 0 and entry.lore or ("Not in their binder. " .. ACB.whereToFind(entry)))
+            if viewing.status then luckText:SetText(viewing.status(entry, count)) end
+            if viewing.note then detailNote:SetText(viewing.note(entry, count)) end
+            if viewing.collectionStatus then chance:SetText(viewing.collectionStatus(entry, count)) end
         end
         if showIndex then
             preloadPortraits(page.cards)

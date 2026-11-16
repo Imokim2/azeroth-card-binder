@@ -2,6 +2,13 @@
 
 Notable changes, newest first. Versions follow [semantic versioning](https://semver.org): a new feature raises the middle number, a fix the last one. Read the entry for any version you upgrade across.
 
+## 1.0.19
+
+- Guild collections use the same searchable index, four-card pages, missing slots, edition previews and card styling as the personal binder.
+- Select cards in your personal binder and review a donation tray before confirming the whole batch. Spare copies are offered first; last copies are explicitly marked and warned about. Remove cards from the review or keep choosing without donating.
+- Pending copies appear in the guild binder as waiting for sync, separate from confirmed ownership, completion and points. A Save & sync button saves the batch; Refresh after sync reloads the companion reply. Keep companion 1.0.5 open; no app switching or sync after every card is required.
+- Batches recheck membership, inventory, Ranked history and capacity before donating. The existing per-copy signed ledger and server receipts are unchanged; cards and saved progress are preserved.
+
 ## 1.0.18
 
 - Guilds use the shared Forever world, so characters with different surnames can join the same binder. Companion 1.0.5 displays full names while keeping existing signed identities and collection histories intact.

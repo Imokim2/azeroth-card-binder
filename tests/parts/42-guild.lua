@@ -220,41 +220,98 @@ do
         SlashCmdList.AZEROTHCARDBINDER("guild donate nothing")
         ACB.sync, ACB.ledger = keep, keepLedger
     end)
-    test("guild page confirms a permanent donation, supports cancellation and prevents repeat acceptance", function()
+    test("guild tray defers donation, supports cancellation and prevents repeat acceptance", function()
         local keepSync, keepLedger, keepRefresh = ACB.sync, ACB.ledger, ACB.refresh
-        local saved, ledger = guildBinder(2)
+        local saved, ledger = guildBinder(3)
         ACB.ledger, ACB.refresh = ledger, function() end
         ACB.sync.guild.summary = { guildId = GUILD, cards = 1, points = 10, inventory = { { card = CARD, copies = 1 } } }
         local view = ACB.createGuildView(UIParent, saved)
-        view:refresh(); view.controls.contribute.OnClick()
-        view.controls.donate.OnClick()
-        equal(2, saved.counts[CARD]); assert(view.controls.confirm:IsShown())
-        view.controls.cancel.OnClick(); equal(2, saved.counts[CARD])
-        view.controls.donate.OnClick(); view.controls.accept.OnClick()
-        equal(1, saved.counts[CARD]); equal(1, ACB.pendingDonationCount(saved))
-        view.controls.accept.OnClick(); equal(1, saved.counts[CARD])
+        view:refresh(); view.controls.contribute.OnClick(); view:showCard(CARD)
+        view.controls.donate.OnClick(); view.controls.donate.OnClick()
+        equal(2, view:selection()); equal(3, saved.counts[CARD]); equal(0, ACB.pendingDonationCount(saved))
+        view.controls.review.OnClick(); assert(view.controls.confirm:IsShown())
+        view.controls.cancel.OnClick(); equal(3, saved.counts[CARD])
+        view.controls.accept.OnClick(); equal(3, saved.counts[CARD])
+        view.controls.review.OnClick(); view.controls.accept.OnClick()
+        equal(1, saved.counts[CARD]); equal(2, ACB.pendingDonationCount(saved)); equal(0, view:selection())
+        view.controls.accept.OnClick(); equal(1, saved.counts[CARD]); equal(ledger:check(), true)
+        local confirmed, waiting, shown = ACB.guildInventoryView(saved, GUILD)
+        equal(1, confirmed[CARD]); equal(2, waiting[CARD]); equal(3, shown[CARD])
+        equal(ACB.sync.guild.summary.cards, 1, "pending copies cannot increase the confirmed score")
+        local keepReload, reloads = ReloadUI, 0
+        ReloadUI = function() reloads = reloads + 1 end
+        view.controls.sync.OnClick(); equal(1, reloads); equal(saved.guildSyncHead, saved.head.hash)
+        view:refresh(); equal(view.controls.sync:GetText(), "Refresh after sync")
+        ReloadUI = keepReload
         ACB.sync, ACB.ledger, ACB.refresh = keepSync, keepLedger, keepRefresh
     end)
 
-    test("guild donation confirmation cannot be reused after membership changes", function()
+    test("guild batch review cannot be reused after membership or inventory changes", function()
         local keepSync, keepLedger, keepRefresh = ACB.sync, ACB.ledger, ACB.refresh
         local saved, ledger = guildBinder(2)
         ACB.ledger, ACB.refresh = ledger, function() end
         ACB.sync.guild.summary = { guildId = GUILD, cards = 0, points = 0, inventory = {} }
         local view = ACB.createGuildView(UIParent, saved)
-        view:refresh(); view.controls.contribute.OnClick(); view.controls.donate.OnClick()
+        view:refresh(); view.controls.contribute.OnClick(); view:add(CARD); view.controls.review.OnClick()
         ACB.sync.guild.membership.guild.id = OTHER_GUILD
-        view.controls.accept.OnClick()
-        equal(2, saved.counts[CARD]); equal(0, ACB.pendingDonationCount(saved))
+        view.controls.accept.OnClick(); equal(2, saved.counts[CARD]); equal(0, ACB.pendingDonationCount(saved))
+        ACB.sync.guild.membership.guild.id = GUILD
+        local plan = assert(ACB.guildBatchPlan(saved, ledger, { [CARD] = 1 }, GUILD))
+        assert(ACB.donateCard(saved, ledger, CARD))
+        equal(ACB.donateGuildBatch(saved, ledger, plan), false, "changed counts require another review")
+        equal(1, saved.counts[CARD]); equal(1, ACB.pendingDonationCount(saved))
         ACB.sync, ACB.ledger, ACB.refresh = keepSync, keepLedger, keepRefresh
     end)
 
-    test("guild donation list defaults to spares and supports literal name searches", function()
-        local saved = { counts = { [CARD] = 1, [OTHER] = 2 } }
-        local rows = ACB.guildCardRows(saved, {}, true, true, "")
-        equal(1, #rows); equal(OTHER, rows[1].key)
-        equal(2, #ACB.guildCardRows(saved, {}, true, false, ""))
-        equal(0, #ACB.guildCardRows(saved, {}, true, false, "["))
+    test("guild picker starts with spares and warns before donating last copies", function()
+        local keepSync, keepLedger, keepRefresh = ACB.sync, ACB.ledger, ACB.refresh
+        local saved, ledger = guildBinder(1)
+        ACB.ledger, ACB.refresh = ledger, function() end
+        ACB.sync.guild.summary = { guildId = GUILD, cards = 0, points = 0, inventory = {} }
+        local view = ACB.createGuildView(UIParent, saved)
+        view:refresh(); view.controls.contribute.OnClick(); view:add(CARD)
+        equal(0, view:selection(), "spare mode keeps the last copy")
+        view.controls.filter.OnClick(); view:add(CARD)
+        equal(1, view:selection()); view.controls.review.OnClick()
+        assert(view.controls.warning:GetText():find("LAST COPY", 1, true))
+        equal(1, saved.counts[CARD], "review still changes nothing")
+        view.controls.rows[1].remove.OnClick(); equal(0, view:selection()); assert(not view.controls.confirm:IsShown())
+        ACB.sync, ACB.ledger, ACB.refresh = keepSync, keepLedger, keepRefresh
+    end)
+
+    test("pending guild copies exclude receipts and other guilds, and batch limits debit nothing", function()
+        local keep = ACB.sync
+        local saved, ledger = guildBinder(3)
+        local plan = assert(ACB.guildBatchPlan(saved, ledger, { [CARD] = 2 }, GUILD))
+        assert(ACB.donateGuildBatch(saved, ledger, plan))
+        local operations = {}
+        for operation in pairs(saved.guildDonations) do operations[#operations + 1] = operation end
+        ACB.sync.guild.summary = { guildId = GUILD, inventory = { { card = CARD, copies = 1 } } }
+        ACB.sync.guild.donations.results[operations[1]] = "credited"
+        local confirmed, waiting, shown = ACB.guildInventoryView(saved, GUILD)
+        equal(1, confirmed[CARD]); equal(1, waiting[CARD]); equal(2, shown[CARD])
+        ACB.sync.guild.donations.results[operations[2]] = "refunded"
+        local _, none = ACB.guildInventoryView(saved, GUILD); equal(nil, none[CARD])
+        local _, other = ACB.guildInventoryView(saved, OTHER_GUILD); equal(nil, other[CARD])
+        equal(ACB.guildBatchPlan(saved, ledger, { [CARD] = 2 }, GUILD), nil)
+        equal(1, saved.counts[CARD])
+        ACB.sync = keep
+    end)
+
+    test("guild batches support different cards and reject an oversized selection without debiting", function()
+        local keep = ACB.sync
+        local saved, ledger = guildBinder(52)
+        local before = saved.counts[OTHER] or 0
+        saved.counts[OTHER] = before + 2
+        ledger:record("tradeIn", OTHER, { before = before, partner = "bob-realm", trade = "other-gift" })
+        equal(ACB.guildBatchPlan(saved, ledger, { [CARD] = 51 }, GUILD), nil)
+        equal(52, saved.counts[CARD]); equal(0, ACB.pendingDonationCount(saved))
+        local plan = assert(ACB.guildBatchPlan(saved, ledger, { [CARD] = 49, [OTHER] = 1 }, GUILD))
+        equal(50, plan.total); equal(0, plan.lastCopies)
+        local ok, _, done = ACB.donateGuildBatch(saved, ledger, plan)
+        equal(ok, true); equal(done, 50); equal(3, saved.counts[CARD]); equal(1, saved.counts[OTHER])
+        equal(50, ACB.pendingDonationCount(saved)); equal(ledger:check(), true)
+        ACB.sync = keep
     end)
 
 end
