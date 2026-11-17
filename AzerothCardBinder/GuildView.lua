@@ -31,6 +31,7 @@ function ACB.createGuildView(parent, saved)
         region, indexShown = setIndex, false; view:refresh()
     end, {
         mine = function() return saved.counts end,
+        historySaved = function() return giving and saved or nil end,
         onOpenCard = function(card) region, indexShown = card.page, false; view:refresh() end,
         progressCounts = function() return giving and saved.counts or confirmed end,
         ownedCount = function(card, count) return giving and count or (confirmed[card.key] or 0) end,

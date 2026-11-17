@@ -28,7 +28,8 @@ end
 function ACB.startNewBinder(saved)
     local backup = {
         at = time and time() or 0, counts = saved.counts, shiny = saved.shiny, dust = saved.dust, sets = saved.sets,
-        titles = saved.titles, achievements = saved.achievements,
+        titles = saved.titles, achievements = saved.achievements, cardCopies = saved.cardCopies, cardHistoryDonations = saved.cardHistoryDonations,
+        cardHistoryVersion = saved.cardHistoryVersion, cardHistorySerial = saved.cardHistorySerial,
     }
     for key in pairs(saved) do saved[key] = nil end
     saved.lastBinder = backup

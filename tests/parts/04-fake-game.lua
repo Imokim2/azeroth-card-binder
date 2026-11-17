@@ -154,6 +154,9 @@ TooltipDataProcessor = { AddTooltipPostCall = function(kind, callback)
 end }
 Enum = { TooltipDataType = { Unit = 1, Object = 2, Spell = 3, UnitAura = 4 } }
 loadAddon("CardPresentations.lua")
+loadAddon("CardHistory.lua")
+loadAddon("CardHistoryTrade.lua")
+loadAddon("CardHistoryRequests.lua")
 loadAddon("CardDesigns.lua")
 loadAddon("CardModels.lua")
 loadAddon("CardArt.lua")
@@ -186,6 +189,7 @@ loadAddon("FolioIndex.lua")
 loadAddon("EditionView.lua")
 loadAddon("Folio.lua")
 loadAddon("UiKit.lua")
+loadAddon("CardHistoryView.lua")
 loadAddon("CollectionMode.lua")
 loadAddon("CardStudio.lua")
 loadAddon("SoundSettingsView.lua")
@@ -229,9 +233,26 @@ local function rankedTradeFixture(saved)
     saved.mode, saved.casualDrops, saved.legacy = "ranked", 0, nil
     saved.modeSetupID = saved.modeSetupID or string.rep("f", 32)
     local paired = {}; for key, value in pairs(sync or {}) do paired[key] = value end
-    paired.companionReady, paired.rankedSetups = true, { saved.modeSetupID }
+    paired.companionReady, paired.rankedSetups, paired.copyHistoryReady = true, { saved.modeSetupID }, true
     ACB.sync = paired
     return function()
         saved.mode, saved.casualDrops, saved.legacy, saved.modeSetupID, ACB.sync = mode, casual, legacy, setupID, sync
+    end
+end
+
+-- Simulate the other player's revision-bound copy packet for tests of the real game/UI trade.
+local function completeHistoryOffer(trade)
+    local s = assert(trade:active())
+    local copy = s.take and ACB.cards[s.take] and { id = ACB.sha256(s.id .. s.peer .. s.take):sub(1, 32), key = s.take,
+        finder = "Bob Realmname", at = 100, place = "Westfall", source = "drop", from = "", received = 0, how = "found", hops = 0 }
+    local code = copy and ACB.encodeCardCopy(copy) or "0"
+    local count, hash = code == "0" and 0 or math.ceil(#code / 150), ACB.sha256(code):sub(1, 12)
+    trade:receive(s.peer, table.concat({ "H", s.id, s.theirRevision, s.revision, 1, hash, count }, "|"))
+    for index = 1, count do trade:receive(s.peer, table.concat({ "J", s.id, s.theirRevision, s.revision, index .. "/" .. count,
+        code:sub((index - 1) * 150 + 1, index * 150) }, "|")) end
+    if s.copyHistory then trade:receive(s.peer, table.concat({ "Y", s.id, s.revision, s.theirRevision, s.copyHistory.hash }, "|")) end
+    if s.copyHistory then
+        -- This fixture does not run the frame clock; simulate its paced acknowledgement being sent.
+        s.copyHistory.ackSent, s.copyHistory.ackPending = true, nil
     end
 end

@@ -162,6 +162,7 @@ function ACB.initInspector(saved, report, now, after)
     function ACB.showInspect(peer, counts, shiny)
         local sameBinder = inspector.peer == peer and inspector:IsShown()
         inspector.peer, seen.counts, seen.shiny = peer, counts, shiny
+        seen.historyPeer = peer
         local heard = ACB.heardWanted and ACB.heardWanted[peer]
         seen.wanted = {}
         for _, key in ipairs(heard and heard.cards or {}) do seen.wanted[key] = true end

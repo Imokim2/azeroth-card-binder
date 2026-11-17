@@ -123,8 +123,11 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         if not info.trade and not info.crafted and ACB.warnCasualFind then ACB.warnCasualFind(saved) end
         if self.announcements then self.announcements:add(card, info) end
     end
-    local function record(...)
-        if ledger then return ledger:record(...) end
+    local function record(kind, key, fields)
+        local result
+        if ledger then result = ledger:record(kind, key, fields) end
+        if ACB.recordCardHistory then ACB.recordCardHistory(saved, kind, key, fields) end
+        return result
     end
 
     -- Sources already rolled stay rolled across a reload: the newest ones are kept in a ring in the saved file.
@@ -265,11 +268,15 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     -- Hand over one copy of `give` in return for one copy of `take`: any card in the binder, a last copy included.
     -- Returns false when the player no longer has the card to give.
     -- `partner` and `tradeId` identify the trade in the ledger; both players hold the same trade id.
-    function collection:swap(give, take, partner, tradeId)
+    function collection:swap(give, take, partner, tradeId, history)
         local counts = saved.counts
         local out, into = ACB.tradeItem(give), ACB.tradeItem(take)
         if (not out and not into) or (give and not out) or (take and not into)
             or give == take or (out and ACB.itemCount(saved, give) < 1) then return false end
+        if ACB.cardHistoryEnabled and ACB.cardHistoryEnabled(saved) and ((out and not out.pack) or (into and not into.pack)) then
+            if type(partner) ~= "string" or #partner > 80 or partner:find("[%z\1-\31\127|]") or not history or (out and not out.pack and not ACB.canGiveCardCopy(saved, give, history.out))
+                or (into and not into.pack and (not ACB.validCardCopy(history.into, take) or ACB.hasCardCopyID(saved, history.into.id))) then return false end
+        end
         if ledger then ledger:flushRun() end
         local fellow = ACB.fellowshipMarker and ACB.fellowshipMarker(saved, ledger) -- Fellowship.lua: the trade or gift earns a roll once its marker is written
         local function transfer(kind, item, delta)
@@ -281,7 +288,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             else
                 local before = counts[item.key] or 0
                 counts[item.key] = before + delta
-                record(kind, item.key, { before = before, partner = partner, trade = tradeId })
+                record(kind, item.key, { before = before, partner = partner, trade = tradeId,
+                    historyCopy = history and (delta < 0 and history.out or history.into), historyGift = history and history.gift })
                 if counts[item.key] == 0 then counts[item.key] = nil end
             end
         end
@@ -313,10 +321,12 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         local card = ACB.cards[key]
         local count = saved.counts[key] or 0
         if not card or count < 2 then return false end
+        local historyCopy = ACB.spendCardCopy and ACB.spendCardCopy(saved, key)
+        if historyCopy == false then report("This copy is reserved by an accepted trade. Finish or cancel it first."); return false end
         local yield = ACB.dustFor(card)
         saved.counts[key] = count - 1
         saved.dust = (saved.dust or 0) + yield
-        record("recycle", key, { before = count, dust = yield })
+        record("recycle", key, { before = count, dust = yield, historyCopy = historyCopy })
         report(("Recycled a spare %s: +%d Binder Dust (%d in all)"):format(card.name, yield, saved.dust))
         return true
     end

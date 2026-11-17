@@ -79,7 +79,7 @@ export function syncFileText(data: SyncData): string {
     if (checked.binders.length > 100 || checked.binders.some((id) => !isHash(id))) throw new Error("invalid guild binder pairing");
     extra.push("    guild = " + luaLiteral(checked, luaString) + ",");
   }
-  if (data.companionReady === true) extra.push("    companionReady = true,");
+  if (data.companionReady === true) extra.push("    companionReady = true,", "    copyHistoryReady = true,");
   if (data.rankedSetups) {
     if (data.rankedSetups.length > 100 || data.rankedSetups.some(id => !/^[0-9a-f]{32}$/.test(id))) throw new Error("invalid Ranked setup pairing");
     extra.push(`    rankedSetups = { ${data.rankedSetups.map(id => '"' + id + '"').join(", ")} },`);

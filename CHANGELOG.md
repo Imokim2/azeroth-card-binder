@@ -6,6 +6,14 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
+## 1.1.0 - 2026-11-17
+
+- First card-history test build: new copies record their original finder, acquisition location/date and source. Origins travel with the exact copy through trades and gifts; older stock stays explicitly unknown.
+- Browse and select duplicate copies under Card history, inspect both offers before accepting, and request a copy's origin from another player's personal binder. Sharing follows binder privacy.
+- Companion 1.0.7 protects copy identities during backup recovery. Install it before this addon. Ranked rules, card counts, catalog and drop rates are unchanged. This build is not yet the public website download.
+
+Nothing yet.
+
 ## 1.0.21 - 2026-11-16
 
 - The game's Camp Benefits buff now counts as the campfire buff (it is a welcoming or a violet one by its own length), and its tooltip says that the common and rare card drop chance is doubled. Where the game does not allow that, the add-on's own icon shows beside the buff bar until the tooltip line has been seen working. The icon can be dragged, and its place is remembered. `/acb campfire` says where the boost stands, `/acb campfire icon on|off|auto` sets the icon and `/acb campfire reset` puts it back. No change to the ledger or to saved progress.

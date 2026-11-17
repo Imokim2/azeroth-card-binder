@@ -14,8 +14,14 @@ import { parseSavedVariables } from "../src/luaTable.ts";
 import { findRecovery, keepSavedBackup, luaLiteral, planRecovery, recoveryServer, restoreRecovery, savedBackups } from "../src/recovery.ts";
 import { Controller } from "../src/controller.ts";
 import { saveSettings } from "../src/settings.ts";
+import { syncFileText } from "../src/syncFile.ts";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
+
+test("the safe-history recovery capability is advertised only with a ready companion", () => {
+  assert.match(syncFileText({ syncedAt: 1, acks: [], companionReady: true }), /copyHistoryReady = true/);
+  assert.doesNotMatch(syncFileText({ syncedAt: 1, acks: [] }), /copyHistoryReady = true/);
+});
 const luajit = process.env["LUAJIT"] || "luajit";
 const empty = () => ({ schema: 2, mode: "ranked", counts: {}, dust: 0, ledger: [], head: { seq: 0, hash: "0".repeat(32) },
   tape: { next: 1 }, pickupSounds: false, satchelButtonPosition: { x: 123, y: -45 }, wanted: { "npc:639": true } });
@@ -70,6 +76,28 @@ test("a verified backup restores real Lua data while retaining settings and both
     const checker = join(f.dir, "check.lua"); await writeFile(checker, code);
     const checked = spawnSync(luajit, [checker, f.path], { cwd: root, encoding: "utf8" });
     assert.equal(checked.status, 0, checked.stderr);
+  } finally { await f.cleanup(); }
+});
+
+test("backup recovery preserves matching copy origins and refuses to replace a different card's history", async () => {
+  const f = await fixture();
+  try {
+    const key = Object.keys(readBinder(f.backup).snapshot.counts)[0]!;
+    assert.ok(key);
+    const origin = ["1", "a".repeat(32), key, Buffer.from("Alice Smith").toString("hex"), "1000",
+      Buffer.from("Westfall").toString("hex"), "drop", "", "0", "found", "0"].join("|");
+    const add = (text: string, value: string, serial = 1) => text.replace("AzerothCardBinderDB = {",
+      `AzerothCardBinderDB = { ["cardHistoryVersion"] = 1, ["cardHistorySerial"] = ${serial}, ["cardCopies"] = { ["${key}"] = { "${value}" } },`);
+    const same = await planRecovery(f.path, add(f.current, origin), add(f.backup, origin), f.server);
+    assert.ok(same);
+    const copies = (parseSavedVariables(same.restored).AzerothCardBinderDB as Record<string, unknown>)["cardCopies"] as Record<string, Record<string, string>>;
+    assert.equal(Object.values(copies[key]!)[0], origin);
+    assert.equal(await planRecovery(f.path, add(f.current, origin), f.backup, f.server), null);
+    const different = origin.replace("a".repeat(32), "b".repeat(32));
+    assert.equal(await planRecovery(f.path, add(f.current, different), add(f.backup, origin), f.server), null);
+    assert.equal(await planRecovery(f.path, add(f.current, origin, 2), add(f.backup, origin), f.server), null);
+    const higher = await planRecovery(f.path, add(f.current, origin), add(f.backup, origin, 2), f.server);
+    assert.ok(higher); assert.equal((parseSavedVariables(higher.restored).AzerothCardBinderDB as Record<string, unknown>)["cardHistorySerial"], 2);
   } finally { await f.cleanup(); }
 });
 

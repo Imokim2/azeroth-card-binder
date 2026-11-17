@@ -27,6 +27,9 @@ function ACB.tradeModeReason(saved)
     if saved.legacy or (saved.casualDrops or 0) > 0 then
         return "This binder contains Casual or older unverified cards. Trading and gifting need a fresh Ranked binder. Your current cards have been kept."
     end
+    if ACB.cardHistoryEnabled and ACB.cardHistoryEnabled(saved) and not (ACB.sync and ACB.sync.copyHistoryReady) then
+        return "Update the companion to 1.0.7 or later, sync and /reload before trading cards with history. Your collection is kept."
+    end
 end
 
 function ACB.rankedTradeAllowed(saved, peer)
