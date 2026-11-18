@@ -7,6 +7,8 @@ import { parseSeasonData } from "./seasons.ts";
 import type { SeasonData } from "./seasons.ts";
 import { forAddon, luaLiteral } from "./guild.ts";
 import type { GuildData } from "./guild.ts";
+import { parseBonusData } from "./bonusEvents.ts";
+import type { BonusData } from "./bonusEvents.ts";
 export type Standing = { rank: number; name: string; score: number; cards: number; sets: number };
 export type SyncData = {
   syncedAt: number; acks: Ack[]; tape?: { start: number; entries: string[] };
@@ -24,6 +26,7 @@ export type SyncData = {
   rankedSetups?: string[]; // local binder nonces eligible for the fresh-binder Ranked default
   seasonal?: SeasonData;
   guild?: GuildData; // the player's guild and what became of their donations (docs/proposals/GUILD-BINDERS-DESIGN.md)
+  bonuses?: BonusData;
 };
 
 const isHash = (value: string) => /^[0-9a-f]{32}$/.test(value);
@@ -63,6 +66,10 @@ export function syncFileText(data: SyncData): string {
   const standing = (entry: Standing, index: number) =>
     `        { rank = ${whole(entry.rank, "rank")}, name = ${luaString(entry.name, "name")}, score = ${whole(entry.score, "score")}, cards = ${whole(entry.cards, "cards")}, sets = ${whole(entry.sets, "sets")} }, -- ${index + 1}`;
   const extra: string[] = [];
+  if (data.bonuses) {
+    const checked = parseBonusData(data.bonuses, data.bonuses.binders);
+    extra.push("    bonuses = " + luaLiteral(checked, luaString) + ",");
+  }
   if (data.seasonal) {
     const checked = parseSeasonData(data.seasonal, data.seasonal.binders);
     const literal = (v: unknown): string => {
@@ -79,7 +86,7 @@ export function syncFileText(data: SyncData): string {
     if (checked.binders.length > 100 || checked.binders.some((id) => !isHash(id))) throw new Error("invalid guild binder pairing");
     extra.push("    guild = " + luaLiteral(checked, luaString) + ",");
   }
-  if (data.companionReady === true) extra.push("    companionReady = true,");
+  if (data.companionReady === true) extra.push("    companionReady = true,", "    copyHistoryReady = true,");
   if (data.rankedSetups) {
     if (data.rankedSetups.length > 100 || data.rankedSetups.some(id => !/^[0-9a-f]{32}$/.test(id))) throw new Error("invalid Ranked setup pairing");
     extra.push(`    rankedSetups = { ${data.rankedSetups.map(id => '"' + id + '"').join(", ")} },`);

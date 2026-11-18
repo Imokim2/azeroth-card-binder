@@ -58,6 +58,11 @@ function ACB.canDonate(saved, ledger, key)
     if not saved.balancedDrops then return false, "This binder is not on the current drop rules yet, so it cannot donate." end
     if not ACB.cards[key] then return false, "That is not a card." end
     if (saved.counts[key] or 0) < 1 then return false, "You do not own that card." end
+    local copy = ACB.selectedCardCopy and ACB.selectedCardCopy(saved, key)
+    local older = ACB.cardCopyCounts and select(2, ACB.cardCopyCounts(saved, key)) or 0
+    if ACB.cardCopyReserved and ((copy and ACB.cardCopyReserved(saved, key, copy.id)) or (not copy and older <= 1 and ACB.cardCopyReserved(saved, key, nil))) then
+        return false, "That copy is reserved by an accepted trade. Finish or cancel it first."
+    end
     if ACB.pendingDonationCount(saved) >= ACB.maxPendingDonations then
         return false, "Earlier donations are still waiting for the server. Sync with the companion app and /reload first."
     end
@@ -84,6 +89,7 @@ function ACB.donateCard(saved, ledger, key, quiet)
     local before = saved.counts[key]
     -- One id for this donation: it follows from where the history stands and what is given, so it is new every time and the same on every machine.
     local operation = ACB.sha256("donate|" .. saved.head.hash .. "|" .. key .. "|" .. saved.head.seq):sub(1, 32)
+    if ACB.donateCardCopy then ACB.donateCardCopy(saved, key, operation) end
     saved.counts[key] = before - 1
     ledger:record("donate", key, { before = before, partner = guild.id, trade = operation })
     if saved.counts[key] == 0 then saved.counts[key] = nil end
@@ -111,6 +117,7 @@ function ACB.settleGuild(saved, ledger, report)
             ledger:flushRun()
             local before = saved.counts[entry.key] or 0
             saved.counts[entry.key] = before + 1
+            if ACB.returnCardCopy then ACB.returnCardCopy(saved, refund.operation) end
             ledger:record("donateReturn", entry.key, { before = before, partner = entry.guild, trade = refund.operation })
             saved.guildDonations[refund.operation] = nil
             back = back + 1

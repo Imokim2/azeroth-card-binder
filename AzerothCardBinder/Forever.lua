@@ -298,7 +298,7 @@ local function initialize()
     saved.addonVersion = ACB.addonVersion() -- the companion app reads it, to tell when a newer one is installed but not loaded
     local _, upgraded = ACB.cleanSavedData(saved)
     local ledger = ACB.newLedger(saved, time, ACB.characterName)
-    ledger:begin(upgraded)
+    ledger:begin(upgraded); ACB.enableCardHistory(saved)
     -- Events the server has stored are dropped, but never from a binder that fails its check.
     if ledger:check() then
         ledger:prune(ACB.sync and ACB.sync.acks)
@@ -337,12 +337,12 @@ local function initialize()
     trade = ACB.newTrade(saved.counts, GetTime, function()
         sequence = sequence + 1
         return ("%d-%d-%d"):format(time(), math.random(1, 999999), sequence)
-    end, sendTrade, function(give, take, peer, tradeId)
-        local done = collection:swap(give, take, peer, tradeId)
+    end, sendTrade, function(give, take, peer, tradeId, history)
+        local done = collection:swap(give, take, peer, tradeId, history)
         if done then ACB.logTrade(saved, give, take, peer, time(), report) end
         ACB.refresh()
         return done
-    end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.rankedTradeAllowed(saved, peer) end, saved)
+    end, function() return ACB.wantedCards(saved) end, function(peer) return ACB.rankedTradeAllowed(saved, peer) end, saved); ACB.trade = trade
     if C_ChatInfo and C_ChatInfo.RegisterAddonMessagePrefix then
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.tradePrefix)
         pcall(C_ChatInfo.RegisterAddonMessagePrefix, ACB.viewPrefix)

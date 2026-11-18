@@ -116,6 +116,14 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
     name:SetWordWrap(false)
     rule(right, 23, 96, 402)
     local detail = mountCard(right, 28, 117, 1.48, share)
+    local historyButton = ACB.uiKit.button(right, "Card history", 247, 401, 174, function()
+        if not state then return end
+        local entry = ACB.cards[state.edition] or ACB.pages[region].cards[state.slot]
+        local source = viewing and viewing.historySaved and viewing.historySaved() or saved
+        if source and ACB.openCardHistory then ACB.openCardHistory(source, entry.key) end
+    end)
+    historyButton:SetHeight(20)
+    view.historyButton = historyButton
     local editionStrip = ACB.createEditionStrip(right, saved, function(key)
         state.edition = key
         view:showRegion(region, indexPage:IsShown())
@@ -145,6 +153,9 @@ function ACB.createFolio(parent, saved, selectSet, viewing)
         local collection = ACB.collection
         if not collection then return end
         local count = saved.counts[entry.key] or 0
+        local historySaved = viewing and viewing.historySaved and viewing.historySaved() or saved
+        historyButton:SetShown(count > 0 and (not viewing or saved.historyPeer ~= nil or (viewing.historySaved and viewing.historySaved() ~= nil)))
+        detail.historyCopy = not historySaved.historyPeer and ACB.selectedCardCopy(historySaved, entry.key) or nil
         if count >= 2 then collection:recycle(entry.key) elseif count == 0 then collection:craft(entry.key) end
         view:showRegion(region)
     end)

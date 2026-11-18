@@ -6,6 +6,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
     local legacyReceive, legacyConfirm = trade.receive, trade.confirm
     local lastInvite, lastRefusal, elapsed
     local terminal, terminalOrder = {}, {}
+    local history = ACB.newTradeHistory and ACB.newTradeHistory(saved, send, now, trade)
     local function wire(key) return key or "0" end
     local function valid(key) return key == "0" or ACB.tradeItem(key) ~= nil end
     local function owns(key) return not key or (ACB.tradeItem(key) and (saved and ACB.itemCount(saved, key) or counts[key] or 0) > 0) end
@@ -18,6 +19,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
     end
     local function transmit(s, message)
         local ok, why = send(s.peer, message)
+        if ok and history then history:sent() end
         if not ok then trade.status = why or "Could not reach that player. Trying again." end
         return ok
     end
@@ -37,7 +39,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
     end
     local function finish(s)
         if s.applied then return true end
-        if not apply(s.give, s.take, s.peer, s.id) then
+        if (history and not history:ready(s)) or not apply(s.give, s.take, s.peer, s.id, history and history:context(s)) then
             s.failed = true
             close(s, "Trade stopped. An offered item is no longer available.")
             return false
@@ -64,7 +66,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         local s = current()
         return not ACB.tradeModeReason(saved) and s ~= nil and not s.closed and not s.cancelPending and s.connected == true and not s.sentConfirm
             and not s.invited
-            and (s.give ~= nil or s.take ~= nil) and s.give ~= s.take and owns(s.give) == true
+            and (s.give ~= nil or s.take ~= nil) and s.give ~= s.take and owns(s.give) == true and (not history or history:ready(s))
     end
 
     -- Joining an invitation opens the trade, but does not accept either offer.
@@ -103,12 +105,12 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         offer(s, true)
     end
 
-    function trade:change(key)
+    function trade:change(key, force)
         local s = current()
         if not s or s.closed or s.invited or s.cancelPending or s.decision then return false end
         if s.sentConfirm then self.status = "You accepted. Wait for the other player, or cancel." return false end
         if not owns(key) or s.revision >= 9999 or (s.gift and (not s.initiator or not key)) then return false end
-        if key == s.give then return true end
+        if key == s.give and not force then return true end
         s.give, s.revision = key, s.revision + 1
         changed(s)
         offer(s)
@@ -132,7 +134,10 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
 
     function trade:confirm()
         local s = current()
-        if not s then return legacyConfirm(self) end
+        if not s then
+            if history then self.status = "Both players need the latest addon to preserve card history."; return false end
+            return legacyConfirm(self)
+        end
         if not self:canAccept() then return end
         local ok, why = allowed(s.peer)
         if not ok then
@@ -147,7 +152,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
     end
 
     function trade:receive(peer, message)
-        if type(peer) ~= "string" or type(message) ~= "string" or #message > 100 then return end
+        if type(peer) ~= "string" or type(message) ~= "string" or #message > 250 then return end
         local verb, incoming = message:match("^([A-Z])|([%w%-]+)")
         local done = incoming and terminal[peer .. "|" .. incoming]
         if done then
@@ -186,6 +191,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         local s = current()
         if not s or not s.modern then return legacyReceive(self, peer, message) end
         if s.peer ~= peer then return end
+        if history and history:receive(s, message) then return end
         local refused = message:match("^N|([%w%-]+)$")
         if refused == s.id and not s.sentConfirm and not s.peerConfirmed and not s.decision and not s.applied then
             self:reset("The other player needs the companion and a Ranked binder to trade or receive gifts.")
@@ -208,6 +214,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
             if confirmId ~= s.id or tonumber(mine) ~= s.theirRevision or tonumber(theirs) ~= s.revision
                 or give ~= wire(s.take) or take ~= wire(s.give) or (not s.give and not s.take) or s.give == s.take then return end
             if command == "A" and not s.closed and not s.cancelPending then
+                if history and not history:ready(s) then return end
                 s.peerConfirmed = true
                 self.status = s.sentConfirm and "Both accepted. Finishing trade..." or "The other player accepted. Check both sides and click Accept."
                 decide(s)
@@ -232,8 +239,11 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
     end
 
     function trade:step(dt)
+        local activeSession = current()
         elapsed = (elapsed or 0) + dt
-        if elapsed < 2 then return end
+        local preparing = history and activeSession and activeSession.connected and not activeSession.invited and not history:ready(activeSession)
+        local interval = preparing and 2.4 or 2
+        if elapsed < interval then return history and activeSession and history:step(activeSession, interval - elapsed) end
         elapsed = 0
         local s = current()
         if not s or s.closed then return true end
@@ -241,6 +251,7 @@ function ACB.addTradeSession(trade, counts, now, makeID, send, apply, allowed, s
         if s.cancelPending then transmit(s, "K|" .. s.id)
         elseif s.decision == "commit" then transmit(s, packet(s, "F"))
         elseif s.sentConfirm then transmit(s, packet(s, "A"))
+        elseif preparing and history:knowsOffer(s) then history:step(s)
         else offer(s, s.initiator and not s.connected) end
         return true
     end

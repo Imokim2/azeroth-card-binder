@@ -28,7 +28,8 @@ end
 function ACB.startNewBinder(saved)
     local backup = {
         at = time and time() or 0, counts = saved.counts, shiny = saved.shiny, dust = saved.dust, sets = saved.sets,
-        titles = saved.titles, achievements = saved.achievements,
+        titles = saved.titles, achievements = saved.achievements, cardCopies = saved.cardCopies, cardHistoryDonations = saved.cardHistoryDonations,
+        cardHistoryVersion = saved.cardHistoryVersion, cardHistorySerial = saved.cardHistorySerial,
     }
     for key in pairs(saved) do saved[key] = nil end
     saved.lastBinder = backup
@@ -108,6 +109,7 @@ local function cleanLedgerFields(saved)
     local function count(value) return type(value) == "number" and value >= 1 and value == math.floor(value) end
     if type(run) == "table" and type(run.key) == "string" and ACB.cards[run.key] and count(run.n) and count(run.last) and run.last >= run.n then
         saved.run = { key = run.key, n = run.n, last = run.last, boost = run.boost == true or nil }
+        if ACB.bonusReference and ACB.bonusReference(run.bonus, run.fromAt, run.untilAt) then saved.run.bonus, saved.run.fromAt, saved.run.untilAt = run.bonus, run.fromAt, run.untilAt end
     else
         saved.run = nil
     end

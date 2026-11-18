@@ -19,14 +19,14 @@ function ACB.createSoundSettingsView(parent, saved)
         kit.label(frame, "GameFontHighlightSmall", 70, y + 20, kit.muted, setting.note)
         checks[setting.key] = check
     end
-    kit.label(frame, "GameFontNormal", 32, 322, kit.brass, "Listen to the sound groups")
+    kit.label(frame, "GameFontNormal", 32, 369, kit.brass, "Listen to the sound groups")
     for index, entry in ipairs({ { "pickup", "Card finds" }, { "packs", "Pack opening" }, { "trades", "Trading" }, { "windows", "Windows" } }) do
-        samples[entry[1]] = kit.button(frame, entry[2], 32 + (index - 1) * 180, 352, 164, function()
+        samples[entry[1]] = kit.button(frame, entry[2], 32 + (index - 1) * 180, 397, 164, function()
             ACB.previewSounds(entry[1], ACB.say)
         end)
     end
-    kit.button(frame, "Stop sounds", 32, 392, 164, function() ACB.stopSounds() end)
-    kit.label(frame, "GameFontHighlightSmall", 32, 440, kit.muted,
+    kit.button(frame, "Stop sounds", 32, 439, 164, function() ACB.stopSounds() end)
+    kit.label(frame, "GameFontHighlightSmall", 220, 444, kit.muted,
         "Pop-ups and sounds are independent. Muting a group keeps your other choices saved.")
     function frame:refresh()
         local enabled = ACB.settingOn(saved, "sounds")

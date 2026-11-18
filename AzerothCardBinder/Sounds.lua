@@ -15,7 +15,7 @@ local bank = {
     set_complete = { 1.85, 4, "pickup", "UI_LEGENDARY_LOOT_TOAST", "IG_QUEST_LIST_COMPLETE" },
     binder = { .32, 0, "windows", "IG_SPELLBOOK_OPEN", "IG_CHARACTER_INFO_OPEN" },
 }
-local groups = { pickup = "pickupSounds", packs = "packSounds", trades = "tradeSounds", windows = "windowSounds" }
+local groups = { pickup = "pickupSounds", packs = "packSounds", trades = "tradeSounds", windows = "windowSounds", events = "eventSounds" }
 local saved, last, handles, previewToken = {}, {}, {}, 0
 local dominantUntil, dominantPriority, dominantHandle = 0, 0, nil
 local function stop(handle)

@@ -15,11 +15,14 @@ local function side(parent, x, caption)
     paperPanel(frame)
     centered(frame, "GameFontNormal", 12, SEPIA, 260):SetText(caption)
     local card = ACB.createCard(frame)
+    local history = button(frame, "History", 207, 7, 68, function()
+        if card.entry and card.historyCopy then ACB.showCardCopyHistory(card.entry.key, card.historyCopy) end
+    end)
     card.frame:SetPoint("TOP", frame, "TOP", 0, -35)
     local pack = ACB.createPackItemView(frame, ACB.cardWidth, ACB.cardHeight)
     pack.frame:SetPoint("TOP", frame, "TOP", 0, -35)
     pack.frame:Hide()
-    return { frame = frame, card = card, pack = pack,
+    return { frame = frame, card = card, pack = pack, copyHistory = history,
         empty = centered(frame, "GameFontHighlight", 112, SEPIA, 244),
         accepted = centered(frame, "GameFontNormal", 267, INK, 260),
         note = centered(frame, "GameFontHighlightSmall", 290, SEPIA, 266) }
@@ -216,6 +219,11 @@ function ACB.createTradeView(parent, saved, trade)
             live and gift and not s.initiator and "Nothing. This is a gift to you." or "Click here to choose a card.\nUse Choose pack for a sealed pack.")
         fill(theirs, take, 1, live and s.peerConfirmed or s and s.applied,
             gift and "Nothing in return.\nThis is a gift." or "Nothing has been added.")
+        local copies = live and s.copyHistory
+        mine.card.historyCopy, theirs.card.historyCopy = copies and copies.out or nil, copies and copies.into or nil
+        mine.copyHistory:SetShown(give ~= nil and ACB.cards[give] ~= nil)
+        theirs.copyHistory:SetShown(take ~= nil and ACB.cards[take] ~= nil)
+        mine.copyHistory:SetEnabled(mine.card.historyCopy ~= nil); theirs.copyHistory:SetEnabled(theirs.card.historyCopy ~= nil)
         local pack = give and ACB.packItem(give)
         mine.note:SetText(give and (pack and "You are giving 1 sealed pack."
             or ACB.itemCount(saved, give) == 1 and "Your last copy. Giving it removes it from your binder."

@@ -68,6 +68,7 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed, saved)
     end
 
     function trade:offer(peer, key)
+        if ACB.cardHistoryEnabled and ACB.cardHistoryEnabled(saved) then self.status = "Use the trade window with the latest addon to keep card history."; return false end
         if busy(self) or not peer then return end
         local ok, why = allowed(peer)
         if not ok then
@@ -164,6 +165,7 @@ function ACB.newTrade(counts, now, makeID, send, apply, wanted, allowed, saved)
     end
 
     function trade:receive(peer, message)
+        if ACB.cardHistoryEnabled and ACB.cardHistoryEnabled(saved) then self.status = "Both players need the latest addon to preserve card history."; return false end
         local session = self:active()
         if not session or session.peer ~= peer or type(message) ~= "string" or #message > 100 then return end
         local listCommand, list = message:match("^([SW])|([%w:,]*)$")

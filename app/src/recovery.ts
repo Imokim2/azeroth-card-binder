@@ -12,7 +12,7 @@ type RecordValue = Record<string, unknown>;
 const record = (value: unknown): RecordValue => value && typeof value === "object" && !Array.isArray(value) ? value as RecordValue : {};
 const hash = (text: string) => createHash("sha256").update(text).digest("hex");
 const mapText = (value: unknown) => JSON.stringify(Object.entries(record(value)).sort(([a], [b]) => a.localeCompare(b)));
-const progressKeys = new Set(("schema counts shiny dust sets titles achievements tradeCount history ledger head stateSum tape run mode modeChoice casualDrops attempts misses rolledGuids rolledNext legacy exactMode balancedDrops balanceLedger balanceLedger2 launchLedger factionLedger sides guildLedger guildDonations editionDrops editionLedger tieredPacks packTiersLedger packs levels seasonClaims seasonTitles").split(" "));
+const progressKeys = new Set(("schema counts shiny dust sets titles achievements tradeCount history ledger head stateSum tape run mode modeChoice casualDrops attempts misses rolledGuids rolledNext legacy exactMode balancedDrops balanceLedger balanceLedger2 launchLedger factionLedger sides guildLedger guildDonations cardCopies cardHistoryVersion cardHistorySerial cardHistoryDonations editionDrops editionLedger tieredPacks packTiersLedger packs levels seasonClaims seasonTitles").split(" "));
 
 export type RecoveryServer = {
   head: { seq: number; hash: string }; tapeNext: number; casualDrops: number; state: RecordValue; events: RecordValue[];
@@ -81,6 +81,10 @@ export async function planRecovery(path: string, current: string, backup: string
     // A pending guild donation holds a real copy. Never drop or transplant that
     // state as if it were a preference when restoring another verified backup.
     if (mapText(raw["guildDonations"]) !== mapText(restored["guildDonations"])) return null;
+    // Copy identities belong to inventory. Never transplant them onto another backup or silently drop their origins.
+    for (const field of ["cardCopies", "cardHistoryDonations"]) if (mapText(raw[field]) !== mapText(restored[field])) return null;
+    if (raw["cardHistoryVersion"] === 1 && restored["cardHistoryVersion"] !== 1) return null;
+    if (Number(raw["cardHistorySerial"] ?? 0) > Number(restored["cardHistorySerial"] ?? 0)) return null;
     if (raw["guildLedger"] === true && restored["guildLedger"] !== true) return null;
     // Keep the player's current preferences, wanted list, reports and layout. Progress comes from the verified backup.
     for (const [key, value] of Object.entries(raw)) if (!progressKeys.has(key)) restored[key] = value;

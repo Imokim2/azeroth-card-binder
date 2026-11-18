@@ -20,7 +20,7 @@ export type RebuildReport = {
 };
 
 export async function rebuild(
-  deps: { rebuild: RebuildStore; catalog: Catalog; releasedAt?: Record<string, number> }, // releasedAt: when each card held back for seasons was released
+  deps: { rebuild: RebuildStore; catalog: Catalog; releasedAt?: Record<string, number>; bonuses?: SqlBonusEvents }, // releasedAt: when each card held back for seasons was released
   options: { after?: string | null; limit?: number; dryRun?: boolean; force?: boolean } = {},
 ): Promise<RebuildReport> {
   const limit = options.limit ?? 50;
@@ -32,7 +32,8 @@ export async function rebuild(
     const events = batches.flatMap((batch) => batch.events);
     // A recompute of what was accepted: cards held back for seasons count as available from the start of the season that released them.
     const released = deps.releasedAt ?? {};
-    const played = replay(events, deps.catalog, newState(), { available: (key, at) => released[key] !== undefined && (released[key] as number) <= at });
+    const bonuses = deps.bonuses ? await deps.bonuses.forEvents(events as { kind: string; partner: string; trade: string }[]) : {};
+    const played = replay(events, deps.catalog, newState(), { bonuses, available: (key, at) => released[key] !== undefined && (released[key] as number) <= at });
     if (!played.ok) {
       report.failed.push({ playerId, rule: played.rule, index: played.index });
       continue;
@@ -67,3 +68,4 @@ function sorted(value: unknown): unknown {
   if (typeof value === "object" && value !== null) return Object.fromEntries(Object.entries(value).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([key, entry]) => [key, sorted(entry)]));
   return value;
 }
+import type { SqlBonusEvents } from "./bonusEvents.ts";

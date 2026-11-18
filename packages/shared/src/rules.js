@@ -30,6 +30,7 @@ const CAMP_FACTOR = 2;
 const CAMP_RARITIES = ["common", "rare"];
 const { familyCount } = require("./editions.js");
 const { packInfo } = require("./packs.js");
+const bonusEvents = require("./bonus-events.js");
 
 function newState() {
     return {
@@ -71,7 +72,7 @@ function spendActivity(state, catalog, event, attempts) {
 // `available(baseKey, t)`, when given, says whether a card held back for seasons (catalog card.seasonal) may be acquired at time t. It is
 // consulted only on a binder that has recorded mode/launch1; the server supplies it from the scheduled seasons (a card is available from the
 // start of the first season that features it, for good).
-function applyEvent(state, event, catalog, strict = false, available = null) {
+function applyEvent(state, event, catalog, strict = false, available = null, bonuses = {}, serverNow = Infinity) {
     if (event.t < state.lastT) return "time";
     const card = catalog.cards[event.key];
     const isPackKey = event.key.startsWith("pack:");
@@ -110,13 +111,15 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
     if (event.kind !== "recycle" && event.kind !== "craft" && event.dust !== 0) return "dust";
     // An attempt made at a camp with its buff says so in `partner`. Only a Ranked attempt can be boosted, and a boosted drop must fall within the buff the
     // binder claimed (a run of misses is written when something else happens, so its own time says nothing about when its attempts were made).
-    const boosted = (event.kind === "drop" || event.kind === "miss") && event.partner === "camp" && event.trade === "";
+    const bonus = bonusEvents.isBonus(event) ? bonusEvents.forEvent(event, catalog, bonuses, state.lastT, serverNow) : null;
+    if (bonusEvents.isBonus(event) && (!bonus || state.mode !== "ranked2")) return "bonus";
+    const boosted = (event.kind === "drop" || event.kind === "miss") && ((event.partner === "camp" && event.trade === "") || (event.partner === "camp-bonus" && bonus));
     if (boosted) {
         if (state.camp !== 1 || state.mode !== "ranked2" || event.tape < 1) return "camp";
         if (!CAMP_RARITIES.includes(catalog.cards[card.baseKey || event.key]?.rarity)) return "camp";
         if (event.kind === "drop" && event.t > (state.campEnd || 0) + CAMP_GRACE) return "camp";
     }
-    if (!boosted && event.kind !== "tradeIn" && event.kind !== "tradeOut" && event.kind !== "seasonReward" && event.kind !== "donate" && event.kind !== "donateReturn" && (event.partner !== "" || event.trade !== "")) return "trade";
+    if (!boosted && !bonus && event.kind !== "tradeIn" && event.kind !== "tradeOut" && event.kind !== "seasonReward" && event.kind !== "donate" && event.kind !== "donateReturn" && (event.partner !== "" || event.trade !== "")) return "trade";
     let counts = state.counts;
     switch (event.kind) {
         // Spec 12: the binder says it is standing at a camp with its buff, and how long the buff has left. Only a Ranked binder that has recorded
@@ -365,7 +368,7 @@ function applyEvent(state, event, catalog, strict = false, available = null) {
         if (state.balanceReady[source]) {
             // A boosted attempt had double the chance, so it counts double in the luck statistics: a camper is not mistaken for a lucky player.
             const attempts = event.kind === "miss" ? event.count : 1;
-            state.balanceAttempts[source] = (state.balanceAttempts[source] || 0) + attempts * (boosted ? CAMP_FACTOR : 1);
+            state.balanceAttempts[source] = (state.balanceAttempts[source] || 0) + attempts * (boosted ? CAMP_FACTOR : 1) * (bonus ? bonus.percent / 100 : 1);
             if (event.kind === "drop") state.balanceDrops[source] = (state.balanceDrops[source] || 0) + 1;
         } else if (event.kind === "drop") state.balanceReady[source] = true;
     }
@@ -392,7 +395,7 @@ function replay(events, catalog, start = newState(), options = {}) {
         const event = events[index];
         const next = events[index + 1];
         const quiet = event.kind === "mode" && event.key === "ranked" && next !== undefined && next.kind === "mode";
-        const rule = applyEvent(state, event, catalog, options.strict === true && !quiet, options.available || null);
+        const rule = applyEvent(state, event, catalog, options.strict === true && !quiet, options.available || null, options.bonuses || {}, options.serverNow ?? Infinity);
         if (rule) return { ok: false, error: "rule", rule, index };
     }
     return { ok: true, state };

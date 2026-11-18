@@ -123,8 +123,11 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         if not info.trade and not info.crafted and ACB.warnCasualFind then ACB.warnCasualFind(saved) end
         if self.announcements then self.announcements:add(card, info) end
     end
-    local function record(...)
-        if ledger then return ledger:record(...) end
+    local function record(kind, key, fields)
+        local result
+        if ledger then result = ledger:record(kind, key, fields) end
+        if ACB.recordCardHistory then ACB.recordCardHistory(saved, kind, key, fields) end
+        return result
     end
 
     -- Sources already rolled stay rolled across a reload: the newest ones are kept in a ring in the saved file.
@@ -209,6 +212,9 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         -- At a camp with its buff the chance is doubled, and a Ranked binder writes that down first (Campfire.lua).
         local boost = ACB.campBoost ~= nil and ACB.campBoost(saved, ledger, ranked, card) -- Campfire.lua; the small tools that load only part of the add-on lack it
         if boost then chance = math.min(10000, chance * ACB.campFactor) end
+        local rollAt = time and time() or 0
+        local bonus = ACB.bonusBoost and ACB.bonusBoost(saved, ledger, ranked, card, rollAt)
+        if bonus then chance = math.min(10000, math.floor(chance * bonus.percent / 100)) end
         local guaranteed = chance >= 10000
         -- A certain drop needs no roll; a Casual roll is drawn only when it is needed.
         local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= chance
@@ -222,11 +228,12 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             -- Ranked writes every attempt down: misses in a row on one card are one run, kept open until something else happens.
             if ranked and ledger then
                 local run = saved.run
-                if run and run.key == card.key and run.last == tapeIndex - 1 and (run.boost == true) == boost then
+                if run and run.key == card.key and run.last == tapeIndex - 1 and (run.boost == true) == boost and run.bonus == (bonus and bonus.id) then
                     run.n, run.last = run.n + 1, tapeIndex
+                    if bonus then run.untilAt = rollAt end
                 else
                     ledger:flushRun()
-                    saved.run = { key = card.key, n = 1, last = tapeIndex, boost = boost or nil }
+                    saved.run = { key = card.key, n = 1, last = tapeIndex, boost = boost or nil, bonus = bonus and bonus.id, fromAt = bonus and rollAt, untilAt = bonus and rollAt }
                 end
             end
             if packWin then
@@ -252,7 +259,9 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             if ranked then shiny = ACB.tapeShiny(entry, ACB.shinyOdds) == 1 else shiny = random(1, ACB.shinyOdds) == 1 end
         end
         if shiny then saved.shiny[card.key] = true end
-        record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex, partner = boost and ranked and "camp" or nil })
+        record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex,
+            partner = bonus and (boost and "camp-bonus" or "bonus") or boost and ranked and "camp" or nil,
+            trade = bonus and ACB.bonusReference(bonus.id, rollAt, rollAt) })
         if packWin then self:addPack(card, tapeIndex, entry) end
         -- A drop rolled with this computer's own random numbers cannot be rechecked by the server.
         if not ranked then saved.casualDrops = (saved.casualDrops or 0) + 1 end
@@ -265,11 +274,15 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
     -- Hand over one copy of `give` in return for one copy of `take`: any card in the binder, a last copy included.
     -- Returns false when the player no longer has the card to give.
     -- `partner` and `tradeId` identify the trade in the ledger; both players hold the same trade id.
-    function collection:swap(give, take, partner, tradeId)
+    function collection:swap(give, take, partner, tradeId, history)
         local counts = saved.counts
         local out, into = ACB.tradeItem(give), ACB.tradeItem(take)
         if (not out and not into) or (give and not out) or (take and not into)
             or give == take or (out and ACB.itemCount(saved, give) < 1) then return false end
+        if ACB.cardHistoryEnabled and ACB.cardHistoryEnabled(saved) and ((out and not out.pack) or (into and not into.pack)) then
+            if type(partner) ~= "string" or #partner > 80 or partner:find("[%z\1-\31\127|]") or not history or (out and not out.pack and not ACB.canGiveCardCopy(saved, give, history.out))
+                or (into and not into.pack and (not ACB.validCardCopy(history.into, take) or ACB.hasCardCopyID(saved, history.into.id))) then return false end
+        end
         if ledger then ledger:flushRun() end
         local fellow = ACB.fellowshipMarker and ACB.fellowshipMarker(saved, ledger) -- Fellowship.lua: the trade or gift earns a roll once its marker is written
         local function transfer(kind, item, delta)
@@ -281,7 +294,8 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             else
                 local before = counts[item.key] or 0
                 counts[item.key] = before + delta
-                record(kind, item.key, { before = before, partner = partner, trade = tradeId })
+                record(kind, item.key, { before = before, partner = partner, trade = tradeId,
+                    historyCopy = history and (delta < 0 and history.out or history.into), historyGift = history and history.gift })
                 if counts[item.key] == 0 then counts[item.key] = nil end
             end
         end
@@ -313,10 +327,12 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         local card = ACB.cards[key]
         local count = saved.counts[key] or 0
         if not card or count < 2 then return false end
+        local historyCopy = ACB.spendCardCopy and ACB.spendCardCopy(saved, key)
+        if historyCopy == false then report("This copy is reserved by an accepted trade. Finish or cancel it first."); return false end
         local yield = ACB.dustFor(card)
         saved.counts[key] = count - 1
         saved.dust = (saved.dust or 0) + yield
-        record("recycle", key, { before = count, dust = yield })
+        record("recycle", key, { before = count, dust = yield, historyCopy = historyCopy })
         report(("Recycled a spare %s: +%d Binder Dust (%d in all)"):format(card.name, yield, saved.dust))
         return true
     end

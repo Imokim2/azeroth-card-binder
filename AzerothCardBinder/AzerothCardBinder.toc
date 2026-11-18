@@ -2,7 +2,7 @@
 ## AllowLoadGameType: camelot
 ## Title: World of Warcards
 ## Notes: Discover collectible cards in World of Warcraft: Forever. Open from the minimap or with /acb.
-## Version: 1.0.21
+## Version: 1.1.0
 ## SavedVariables: AzerothCardBinderDB
 ## X-License: GPL-3.0-or-later
 ## IconTexture: Interface\Icons\INV_Misc_Book_09
@@ -25,6 +25,9 @@ Data/Sync.lua
 RankedAccess.lua
 Tape.lua
 Collection.lua
+CardHistory.lua
+CardHistoryTrade.lua
+CardHistoryRequests.lua
 Kills.lua
 Packs.lua
 Seasons.lua
@@ -33,6 +36,7 @@ GuildBatch.lua
 Auras.lua
 Campfire.lua
 CampfireIcon.lua
+BonusEvents.lua
 Fellowship.lua
 Trade.lua
 TradeSession.lua
@@ -61,6 +65,7 @@ FolioIndex.lua
 EditionView.lua
 Folio.lua
 UiKit.lua
+CardHistoryView.lua
 CollectionMode.lua
 CardStudio.lua
 SoundSettingsView.lua

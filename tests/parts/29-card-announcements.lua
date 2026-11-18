@@ -32,6 +32,31 @@ local function withAnnouncements(runTest)
     assert(ok, why)
 end
 
+test("dungeon chat lockdown offers an explicit share draft without attempting restricted sends", function()
+    withAnnouncements(function(env)
+        local oldInstance, oldFrame, oldChat, oldModern = IsInInstance, DEFAULT_CHAT_FRAME, ChatFrame_OpenChat, ChatFrameUtil and ChatFrameUtil.OpenChat
+        local lines, prepared = {}, {}
+        IsInInstance = function() return true, "party" end
+        DEFAULT_CHAT_FRAME = { AddMessage = function(_, text) lines[#lines + 1] = text end }
+        ChatFrame_OpenChat = function(text) prepared[#prepared + 1] = text end
+        if ChatFrameUtil then ChatFrameUtil.OpenChat = ChatFrame_OpenChat end
+        local ok, why = pcall(function()
+            env.group, env.locked = "party", true
+            ACB.newCardAnnouncements({}):add(ACB.cards["npc:589"], {})
+            equal(#env.sent, 0); equal(#lines, 1)
+            local link = assert(lines[1]:match("|H(.-)|h"))
+            ACB.openAnnouncementLink(link)
+            equal(prepared[1], "/p World of Warcards: I just added 'Defias Pillager' to my binder.")
+            equal(#env.sent, 0, "opening a draft must never send it")
+            env.group = "solo"; ACB.openAnnouncementLink(link); equal(#prepared, 1)
+            env:advance(65); equal(#env.sent, 0)
+        end)
+        IsInInstance, DEFAULT_CHAT_FRAME, ChatFrame_OpenChat = oldInstance, oldFrame, oldChat
+        if ChatFrameUtil then ChatFrameUtil.OpenChat = oldModern end
+        assert(ok, why)
+    end)
+end)
+
 test("acquired cards use party, raid, instance or solo say with readable public wording", function()
     withAnnouncements(function(env)
         local card = ACB.cards["npc:589"]

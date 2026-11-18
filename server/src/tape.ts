@@ -6,6 +6,8 @@ import type { LedgerEvent } from "./ledger.ts";
 import { packPick, packValue, baseCardKey, pickEdition, packInfo, packTier, CAMP_FACTOR } from "./shared.ts";
 import type { Catalog, LedgerState } from "./shared.ts";
 import { chanceFor } from "../../packages/shared/src/drops.js";
+import * as bonusEvents from "../../packages/shared/src/bonus-events.js";
+import type { BonusDefinitions } from "./bonusEvents.ts";
 
 // A player is never given more than TAPE_SIZE + REFILL_BELOW entries ahead of the last upload that used them, so what
 // they could read ahead of time is bounded. Ten thousand attempts leaves room for a long session between game saves.
@@ -47,6 +49,7 @@ export async function checkTape(args: {
   issuedEnd: number; stack: Record<string, number>; tapeNext: number;
   // Whether a card held back for seasons may be found at time t (see packages/shared/src/rules.js); used for packs once mode/launch1 is recorded.
   available?: (key: string, t: number) => boolean;
+  bonuses?: BonusDefinitions;
 }): Promise<{ failure: TapeFailure } | { failure: null; stack: Record<string, number> }> {
   let stack = { ...args.stack };
   const owned = new Set(Object.keys(args.stateBefore.shiny));
@@ -110,8 +113,10 @@ export async function checkTape(args: {
     if (!card) continue; // the rules have already refused unknown cards
     const source = baseCardKey(args.catalog, event.key);
     // An attempt made at a camp with its buff (spec 12) had a higher chance. The rules have already checked that the binder may claim it.
-    const factor = event.partner === "camp" ? CAMP_FACTOR : 1;
-    const chanceAt = (misses: number): number => Math.min(10000, chanceFor(args.catalog, source, misses, balanced) * factor);
+    const bonus = bonusEvents.isBonus(event) ? bonusEvents.forEvent(event, args.catalog, args.bonuses || {}) : null;
+    if (bonusEvents.isBonus(event) && !bonus) return { failure: { reason: "roll", index } };
+    const factor = event.partner === "camp" || event.partner === "camp-bonus" ? CAMP_FACTOR : 1;
+    const chanceAt = (misses: number): number => Math.min(10000, Math.floor(chanceFor(args.catalog, source, misses, balanced) * factor * (bonus ? bonus.percent : 100) / 100));
     if (event.kind === "miss") {
       for (let position = event.tape - event.count + 1; position <= event.tape; position++) {
         const misses = stack[source] ?? 0;

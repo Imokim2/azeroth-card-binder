@@ -166,7 +166,9 @@ function ACB.newLedger(saved, now, character)
         if not run then return end
         saved.run = nil
         -- A run made at a camp with its buff (Campfire.lua) is written as one, so the server rechecks it at the doubled chance.
-        self:record("miss", run.key, { count = run.n, tape = run.last, partner = run.boost and "camp" or nil })
+        self:record("miss", run.key, { count = run.n, tape = run.last,
+            partner = run.bonus and (run.boost and "camp-bonus" or "bonus") or run.boost and "camp" or nil,
+            trade = run.bonus and ACB.bonusReference(run.bonus, run.fromAt, run.untilAt) })
     end
 
     -- Check the saved ledger. Returns true and the number of events kept, or false and what is wrong.

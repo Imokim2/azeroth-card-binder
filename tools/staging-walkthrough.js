@@ -73,7 +73,8 @@ function checkout(options = {}) {
   guard("the ledger protocol is the same in the rules, the server and the companion", () => {
     const rules = Number(/const SPEC_VERSION = (\d+);/.exec(read("packages/shared/src/ledger.js"))[1]);
     const supported = /SUPPORTED_SPEC_VERSIONS = \[([\d, ]+)\]/.exec(read("server/src/upload.ts"))[1].split(",").map(Number);
-    const sent = Number(/specVersion: (\d+),/.exec(read("app/src/client.ts"))[1]);
+    const app = read("app/src/client.ts");
+    const sent = Number((/MAX_UPLOAD_SPEC_VERSION = (\d+);/.exec(app) || /specVersion: (\d+),/.exec(app))[1]);
     add("the ledger protocol is the same in the rules, the server and the companion", rules === Math.max(...supported) && rules === sent,
       `rules ${rules}, server accepts up to ${Math.max(...supported)}, companion sends ${sent}`);
     versions.protocol = rules;

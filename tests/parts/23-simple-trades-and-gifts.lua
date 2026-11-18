@@ -196,6 +196,8 @@ test("incoming gifts wait for invitation acceptance before opening the trade or 
     equal(opened, "harry-dexter")
     equal(AzerothCardBinderWindow:IsShown(), false)
     equal(ACB.tradeView:IsShown(), true)
+    equal(ACB.tradeView.controls.accept.enabled, false, "wait for the gift's copy history")
+    completeHistoryOffer(ACB.trade); ACB.refresh()
     equal(ACB.tradeView.controls.accept.enabled, true)
     emit("CHAT_MSG_ADDON", ACB.tradePrefix, "X|incoming-gift-ui", "WHISPER", "Harry Dexter")
     ACB.prepareTrade, C_ChatInfo.SendAddonMessage = realPrepare, realSend

@@ -51,6 +51,8 @@ local parts = {
     "44-campfire",
     "45-fellowship",
     "46-campfire-icon",
+    "47-card-history",
+    "48-bonus-events",
 }
 
 local source, ranges, line = {}, {}, 1

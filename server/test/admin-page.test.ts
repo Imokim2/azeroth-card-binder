@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { runInNewContext } from "node:vm";
 import test from "node:test";
 import { ADMIN_SCRIPT } from "../src/adminPage.ts";
+import { SqlBonusEvents } from "../src/bonusEvents.ts";
 import { ADMIN_TOKEN, NOW, chainedHistory, newPlayer, registration, setup, signedUpload } from "./harness.ts";
 
 type Body = Record<string, unknown>;
@@ -19,6 +20,7 @@ class Node_ {
   hidden = false;
   value = "";
   disabled = false;
+  checked = false;
   placeholder = "";
   maxLength = 0;
   removed = false;
@@ -34,12 +36,15 @@ class Node_ {
   addEventListener(type: string, handler: (event: { preventDefault(): void }) => void) { (this.listeners[type] ??= []).push(handler); }
   fire(type: string) { for (const handler of this.listeners[type] ?? []) handler({ preventDefault() {} }); }
   find(predicate: (node: Node_) => boolean): Node_[] { return [...(predicate(this) ? [this] : []), ...this.children.flatMap((child) => child.find(predicate))]; }
+  querySelectorAll(selector: string) { return this.find(node => selector === "input:checked" && node.tag === "input" && node.checked); }
 }
 
 const IDS = [["signin", "form"], ["token", "input"], ["state", "select"], ["refresh", "button"], ["message", "p"], ["flags", "div"], ["app", "div"], ["who", "p"],
   ["tab-flags", "button"], ["tab-players", "button"], ["tab-activity", "button"], ["view-flags", "section"], ["view-players", "section"], ["view-activity", "section"],
   ["find", "form"], ["query", "input"], ["players", "div"], ["player", "div"], ["audit", "div"], ["refresh-activity", "button"],
-  ["tab-guilds", "button"], ["view-guilds", "section"], ["guilds", "div"]] as const;
+  ["tab-guilds", "button"], ["view-guilds", "section"], ["guilds", "div"],
+  ["tab-bonuses", "button"], ["view-bonuses", "section"], ["bonus-all", "input"], ["bonus-refresh", "button"], ["bonus-form", "form"],
+  ["bonus-title", "input"], ["bonus-start", "input"], ["bonus-duration", "input"], ["bonus-percent", "select"], ["bonus-sets", "div"], ["bonus-list", "div"], ["bonus-publish", "button"]] as const;
 
 function page(fetchImpl: typeof fetch, answer = true, promptAnswers: (string | null)[] = []) {
   const ids: Record<string, Node_> = {};
@@ -49,7 +54,7 @@ function page(fetchImpl: typeof fetch, answer = true, promptAnswers: (string | n
   const confirms: string[] = [];
   const prompts: string[] = [];
   runInNewContext(ADMIN_SCRIPT, {
-    document: { getElementById: (id: string) => ids[id], createElement: (tag: string) => new Node_(tag) },
+    document: { getElementById: (id: string) => ids[id], createElement: (tag: string) => new Node_(tag), createTextNode: (text: string) => { const node = new Node_("text"); node.textContent = text; return node; } },
     window: {
       confirm: (question: string) => { confirms.push(question); return answer; },
       prompt: (question: string) => { prompts.push(question); return promptAnswers.length ? promptAnswers.shift() : null; },
@@ -59,6 +64,26 @@ function page(fetchImpl: typeof fetch, answer = true, promptAnswers: (string | n
   return { ids, confirms, prompts, signIn: async (token: string) => { ids["token"]!.value = token; ids["signin"]!.fire("submit"); await settle(); } };
 }
 const settle = () => new Promise((resolve) => setTimeout(resolve, 80));
+
+test("admins can schedule a one-hour event through the form with a reviewed start and explicit collections", async () => {
+  const env = setup(); env.clock.now = Math.floor(Date.now()/1000);
+  env.deps.bonuses = new SqlBonusEvents(env.db, env.deps.catalog);
+  const ui = page((async (input, init) => env.api(new Request(new URL(String(input), BASE), init))) as typeof fetch);
+  await ui.signIn(ADMIN_TOKEN);
+  ui.ids["tab-bonuses"]!.fire("click"); await settle();
+  assert.equal(ui.ids["view-bonuses"]!.hidden,false);
+  ui.ids["bonus-title"]!.value = "Evening card hunt";
+  const future = new Date((env.clock.now + 600)*1000);
+  ui.ids["bonus-start"]!.value = new Date(future.getTime()-future.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  ui.ids["bonus-duration"]!.value="60"; ui.ids["bonus-percent"]!.value="200"; ui.ids["bonus-all"]!.checked=false;
+  const boxes=ui.ids["bonus-sets"]!.find(node=>node.tag==="input");
+  assert.ok(boxes.length>0,ui.ids["message"]!.textContent); boxes[0]!.checked=true;
+  ui.ids["bonus-form"]!.fire("submit"); await settle();
+  const events=await env.deps.bonuses.upcoming(env.clock.now);
+  assert.equal(events.length,1); assert.equal(events[0]!.title,"Evening card hunt");
+  assert.equal(events[0]!.endsAt-events[0]!.startsAt,3600); assert.equal(events[0]!.percent,200);
+  assert.deepEqual(events[0]!.sets,[boxes[0]!.value]); assert.equal(ui.confirms.length,1);
+});
 
 async function withFlag(displayName = "Mallory") {
   const env = setup();

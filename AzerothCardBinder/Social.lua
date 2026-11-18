@@ -117,6 +117,7 @@ function ACB.initSocial(saved, send, now, after, report)
     report = report or function() end
     local pending, served, inbox, heard = {}, {}, {}, {}
     local requests = ACB.newRequests(saved, send, now, after, report)
+    local copyHistory = ACB.newCardHistoryRequests(saved, send, now, after); ACB.copyHistoryRequests = copyHistory
     function ACB.requestWanted(peer) return requests:requestWanted(peer) end
     function ACB.askForCard(peer, card) return requests:ask(peer, card) end
     local titleChecks, titleServed = {}, {}
@@ -187,6 +188,7 @@ function ACB.initSocial(saved, send, now, after, report)
 
     function ACB.receiveView(peer, message)
         if not peer or type(message) ~= "string" or #message > 250 then return end
+        if copyHistory:handle(peer, message) then return end
         if requests:handle(peer, message) then return end
         if message == "T?" then
             local at = now()
