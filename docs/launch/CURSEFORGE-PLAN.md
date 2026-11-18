@@ -1,13 +1,15 @@
 # CurseForge release record
 
-**Addon 1.0.21 was submitted on 16 November 2026 and is processing.** Addon 1.0.20 is now approved. The website and trusted updater already offer 1.0.21 with unchanged companion 1.0.6 and server 1.0.5. Existing companion 1.0.6 installs need only the addon update, then `/reload`. Older companions should be updated first. Collections are preserved.
+**Addon 1.1.0 was submitted on 18 November 2026 and is processing.** Addon 1.0.21 is approved. The website and signed updater offer addon 1.1.0, companion 1.0.8 and server 1.1.0. Update the companion first, then the addon, sync and `/reload`. Collections are preserved.
 
 - Public project: [World of Warcards](https://www.curseforge.com/wow/addons/world-of-warcards), ID 1808775.
-- Submitted file: [World of Warcards 1.0.21](https://authors.curseforge.com/#/projects/1808775/files/9655605), uploaded from the exact verified published ZIP as Release, Forever 1.60.1, automatic publication after approval.
+- Submitted file: [World of Warcards 1.1.0](https://authors.curseforge.com/#/projects/1808775/files/9691595), uploaded from the exact verified published ZIP as Release, Forever 1.60.1, automatic publication after approval.
 - Earlier addon files 1.0.15 and 1.0.16 are also approved and remain historical releases.
-- Matching [GitHub release](https://github.com/Imokim2/azeroth-card-binder/releases/tag/v1.0.21), [website downloads](https://worldofwarcards.co.uk/download) and trusted updater provide addon 1.0.21 / companion 1.0.6.
+- Matching [GitHub release](https://github.com/Imokim2/azeroth-card-binder/releases/tag/1.1.0), [website downloads](https://worldofwarcards.co.uk/download) and trusted updater provide addon 1.1.0 / companion 1.0.8.
 
 ## Page and setup
+
+The saved public description and 1.1.0 changelog now feature individual card history through trades and gifts, scheduled community bonus events, a dedicated campfire bonus section and manual dungeon sharing. Event schedules must load before their start; no event was activated by this release. GitHub and Discord carry matching patch notes and update instructions.
 
 The saved [description](CURSEFORGE-PAGE.md) and [changelog](CURSEFORGE-CHANGELOG.md) explain the full Guild binder, top-level Guild index / Add cards navigation, personal-binder picker, selection review, cancellation and last-copy warnings. Confirmed cards show the latest recorded donor; older unnamed donations are not guessed. Save & sync and Refresh after sync guide batch donations with the companion open. Guild creation is instant, members apply to the owner, and Forever surnames do not split guild lookup. Donations are permanent. Fellowship and the campfire boost are included in the guide.
 
@@ -21,4 +23,4 @@ All five supplied genuine captures remain in the gallery, with individual titles
 
 GitHub README/release notes and Discord updates/downloads channels describe the same guild flow and versions. The website help page already covers batch donations. Existing collections, guild donations, packs and progress remain preserved; starting a new binder is not an update step.
 
-Current implementation and automated validation are recorded in [RELEASE-1.0.21.md](RELEASE-1.0.21.md). Earlier card/catalog work and collection compatibility remain included.
+Current publication and validation are recorded in [RELEASE-1.1.0.md](RELEASE-1.1.0.md). Earlier card/catalog work and collection compatibility remain included.

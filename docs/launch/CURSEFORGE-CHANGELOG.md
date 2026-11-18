@@ -1,16 +1,31 @@
-# World of Warcards 1.0.21
+# World of Warcards 1.1.0
 
-Harry's campfire fixes:
+**Addon 1.1.0 · Companion 1.0.8**
 
-- The game's **Camp Benefits** buff now activates the campfire boost. Its duration determines whether it is the ordinary or violet camp buff.
-- The buff's tooltip explains the boost where the client supports it. A separate icon remains available as a fallback.
-- Drag the fallback icon to move it; its position is saved. Use `/acb campfire reset` to put it back, or `/acb campfire icon on`, `off` or `auto` to choose when it appears.
+## Card history
 
-Keep companion **1.0.6**. If you already have it, only the addon needs updating, then `/reload` in game. Players upgrading from an older companion should update that first. Your cards, packs, guild donations and saved progress are preserved. No ledger or server rule changes are needed for these fixes.
+New copies remember their original finder, where they were acquired and when. Those details stay with the exact copy through gifts and trades. Inspect history in your binder, in the trade window or when viewing another player's shared binder. Choose which duplicate you want to give. Older cards show Not recorded.
 
-The guild index, card selection, review, cancellation and donor-name improvements from 1.0.20 remain included.
+## Community bonus events
 
-Downloads: https://worldofwarcards.co.uk/download
-Discord: https://discord.gg/266naSpg7
+We can now run scheduled bonus hours across all collections or selected zones and dungeons. A sound and chat notice announce the start, with the active bonus and countdown beside the binder title. Keep the companion connected to your Ranked binder, sync and load the schedule with `/reload` before the event starts. Dates will be announced in Discord; this update does not automatically activate a bonus.
 
-Known issue: some Forever clients can enter a fullscreen minimise/restore loop near loading screens. This release does not claim to fix it. If chat responds, type `/reload`; otherwise close the game with Alt+F4 and relaunch. Unsaved finds may be lost.
+## Campfire bonus
+
+Campfires are part of the hunt too. While the camp buff is active, Common and Rare creature-card finds have double the chance. The Camp Benefits detection, tooltip information and movable fallback icon from the previous release remain included. Camping, trading, gifting and guild donations also offer the Fellowship cards, with their Better Together achievement and Fellow Traveler title.
+
+## Dungeon sharing
+
+If the client blocks automatic pickup announcements in a dungeon, a local **Share this find** link prepares the message for you. Press Enter to send it normally.
+
+## Updating
+
+Update **companion 1.0.8 first**, then **addon 1.1.0**. Restart the companion or choose **Check for updates**, then sync and `/reload` in game to load its reply. If that reload starts a sync, wait for it to finish and reload once more.
+
+**Keep your existing binder and saved data.** This update does not reset your collection, packs, guild donations or progress. Both players need the current addon for history-preserving trades and gifts.
+
+305 addon checks, 462 companion/server checks and the real packaged companion startup checks pass.
+
+[Downloads and setup](https://worldofwarcards.co.uk/download) · [Discord](https://discord.gg/266naSpg7)
+
+Known client issue: some Forever clients can enter a minimise/restore loop near loading screens. This release does not claim to fix it. If chat responds, try `/reload`; otherwise close the game with Alt+F4 and relaunch. Unsaved finds may be lost. [Help and known issues](https://worldofwarcards.co.uk/help).

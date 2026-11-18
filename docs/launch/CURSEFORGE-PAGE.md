@@ -1,6 +1,6 @@
 # World of Warcards
 
-<!-- Current release description: addon 1.0.21 / companion 1.0.6 / server 1.0.5. Updated 16 November 2026. Existing gallery captures are genuine earlier-build screenshots; a Guild/batch capture is still needed. -->
+<!-- Current release description: addon 1.1.0 / companion 1.0.8 / server 1.1.0. Updated 18 November 2026. Existing gallery captures are genuine earlier-build screenshots; a Guild/batch capture is still needed. -->
 
 ![World of Warcards](../media/banner.png)
 
@@ -17,6 +17,16 @@ The zone collection bar tracks your progress as you travel. Prefer the binder to
 Card links still take you straight to the selected card. Shift-click a card to share it in game; other players using the addon can open it in their own binder and see their own collection status.
 
 ![The collection index with an undiscovered Wiry Swoop card selected](../media/gallery/binder.png)
+
+## A card with a story
+
+That lucky find can keep its story. New copies remember **who found them, where and when**, even after a gift or trade. Inspect a copy's history in your binder, in a trade offer or in another collector's shared binder. Have several copies? Choose the one you want to pass on. Older cards stay marked as unrecorded.
+
+## Community bonus events
+
+Make an evening of the hunt. Scheduled bonus hours can boost every collection or send everyone after cards from particular zones and dungeons. When an event starts, a sound and chat notice let you know; the binder shows the bonus and the time left beside its title.
+
+Events are for companion-connected **Ranked** binders. Sync and load the schedule with `/reload` before it starts, then the bonus starts and ends automatically. Watch Discord for announced dates—installing the update does not start an event.
 
 ## Open packs
 
@@ -48,7 +58,7 @@ Use **Guild index** at the top to return from any section. **Cancel donation** c
 
 Donations are permanent: copies leave your collection and stay with the guild, even if you leave. Nobody can withdraw them, including officers. Donated copies appear as **Waiting for sync**; they do not add to confirmed ownership, completion or points until accepted.
 
-Keep companion **1.0.6** open. After confirming the batch, click **Save & sync** once to save it with a reload. The companion syncs automatically. Once it finishes, click **Refresh after sync** to load the reply. You do not need to switch apps or sync after every card. If the server cannot accept a donation, the copy returns when the addon loads the reply.
+Keep companion **1.0.8** open. After confirming the batch, click **Save & sync** once to save it with a reload. The companion syncs automatically. Once it finishes, click **Refresh after sync** to load the reply. You do not need to switch apps or sync after every card. If the server cannot accept a donation, the copy returns when the addon loads the reply.
 
 Create or join through the companion. New guild binders are ready immediately, and their owner approves member applications. Forever characters have first names and surnames; everyone uses the same Forever world for guild lookup.
 
@@ -56,7 +66,11 @@ Wanted lists are still available from the Guild page or with `/acb wanted`.
 
 ## Collect together
 
-The Fellowship set rewards the things you do with other players: trading, gifting, donating to your guild binder and sitting at a campfire. Collect all four for the Better Together achievement and Fellow Traveler title. An active campfire buff also boosts common and rare creature-card finds.
+The Fellowship set rewards the things you do with other players: trading, gifting, donating to your guild binder and sitting at a campfire. Collect all four for the Better Together achievement and Fellow Traveler title.
+
+## Campfire bonus
+
+Sit by a campfire before the next hunt. While its camp buff is active, your chance of finding **Common and Rare creature cards is doubled**. The buff tooltip explains the bonus where the client allows it, with a movable timer icon as a fallback. It is another reason to gather your friends before heading back out.
 
 ## Collect alternate editions
 
@@ -105,9 +119,11 @@ Install matching addon and companion updates, updating the companion first when 
 
 ## Make it comfortable
 
-In **Settings**, choose whether to show card pop-ups, tooltip hints, the zone bar and 3D portraits. Switch pickup, pack, trade and window sounds on or off separately. Shift-drag the satchel button to move it.
+In **Settings**, choose whether to show card pop-ups, tooltip hints, the zone bar and 3D portraits. Switch pickup, pack, trade, window and event sounds on or off separately. Shift-drag the satchel button to move it.
 
 The **Chat** page has optional guild announcements for card and pack finds. Choose a minimum rarity for guild card messages so every common find does not fill guild chat.
+
+When dungeon chat restrictions block an automatic pickup announcement, **Share this find** opens a prepared message. Press Enter to share it through the game's normal chat box.
 
 ## Known issue: loading screens
 

@@ -18,6 +18,16 @@ Browse cards by zone or dungeon, see what you’re missing and take a closer loo
 
 Want to open straight to where you’re playing? Enable **Settings → General → Open binder at current zone**. It finds your current zone or dungeon collection and keeps your previous page in places without one.
 
+### A card with a story
+
+That lucky find can keep its story. New copies remember **who found them, where and when**, even after a gift or trade. Inspect a copy's history in your binder, in a trade offer or in another collector's shared binder. Have several copies? Choose the one you want to pass on. Older cards stay marked as unrecorded.
+
+### Community bonus events
+
+Make an evening of the hunt. Scheduled bonus hours can boost every collection or send everyone after cards from particular zones and dungeons. When an event starts, a sound and chat notice let you know; the binder shows the bonus and the time left beside its title.
+
+Events are for companion-connected **Ranked** binders. Sync and load the schedule with `/reload` before it starts, then the bonus starts and ends automatically. Watch Discord for announced dates—installing the update does not start an event.
+
 Seasonal collections give everyone a shared list to hunt for alongside their normal Ranked binder. Finish in time for titles and packs, with extra rewards for the first finishers. Cards held back from the launch collection can return through seasons; copies you already own stay yours.
 
 ![The collection index with an undiscovered Wiry Swoop card selected.](docs/media/gallery/binder.png)
@@ -33,13 +43,17 @@ Open **Guild** to browse the full shared binder, including missing slots. **Add 
 
 Use **Guild index** at the top to return from any section. **Cancel donation** clears your selection and returns there without moving cards. Confirmed cards show their latest donating character; older donations may not have a recorded name.
 
-Donations are permanent. Nobody can withdraw cards, and they stay with the guild if you leave. Pending copies are labelled **Waiting for sync** and do not increase confirmed guild progress or points. Keep companion **1.0.6** open, then use **Save & sync** once for the batch and **Refresh after sync** when it finishes.
+Donations are permanent. Nobody can withdraw cards, and they stay with the guild if you leave. Pending copies are labelled **Waiting for sync** and do not increase confirmed guild progress or points. Keep companion **1.0.8** open, then use **Save & sync** once for the batch and **Refresh after sync** when it finishes.
 
 Create or join through the companion. New guild binders are ready immediately; their owner approves members. Forever uses first names and surnames, so different surnames can join the same guild. [Guild setup](https://worldofwarcards.co.uk/help#guilds) · [Guild standings](https://worldofwarcards.co.uk/guilds).
 
 ### Collect together
 
-The Fellowship set rewards the things you do with other players: trading, gifting, donating to your guild binder and sitting at a campfire. Collect all four for the Better Together achievement and Fellow Traveler title. An active campfire buff also boosts common and rare creature-card finds.
+The Fellowship set rewards the things you do with other players: trading, gifting, donating to your guild binder and sitting at a campfire. Collect all four for the Better Together achievement and Fellow Traveler title.
+
+### Campfire bonus
+
+Sit by a campfire before the next hunt. While its camp buff is active, your chance of finding **Common and Rare creature cards is doubled**. The buff tooltip explains the bonus where the client allows it, with a movable timer icon as a fallback. It is another reason to gather your friends before heading back out.
 
 ### Keep packs in your satchel
 
