@@ -4,6 +4,9 @@
 // acknowledged it, so the file IS the queue: after any failure, the next sync simply sends what is still unacknowledged.
 // Uploads are safe to repeat (the server stores a batch once), so retrying after a lost reply cannot double anything.
 import { canonicalJson } from "../../packages/shared/src/crypto.ts";
+import { parseBonusData } from "./bonusEvents.ts";
+import type { BonusData } from "./bonusEvents.ts";
+export const MAX_UPLOAD_SPEC_VERSION = 13;
 import type { Binder, BinderEvent } from "./binderFile.ts";
 import type { Identity } from "./identity.ts";
 import type { Ack } from "./syncFile.ts";
@@ -83,7 +86,7 @@ async function sendWithRetries(options: PublicClientOptions, path: string, body?
 async function uploadBody(options: ClientOptions, binder: Binder, events: BinderEvent[]): Promise<Record<string, unknown>> {
   const body: Record<string, unknown> = {
     // Spec 12 adds mode/camp1, the camp event and boosted attempts (the campfire), 11 adds mode/guild1 and the donate and donateReturn events (guild binders), 10 adds mode/faction1 and mode/side:* (cards only one faction can win), 9 mode/launch1 (cards held back for seasons), 8 mode/chase2 (the second set of drop rates), 7 seasonal rewards. The server refuses a binder that needs more than it is told.
-    specVersion: 12, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
+    specVersion: events.some(event => (event.kind === "drop" || event.kind === "miss") && (event.partner === "bonus" || event.partner === "camp-bonus")) ? MAX_UPLOAD_SPEC_VERSION : 12, key: options.identity.publicKeyHex, character: binder.character?.name ?? "Unknown",
     realm: binder.character?.realm ?? "Unknown", schema: binder.schema, catalogVersion: options.catalogVersion,
     events, snapshot: binder.snapshot, tapeIndex: binder.tapeNext, sentAt: options.now(),
   };
@@ -182,6 +185,14 @@ export async function fetchSeasons(options: ClientOptions, binders: string[]): P
   if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
   if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
   try { return { status: "seasons", data: parseSeasonData(reply.body, binders) }; }
+  catch { return { status: "rejected", code: "bad_reply" }; }
+}
+
+export async function fetchBonusEvents(options: PublicClientOptions, binders: string[]): Promise<{ status: "bonus-events"; data: BonusData } | Outcome> {
+  const reply = await sendWithRetries(options, "/v1/bonus-events");
+  if ("later" in reply) return { status: "retry-later", afterMs: reply.later, reason: reply.reason };
+  if (reply.status !== 200) return { status: "rejected", ...errorOf(reply) };
+  try { return { status: "bonus-events", data: parseBonusData(reply.body, binders) }; }
   catch { return { status: "rejected", code: "bad_reply" }; }
 }
 

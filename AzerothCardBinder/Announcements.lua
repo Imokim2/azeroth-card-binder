@@ -9,6 +9,33 @@ local function channel()
     return "SAY"
 end
 
+local drafts, order, serial, hooked = {}, {}, 0, false
+local commands = { PARTY = "/p ", RAID = "/raid ", INSTANCE_CHAT = "/i ", GUILD = "/g ", SAY = "/s " }
+function ACB.openAnnouncementLink(link)
+    local id = type(link) == "string" and link:match("^addon:AzerothCardBinder:announce:(%d+)$")
+    local draft = id and drafts[tonumber(id)]
+    if not draft then return end
+    local stamp = ACB.read(ACB.safe(GetTime), "number") or 0
+    if stamp > draft.untilAt or (draft.channel ~= "GUILD" and channel() ~= draft.channel) then return end
+    if draft.channel == "GUILD" and ACB.read(ACB.safe(GetGuildInfo, "player"), "string") ~= draft.guild then return end
+    local open = ChatFrameUtil and ChatFrameUtil.OpenChat or ChatFrame_OpenChat
+    if type(open) == "function" then open(commands[draft.channel] .. draft.message) end
+end
+local function manual(item, stamp, log)
+    if not DEFAULT_CHAT_FRAME or not DEFAULT_CHAT_FRAME.AddMessage then log("Card announcement: dungeon chat is restricted; use the card's chat link to share manually."); return end
+    serial = serial + 1
+    drafts[serial] = { message = item.message, channel = item.channel, guild = item.guild, untilAt = stamp + 900 }
+    order[#order + 1] = serial
+    if #order > 30 then drafts[table.remove(order, 1)] = nil end
+    DEFAULT_CHAT_FRAME:AddMessage(("World of Warcards: Chat is restricted here. |cffffcf77|Haddon:AzerothCardBinder:announce:%d|h[Share this find in %s]|h|r"):format(serial, item.channel:lower()), 1, .82, .35)
+end
+local function hookDrafts()
+    if hooked then return end
+    if EventRegistry and EventRegistry.RegisterCallback then
+        EventRegistry:RegisterCallback("SetItemRef", function(_, link) ACB.openAnnouncementLink(link) end, ACB.openAnnouncementLink); hooked = true
+    elseif hooksecurefunc then hooked = pcall(hooksecurefunc, "SetItemRef", ACB.openAnnouncementLink) end
+end
+
 local rarityRank = { common = 1, rare = 2, epic = 3, legendary = 4 }
 local function guild()
     if ACB.read(ACB.safe(IsInGuild), "boolean") ~= true then return end
@@ -16,6 +43,7 @@ local function guild()
 end
 
 function ACB.newCardAnnouncements(saved, log)
+    hookDrafts()
     local queue, pending, nextSend = {}, false, 0
     log = log or function() end
     local function now() return ACB.read(ACB.safe(GetTime), "number") or 0 end
@@ -44,6 +72,14 @@ function ACB.newCardAnnouncements(saved, log)
         end
         if C_ChatInfo and C_ChatInfo.InChatMessagingLockdown
             and ACB.read(ACB.safe(C_ChatInfo.InChatMessagingLockdown), "boolean") ~= false then
+            local inside, kind = ACB.safe(IsInInstance)
+            kind = ACB.read(kind, "string")
+            if ACB.read(inside, "boolean") == true and (kind == "party" or kind == "raid") then
+                local item = table.remove(queue, 1)
+                manual(item, stamp, log)
+                if queue[1] and not later(2) then queue = {} end
+                return
+            end
             if not later(2) then queue = {} end
             return
         end

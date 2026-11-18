@@ -212,6 +212,9 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
         -- At a camp with its buff the chance is doubled, and a Ranked binder writes that down first (Campfire.lua).
         local boost = ACB.campBoost ~= nil and ACB.campBoost(saved, ledger, ranked, card) -- Campfire.lua; the small tools that load only part of the add-on lack it
         if boost then chance = math.min(10000, chance * ACB.campFactor) end
+        local rollAt = time and time() or 0
+        local bonus = ACB.bonusBoost and ACB.bonusBoost(saved, ledger, ranked, card, rollAt)
+        if bonus then chance = math.min(10000, math.floor(chance * bonus.percent / 100)) end
         local guaranteed = chance >= 10000
         -- A certain drop needs no roll; a Casual roll is drawn only when it is needed.
         local dropped = guaranteed or (ranked and ACB.tapeRoll(entry) or random(1, 10000)) <= chance
@@ -225,11 +228,12 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             -- Ranked writes every attempt down: misses in a row on one card are one run, kept open until something else happens.
             if ranked and ledger then
                 local run = saved.run
-                if run and run.key == card.key and run.last == tapeIndex - 1 and (run.boost == true) == boost then
+                if run and run.key == card.key and run.last == tapeIndex - 1 and (run.boost == true) == boost and run.bonus == (bonus and bonus.id) then
                     run.n, run.last = run.n + 1, tapeIndex
+                    if bonus then run.untilAt = rollAt end
                 else
                     ledger:flushRun()
-                    saved.run = { key = card.key, n = 1, last = tapeIndex, boost = boost or nil }
+                    saved.run = { key = card.key, n = 1, last = tapeIndex, boost = boost or nil, bonus = bonus and bonus.id, fromAt = bonus and rollAt, untilAt = bonus and rollAt }
                 end
             end
             if packWin then
@@ -255,7 +259,9 @@ function ACB.newCollection(saved, random, report, log, found, completed, ledger)
             if ranked then shiny = ACB.tapeShiny(entry, ACB.shinyOdds) == 1 else shiny = random(1, ACB.shinyOdds) == 1 end
         end
         if shiny then saved.shiny[card.key] = true end
-        record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex, partner = boost and ranked and "camp" or nil })
+        record("drop", card.key, { before = before, shiny = shiny, tape = tapeIndex,
+            partner = bonus and (boost and "camp-bonus" or "bonus") or boost and ranked and "camp" or nil,
+            trade = bonus and ACB.bonusReference(bonus.id, rollAt, rollAt) })
         if packWin then self:addPack(card, tapeIndex, entry) end
         -- A drop rolled with this computer's own random numbers cannot be rechecked by the server.
         if not ranked then saved.casualDrops = (saved.casualDrops or 0) + 1 end

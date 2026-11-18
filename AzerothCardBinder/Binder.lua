@@ -12,6 +12,8 @@ local BINDER_WIDTH, BINDER_HEIGHT = 940, 644
 
 function ACB.initUI(saved, trade)
     local frame = window("AzerothCardBinderWindow", BINDER_WIDTH, BINDER_HEIGHT, "World of Warcards", true)
+    ACB.createBonusBadge(frame, saved)
+    ACB.initBonusEvents(saved, ACB.ledger)
     local function fitWindow()
         local scale = math.min(1, (UIParent:GetWidth() - 24) / BINDER_WIDTH,
             (UIParent:GetHeight() - 24) / BINDER_HEIGHT)

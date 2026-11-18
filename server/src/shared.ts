@@ -3,6 +3,7 @@
 import * as shared from "../../packages/shared/src/rules.js";
 import * as packs from "../../packages/shared/src/packs.js";
 import * as editions from "../../packages/shared/src/editions.js";
+import type { BonusDefinitions } from "./bonusEvents.ts";
 
 export type Catalog = {
   catalogVersion: string;
@@ -58,7 +59,7 @@ export type ReplayResult =
   | { ok: false; error: "rule"; rule: string; index: number };
 
 export const newState = shared.newState as () => LedgerState;
-export const replay = shared.replay as (events: unknown[], catalog: Catalog, start?: LedgerState, options?: { strict?: boolean; available?: (key: string, t: number) => boolean }) => ReplayResult;
+export const replay = shared.replay as (events: unknown[], catalog: Catalog, start?: LedgerState, options?: { strict?: boolean; available?: (key: string, t: number) => boolean; bonuses?: BonusDefinitions; serverNow?: number }) => ReplayResult;
 export const snapshotDifferences = shared.snapshotDifferences as (
   snapshot: { counts?: Record<string, number>; dust?: number; sets?: Record<string, boolean> },
   state: LedgerState,

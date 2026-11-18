@@ -109,6 +109,7 @@ local function cleanLedgerFields(saved)
     local function count(value) return type(value) == "number" and value >= 1 and value == math.floor(value) end
     if type(run) == "table" and type(run.key) == "string" and ACB.cards[run.key] and count(run.n) and count(run.last) and run.last >= run.n then
         saved.run = { key = run.key, n = run.n, last = run.last, boost = run.boost == true or nil }
+        if ACB.bonusReference and ACB.bonusReference(run.bonus, run.fromAt, run.untilAt) then saved.run.bonus, saved.run.fromAt, saved.run.untilAt = run.bonus, run.fromAt, run.untilAt end
     else
         saved.run = nil
     end

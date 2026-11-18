@@ -46,7 +46,7 @@ export const ADMIN_SCRIPT = `
 (function () {
   "use strict";
   var token = "";
-  var views = ["flags", "players", "guilds", "activity"];
+  var views = ["flags", "players", "guilds", "bonuses", "activity"];
   var $ = function (id) { return document.getElementById(id); };
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -79,6 +79,7 @@ export const ADMIN_SCRIPT = `
     if (name === "players" && !$("players").children.length) search();
     if (name === "activity") loadAudit();
     if (name === "guilds") loadGuilds();
+    if (name === "bonuses") loadBonuses();
   }
 
   async function loadGuilds() {
@@ -343,6 +344,7 @@ export const ADMIN_SCRIPT = `
 
   // ---- Signing in ----
 
+  ${BONUS_ADMIN_SCRIPT}
   $("signin").addEventListener("submit", async function (event) {
     event.preventDefault();
     token = $("token").value.trim();
@@ -382,7 +384,7 @@ export const ADMIN_HTML = (): string => `<!doctype html>
 <p id="message" role="status"></p>
 <div id="app" hidden>
 <p id="who" class="who"></p>
-<div class="tabs"><button type="button" id="tab-flags" class="tab on">Flags</button><button type="button" id="tab-players" class="tab">Players</button><button type="button" id="tab-guilds" class="tab">Guild requests</button><button type="button" id="tab-activity" class="tab">Activity</button></div>
+<div class="tabs"><button type="button" id="tab-flags" class="tab on">Flags</button><button type="button" id="tab-players" class="tab">Players</button><button type="button" id="tab-guilds" class="tab">Guild requests</button><button type="button" id="tab-bonuses" class="tab">Bonus events</button><button type="button" id="tab-activity" class="tab">Activity</button></div>
 <section id="view-flags">
 <div class="bar"><select id="state" aria-label="Which flags"><option value="open">Open</option><option value="cleared">Cleared</option><option value="confirmed">Confirmed</option><option value="all">All</option></select><button type="button" id="refresh">Refresh</button></div>
 <div id="flags"></div>
@@ -393,6 +395,7 @@ export const ADMIN_HTML = (): string => `<!doctype html>
 <div id="player"></div>
 </section>
 <section id="view-guilds" hidden><h2>Guild requests</h2><p class="meta">Check the requested owner's in-game guild before approving. Members apply through the companion and are approved by the guild owner.</p><div id="guilds"></div></section>
+${BONUS_ADMIN_HTML}
 <section id="view-activity" hidden>
 <div class="bar"><button type="button" id="refresh-activity">Refresh</button></div>
 <div id="audit"></div>
@@ -408,3 +411,4 @@ export async function scriptHash(): Promise<string> {
   for (const byte of digest) binary += String.fromCharCode(byte);
   return btoa(binary);
 }
+import { BONUS_ADMIN_HTML, BONUS_ADMIN_SCRIPT } from "./bonusAdmin.ts";

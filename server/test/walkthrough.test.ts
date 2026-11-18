@@ -41,7 +41,7 @@ test("a checkout that is not ready is called out, with the reason", () => {
   const edited = (change: (relative: string, text: string) => string) => (relative: string) => change(relative, real(relative));
   const wrongServer = walk.checkout({ read: edited((relative, text) => relative === "server/wrangler.toml" ? text.replace(/VERSION = "[\d.]+"/, 'VERSION = "0.0.1"') : text) });
   assert.ok(failing(wrongServer.items).some((item) => /versions are set/.test(item.name) && /wrangler VERSION 0\.0\.1/.test(item.detail)));
-  const wrongProtocol = walk.checkout({ read: edited((relative, text) => relative === "app/src/client.ts" ? text.replace("specVersion: 12,", "specVersion: 8,") : text) });
+  const wrongProtocol = walk.checkout({ read: edited((relative, text) => relative === "app/src/client.ts" ? text.replace("MAX_UPLOAD_SPEC_VERSION = 13;", "MAX_UPLOAD_SPEC_VERSION = 8;") : text) });
   assert.ok(failing(wrongProtocol.items).some((item) => /ledger protocol/.test(item.name) && /companion sends 8/.test(item.detail)));
   const staleList = walk.checkout({ read: edited((relative, text) => relative === "AzerothCardBinder/LaunchCollection.lua" ? text.replace('"npc:100", ', "") : text) });
   assert.ok(failing(staleList.items).some((item) => /held-back list/.test(item.name) && /OUT OF DATE/.test(item.detail)));
@@ -59,8 +59,8 @@ test("a server that is this release passes every deployed check", async () => {
   assert.deepEqual(failing(deployed.items), []);
   const protocol = deployed.items.find((item) => /ledger protocol/.test(item.name))!;
   assert.match(protocol.detail, /1: client_too_old/);
-  assert.match(protocol.detail, /12: unknown_key/);
-  assert.match(protocol.detail, /13: client_too_old/);
+  assert.match(protocol.detail, /13: unknown_key/);
+  assert.match(protocol.detail, /14: client_too_old/);
   assert.ok(report.hand.length >= 4 && report.hand.every(([, lines]) => lines.length > 0), "the by-hand list is there");
 });
 

@@ -6,13 +6,15 @@ Notable changes, newest first. Versions follow [semantic versioning](https://sem
 
 Nothing yet.
 
-## 1.1.0 - 2026-11-17
+## 1.1.0 - 2026-11-18
 
 - First card-history test build: new copies record their original finder, acquisition location/date and source. Origins travel with the exact copy through trades and gifts; older stock stays explicitly unknown.
 - Browse and select duplicate copies under Card history, inspect both offers before accepting, and request a copy's origin from another player's personal binder. Sharing follows binder privacy.
-- Companion 1.0.7 protects copy identities during backup recovery. Install it before this addon. Ranked rules, card counts, catalog and drop rates are unchanged. This build is not yet the public website download.
-
-Nothing yet.
+- Companion 1.0.8 protects copy identities during backup recovery. Install it before this addon. Existing card counts and the catalogue are kept.
+- Scheduled card-drop events can cover every collection or selected sets. A chat notice, optional sound and header countdown show the active bonus. Loaded schedules start and end automatically; the strongest eligible event applies, with campfire bonuses also supported.
+- Private website admins can choose the start time, length and multiplier. Authoritative schedules are kept for later Ranked verification. No events are enabled by installing the update.
+- Dungeon chat lockdown now offers a local Share this find link, which prepares the announcement for the player to send manually. Automatic announcements continue where the client permits them.
+- Combined test candidate with server 1.1.0. Public website downloads and automatic update feeds are unchanged until release validation.
 
 ## 1.0.21 - 2026-11-16
 

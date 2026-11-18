@@ -42,6 +42,7 @@ ACB.soundSettings = {
     { key = "packSounds", name = "Pack sounds", default = true, note = "Pack finds, opening, card flips and pack reveals." },
     { key = "tradeSounds", name = "Trade and gift sounds", default = true, note = "One confirmation when a trade or gift completes." },
     { key = "windowSounds", name = "Window sounds", default = true, note = "Subtle paper and leather when opening the binder or satchel." },
+    { key = "eventSounds", name = "Event alerts", default = true, note = "A sound when a scheduled bonus starts. The chat notice and countdown stay visible when muted." },
 }
 local byKey = {}
 for _, setting in ipairs(ACB.settings) do byKey[setting.key] = setting end

@@ -20,6 +20,7 @@ import type { AdminStore, FlagRecord, IngestStore, LeaderboardStore, ModerationS
 import { REFILL_BELOW, TAPE_SIZE, tapeCommitment, tapeEntry, tapeKey, tapeOwner } from "./tape.ts";
 import { SUPPORTED_SPEC_VERSIONS, acceptUpload, parseUpload } from "./upload.ts";
 import type { SqlSeasons } from "./seasons.ts";
+import type { SqlBonusEvents } from "./bonusEvents.ts";
 import { GUILD_STATES, parseCharacter, parseGuildName } from "./guilds.ts";
 import type { SqlGuilds } from "./guilds.ts";
 
@@ -38,6 +39,7 @@ export type Deps = {
   moderation: ModerationStore;
   admin: AdminStore; // finding players and the record of what reviewers did (the admin panel)
   seasons?: SqlSeasons;
+  bonuses?: SqlBonusEvents;
   guilds?: SqlGuilds; // guild binders (docs/proposals/GUILD-BINDERS-DESIGN.md); absent until switched on, and every guild route then answers not_found
   // When each card held back for seasons was released (from the scheduled seasons when absent): the start of the first season featuring it.
   released?: () => Promise<Record<string, number>>;
@@ -220,6 +222,19 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     const season = await deps.seasons.schedule(await readJson(request), deps.now());
     await audit(actor, "schedule-season", season.id, season.title);
     return json(201, { season }, { "cache-control": "no-store" });
+  }
+
+  async function bonusSchedule(): Promise<Response> {
+    const now = deps.now();
+    return json(200, { at: now, events: deps.bonuses ? await deps.bonuses.upcoming(now) : [] }, { "cache-control": "public, max-age=300" });
+  }
+  async function adminBonuses(request: Request): Promise<Response> {
+    const actor = await requireAdmin(request);
+    if (!deps.bonuses) throw new ApiError("not_found");
+    if (request.method === "GET") return json(200, { events: await deps.bonuses.upcoming(deps.now()), sets: deps.catalog.sets.map(set => ({ code: set.code, title: set.title })) }, { "cache-control": "no-store" });
+    const event = await deps.bonuses.schedule(await readJson(request), deps.now());
+    await audit(actor, "schedule-bonus", event.id, event.title);
+    return json(201, { event }, { "cache-control": "no-store" });
   }
 
   // The player behind a request signed for one purpose, or an error. `fields` are signed along with the key and the time.
@@ -488,7 +503,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
     if (after !== undefined && after !== null && (typeof after !== "string" || after.length > 40)) throw new ApiError("bad_request", { field: "after" });
     if (limit !== undefined && (!Number.isInteger(limit) || (limit as number) < 1 || (limit as number) > 200)) throw new ApiError("bad_request", { field: "limit" });
     if ((dryRun !== undefined && typeof dryRun !== "boolean") || (force !== undefined && typeof force !== "boolean")) throw new ApiError("bad_request", { field: "dryRun" });
-    const report = await rebuild({ rebuild: deps.rebuild, catalog: deps.catalog, releasedAt: deps.released ? await deps.released() : deps.seasons ? await deps.seasons.released() : {} }, {
+    const report = await rebuild({ rebuild: deps.rebuild, catalog: deps.catalog, bonuses: deps.bonuses, releasedAt: deps.released ? await deps.released() : deps.seasons ? await deps.seasons.released() : {} }, {
       after: (after as string | null | undefined) ?? null, ...(limit !== undefined ? { limit: limit as number } : {}),
       dryRun: dryRun === true, force: force === true,
     });
@@ -766,6 +781,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/ledger" ? allow("ledger", ["POST"], () => ledger(request))
       : url.pathname === "/v1/tape" ? allow("tape", ["POST"], () => tape(request))
       : url.pathname === "/v1/seasons" ? allow("seasons", ["POST"], () => seasonal(request))
+      : url.pathname === "/v1/bonus-events" ? allow("bonus-events", ["GET"], bonusSchedule)
       : url.pathname === "/v1/guilds/request" ? allow("guild-request", ["POST"], () => guildRequest(request))
       : url.pathname === "/v1/guilds/mine" ? allow("guild-mine", ["POST"], () => guildMine(request))
       : url.pathname === "/v1/guilds/summary" ? allow("guild-summary", ["POST"], () => guildSummary(request))
@@ -798,6 +814,7 @@ export function createApi(deps: Deps): (request: Request) => Promise<Response> {
       : url.pathname === "/v1/admin/guilds" ? allow("admin-guilds", ["GET"], () => adminGuilds(request, url))
       : guildMatch ? allow("admin-guild-decision", ["POST"], () => adminGuildDecision(request, guildMatch[1] as string))
       : url.pathname === "/v1/admin/seasons" ?allow("admin-seasons", ["GET", "POST"], () => adminSeasons(request))
+      : url.pathname === "/v1/admin/bonus-events" ? allow("admin-bonus-events", ["GET", "POST"], () => adminBonuses(request))
       : playerMatch ? allow("player", ["GET"], () => player(playerMatch[1] as string))
       : { route: "unknown", response: Promise.resolve(errorResponse("not_found")) };
     return { route: chosen.route, response: await chosen.response };

@@ -6,7 +6,8 @@
 // whole on every pass, so a crash, a restart or a failed request cannot leave the two out of step.
 import { readBinder, BinderFileError } from "./binderFile.ts";
 import type { Binder } from "./binderFile.ts";
-import { fetchGuild, fetchReleases, fetchStandings, fetchTape, fetchSeasons, sendReports, syncBinder } from "./client.ts";
+import { fetchBonusEvents, fetchGuild, fetchReleases, fetchStandings, fetchTape, fetchSeasons, sendReports, syncBinder } from "./client.ts";
+import type { BonusData } from "./bonusEvents.ts";
 import type { SeasonData } from "./seasons.ts";
 import type { GuildData } from "./guild.ts";
 import { cachedStandings } from "./communityCache.ts";
@@ -71,6 +72,8 @@ export class Engine {
   #seasons: SeasonData | undefined;
   #seasonBinders: string[] = [];
   #checkedSeasons = false;
+  #bonuses: BonusData | undefined;
+  #checkedBonuses = false;
   #guild: GuildData | undefined; // what the server last said about the player's guild
   #guildAvailable = true; // false once the server says it has guilds switched off, until the app is started again
   #checkedGuild = false;
@@ -247,8 +250,14 @@ export class Engine {
       if (reply.status !== "retry-later") this.#checkedSeasons = true;
     }
 
-    // The guild: asked after something changed in the saved files or on the server (a donation settles in the same upload that carries it), when the
-    // add-on is waiting to hear about a donation, or when the player has just acted. A server with guilds switched off is asked only once.
+    // Scheduled bonuses ride on startup and normal saved-progress syncs, with no periodic polling.
+    if (seasonBinders.length && (!this.#checkedBonuses || savedFileChanged || uploadedProgress)) {
+      const reply = await fetchBonusEvents(client, seasonBinders);
+      if (reply.status === "bonus-events") this.#bonuses = reply.data;
+      if (reply.status !== "retry-later") this.#checkedBonuses = true;
+    }
+
+    // The guild is refreshed after saved changes, pending donations or a player's explicit action.
     if (seasonBinders.length && this.#guildAvailable && (!this.#checkedGuild || this.#guildForced || guildOps.size > 0 || savedFileChanged || uploadedProgress)) {
       const reply = await fetchGuild(client, seasonBinders, [...guildOps].slice(0, 100));
       if (reply.status === "guild") this.#guild = reply.data;
@@ -284,6 +293,7 @@ export class Engine {
       ...(this.#releases ? { releases: { latestAddon: this.#releases.addon.latest, minAddon: this.#releases.addon.min } } : {}),
       ...(this.#tape ? { tape: this.#tape } : {}),
       ...(this.#seasons ? { seasonal: { ...this.#seasons, binders: this.#seasons.binders.filter(id => this.#seasonBinders.includes(id)) } } : {}),
+      ...(this.#bonuses ? { bonuses: { ...this.#bonuses, binders: this.#bonuses.binders.filter(id => this.#seasonBinders.includes(id)) } } : {}),
       ...(this.#guild ? { guild: { ...this.#guild, binders: this.#guild.binders.filter(id => this.#seasonBinders.includes(id)) } } : {}),
       ...(this.#standings ? { leaderboard: this.#standings.leaderboard, you: this.#standings.you, verified: this.#standings.verified, firsts: this.#standings.firsts } : {}),
     });

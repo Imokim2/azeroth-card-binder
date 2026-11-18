@@ -1,5 +1,7 @@
 # Ledger specification
 
+Version 13 additionally supports server-scheduled card-drop bonuses. Only boosted drop/miss batches require 13; ordinary batches retain version 12. The existing event fields and historical hashes are unchanged. See [BONUS-EVENTS.md](BONUS-EVENTS.md) for the official schedule, attempt-window markers and rollout. The earlier protocol history follows.
+
 Version 12. Version 12 adds `mode/camp1`, the `camp` event and boosted attempts (the campfire, below), and `mode/fellow1` with the Fellowship cards earned by activities (below). Version 11 adds `mode/guild1` and the `donate` and `donateReturn` events (guild binders, below). Version 10 adds `mode/faction1` and `mode/side:*` (cards only one faction can win, below). Version 9 adds `mode/launch1` (cards held back for seasons, below). Version 8 adds `mode/chase2` (the second set of drop rates, below). Versions 2–4 added exact attempts, packs and collectible editions. Version 5 adds `mode/chase1` for per-card drop profiles and weighted packs. Version 6 adds pack tiers, the satchel and pack trades. Version 7 adds server-authorised seasonal pack rewards. Existing hashes and older histories retain their meaning. All components must produce the results in [packages/shared/vectors](../packages/shared/vectors); the reference implementation is [packages/shared/src/ledger.js](../packages/shared/src/ledger.js).
 
 ## Seasonal rewards (version 7)
