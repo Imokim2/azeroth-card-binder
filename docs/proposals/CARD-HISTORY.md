@@ -1,6 +1,6 @@
 # Per-copy card history: first test build
 
-Addon 1.1.0 and companion 1.0.8. The original history implementation is on `codex/card-copy-history`; `codex/timed-bonus-events` bundles it with the scheduled bonuses and dungeon announcement fix. Public downloads and automatic update feeds remain unchanged until release validation.
+Ships in addon 1.1.0 and companion 1.0.8, bundled with scheduled bonuses and the dungeon announcement fix. The website and signed companion feed provide the matching releases. Existing binders are kept.
 
 ## What players can do
 
